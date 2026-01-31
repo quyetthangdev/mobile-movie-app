@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Dimensions, Image, Linking, Pressable, Text, View } from 'react-native'
+import { ActivityIndicator, Dimensions, Image, Linking, Pressable, Text, useColorScheme, View } from 'react-native'
 
 interface YouTubeVideoSectionProps {
   /**
@@ -33,6 +33,7 @@ export const YouTubeVideoSection: React.FC<YouTubeVideoSectionProps> = ({
   title,
 }) => {
   const { t } = useTranslation('home')
+  const isDark = useColorScheme() === 'dark'
   const [isLoading, setIsLoading] = useState(true)
   const screenWidth = Dimensions.get('window').width
   const videoHeight = (screenWidth * 9) / 16 // 16:9 aspect ratio
@@ -67,7 +68,7 @@ export const YouTubeVideoSection: React.FC<YouTubeVideoSectionProps> = ({
     <View className="w-full px-4 py-4">
       <View className="w-full items-center mb-8">
         <View className="w-full items-center">
-          <Text className="w-full text-center text-lg sm:text-2xl font-extrabold uppercase text-red-600 dark:text-primary mb-4">
+          <Text className="w-full text-center text-lg sm:text-2xl font-extrabold uppercase text-primary mb-4">
             {title || t('home.videoSection.title', 'Khám phá câu chuyện TREND Coffee')}
           </Text>
         </View>
@@ -88,13 +89,13 @@ export const YouTubeVideoSection: React.FC<YouTubeVideoSectionProps> = ({
             {/* Loading indicator */}
             {isLoading && (
               <View className="absolute inset-0 justify-center items-center bg-gray-200 dark:bg-gray-800">
-                <ActivityIndicator size="large" color="#e50914" />
+                <ActivityIndicator size="large" color={isDark ? '#9ca3af' : '#6b7280'} />
               </View>
             )}
 
             {/* Play button overlay */}
             <View className="absolute inset-0 justify-center items-center bg-black/20">
-              <View className="w-20 h-20 bg-red-600 rounded-full justify-center items-center">
+              <View className="w-20 h-20 bg-primary rounded-full justify-center items-center">
                 <View className="ml-1">
                   {/* Play icon - using triangle */}
                   <View

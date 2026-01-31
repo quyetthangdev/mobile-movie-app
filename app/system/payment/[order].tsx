@@ -10,3 +10,4 @@ const SystemPayment = () => {
 }
 
 export default SystemPayment
+

@@ -24,6 +24,10 @@ export default function DualRangeSlider({
 }: DualRangeSliderProps) {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
+  // Primary color from CSS variables
+  // Light: hsl(35, 93%, 55%) = #F7A737
+  // Dark: hsl(35, 70%, 53%) = #D68910
+  const primaryColor = isDark ? '#D68910' : '#F7A737'
   const sliderWidth = Dimensions.get('window').width - 64 // Account for padding
   const trackRef = useRef<View>(null)
   const [minVal, maxVal] = value
@@ -92,7 +96,7 @@ export default function DualRangeSlider({
             left: `${minPosition}%`,
             width: `${maxPosition - minPosition}%`,
             height: 8,
-            backgroundColor: '#e50914',
+            backgroundColor: primaryColor,
             borderRadius: 4,
           }}
         />
@@ -107,7 +111,7 @@ export default function DualRangeSlider({
             height: 24,
             backgroundColor: isDark ? '#1f2937' : '#ffffff',
             borderWidth: 2,
-            borderColor: '#e50914',
+            borderColor: primaryColor,
             borderRadius: 12,
             marginLeft: -12,
             marginTop: -8,
@@ -129,7 +133,7 @@ export default function DualRangeSlider({
             height: 24,
             backgroundColor: isDark ? '#1f2937' : '#ffffff',
             borderWidth: 2,
-            borderColor: '#e50914',
+            borderColor: primaryColor,
             borderRadius: 12,
             marginLeft: -12,
             marginTop: -8,

@@ -5,5 +5,6 @@ export { default as DualRangeSlider } from './dual-range-slider'
 export { default as PriceRangeFilter } from './price-range-filter'
 export { default as ProductImageCarousel } from './product-image-carousel'
 export { default as ProductNameSearch } from './product-name-search'
+export { default as SliderRelatedProducts } from './slider-related-products'
 // export { default as SliderRelatedProducts } from './slider-related-products'
 

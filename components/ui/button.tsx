@@ -12,11 +12,13 @@ const buttonVariants = cva(
         secondary: 'bg-zinc-200',
         outline: 'border border-zinc-300 bg-transparent',
         destructive: 'bg-red-600',
+        ghost: 'bg-transparent',
       },
       size: {
         sm: 'h-9 px-3',
         md: 'h-11 px-5',
         lg: 'h-14 px-8',
+        icon: 'h-10 w-10 p-0',
       },
       disabled: {
         true: 'opacity-50',
@@ -36,11 +38,13 @@ const textVariants = cva('font-medium', {
       secondary: 'text-black',
       outline: 'text-black',
       destructive: 'text-white',
+      ghost: 'text-gray-900 dark:text-gray-50',
     },
     size: {
       sm: 'text-sm',
       md: 'text-base',
       lg: 'text-lg',
+      icon: 'text-base',
     },
   },
   defaultVariants: {
@@ -75,8 +79,14 @@ export const Button = React.forwardRef<
       )}
       {...rest}
     >
-      {loading ? (
-        <ActivityIndicator color={variant === 'secondary' ? '#000' : '#fff'} />
+      {      loading ? (
+        <ActivityIndicator 
+          color={
+            variant === 'secondary' ? '#000' : 
+            variant === 'ghost' ? '#111827' : 
+            '#fff'
+          } 
+        />
       ) : React.isValidElement(children) ||
         (Array.isArray(children) &&
           children.some((child: unknown) => React.isValidElement(child))) ? (

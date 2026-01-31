@@ -1,14 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ArrowLeft, ShoppingBag } from 'lucide-react-native'
+import { ArrowLeft, ShoppingBag, ShoppingCart } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
 import NonPropQuantitySelector from '@/components/button/non-prop-quantity-selector'
-import { ProductImageCarousel } from '@/components/menu'
+import { ProductImageCarousel, SliderRelatedProducts } from '@/components/menu'
 import { Badge, Button } from '@/components/ui'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
 import { useSpecificMenuItem } from '@/hooks'
@@ -23,6 +23,7 @@ export default function MenuItemDetailPage() {
   const { t: tMenu } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
   const { userInfo } = useUserStore()
+  const isDark = useColorScheme() === 'dark'
 
   const {
     currentStep,
@@ -31,7 +32,16 @@ export default function MenuItemDetailPage() {
     initializeOrdering,
     addOrderingItem,
     setCurrentStep,
+    getCartItems,
   } = useOrderFlowStore()
+
+  // Calculate cart item count
+  const currentCartItems = getCartItems()
+  const cartItemCount =
+    currentCartItems?.orderItems?.reduce(
+      (total, item) => total + (item.quantity || 0),
+      0,
+    ) || 0
 
   const { data: product, isLoading } = useSpecificMenuItem(slug || '')
 
@@ -246,12 +256,30 @@ export default function MenuItemDetailPage() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <TouchableOpacity onPress={() => router.back()} className="p-2">
-          <ArrowLeft size={24} color="#000" />
+          <ArrowLeft size={24} color={isDark ? '#ffffff' : '#000000'} />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-gray-900 dark:text-white">
           {t('product.detail', 'Chi tiết món')}
         </Text>
-        <View className="w-10" />
+        <TouchableOpacity
+          onPress={() => router.push(ROUTE.CLIENT_CART)}
+          className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 items-center justify-center bg-white dark:bg-gray-800"
+        >
+          <ShoppingCart size={20} color={isDark ? '#ffffff' : '#111827'} />
+          {cartItemCount > 0 && (
+            <View
+              className="absolute -top-1 -right-1 bg-red-600 rounded-full min-w-[18px] h-[18px] items-center justify-center px-1"
+              style={{
+                borderWidth: 2,
+                borderColor: isDark ? '#1f2937' : '#ffffff',
+              }}
+            >
+              <Text className="text-white text-[10px] font-bold">
+                {cartItemCount > 99 ? '99+' : cartItemCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -377,7 +405,7 @@ export default function MenuItemDetailPage() {
             )}
 
             {/* Note Input */}
-            <View className="flex-col gap-2">
+            {/* <View className="flex-col gap-2">
               <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {tMenu('menu.note', 'Ghi chú')}
               </Text>
@@ -390,7 +418,7 @@ export default function MenuItemDetailPage() {
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800"
                 textAlignVertical="top"
               />
-            </View>
+            </View> */}
 
             {/* Promotion Info */}
             {productDetail.promotion && (
@@ -409,14 +437,14 @@ export default function MenuItemDetailPage() {
         </View>
 
         {/* Related Products */}
-        {/* {productDetail.product.catalog?.slug && (
-          <View className="px-4 pb-6">
+        {productDetail.product.catalog?.slug && (
+          <View className="pb-6">
             <SliderRelatedProducts
               currentProduct={slug || ''}
               catalog={productDetail.product.catalog.slug}
             />
           </View>
-        )} */}
+        )}
       </ScrollView>
 
       {/* Fixed Bottom Buttons */}

@@ -102,7 +102,7 @@ export function ClientMenus({ menu, isLoading }: IClientMenuProps) {
           return (
             <View key={`catalog-${group.catalog.slug || index}`} className="mb-12 w-full">
               {/* Catalog Header - uppercase primary-highlight */}
-              <Text className="uppercase text-red-600 dark:text-primary font-bold text-lg mb-5">
+              <Text className="uppercase text-primary font-bold text-lg mb-5">
                 {group.catalog.name}
               </Text>
 
@@ -121,7 +121,7 @@ export function ClientMenus({ menu, isLoading }: IClientMenuProps) {
         })
       ) : (
         <View className="mb-12 w-full">
-          <Text className="uppercase text-red-600 dark:text-primary font-bold text-lg">
+          <Text className="uppercase text-primary font-bold text-lg">
             {tCommon('common.noData', 'Không có dữ liệu')}
           </Text>
         </View>

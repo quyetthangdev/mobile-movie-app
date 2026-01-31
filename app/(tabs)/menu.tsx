@@ -1,9 +1,10 @@
 import { MapPin, X } from 'lucide-react-native'
 import moment from 'moment'
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
+  Image,
   RefreshControl,
   ScrollView,
   Text,
@@ -12,6 +13,9 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { Images } from '@/assets/images'
+import { SelectBranchDropdown } from '@/components/branch'
+import { LogoutDialog, SettingsDropdown, UserAvatarDropdown } from '@/components/dialog'
 import {
   ClientCatalogSelect,
   ClientMenus,
@@ -20,15 +24,18 @@ import {
 } from '@/components/menu'
 import { FILTER_VALUE } from '@/constants'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks'
-import { useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
+import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
 import { IMenuFilter, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
 
 export default function ClientMenuPage() {
   const { t } = useTranslation(['menu'])
-  const { userInfo } = useUserStore()
+  const userInfo = useUserStore((state) => state.userInfo)
+  const setLogout = useAuthStore((state) => state.setLogout)
+  const removeUserInfo = useUserStore((state) => state.removeUserInfo)
   const { menuFilter, setMenuFilter } = useMenuFilterStore()
   const { branch } = useBranchStore()
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
 
   const mapMenuFilterToRequest = (
     filter: IMenuFilter,
@@ -114,21 +121,50 @@ export default function ClientMenuPage() {
     }))
   }
 
+  const handleLogout = () => {
+    setLogout()
+    removeUserInfo()
+  }
+
+  const handleLogoutPress = () => {
+    setIsLogoutDialogOpen(true)
+  }
+
   return (
     <SafeAreaView className="flex-1" edges={['top']}>
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#e50914"
-            colors={['#e50914']}
+      {/* Header */}
+      <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
+        {/* Left side: Logo */}
+        <View className="flex-row items-center">
+          <Image
+            source={Images.Brand.Logo as unknown as number}
+            className="h-8 w-28"
+            resizeMode="contain"
           />
-        }
-      >
+        </View>
+        {/* Right side: Branch Select, Settings and Avatar with Dropdown */}
+        <View className="flex-row items-center gap-3">
+          <SelectBranchDropdown />
+          <SettingsDropdown />
+          <UserAvatarDropdown userInfo={userInfo} onLogoutPress={handleLogoutPress} />
+        </View>
+      </View>
+
+      {/* Content */}
+      <View className="flex-1">
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#e50914"
+              colors={['#e50914']}
+            />
+          }
+        >
         {/* Container */}
         <View className="px-4 py-4">
           {/* Main Layout - Column on mobile, Row on larger screens */}
@@ -139,7 +175,7 @@ export default function ClientMenuPage() {
                 {/* Branch info */}
                 <View className="flex-row items-center justify-center gap-1 py-2">
                   <MapPin size={16} color="#e50914" />
-                  <Text className="text-xs text-red-600 dark:text-primary">
+                  <Text className="text-xs text-gray-600">
                     {branch
                       ? `${branch.name} (${branch.address})`
                       : t('menu.noData', 'Chưa chọn chi nhánh')}
@@ -149,24 +185,24 @@ export default function ClientMenuPage() {
                 {/* Product name search */}
                 <ProductNameSearch />
 
-                {/* Catalog filter - Desktop */}
-                <ClientCatalogSelect />
-
-                {/* Price filter - TODO: Implement PriceRangeFilter */}
-                <View className="rounded-lg bg-gray-100 p-3 dark:bg-gray-800">
+                {/* Catalog and Price filter - Same row */}
+                <View className="flex-row gap-2">
+                  <View className="flex-1">
+                    <ClientCatalogSelect />
+                  </View>
                   <PriceRangeFilter />
                 </View>
 
                 {/* Price range display with clear button */}
                 {(menuFilter.minPrice > FILTER_VALUE.MIN_PRICE ||
                   menuFilter.maxPrice < FILTER_VALUE.MAX_PRICE) && (
-                  <View className="flex-row items-center justify-center gap-2 rounded-xl border border-red-600 bg-red-600/5 px-2 py-2 dark:border-primary dark:bg-primary/5">
-                    <Text className="text-sm text-red-600 dark:text-primary">
+                  <View className="flex-row items-center justify-center gap-2 rounded-xl border border-primary bg-primary/5 px-2 py-2">
+                    <Text className="text-sm text-primary">
                       {formatCurrency(menuFilter.minPrice)} -{' '}
                       {formatCurrency(menuFilter.maxPrice)}
                     </Text>
                     <TouchableOpacity onPress={handleClear}>
-                      <X size={20} color="#e50914" />
+                      <X size={20} color="#6b7280" />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -183,7 +219,7 @@ export default function ClientMenuPage() {
                 </View>
               ) : isPending ? (
                 <View className="items-center justify-center py-10">
-                  <ActivityIndicator size="large" color="#e50914" />
+                  <ActivityIndicator size="large" color="#6b7280" />
                   <Text className="mt-4 text-gray-600 dark:text-gray-400">
                     Đang tải menu...
                   </Text>
@@ -195,6 +231,14 @@ export default function ClientMenuPage() {
           </View>
         </View>
       </ScrollView>
+      </View>
+
+      {/* Logout Dialog */}
+      <LogoutDialog
+        isOpen={isLogoutDialogOpen}
+        onOpenChange={setIsLogoutDialogOpen}
+        onLogout={handleLogout}
+      />
     </SafeAreaView>
   )
 }

@@ -12,6 +12,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated'
 
@@ -73,6 +74,9 @@ function Drawer({
   children,
   direction = 'left',
 }: DrawerProps) {
+  // Local state to delay Modal unmount until close animation completes
+  const [modalVisible, setModalVisible] = React.useState(open)
+
   // Separate trigger and content from children
   const childrenArray = React.Children.toArray(children)
   const trigger = childrenArray.find(
@@ -90,13 +94,27 @@ function Drawer({
     }
   )
 
+  // Handle Modal visibility with animation delay
+  React.useEffect(() => {
+    if (open) {
+      // Show Modal immediately when opening
+      setModalVisible(true)
+    } else {
+      // Delay hiding Modal to allow close animation to complete
+      const timeoutId = setTimeout(() => {
+        setModalVisible(false)
+      }, 350) // Match animation duration
+      return () => clearTimeout(timeoutId)
+    }
+  }, [open])
+
   return (
     <DrawerContext.Provider value={{ open, onOpenChange }}>
       {/* Render trigger outside Modal */}
       {trigger}
       {/* Render content inside Modal */}
       <Modal
-        visible={open}
+        visible={modalVisible}
         transparent
         animationType="none"
         onRequestClose={() => onOpenChange(false)}
@@ -156,27 +174,57 @@ function DrawerContent({
   const context = React.useContext(DrawerContext)
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
 
-  const slideValue = useSharedValue(context?.open ? 0 : 1)
-  const fadeValue = useSharedValue(context?.open ? 1 : 0)
+  // Always start from closed state (1) to ensure animation plays
+  const slideValue = useSharedValue(1)
+  const fadeValue = useSharedValue(0)
+
+  // Track if this is the initial mount
+  const isInitialMount = React.useRef(true)
 
   useEffect(() => {
+    // On initial mount, if drawer is open, animate in
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      if (context?.open) {
+        // Small delay to ensure component is fully mounted and rendered
+        const timeoutId = setTimeout(() => {
+          slideValue.value = withSpring(0, {
+            damping: 30,
+            stiffness: 200,
+            mass: 0.8,
+          })
+          fadeValue.value = withTiming(1, {
+            duration: 400,
+            easing: Easing.out(Easing.ease),
+          })
+        }, 16) // One frame delay
+        return () => clearTimeout(timeoutId)
+      }
+      return
+    }
+
+    // Handle state changes after initial mount
     if (context?.open) {
-      slideValue.value = withTiming(0, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
+      // Animate to open state (0)
+      slideValue.value = withSpring(0, {
+        damping: 30,
+        stiffness: 200,
+        mass: 0.8,
       })
       fadeValue.value = withTiming(1, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
+        duration: 400,
+        easing: Easing.out(Easing.ease),
       })
     } else {
-      slideValue.value = withTiming(1, {
-        duration: 250,
-        easing: Easing.in(Easing.cubic),
+      // Animate to closed state (1) - slower and smoother
+      slideValue.value = withSpring(1, {
+        damping: 30,
+        stiffness: 180,
+        mass: 0.9,
       })
       fadeValue.value = withTiming(0, {
-        duration: 250,
-        easing: Easing.in(Easing.cubic),
+        duration: 350,
+        easing: Easing.in(Easing.ease),
       })
     }
   }, [context?.open, slideValue, fadeValue])
@@ -201,7 +249,8 @@ function DrawerContent({
         return { width: Math.min(screenWidth * 0.8, 340) }
       case 'top':
       case 'bottom':
-        return { height: Math.min(screenHeight * 0.85, 600) }
+        // For bottom drawer, use auto height if className doesn't specify max-h
+        return {}
     }
   }
 

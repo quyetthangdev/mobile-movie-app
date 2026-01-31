@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { ChevronRight } from 'lucide-react-native'
+import { Check, ChevronRight } from 'lucide-react-native'
 import React, { ComponentProps, useEffect, useRef } from 'react'
 import {
   Animated,
@@ -7,11 +7,13 @@ import {
   Pressable,
   Text,
   TouchableOpacity,
+  useColorScheme,
   View,
 } from 'react-native'
 
 interface DropdownContextType {
   onOpenChange: (open: boolean) => void
+  open: boolean
 }
 
 const DropdownContext = React.createContext<DropdownContextType | null>(null)
@@ -88,6 +90,27 @@ interface DropdownPortalProps {
   children: React.ReactNode
 }
 
+interface DropdownCheckboxItemProps extends ComponentProps<typeof TouchableOpacity> {
+  children: React.ReactNode
+  checked?: boolean
+  onCheckedChange?: (checked: boolean) => void
+  className?: string
+  disabled?: boolean
+}
+
+interface DropdownRadioItemProps extends ComponentProps<typeof TouchableOpacity> {
+  children: React.ReactNode
+  value: string
+  className?: string
+  disabled?: boolean
+}
+
+interface DropdownRadioGroupProps {
+  value?: string
+  onValueChange?: (value: string) => void
+  children: React.ReactNode
+}
+
 // Type guard to check if component is a specific type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isComponentType(child: React.ReactNode, componentType: React.ComponentType<any>): boolean {
@@ -122,14 +145,14 @@ function Dropdown({
   )
 
   return (
-    <DropdownContext.Provider value={{ onOpenChange }}>
+    <DropdownContext.Provider value={{ onOpenChange, open }}>
       {/* Render trigger outside Modal */}
       {trigger}
       {/* Render content inside Modal */}
       <Modal
         visible={open}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => onOpenChange(false)}
       >
         {content}
@@ -187,14 +210,36 @@ function DropdownContent({
   alignOffset = 0,
 }: DropdownContentProps) {
   const context = React.useContext(DropdownContext)
-  // Animated.Value is not a React ref, it's a React Native animation value
-   
-  const scaleAnim = useRef(new Animated.Value(0)).current
-   
+  const scaleAnim = useRef(new Animated.Value(0.95)).current
   const opacityAnim = useRef(new Animated.Value(0)).current
+  
+  // Slide animations based on side
+  const slideXAnim = useRef(new Animated.Value(0)).current
+  const slideYAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    // Animate in with scale and opacity
+    if (!context?.open) {
+      // Reset to initial state when closed
+      scaleAnim.setValue(0.95)
+      opacityAnim.setValue(0)
+      slideXAnim.setValue(0)
+      slideYAnim.setValue(0)
+      return
+    }
+
+    // Animate in (open) - shadcn style animations
+    // Set initial slide values based on side (slide-in-from)
+    const slideInitialValues = {
+      top: { x: 0, y: -8 },      // slide-in-from-bottom-2
+      bottom: { x: 0, y: 8 },   // slide-in-from-top-2
+      left: { x: -8, y: 0 },    // slide-in-from-right-2
+      right: { x: 8, y: 0 },     // slide-in-from-left-2
+    }
+    const initial = slideInitialValues[side]
+    slideXAnim.setValue(initial.x)
+    slideYAnim.setValue(initial.y)
+
+    // Animate in with fade-in, zoom-in, and slide-in
     Animated.parallel([
       Animated.spring(scaleAnim, {
         toValue: 1,
@@ -207,10 +252,21 @@ function DropdownContent({
         duration: 150,
         useNativeDriver: true,
       }),
+      Animated.spring(slideXAnim, {
+        toValue: 0,
+        tension: 300,
+        friction: 20,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideYAnim, {
+        toValue: 0,
+        tension: 300,
+        friction: 20,
+        useNativeDriver: true,
+      }),
     ]).start()
-    // Animated.Value refs are stable and don't need to be in deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [context?.open, side])
 
   const positionClasses = {
     top: 'bottom-16',
@@ -233,7 +289,10 @@ function DropdownContent({
       <Pressable onPress={(e) => e.stopPropagation()}>
         <Animated.View
           className={cn(
-            'absolute bg-white dark:bg-gray-800 rounded-lg shadow-xl min-w-[200px] overflow-hidden border border-gray-200 dark:border-gray-700',
+            'absolute z-50 min-w-[8rem] overflow-hidden rounded-md border p-1',
+            'bg-white dark:bg-gray-900',
+            'border-gray-200 dark:border-gray-700',
+            'shadow-md',
             positionClasses[side],
             alignClasses[align],
             className
@@ -245,14 +304,16 @@ function DropdownContent({
               align === 'end' && alignOffset !== 0 ? alignOffset : undefined,
             marginRight:
               align === 'start' && alignOffset !== 0 ? alignOffset : undefined,
-            // Animated.Value usage in style is valid for React Native
             opacity: opacityAnim,
             transform: [
               {
-                scale: scaleAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.95, 1],
-                }),
+                scale: scaleAnim,
+              },
+              {
+                translateX: slideXAnim,
+              },
+              {
+                translateY: slideYAnim,
               },
             ],
           }}
@@ -273,7 +334,7 @@ function DropdownLabel({
 }: DropdownLabelProps) {
   return (
     <View
-      className={cn('px-2 py-1.5', inset && 'pl-8', className)}
+      className={cn('px-2 py-1.5 text-sm font-semibold', inset && 'pl-8', className)}
       {...props}
     >
       <Text className="text-gray-900 dark:text-gray-50 font-semibold text-sm">
@@ -295,8 +356,8 @@ function DropdownItem({
   const context = React.useContext(DropdownContext)
 
   const handlePress = () => {
-    if (!disabled && onSelect) {
-      onSelect()
+    if (!disabled) {
+      onSelect?.()
       // Small delay to allow animation
       setTimeout(() => {
         context?.onOpenChange(false)
@@ -307,10 +368,12 @@ function DropdownItem({
   return (
     <TouchableOpacity
       className={cn(
-        'flex-row items-center px-2 py-1.5',
+        'relative flex-row items-center gap-2 rounded-sm px-2 py-1.5',
+        'text-sm outline-none',
         inset && 'pl-8',
-        'active:bg-gray-100 dark:active:bg-gray-700',
+        'active:bg-gray-100 dark:active:bg-gray-800',
         disabled && 'opacity-50',
+        disabled && 'pointer-events-none',
         className
       )}
       onPress={handlePress}
@@ -328,7 +391,7 @@ function DropdownSeparator({ className, ...props }: DropdownSeparatorProps) {
   return (
     <View
       className={cn(
-        'h-px bg-gray-200 dark:bg-gray-700 my-1',
+        '-mx-1 my-1 h-px bg-gray-200 dark:bg-gray-700',
         className
       )}
       {...props}
@@ -349,7 +412,7 @@ function DropdownGroup({ children, className, ...props }: DropdownGroupProps) {
 function DropdownShortcut({ children, className, ...props }: DropdownShortcutProps) {
   return (
     <View className={cn('ml-auto', className)} {...props}>
-      <Text className="text-gray-500 dark:text-gray-400 text-xs tracking-widest">
+      <Text className="text-gray-500 dark:text-gray-400 text-xs tracking-widest opacity-60">
         {children}
       </Text>
     </View>
@@ -393,15 +456,21 @@ function DropdownSubTrigger({
   disabled = false,
   onPress,
   isOpen,
+  inset = false,
   ...props
-}: DropdownSubTriggerProps) {
+}: DropdownSubTriggerProps & { inset?: boolean }) {
+  const isDark = useColorScheme() === 'dark'
+  
   return (
     <TouchableOpacity
       className={cn(
-        'flex-row items-center justify-between px-2 py-1.5',
-        'active:bg-gray-100 dark:active:bg-gray-700',
+        'flex-row items-center gap-2 rounded-sm px-2 py-1.5',
+        'text-sm outline-none',
+        inset && 'pl-8',
+        'active:bg-gray-100 dark:active:bg-gray-800',
         disabled && 'opacity-50',
-        isOpen && 'bg-gray-100 dark:bg-gray-700',
+        disabled && 'pointer-events-none',
+        isOpen && 'bg-gray-100 dark:bg-gray-800',
         className
       )}
       disabled={disabled}
@@ -410,7 +479,9 @@ function DropdownSubTrigger({
       {...props}
     >
       {children}
-      <ChevronRight size={16} color="#6b7280" />
+      <View className="ml-auto">
+        <ChevronRight size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+      </View>
     </TouchableOpacity>
   )
 }
@@ -426,7 +497,10 @@ function DropdownSubContent({
   return (
     <View
       className={cn(
-        'bg-white dark:bg-gray-800 rounded-lg shadow-xl min-w-[200px] overflow-hidden border border-gray-200 dark:border-gray-700',
+        'z-50 min-w-[8rem] overflow-hidden rounded-md border p-1',
+        'bg-white dark:bg-gray-900',
+        'border-gray-200 dark:border-gray-700',
+        'shadow-lg',
         className
       )}
       style={{
@@ -440,6 +514,130 @@ function DropdownSubContent({
   )
 }
 
+// CheckboxItem - item with checkbox indicator
+function DropdownCheckboxItem({
+  children,
+  checked = false,
+  onCheckedChange,
+  className,
+  disabled = false,
+  ...props
+}: DropdownCheckboxItemProps) {
+  const context = React.useContext(DropdownContext)
+  const isDark = useColorScheme() === 'dark'
+
+  const handlePress = () => {
+    if (!disabled) {
+      onCheckedChange?.(!checked)
+      // Small delay to allow animation
+      setTimeout(() => {
+        context?.onOpenChange(false)
+      }, 100)
+    }
+  }
+
+  return (
+    <TouchableOpacity
+      className={cn(
+        'relative flex-row items-center rounded-sm py-1.5 pl-8 pr-2',
+        'text-sm outline-none',
+        'active:bg-gray-100 dark:active:bg-gray-800',
+        disabled && 'opacity-50',
+        disabled && 'pointer-events-none',
+        className
+      )}
+      onPress={handlePress}
+      disabled={disabled}
+      activeOpacity={0.7}
+      {...props}
+    >
+      <View className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+        {checked && (
+          <Check size={16} color={isDark ? '#60a5fa' : '#3b82f6'} />
+        )}
+      </View>
+      <Text className="text-sm text-gray-900 dark:text-gray-50">
+        {children}
+      </Text>
+    </TouchableOpacity>
+  )
+}
+
+// RadioGroup context
+interface RadioGroupContextType {
+  value?: string
+  onValueChange?: (value: string) => void
+}
+
+const RadioGroupContext = React.createContext<RadioGroupContextType | null>(null)
+
+// RadioGroup - container for radio items
+function DropdownRadioGroup({
+  value,
+  onValueChange,
+  children,
+}: DropdownRadioGroupProps) {
+  return (
+    <RadioGroupContext.Provider value={{ value, onValueChange }}>
+      {children}
+    </RadioGroupContext.Provider>
+  )
+}
+
+// RadioItem - item with radio indicator
+function DropdownRadioItem({
+  children,
+  value,
+  className,
+  disabled = false,
+  ...props
+}: DropdownRadioItemProps) {
+  const context = React.useContext(DropdownContext)
+  const radioContext = React.useContext(RadioGroupContext)
+  const isDark = useColorScheme() === 'dark'
+
+  const isSelected = radioContext?.value === value
+
+  const handlePress = () => {
+    if (!disabled && radioContext?.onValueChange) {
+      radioContext.onValueChange(value)
+      // Small delay to allow animation
+      setTimeout(() => {
+        context?.onOpenChange(false)
+      }, 100)
+    }
+  }
+
+  return (
+    <TouchableOpacity
+      className={cn(
+        'relative flex-row items-center rounded-sm py-1.5 pl-8 pr-2',
+        'text-sm outline-none',
+        'active:bg-gray-100 dark:active:bg-gray-800',
+        disabled && 'opacity-50',
+        disabled && 'pointer-events-none',
+        className
+      )}
+      onPress={handlePress}
+      disabled={disabled}
+      activeOpacity={0.7}
+      {...props}
+    >
+      <View className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+        {isSelected && (
+          <View 
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: isDark ? '#60a5fa' : '#3b82f6' }}
+          />
+        )}
+      </View>
+      <Text className="text-sm text-gray-900 dark:text-gray-50">
+        {children}
+      </Text>
+    </TouchableOpacity>
+  )
+}
+
 // Portal - for future use (currently just renders children)
 function DropdownPortal({ children }: DropdownPortalProps) {
   return <>{children}</>
@@ -450,12 +648,18 @@ DropdownTrigger.displayName = 'DropdownTrigger'
 DropdownContent.displayName = 'DropdownContent'
 DropdownSubTrigger.displayName = 'DropdownSubTrigger'
 DropdownSubContent.displayName = 'DropdownSubContent'
+DropdownCheckboxItem.displayName = 'DropdownCheckboxItem'
+DropdownRadioGroup.displayName = 'DropdownRadioGroup'
+DropdownRadioItem.displayName = 'DropdownRadioItem'
 
 // Compose component (shadcn pattern)
 Dropdown.Trigger = DropdownTrigger
 Dropdown.Content = DropdownContent
 Dropdown.Label = DropdownLabel
 Dropdown.Item = DropdownItem
+Dropdown.CheckboxItem = DropdownCheckboxItem
+Dropdown.RadioGroup = DropdownRadioGroup
+Dropdown.RadioItem = DropdownRadioItem
 Dropdown.Separator = DropdownSeparator
 Dropdown.Group = DropdownGroup
 Dropdown.Shortcut = DropdownShortcut
@@ -467,13 +671,11 @@ Dropdown.Portal = DropdownPortal
 // Export with shadcn naming convention
 export {
   Dropdown,
-  Dropdown as DropdownMenu,
-  DropdownContent as DropdownMenuContent,
+  Dropdown as DropdownMenu, DropdownCheckboxItem as DropdownMenuCheckboxItem, DropdownContent as DropdownMenuContent,
   DropdownGroup as DropdownMenuGroup,
-  DropdownItem as DropdownMenuItem,
-  DropdownLabel as DropdownMenuLabel,
-  DropdownPortal as DropdownMenuPortal,
-  DropdownSeparator as DropdownMenuSeparator,
+  DropdownItem as DropdownMenuItem, DropdownLabel as DropdownMenuLabel,
+  DropdownPortal as DropdownMenuPortal, DropdownRadioGroup as DropdownMenuRadioGroup,
+  DropdownRadioItem as DropdownMenuRadioItem, DropdownSeparator as DropdownMenuSeparator,
   DropdownShortcut as DropdownMenuShortcut,
   DropdownSub as DropdownMenuSub,
   DropdownSubContent as DropdownMenuSubContent,

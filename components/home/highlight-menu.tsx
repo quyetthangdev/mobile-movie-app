@@ -58,7 +58,7 @@ export default function HighlightMenuCarousel({
           />
         </View>
         <View className="mt-2 px-1 items-center">
-          <Text className="text-center text-lg font-semibold text-red-600 dark:text-primary" numberOfLines={1}>
+           <Text className="text-center text-lg font-semibold text-primary" numberOfLines={1}>
             {t(item.nameKey)}
           </Text>
         </View>

@@ -8,7 +8,8 @@ import {
   ShoppingCartIcon,
 } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import { Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
 import { QuantitySelector } from '@/components/button'
@@ -24,12 +25,12 @@ import {
   TableDropdown,
 } from '@/components/dropdown'
 import { CartNoteInput, OrderNoteInput } from '@/components/input'
-import { Badge, Button } from '@/components/ui'
+import { Badge } from '@/components/ui'
 import {
   APPLICABILITY_RULE,
+  publicFileURL,
   ROUTE,
   VOUCHER_TYPE,
-  publicFileURL,
 } from '@/constants'
 import { useBranchStore, useOrderFlowStore } from '@/stores'
 import { OrderTypeEnum } from '@/types'
@@ -140,20 +141,47 @@ export default function ClientCartPage() {
     }
   }, [voucherSlug, voucherMaxItems, cartItemQuantity, removeVoucher])
 
+  const isDark = useColorScheme() === 'dark'
+  const primaryColor = isDark ? '#D68910' : '#F7A737' // hsl(35 70% 53%) vs hsl(35 93% 55%)
+
   if (_.isEmpty(currentCartItems?.orderItems)) {
     return (
-      <View className="container sm:py-20 lg:h-[60vh]">
-        <View className="flex flex-col items-center justify-center gap-5">
-          <ShoppingCartIcon size={128} color="#3b82f6" />
-          <Text className="text-center text-[13px]">{t('order.noOrders')}</Text>
-          <Button
-            variant="default"
-            onPress={() => router.push(ROUTE.CLIENT_MENU)}
-          >
-            {t('order.backToMenu')}
-          </Button>
+      <SafeAreaView className="flex-1" edges={['top']}>
+        <View className="flex-1 items-center justify-center px-4">
+          <View className="flex-col items-center gap-6">
+            <View 
+              className="w-32 h-32 items-center justify-center rounded-full"
+              style={{ backgroundColor: isDark ? 'rgba(214, 137, 16, 0.1)' : 'rgba(247, 167, 55, 0.1)' }}
+            >
+              <ShoppingCartIcon size={64} color={primaryColor} />
+            </View>
+            <View className="flex-col items-center gap-2">
+              <Text className="text-xl font-bold text-gray-900 dark:text-white text-center">
+                {t('order.emptyCart', 'Giỏ hàng trống')}
+              </Text>
+              <Text className="text-sm text-gray-600 dark:text-gray-400 text-center max-w-xs">
+                {t('order.noOrders', 'Chưa có sản phẩm nào trong giỏ hàng')}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push(ROUTE.CLIENT_MENU)}
+              className="mt-2 px-6 py-3 rounded-lg items-center justify-center"
+              style={{
+                backgroundColor: primaryColor,
+                shadowColor: primaryColor,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 3,
+                elevation: 3,
+              }}
+            >
+              <Text className="text-white font-semibold text-base">
+                {t('order.backToMenu', 'Xem thực đơn')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
     )
   }
 
@@ -303,7 +331,10 @@ export default function ClientCartPage() {
                                   {formatCurrency(original)}
                                 </Text>
                               )}
-                            <Text className="text-sm font-bold text-primary">
+                            <Text 
+                              className="text-sm font-bold"
+                              style={{ color: primaryColor }}
+                            >
                               {formatCurrency(displayPrice)}
                             </Text>
                             {note && (
@@ -363,48 +394,54 @@ export default function ClientCartPage() {
           {currentCartItems?.voucher ? (
             <Badge
               variant="outline"
-              className="self-start border-primary px-2 py-1 text-xs text-primary"
+              className="self-start px-2 py-1 text-xs"
+              style={{
+                borderColor: primaryColor,
+                borderWidth: 1,
+              }}
             >
-              {(() => {
-                const voucher = currentCartItems?.voucher
-                if (!voucher) return null
+              <Text style={{ color: primaryColor }}>
+                {(() => {
+                  const voucher = currentCartItems?.voucher
+                  if (!voucher) return null
 
-                const { type, value, applicabilityRule: rule } = voucher
+                  const { type, value, applicabilityRule: rule } = voucher
 
-                const discountValueText =
-                  type === VOUCHER_TYPE.PERCENT_ORDER
-                    ? tVoucher('voucher.percentDiscount', { value })
-                    : type === VOUCHER_TYPE.FIXED_VALUE
-                      ? tVoucher('voucher.fixedDiscount', {
-                          value: formatCurrency(value),
-                        })
-                      : type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                        ? tVoucher('voucher.samePriceProduct', {
+                  const discountValueText =
+                    type === VOUCHER_TYPE.PERCENT_ORDER
+                      ? tVoucher('voucher.percentDiscount', { value })
+                      : type === VOUCHER_TYPE.FIXED_VALUE
+                        ? tVoucher('voucher.fixedDiscount', {
                             value: formatCurrency(value),
                           })
-                        : ''
+                        : type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
+                          ? tVoucher('voucher.samePriceProduct', {
+                              value: formatCurrency(value),
+                            })
+                          : ''
 
-                const ruleText =
-                  rule === APPLICABILITY_RULE.ALL_REQUIRED
-                    ? tVoucher(
-                        type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                          ? 'voucher.requireAllSamePrice'
-                          : type === VOUCHER_TYPE.PERCENT_ORDER
-                            ? 'voucher.requireAllPercent'
-                            : 'voucher.requireAllFixed',
-                      )
-                    : rule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED
+                  const ruleText =
+                    rule === APPLICABILITY_RULE.ALL_REQUIRED
                       ? tVoucher(
                           type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                            ? 'voucher.requireAtLeastOneSamePrice'
+                            ? 'voucher.requireAllSamePrice'
                             : type === VOUCHER_TYPE.PERCENT_ORDER
-                              ? 'voucher.requireAtLeastOnePercent'
-                              : 'voucher.requireAtLeastOneFixed',
+                              ? 'voucher.requireAllPercent'
+                              : 'voucher.requireAllFixed',
                         )
-                      : ''
+                      : rule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED
+                        ? tVoucher(
+                            type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
+                              ? 'voucher.requireAtLeastOneSamePrice'
+                              : type === VOUCHER_TYPE.PERCENT_ORDER
+                                ? 'voucher.requireAtLeastOnePercent'
+                                : 'voucher.requireAtLeastOneFixed',
+                          )
+                        : ''
 
-                return `${discountValueText} ${ruleText}`
-              })()}
+                  return `${discountValueText} ${ruleText}`
+                })()}
+              </Text>
             </Badge>
           ) : (
             <TouchableOpacity className="flex-row items-center justify-between rounded-lg bg-orange-500 px-4 py-3">
@@ -475,7 +512,10 @@ export default function ClientCartPage() {
               <Text className="text-base font-semibold text-gray-900">
                 {t('order.totalPayment')}
               </Text>
-              <Text className="text-2xl font-bold text-primary">
+              <Text 
+                className="text-2xl font-bold"
+                style={{ color: primaryColor }}
+              >
                 {formatCurrency(
                   cartTotals.finalTotal + deliveryFee.deliveryFee,
                 )}
@@ -492,7 +532,10 @@ export default function ClientCartPage() {
       >
         <View className="flex-row items-center justify-between px-4 py-3">
           <View className="flex-1">
-            <Text className="text-xl font-bold text-primary">
+            <Text 
+              className="text-xl font-bold"
+              style={{ color: primaryColor }}
+            >
               {formatCurrency(cartTotals.finalTotal + deliveryFee.deliveryFee)}
             </Text>
           </View>

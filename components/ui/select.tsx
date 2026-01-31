@@ -98,20 +98,42 @@ function SelectTrigger({
 function SelectValue({
   placeholder,
   className,
+  children,
 }: {
   placeholder?: string
   className?: string
+  children?: React.ReactNode
 }) {
   const ctx = React.useContext(SelectContext)
   if (!ctx) return null
 
+  // If children is provided, use it (for custom display like branch name)
+  if (children !== undefined) {
+    return (
+      <Text
+        className={cn(
+          'text-sm flex-1',
+          children ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400',
+          className,
+        )}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {children || placeholder}
+      </Text>
+    )
+  }
+
+  // Otherwise, use value from context (slug)
   return (
     <Text
       className={cn(
-        'text-sm',
+        'text-sm flex-1',
         ctx.value ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400',
         className,
       )}
+      numberOfLines={1}
+      ellipsizeMode="tail"
     >
       {ctx.value || placeholder}
     </Text>
@@ -125,9 +147,11 @@ function SelectValue({
 function SelectContent({
   children,
   className,
+  noModal = false,
 }: {
   children: React.ReactNode
   className?: string
+  noModal?: boolean
 }) {
   const ctx = React.useContext(SelectContext)
   const scale = useMemo(() => new Animated.Value(0.95), [])
@@ -136,16 +160,31 @@ function SelectContent({
   useEffect(() => {
     if (!ctx?.open) return
     Animated.parallel([
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
+      Animated.spring(scale, {
+        toValue: 1,
+        tension: 400,
+        friction: 25,
+        useNativeDriver: true,
+      }),
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 120,
+        duration: 80,
         useNativeDriver: true,
       }),
     ]).start()
   }, [ctx?.open, scale, opacity])
 
   if (!ctx) return null
+
+  // If noModal is true, render content directly without Modal (for use inside DropdownMenu)
+  if (noModal) {
+    if (!ctx.open) return null
+    return (
+      <View className={cn('max-h-[300px]', className)}>
+        <ScrollView>{children}</ScrollView>
+      </View>
+    )
+  }
 
   return (
     <Modal transparent visible={ctx.open} animationType="none">

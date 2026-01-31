@@ -91,12 +91,12 @@ export default function NewsCarousel({ articles }: NewsCarouselProps) {
               <Image
                 source={typeof item.thumbnail === 'string' ? { uri: item.thumbnail } : item.thumbnail}
                 className="w-full h-full"
-                resizeMode="cover"
+                resizeMode="contain"
               />
             </View>
 
             {/* Content container - matches web: p-3 sm:p-4 flex flex-col gap-2 */}
-            <View className="p-3 sm:p-4 flex-col gap-2 flex-1">
+            <View className="py-3 sm:py-4 flex-col flex-1">
               {/* Title - matches web: text-base sm:text-lg font-bold line-clamp-2 */}
               <Text
                 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white"

@@ -149,7 +149,7 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
   const hasPromotion = item.promotion && item.promotion.value > 0
 
   return (
-    <View className="flex-row sm:flex-col justify-between bg-white border border-gray-200 dark:border-gray-700 rounded-xl min-h-[2rem] dark:bg-gray-800">
+    <View className="flex-row sm:flex-col justify-between bg-white border border-gray-200 dark:border-gray-700 rounded-xl min-h-[2rem] dark:bg-gray-800 overflow-hidden">
       {/* Image - Square with rounded corners */}
       <Pressable
         onPress={handleItemPress}
@@ -158,7 +158,7 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
         }`}
       >
         <View
-          className="relative w-full h-full rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700"
+          className="relative w-full h-full overflow-hidden bg-gray-100 dark:bg-gray-700 rounded-xl"
           style={{ aspectRatio: 1 }}
         >
           <Image
@@ -167,13 +167,13 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
                 ? { uri: `${publicFileURL}/${item.product.image}` }
                 : Images.Food.ProductImage) as ImageSourcePropType
             }
-            className="w-full h-full"
+            className="w-full h-full rounded-xl"
             resizeMode="contain"
             style={{ backgroundColor: 'transparent' }}
           />
           {/* Stock badge - Desktop only */}
           {item.product.isLimit && !isMobile && (
-            <View className="absolute bottom-3 left-3 z-50 px-3 py-1 rounded-full bg-red-600">
+            <View className="absolute bottom-3 left-3 z-50 px-3 py-1 rounded-full bg-primary">
               <Text className="text-xs text-white">
                 {t('menu.amount', 'Số lượng')} {currentStock}/{defaultStock}
               </Text>
@@ -181,7 +181,7 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
           )}
           {/* Promotion badge */}
           {hasPromotion && (
-            <View className="absolute top-2 right-2 z-50 px-2 py-1 rounded-full bg-yellow-500">
+            <View className="absolute top-2 right-2 z-50 px-2 py-1 rounded-full bg-primary">
               <Text className="text-xs font-bold text-white">
                 -{item.promotion.value}%
               </Text>
@@ -191,16 +191,16 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
       </Pressable>
 
       {/* Content */}
-      <View className="flex-1 flex-col justify-between p-2">
+      <View className="flex-1 flex-col justify-between px-2 py-3">
         {/* Mobile: Name and Stock on same row */}
         {isMobile ? (
           <View className="flex-col gap-2 items-start">
-            <Text className="flex-1 text-base font-bold" numberOfLines={1}>
+            <Text className="flex-1 text-lg font-bold py-1" numberOfLines={1}>
               {item.product.name}
             </Text>
             {/* Stock */}
             {item.product.isLimit && (
-              <View className="px-2 py-1 rounded-full bg-red-600">
+              <View className="px-2 py-1 rounded-full bg-primary">
                 <Text className="text-xs text-white whitespace-nowrap">
                   {t('menu.amount', 'Số lượng')} {currentStock}/{defaultStock}
                 </Text>
@@ -208,8 +208,8 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
             )}
           </View>
         ) : (
-          <View className="h-auto sm:h-fit">
-            <Text className="text-base sm:text-lg font-bold" numberOfLines={1}>
+          <View className="h-auto sm:h-fit py-1">
+            <Text className="text-base text-lg font-bold" numberOfLines={1}>
               {item.product.name}
             </Text>
           </View>
@@ -220,26 +220,26 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
           <View className="flex-row justify-between items-center mt-2">
             {/* Only show price if not out of stock */}
             {hasStock && (
-              <View className="flex-1">
+              <View className="flex-1 py-1">
                 {item.product.variants.length > 0 ? (
                   hasPromotion ? (
                     <View className="flex-col">
                       <Text className="text-xs line-through text-gray-500 dark:text-gray-400">
                         {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
                       </Text>
-                      <Text className="text-sm font-bold text-red-600 dark:text-primary">
+                      <Text className="text-sm font-bold text-primary">
                         {priceRange
                           ? formatCurrency(priceRange.min * (1 - (item.promotion?.value || 0) / 100))
                           : formatCurrency(0)}
                       </Text>
                     </View>
                   ) : (
-                    <Text className="text-sm font-bold text-red-600 dark:text-primary">
+                    <Text className="text-sm font-bold text-primary">
                       {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
                     </Text>
                   )
                 ) : (
-                  <Text className="text-sm font-bold text-red-600 dark:text-primary">
+                  <Text className="text-sm font-bold text-primary">
                     {t('menu.contactForPrice', 'Liên hệ')}
                   </Text>
                 )}
@@ -250,12 +250,12 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
               {hasStock ? (
                 <TouchableOpacity
                   onPress={handleAddToCart}
-                  className="w-8 h-8 rounded-full bg-red-600 dark:bg-primary items-center justify-center z-50"
+                  className="w-8 h-8 rounded-full bg-primary items-center justify-center z-50"
                 >
                   <Plus size={20} color="#ffffff" />
                 </TouchableOpacity>
               ) : (
-                <View className="px-4 py-1 rounded-full bg-red-500">
+                <View className="px-4 py-1 rounded-full bg-primary">
                   <Text className="text-xs font-semibold text-white">
                     {t('menu.outOfStock', 'Hết hàng')}
                   </Text>
@@ -266,7 +266,7 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
         ) : (
           /* Desktop layout */
           item.product.variants.length > 0 ? (
-            <View className="flex-col gap-1">
+            <View className="flex-col gap-1 py-1">
               {/* Prices */}
               <View className="flex-col">
                 {hasPromotion ? (
@@ -274,21 +274,21 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
                     <Text className="text-xs sm:text-sm line-through text-gray-500 dark:text-gray-400">
                       {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
                     </Text>
-                    <Text className="text-sm font-bold sm:text-lg text-red-600 dark:text-primary">
+                    <Text className="text-sm font-bold sm:text-lg text-primary">
                       {priceRange
                         ? formatCurrency(priceRange.min * (1 - (item.promotion?.value || 0) / 100))
                         : formatCurrency(0)}
                     </Text>
                   </View>
                 ) : (
-                  <Text className="text-sm font-bold sm:text-lg text-red-600 dark:text-primary">
+                  <Text className="text-sm font-bold sm:text-lg text-primary">
                     {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
                   </Text>
                 )}
               </View>
             </View>
           ) : (
-            <Text className="text-sm font-bold text-red-600 dark:text-primary">
+            <Text className="text-sm font-bold text-primary py-1">
               {t('menu.contactForPrice', 'Liên hệ')}
             </Text>
           )
@@ -301,7 +301,7 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
           {hasStock ? (
             <TouchableOpacity
               onPress={handleAddToCart}
-              className="w-full px-3 py-2 rounded-full bg-red-600 dark:bg-primary items-center justify-center"
+              className="w-full px-3 py-2 rounded-full bg-primary items-center justify-center"
             >
               <Plus size={20} color="#ffffff" />
             </TouchableOpacity>

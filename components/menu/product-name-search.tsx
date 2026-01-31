@@ -46,14 +46,14 @@ export default function ProductNameSearch() {
       <TextInput
         placeholder={t('menu.searchProduct', 'Tìm kiếm sản phẩm')}
         placeholderTextColor="#9ca3af"
-        className="w-full h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+        className="w-full h-[50px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white"
         value={inputValue}
         onChangeText={setInputValue}
         style={{
-          paddingLeft: 40,
-          paddingRight: inputValue ? 40 : 16,
-          paddingVertical: 8,
-          fontSize: 16,
+          paddingLeft: 36,
+          paddingRight: inputValue ? 36 : 12,
+          paddingVertical: 0,
+          fontSize: 15,
         }}
       />
 

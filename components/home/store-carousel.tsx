@@ -13,10 +13,15 @@ interface StoreCarouselProps {
 
 // Default images - using actual store images
 const defaultImages: ImageSourcePropType[] = [
-  Images.Highlight.Menu2,
-  Images.Highlight.Menu3,
-  Images.Highlight.Menu4,
-  Images.Highlight.Menu5,
+  Images.News.Article11,
+  Images.News.Article12,
+  Images.News.Article13,
+  Images.News.Article22,
+  Images.News.Article23,
+  Images.News.Article31,
+  Images.News.Article32,
+  Images.News.Article33,
+  Images.News.Article34,
 ] as ImageSourcePropType[]
 
 /**
@@ -59,7 +64,7 @@ export default function StoreCarousel({ images }: StoreCarouselProps) {
   const renderItem = ({ item }: { item: ImageSourcePropType }) => {
     return (
       <View className="w-full" style={{ width: screenWidth }}>
-        <View className="h-48 sm:h-[28rem] w-full overflow-hidden rounded-xl">
+        <View className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: 16 / 9 }}>
           <Image
             source={item}
             className="w-full h-full"

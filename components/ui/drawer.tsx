@@ -189,12 +189,12 @@ function DrawerContent({
         // Small delay to ensure component is fully mounted and rendered
         const timeoutId = setTimeout(() => {
           slideValue.value = withSpring(0, {
-            damping: 30,
-            stiffness: 200,
-            mass: 0.8,
+            damping: 20,
+            stiffness: 300,
+            mass: 0.5,
           })
           fadeValue.value = withTiming(1, {
-            duration: 400,
+            duration: 250,
             easing: Easing.out(Easing.ease),
           })
         }, 16) // One frame delay
@@ -205,25 +205,25 @@ function DrawerContent({
 
     // Handle state changes after initial mount
     if (context?.open) {
-      // Animate to open state (0)
+      // Animate to open state (0) - Optimized for POS: quick and clear
       slideValue.value = withSpring(0, {
-        damping: 30,
-        stiffness: 200,
-        mass: 0.8,
+        damping: 20,
+        stiffness: 300,
+        mass: 0.5,
       })
       fadeValue.value = withTiming(1, {
-        duration: 400,
+        duration: 250,
         easing: Easing.out(Easing.ease),
       })
     } else {
-      // Animate to closed state (1) - slower and smoother
+      // Animate to closed state (1) - Quick close for POS
       slideValue.value = withSpring(1, {
-        damping: 30,
-        stiffness: 180,
-        mass: 0.9,
+        damping: 20,
+        stiffness: 300,
+        mass: 0.5,
       })
       fadeValue.value = withTiming(0, {
-        duration: 350,
+        duration: 200,
         easing: Easing.in(Easing.ease),
       })
     }

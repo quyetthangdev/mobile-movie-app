@@ -175,7 +175,9 @@ export const useCartItemStore = create<ICartItemStore>()(
           })
         }
         showToast(i18next.t('toast.addSuccess'))
-        setupAutoClearCart()
+        // Setup auto clear cart với error handling
+        setupAutoClearCart().catch(() => {
+        })
       },
 
       addProductVariant: (id: string) => {
@@ -562,7 +564,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         cartItems: state.cartItems,
         lastModified: state.lastModified,
       }),
-      // ✅ cách sửa đúng tại đây
+      // Fix hydration error here
       onRehydrateStorage: () => (error) => {
         // console.log('[Zustand] persistedState:', persistedState)
         if (error) {
@@ -573,11 +575,6 @@ export const useCartItemStore = create<ICartItemStore>()(
         // Use setTimeout as fallback for queueMicrotask in React Native
         setTimeout(() => {
           useCartItemStore.setState({ isHydrated: true })
-
-          // console.log(
-          //   '✅ Hydrated store state (after setState):',
-          //   useCartItemStore.getState(),
-          // )
         }, 0)
       },
     },

@@ -18,7 +18,7 @@ const deviceLanguage = normalizeLanguage(
   lng: deviceLanguage,
   fallbackLng: 'vi',
   defaultNS: 'home', // Set to 'home' since we don't have 'common' namespace
-  ns: ['home', 'auth', 'menu', 'voucher', 'table'],
+  ns: ['home', 'auth', 'menu', 'voucher', 'table', 'common', 'product'],
   interpolation: {
     escapeValue: false,
   },

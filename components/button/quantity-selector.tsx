@@ -34,11 +34,11 @@ export default function QuantitySelector({ cartItem }: QuantitySelectorProps) {
   return (
     <View className="flex items-center gap-1.5 w-full">
       <View className="flex-row items-center gap-1.5 w-full">
-        <Button variant="outline" size="sm" onPress={handleDecrement} className="p-1 rounded-full border border-gray-300 dark:border-gray-700 h-fit w-fit">
+        <Button variant="outline" size="sm" onPress={handleDecrement} className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 h-fit w-fit">
           <Minus size={12} color="#6b7280" />
         </Button>
-        <Text className="w-4 text-xs text-center text-gray-900 dark:text-white">{quantity}</Text>
-        <Button variant="outline" size="sm" onPress={handleIncrement} className="p-1 rounded-full border border-gray-300 dark:border-gray-700 h-fit w-fit">
+        <Text className="w-4 text-sm text-center text-gray-900 dark:text-white">{quantity}</Text>
+        <Button variant="outline" size="sm" onPress={handleIncrement} className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 h-fit w-fit">
           <Plus size={12} color="#6b7280" />
         </Button>
       </View>

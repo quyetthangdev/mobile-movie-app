@@ -28,3 +28,36 @@ export const createSafeStorage = (): StateStorage => {
   return AsyncStorage
 }
 
+/**
+ * AsyncStorage helper functions với API tương tự localStorage
+ * Sử dụng cho các trường hợp cần async storage operations
+ * 
+ * Lưu ý: AsyncStorage là async, khác với localStorage (sync)
+ * Nên phải sử dụng await hoặc .then() khi gọi các function này
+ */
+export const asyncStorage = {
+  async getItem(key: string): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(key)
+    } catch {
+      return null
+    }
+  },
+
+  async setItem(key: string, value: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(key, value)
+    } catch {
+      throw new Error(`Error setting item ${key} to AsyncStorage`)
+    }
+  },
+
+  async removeItem(key: string): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(key)
+    } catch {
+      throw new Error(`Error removing item ${key} from AsyncStorage`)
+    }
+  },
+}
+

@@ -1,13 +1,20 @@
 import { cn } from '@/lib/utils'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect } from 'react'
 import {
-  Animated,
   Modal,
   Pressable,
   Text,
   View,
   useColorScheme
 } from 'react-native'
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 
 interface SheetProps {
   open: boolean
@@ -67,89 +74,96 @@ function Sheet({ open, onOpenChange, children }: SheetProps) {
 function SheetContent({ children, className, onClose }: SheetContentProps) {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
-  const slideAnim = useMemo(() => new Animated.Value(0), [])
-  const fadeAnim = useMemo(() => new Animated.Value(0), [])
+  
+  // Shared values for UI thread animations
+  const slideProgress = useSharedValue(0)
+  const fadeProgress = useSharedValue(0)
 
   useEffect(() => {
-    // Animate in
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 1,
-        tension: 65,
-        friction: 11,
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }, [fadeAnim, slideAnim])
+    // Animate in (UI thread)
+    // Optimized for POS: smooth bottom sheet (250ms)
+    fadeProgress.value = withTiming(1, {
+      duration: 250,
+      easing: Easing.out(Easing.ease),
+    })
+    slideProgress.value = withSpring(1, {
+      damping: 25,
+      stiffness: 300,
+      mass: 0.6,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleClose = () => {
-    // Close animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 200,
-        easing: (t) => t * (2 - t),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose?.()
+    // Close animation (UI thread)
+    fadeProgress.value = withTiming(0, {
+      duration: 200,
+      easing: Easing.in(Easing.ease),
+    })
+    slideProgress.value = withTiming(0, {
+      duration: 200,
+      easing: Easing.in(Easing.ease),
+    }, (finished) => {
+      if (finished && onClose) {
+        runOnJS(onClose)()
+      }
     })
   }
+
+  // Animated styles running on UI thread
+  const backdropStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      opacity: fadeProgress.value,
+    }
+  })
+
+  const sheetStyle = useAnimatedStyle(() => {
+    'worklet'
+    const translateY = slideProgress.value * 800 - 800
+    return {
+      transform: [{ translateY }],
+      shadowOpacity: slideProgress.value * 0.25,
+    }
+  })
 
   return (
     <View className="flex-1 justify-end">
       {/* Overlay - Fade animation */}
       <Animated.View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          opacity: fadeAnim,
-        }}
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          },
+          backdropStyle,
+        ]}
       >
         <Pressable className="flex-1" onPress={handleClose} />
       </Animated.View>
 
-      {/* Drawer - Slide animation */}
+      {/* Sheet - Slide animation */}
       <Animated.View
-        style={{
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          maxHeight: '85%',
-          transform: [
-            {
-              translateY: slideAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [800, 0],
-              }),
+        style={[
+          {
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            maxHeight: '85%',
+            shadowColor: '#000',
+            shadowOffset: {
+              width: 0,
+              height: -2,
             },
-          ],
-          shadowColor: '#000',
-          shadowOffset: {
-            width: 0,
-            height: -2,
+            shadowRadius: 10,
+            elevation: 10,
           },
-          shadowOpacity: slideAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 0.25],
-          }),
-          shadowRadius: 10,
-          elevation: 10,
-        }}
+          sheetStyle,
+        ]}
       >
         {/* Grabber */}
         <View className="items-center py-3">

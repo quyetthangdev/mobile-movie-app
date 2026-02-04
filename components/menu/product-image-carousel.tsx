@@ -1,5 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { FlatList, Image, NativeScrollEvent, NativeSyntheticEvent, Pressable, View } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 
 import { publicFileURL } from '@/constants'
 
@@ -8,7 +13,7 @@ interface ProductImageCarouselProps {
   onImageClick?: (image: string | null) => void
 }
 
-export default function ProductImageCarousel({
+const ProductImageCarousel = React.memo(function ProductImageCarousel({
   images,
   onImageClick,
 }: ProductImageCarouselProps) {
@@ -21,13 +26,48 @@ export default function ProductImageCarousel({
   // Filter out null images and ensure at least one image
   const validImages = images.filter((img) => img !== null && img !== undefined)
 
-  const handleImagePress = (image: string | null, index: number) => {
+  // Pagination dot component with scale animation (transform, not width)
+  const PaginationDot = React.memo(function PaginationDot({ 
+    isActive,
+    onPress,
+  }: { 
+    isActive: boolean
+    onPress: () => void
+  }) {
+    const scale = useSharedValue(isActive ? 2 : 1)
+    
+    useEffect(() => {
+      scale.value = withTiming(isActive ? 2 : 1, {
+        duration: 200,
+      })
+    }, [isActive, scale])
+
+    const animatedStyle = useAnimatedStyle(() => {
+      'worklet'
+      return {
+        transform: [{ scaleX: scale.value }],
+      }
+    })
+
+    return (
+      <Pressable onPress={onPress}>
+        <Animated.View
+          style={animatedStyle}
+          className={`h-2 w-2 rounded-full ${
+            isActive ? 'bg-red-600 dark:bg-primary' : 'bg-gray-300 dark:bg-gray-600'
+          }`}
+        />
+      </Pressable>
+    )
+  })
+
+  const handleImagePress = useCallback((image: string | null, index: number) => {
     setAutoScroll(false) // Disable auto-scroll when manually clicking
     setSelectedIndex(index)
     setCurrent(index)
     flatListRef.current?.scrollToIndex({ index, animated: true })
     onImageClick?.(image)
-  }
+  }, [onImageClick])
 
   // Auto-scroll effect
   useEffect(() => {
@@ -75,6 +115,28 @@ export default function ProductImageCarousel({
     [validImages.length],
   )
 
+  // Render item callback - must be defined before early return
+  const renderItem = useCallback(({ item, index }: { item: string | null; index: number }) => {
+    const imageUrl = item ? `${publicFileURL}/${item}` : ''
+    return (
+      <Pressable
+        onPress={() => handleImagePress(item, index)}
+        className={`mr-2 rounded-lg overflow-hidden border-2 ${
+          selectedIndex === index
+            ? 'border-red-600 dark:border-primary'
+            : 'border-gray-300 dark:border-gray-600'
+        }`}
+        style={{ width: 60, height: 60 }}
+      >
+        <Image
+          source={{ uri: imageUrl }}
+          className="w-full h-full"
+          resizeMode="cover"
+        />
+      </Pressable>
+    )
+  }, [selectedIndex, handleImagePress])
+
   if (validImages.length === 0) {
     return null
   }
@@ -87,26 +149,7 @@ export default function ProductImageCarousel({
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item, index) => `image-${index}`}
-        renderItem={({ item, index }) => {
-          const imageUrl = item ? `${publicFileURL}/${item}` : ''
-          return (
-            <Pressable
-              onPress={() => handleImagePress(item, index)}
-              className={`mr-2 rounded-lg overflow-hidden border-2 ${
-                selectedIndex === index
-                  ? 'border-red-600 dark:border-primary'
-                  : 'border-gray-300 dark:border-gray-600'
-              }`}
-              style={{ width: 60, height: 60 }}
-            >
-              <Image
-                source={{ uri: imageUrl }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            </Pressable>
-          )
-        }}
+        renderItem={renderItem}
         contentContainerStyle={{ paddingHorizontal: 4 }}
         onMomentumScrollEnd={handleScrollEnd}
         onScrollToIndexFailed={(info) => {
@@ -125,18 +168,16 @@ export default function ProductImageCarousel({
       {validImages.length > 1 && (
         <View className="flex-row gap-2 mt-2">
           {validImages.map((_, index) => (
-            <Pressable
+            <PaginationDot
               key={index}
+              isActive={current === index}
               onPress={() => handleImagePress(validImages[index], index)}
-              className={`rounded-full transition-all ${
-                current === index
-                  ? 'w-4 h-2 bg-red-600 dark:bg-primary'
-                  : 'w-2 h-2 bg-gray-300 dark:bg-gray-600'
-              }`}
             />
           ))}
         </View>
       )}
     </View>
   )
-}
+})
+
+export default ProductImageCarousel

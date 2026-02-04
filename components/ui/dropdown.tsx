@@ -1,8 +1,9 @@
 import { cn } from '@/lib/utils'
+import * as SystemUI from 'expo-system-ui'
 import { Check, ChevronRight } from 'lucide-react-native'
 import React, { ComponentProps, useEffect, useRef } from 'react'
 import {
-  Animated,
+  Dimensions,
   Modal,
   Pressable,
   Text,
@@ -10,10 +11,25 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
+
+interface TriggerLayout {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 interface DropdownContextType {
   onOpenChange: (open: boolean) => void
   open: boolean
+  triggerLayout: TriggerLayout | null
+  setTriggerLayout: (layout: TriggerLayout | null) => void
 }
 
 const DropdownContext = React.createContext<DropdownContextType | null>(null)
@@ -131,6 +147,7 @@ function Dropdown({
   children,
 }: DropdownProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const [triggerLayout, setTriggerLayout] = React.useState<TriggerLayout | null>(null)
 
   const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen
   const onOpenChange = controlledOnOpenChange || setUncontrolledOpen
@@ -144,8 +161,28 @@ function Dropdown({
     isComponentType(child, DropdownContent)
   )
 
+  // Keep navigation bar color white when Modal opens/closes
+  useEffect(() => {
+    if (open) {
+      // Set navigation bar to white when Modal opens
+      // Use requestAnimationFrame to ensure it runs after Modal renders
+      requestAnimationFrame(() => {
+        SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {
+          // Ignore errors if API is not available
+        })
+      })
+    } else {
+      // Also set when closing to prevent reset to app background
+      requestAnimationFrame(() => {
+        SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {
+          // Ignore errors if API is not available
+        })
+      })
+    }
+  }, [open])
+
   return (
-    <DropdownContext.Provider value={{ onOpenChange, open }}>
+    <DropdownContext.Provider value={{ onOpenChange, open, triggerLayout, setTriggerLayout }}>
       {/* Render trigger outside Modal */}
       {trigger}
       {/* Render content inside Modal */}
@@ -169,34 +206,102 @@ function DropdownTrigger({
   ...props
 }: DropdownTriggerProps) {
   const context = React.useContext(DropdownContext)
+  const triggerRef = useRef<View>(null)
+  const contextRef = useRef(context)
+  const [shouldMeasure, setShouldMeasure] = React.useState(false)
+
+  // Keep context ref in sync
+  React.useEffect(() => {
+    contextRef.current = context
+  }, [context])
 
   if (!context && __DEV__) {
     // eslint-disable-next-line no-console
     console.warn('DropdownTrigger must be used inside Dropdown component')
   }
 
+  // Measure trigger when shouldMeasure is true
+  React.useEffect(() => {
+    if (shouldMeasure && triggerRef.current && contextRef.current) {
+      requestAnimationFrame(() => {
+        if (triggerRef.current && contextRef.current) {
+          triggerRef.current.measureInWindow((x, y, width, height) => {
+            contextRef.current?.setTriggerLayout({ x, y, width, height })
+            contextRef.current?.onOpenChange(true)
+            setShouldMeasure(false)
+          })
+        }
+      })
+    }
+  }, [shouldMeasure])
+
+  // Measure trigger when opening (backup measurement)
+  React.useEffect(() => {
+    if (context?.open && triggerRef.current) {
+      requestAnimationFrame(() => {
+        if (triggerRef.current) {
+          triggerRef.current.measureInWindow((x, y, width, height) => {
+            contextRef.current?.setTriggerLayout({ x, y, width, height })
+          })
+        }
+      })
+    }
+  }, [context?.open])
+
+  const handlePress = () => {
+    // Trigger measurement via state
+    setShouldMeasure(true)
+  }
+
+  const handleLayout = () => {
+    // Re-measure when layout changes and dropdown is open
+    if (context?.open && triggerRef.current) {
+      requestAnimationFrame(() => {
+        if (triggerRef.current) {
+          triggerRef.current.measureInWindow((x, y, width, height) => {
+            contextRef.current?.setTriggerLayout({ x, y, width, height })
+          })
+        }
+      })
+    }
+  }
+
   if (asChild && React.isValidElement(children)) {
     const child = children as React.ReactElement<ComponentProps<typeof TouchableOpacity>>
-    return React.cloneElement(child, {
-      ...child.props,
-      onPress: (e: unknown) => {
-        if (child.props?.onPress) {
-          child.props.onPress(e as never)
-        }
-        context?.onOpenChange(true)
-      },
-      ...props,
-    })
+    return (
+      <View 
+        ref={triggerRef} 
+        collapsable={false}
+        onLayout={handleLayout}
+      >
+        {React.cloneElement(child, {
+          ...child.props,
+          onPress: (e: unknown) => {
+            if (child.props?.onPress) {
+              child.props.onPress(e as never)
+            }
+            handlePress()
+          },
+          ...props,
+        })}
+      </View>
+    )
   }
 
   return (
-    <TouchableOpacity
-      onPress={() => context?.onOpenChange(true)}
-      className={className}
-      {...props}
+    <View 
+      ref={triggerRef} 
+      collapsable={false}
+      onLayout={handleLayout}
     >
-      {children}
-    </TouchableOpacity>
+      <TouchableOpacity
+        onPress={handlePress}
+        className={className}
+        {...props}
+      >
+        {children}
+      </TouchableOpacity>
+    </View>
   )
 }
 
@@ -204,26 +309,34 @@ function DropdownTrigger({
 function DropdownContent({
   children,
   className,
-  align = 'end',
+  align: _align = 'end',
   side = 'bottom',
-  sideOffset = 4,
-  alignOffset = 0,
+  sideOffset = 20,
+  alignOffset: _alignOffset = 0,
 }: DropdownContentProps) {
   const context = React.useContext(DropdownContext)
-  const scaleAnim = useRef(new Animated.Value(0.95)).current
-  const opacityAnim = useRef(new Animated.Value(0)).current
+  const contentRef = useRef<View>(null)
+  const [contentLayout, setContentLayout] = React.useState<{ width: number; height: number } | null>(null)
   
-  // Slide animations based on side
-  const slideXAnim = useRef(new Animated.Value(0)).current
-  const slideYAnim = useRef(new Animated.Value(0)).current
+  // Shared values for UI thread animations (react-native-reanimated)
+  const scale = useSharedValue(0.95)
+  const opacity = useSharedValue(0)
+  const slideX = useSharedValue(0)
+  const slideY = useSharedValue(0)
+
+  // Measure content size when layout changes
+  const handleContentLayout = (event: { nativeEvent: { layout: { width: number; height: number } } }) => {
+    const { width, height } = event.nativeEvent.layout
+    setContentLayout({ width, height })
+  }
 
   useEffect(() => {
     if (!context?.open) {
-      // Reset to initial state when closed
-      scaleAnim.setValue(0.95)
-      opacityAnim.setValue(0)
-      slideXAnim.setValue(0)
-      slideYAnim.setValue(0)
+      // Reset to initial state when closed (UI thread)
+      scale.value = 0.95
+      opacity.value = 0
+      slideX.value = 0
+      slideY.value = 0
       return
     }
 
@@ -236,50 +349,81 @@ function DropdownContent({
       right: { x: 8, y: 0 },     // slide-in-from-left-2
     }
     const initial = slideInitialValues[side]
-    slideXAnim.setValue(initial.x)
-    slideYAnim.setValue(initial.y)
+    slideX.value = initial.x
+    slideY.value = initial.y
 
-    // Animate in with fade-in, zoom-in, and slide-in
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 300,
-        friction: 20,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideXAnim, {
-        toValue: 0,
-        tension: 300,
-        friction: 20,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideYAnim, {
-        toValue: 0,
-        tension: 300,
-        friction: 20,
-        useNativeDriver: true,
-      }),
-    ]).start()
+    // Animate in with fade-in, zoom-in, and slide-in (UI thread)
+    // Optimized for POS: quick and clear (150ms) - faster than before
+    scale.value = withTiming(1, {
+      duration: 150,
+      easing: Easing.out(Easing.ease),
+    })
+    opacity.value = withTiming(1, {
+      duration: 150,
+      easing: Easing.out(Easing.ease),
+    })
+    slideX.value = withTiming(0, {
+      duration: 150,
+      easing: Easing.out(Easing.ease),
+    })
+    slideY.value = withTiming(0, {
+      duration: 150,
+      easing: Easing.out(Easing.ease),
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context?.open, side])
 
-  const positionClasses = {
-    top: 'bottom-16',
-    bottom: 'top-16',
-    left: 'right-5',
-    right: 'left-5',
+  // Animated style running on UI thread
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      opacity: opacity.value,
+      transform: [
+        { scale: scale.value },
+        { translateX: slideX.value },
+        { translateY: slideY.value },
+      ],
+    }
+  })
+
+  // Calculate position based on trigger layout
+  const getPositionStyle = () => {
+    if (!context?.triggerLayout) {
+      // Fallback to old positioning if no trigger layout
+      return {}
+    }
+
+    const { y, height: triggerHeight } = context.triggerLayout
+    const contentHeight = contentLayout?.height || 100
+    const screenWidth = Dimensions.get('window').width
+    const horizontalPadding = 20 // Padding 2 cạnh
+
+    let top = 0
+
+    // Calculate vertical position based on side
+    if (side === 'bottom') {
+      // Add extra spacing to prevent overlap with trigger
+      // Minimum 16px spacing, plus sideOffset if provided
+      const minSpacing = 16
+      top = y + triggerHeight + minSpacing + sideOffset
+    } else if (side === 'top') {
+      const minSpacing = 16
+      top = y - contentHeight - minSpacing - sideOffset
+    } else {
+      // For left/right, center vertically
+      top = y + (triggerHeight - contentHeight) / 2
+    }
+
+    // Content has full width with padding on sides
+    return { 
+      top, 
+      left: horizontalPadding, 
+      right: horizontalPadding,
+      width: screenWidth - (horizontalPadding * 2)
+    }
   }
 
-  const alignClasses = {
-    start: 'left-5',
-    end: 'right-5',
-    center: 'self-center',
-  }
+  const positionStyle = getPositionStyle()
 
   return (
     <Pressable
@@ -288,35 +432,19 @@ function DropdownContent({
     >
       <Pressable onPress={(e) => e.stopPropagation()}>
         <Animated.View
+          ref={contentRef}
+          onLayout={handleContentLayout}
           className={cn(
-            'absolute z-50 min-w-[8rem] overflow-hidden rounded-md border p-1',
+            'absolute z-50 overflow-hidden rounded-md border p-1',
             'bg-white dark:bg-gray-900',
             'border-gray-200 dark:border-gray-700',
             'shadow-md',
-            positionClasses[side],
-            alignClasses[align],
             className
           )}
-          style={{
-            marginTop: side === 'bottom' ? sideOffset : undefined,
-            marginBottom: side === 'top' ? sideOffset : undefined,
-            marginLeft:
-              align === 'end' && alignOffset !== 0 ? alignOffset : undefined,
-            marginRight:
-              align === 'start' && alignOffset !== 0 ? alignOffset : undefined,
-            opacity: opacityAnim,
-            transform: [
-              {
-                scale: scaleAnim,
-              },
-              {
-                translateX: slideXAnim,
-              },
-              {
-                translateY: slideYAnim,
-              },
-            ],
-          }}
+          style={[
+            positionStyle,
+            animatedStyle,
+          ]}
         >
           {children}
         </Animated.View>

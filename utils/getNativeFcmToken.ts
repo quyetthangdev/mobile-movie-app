@@ -9,7 +9,7 @@
 // }
 
 // export async function getNativeFcmToken(): Promise<string | null> {
-//   // ✅ Check platform first
+//   // Check platform first
 //   if (!Capacitor.isNativePlatform()) {
 //     console.error('[getNativeFcmToken] ❌ Not a native platform')
 //     return null
@@ -36,15 +36,15 @@
 //         reject(new Error('Token registration timeout'))
 //       }, 10000) // 10s timeout
 
-//       // ✅ Setup listeners (async operations)
+//       // Setup listeners (async operations)
 //       const setupListeners = async () => {
-//         // ✅ Store listener references để cleanup properly
+//         // Store listener references to cleanup properly
 //         const registrationListener = await PushNotifications.addListener('registration', (token) => {
 //           clearTimeout(timeout)
           
 //           const tokenValue = token.value
           
-//           // ✅ Cleanup CHỈ listeners của function này
+//           // Cleanup ONLY listeners of this function
 //           registrationListener.remove()
 //           errorListener.remove()
           
@@ -60,7 +60,7 @@
 //             platform,
 //           })
           
-//           // ✅ Cleanup listeners
+    //           // Cleanup listeners
 //           registrationListener.remove()
 //           errorListener.remove()
           

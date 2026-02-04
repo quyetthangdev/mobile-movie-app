@@ -9,12 +9,12 @@ export function isVoucherApplicableToCartItems(
     return false
 
   if (rule === APPLICABILITY_RULE.ALL_REQUIRED) {
-    // ✅ Tất cả sản phẩm trong giỏ hàng phải nằm trong danh sách voucher
+    // All products in cart must be in voucher list
     return cartProductSlugs.every((slug) => voucherProductSlugs.includes(slug))
   }
 
   if (rule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED) {
-    // ✅ Chỉ cần ít nhất một món trong giỏ nằm trong danh sách voucher
+    // Only need at least one item in cart to be in voucher list
     return cartProductSlugs.some((slug) => voucherProductSlugs.includes(slug))
   }
 

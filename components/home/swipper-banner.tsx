@@ -2,9 +2,14 @@ import { Images } from '@/assets/images'
 import { ROUTE, publicFileURL } from '@/constants'
 import { IBanner } from '@/types'
 import { useRouter } from 'expo-router'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { ImageSourcePropType } from 'react-native'
-import { Dimensions, FlatList, Image, Linking, NativeScrollEvent, NativeSyntheticEvent, Pressable, View } from 'react-native'
+import { Dimensions, FlatList, Image, Linking, Pressable, View } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 
 interface SwiperBannerProps {
   /**
@@ -24,15 +29,17 @@ interface SwiperBannerProps {
  * <SwiperBanner bannerData={banners} />
  * ```
  */
-export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.ReactElement | null {
+const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBannerProps): React.ReactElement | null {
   const router = useRouter()
   const flatListRef = useRef<FlatList>(null)
-  const [activeIndex, setActiveIndex] = useState(0)
   const screenWidth = Dimensions.get('window').width
   const screenHeight = Dimensions.get('window').height
 
+  // State for active index (only updated on scroll end, not every frame)
+  const [activeIndexState, setActiveIndexState] = useState(0)
+
   // Helper function to extract pathname from URL
-  const extractPathname = (url: string): string => {
+  const extractPathname = useCallback((url: string): string => {
     try {
       const urlObj = new URL(url)
       return urlObj.pathname
@@ -40,18 +47,18 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
       // If not a valid URL, treat as pathname
       return url
     }
-  }
+  }, [])
 
   // Helper function to check if pathname matches ROUTE constants
-  const matchesInternalRoute = (pathname: string): boolean => {
+  const matchesInternalRoute = useCallback((pathname: string): boolean => {
     const routeValues = Object.values(ROUTE)
     return routeValues.some((route) => {
       return pathname === route || pathname.startsWith(route + '/')
     })
-  }
+  }, [])
 
   // Helper function to check if it's an internal route
-  const isInternalRoute = (url: string): boolean => {
+  const isInternalRoute = useCallback((url: string): boolean => {
     if (!url || url.trim() === '') return true
 
     // If not http/https, treat as internal
@@ -73,10 +80,10 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
     } catch {
       return true
     }
-  }
+  }, [matchesInternalRoute])
 
   // Helper function to determine destination URL
-  const getBannerLink = (banner: IBanner): string => {
+  const getBannerLink = useCallback((banner: IBanner): string => {
     if (banner.url && banner.url.trim() !== '') {
       if (isInternalRoute(banner.url)) {
         return extractPathname(banner.url)
@@ -84,30 +91,31 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
       return banner.url
     }
     return ROUTE.CLIENT_MENU || '/'
-  }
+  }, [isInternalRoute, extractPathname])
+
 
   // Auto-scroll functionality
   useEffect(() => {
     if (bannerData.length <= 1) return
 
     const interval = setInterval(() => {
-      setActiveIndex((prev) => {
-        const next = prev + 1 >= bannerData.length ? 0 : prev + 1
-        flatListRef.current?.scrollToIndex({ index: next, animated: true })
-        return next
-      })
+      const next = activeIndexState + 1 >= bannerData.length ? 0 : activeIndexState + 1
+      flatListRef.current?.scrollToIndex({ index: next, animated: true })
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [bannerData.length])
+  }, [bannerData.length, activeIndexState])
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  // Handle scroll end - only update state when scroll completes (not every frame)
+  const handleScrollEnd = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
     const slideSize = screenWidth
     const index = Math.round(event.nativeEvent.contentOffset.x / slideSize)
-    setActiveIndex(index)
-  }
+    if (index >= 0 && index < bannerData.length && index !== activeIndexState) {
+      setActiveIndexState(index)
+    }
+  }, [screenWidth, bannerData.length, activeIndexState])
 
-  const handleBannerPress = (banner: IBanner) => {
+  const handleBannerPress = useCallback((banner: IBanner) => {
     const linkUrl = getBannerLink(banner)
     const isInternal = isInternalRoute(banner.url || '')
 
@@ -121,7 +129,7 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
         console.error('Failed to open URL:', err)
       })
     }
-  }
+  }, [router, getBannerLink, isInternalRoute])
 
   const getBannerImage = (banner: IBanner): ImageSourcePropType => {
     if (banner.image) {
@@ -137,7 +145,7 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
     return Images.Landing.Desktop as ImageSourcePropType
   }
 
-  const renderItem = ({ item: banner }: { item: IBanner; index: number }) => {
+  const renderItem = useCallback(({ item: banner }: { item: IBanner; index: number }) => {
     const imageSource = getBannerImage(banner)
 
     return (
@@ -169,7 +177,38 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
         </View>
       </Pressable>
     )
-  }
+  }, [screenWidth, screenHeight, handleBannerPress])
+
+  // Pagination dot component with scale animation (transform, not width)
+  const PaginationDot = React.memo(function PaginationDot({ 
+    isActive 
+  }: { 
+    isActive: boolean 
+  }) {
+    const scale = useSharedValue(isActive ? 3 : 1)
+    
+    useEffect(() => {
+      scale.value = withTiming(isActive ? 3 : 1, {
+        duration: 200,
+      })
+    }, [isActive, scale])
+
+    const animatedStyle = useAnimatedStyle(() => {
+      'worklet'
+      return {
+        transform: [{ scaleX: scale.value }],
+      }
+    })
+
+    return (
+      <Animated.View
+        style={animatedStyle}
+        className={`h-2 w-2 rounded-full ${
+          isActive ? 'bg-white' : 'bg-white/50'
+        }`}
+      />
+    )
+  })
 
   const renderPagination = (): React.ReactElement | null => {
     if (bannerData.length <= 1) return null
@@ -177,13 +216,9 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
     return (
       <View className="absolute bottom-4 left-0 right-0 flex-row justify-center items-center space-x-2">
         {bannerData.map((_, index) => (
-          <View
+          <PaginationDot
             key={index}
-            className={`h-2 rounded-full ${
-              index === activeIndex
-                ? 'w-6 bg-white'
-                : 'w-2 bg-white/50'
-            }`}
+            isActive={index === activeIndexState}
           />
         ))}
       </View>
@@ -204,8 +239,7 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScrollEnd}
         getItemLayout={(data, index) => ({
           length: screenWidth,
           offset: screenWidth * index,
@@ -217,8 +251,16 @@ export default function SwiperBanner({ bannerData }: SwiperBannerProps): React.R
             flatListRef.current?.scrollToIndex({ index: info.index, animated: true })
           })
         }}
+        // Performance optimizations for POS/Kiosk
+        removeClippedSubviews={true}
+        initialNumToRender={3}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        updateCellsBatchingPeriod={50}
       />
       {renderPagination()}
     </View>
   )
-}
+})
+
+export default SwiperBanner

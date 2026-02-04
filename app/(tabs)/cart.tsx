@@ -12,19 +12,21 @@ import { Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
+import { SelectBranchDropdown } from '@/components/branch'
 import { QuantitySelector } from '@/components/button'
 import {
   CreateOrderDialog,
   DeleteAllCartDialog,
-  DeleteCartItemDialog,
+  DeleteCartItemDialog, LogoutDialog, SettingsDropdown, UserAvatarDropdown
 } from '@/components/dialog'
-import {
-  OrderTypeDropdown,
-  PickupTimeDropdown,
-  ProductVariantDropdown,
-  TableDropdown,
-} from '@/components/dropdown'
+import { ProductVariantDropdown } from '@/components/dropdown'
 import { CartNoteInput, OrderNoteInput } from '@/components/input'
+import {
+  OrderTypeSelect,
+  PickupTimeSelect,
+  TableSelect,
+  TableSelectSheet,
+} from '@/components/select'
 import { Badge } from '@/components/ui'
 import {
   APPLICABILITY_RULE,
@@ -32,7 +34,7 @@ import {
   ROUTE,
   VOUCHER_TYPE,
 } from '@/constants'
-import { useBranchStore, useOrderFlowStore } from '@/stores'
+import { useAuthStore, useBranchStore, useOrderFlowStore, useUserStore } from '@/stores'
 import { OrderTypeEnum } from '@/types'
 import {
   calculateCartItemDisplay,
@@ -50,6 +52,13 @@ export default function ClientCartPage() {
   const { t: tVoucher } = useTranslation('voucher')
   const { branch } = useBranchStore()
   const router = useRouter()
+  const userInfo = useUserStore((state) => state.userInfo)
+  
+  // Calculate branchSlug for TableSelectSheet (render outside ScrollView)
+  const branchSlug = branch?.slug || userInfo?.branch?.slug || ''
+  const setLogout = useAuthStore((state) => state.setLogout)
+  const removeUserInfo = useUserStore((state) => state.removeUserInfo)
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
   // const [runJoyride, setRunJoyride] = useState(false)
   const { removeVoucher, getCartItems, addOrderingProductVariant } =
     useOrderFlowStore()
@@ -144,9 +153,36 @@ export default function ClientCartPage() {
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? '#D68910' : '#F7A737' // hsl(35 70% 53%) vs hsl(35 93% 55%)
 
+  const handleLogout = () => {
+    setLogout()
+    removeUserInfo()
+  }
+
+  const handleLogoutPress = () => {
+    setIsLogoutDialogOpen(true)
+  }
+
   if (_.isEmpty(currentCartItems?.orderItems)) {
     return (
       <SafeAreaView className="flex-1" edges={['top']}>
+        {/* Header */}
+        <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
+          {/* Left side: Logo */}
+          <View className="flex-row items-center">
+            <Image
+              source={Images.Brand.Logo as unknown as number}
+              className="h-8 w-28"
+              resizeMode="contain"
+            />
+          </View>
+          {/* Right side: Branch Select, Settings and Avatar with Dropdown */}
+          <View className="flex-row items-center gap-3">
+            <SelectBranchDropdown />
+            <SettingsDropdown />
+            <UserAvatarDropdown userInfo={userInfo} onLogoutPress={handleLogoutPress} />
+          </View>
+        </View>
+
         <View className="flex-1 items-center justify-center px-4">
           <View className="flex-col items-center gap-6">
             <View 
@@ -181,15 +217,44 @@ export default function ClientCartPage() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Logout Dialog */}
+        <LogoutDialog
+          isOpen={isLogoutDialogOpen}
+          onOpenChange={setIsLogoutDialogOpen}
+          onLogout={handleLogout}
+        />
       </SafeAreaView>
     )
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-gray-50"
-      contentContainerStyle={{ paddingBottom: 120 }}
-    >
+    <SafeAreaView className="flex-1" edges={['top']}>
+      {/* Header */}
+      <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
+        {/* Left side: Logo */}
+        <View className="flex-row items-center">
+          <Image
+            source={Images.Brand.Logo as unknown as number}
+            className="h-8 w-28"
+            resizeMode="contain"
+          />
+        </View>
+        {/* Right side: Branch Select, Settings and Avatar with Dropdown */}
+        <View className="flex-row items-center gap-3">
+          <SelectBranchDropdown />
+          <SettingsDropdown />
+          <UserAvatarDropdown userInfo={userInfo} onLogoutPress={handleLogoutPress} />
+        </View>
+      </View>
+
+      {/* Content */}
+      <View className="flex-1">
+        <ScrollView
+          className="flex-1 bg-gray-50"
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        >
       <View className="px-4 py-4">
         {/* Warning message */}
         <View className="mb-4 flex-row items-center gap-2 rounded-lg bg-gray-100 p-3">
@@ -201,15 +266,14 @@ export default function ClientCartPage() {
 
         {/* Order type and table selection */}
         <View className="mb-4 flex-col gap-2">
-          {/* <OrderTypeSelect /> */}
-          <OrderTypeDropdown />
+          <OrderTypeSelect />
           {currentCartItems?.type !== OrderTypeEnum.DELIVERY && (
-            <View className="flex-row items-center">
+            <View className="flex-row items-center gap-2">
               <View className="flex-1">
                 {currentCartItems?.type === OrderTypeEnum.TAKE_OUT ? (
-                  <PickupTimeDropdown />
+                  <PickupTimeSelect />
                 ) : (
-                  <TableDropdown />
+                  <TableSelect />
                 )}
               </View>
               <DeleteAllCartDialog />
@@ -227,16 +291,16 @@ export default function ClientCartPage() {
         )}
 
         {/* Cart items */}
-        <View className="mb-4 flex-col gap-3">
+        <View className="mb-4 flex-col gap-2">
           {currentCartItems?.orderItems.map((item) => (
             <View
               key={`${item.id}-${currentCartItems?.voucher?.slug || 'no-voucher'}`}
-              className="rounded-lg border border-gray-200 bg-white p-3"
+              className="rounded-lg border border-gray-100 bg-white p-3"
             >
               {/* Item header with image and name */}
               <View className="flex-row gap-3">
                 {/* Product image */}
-                <View className="h-20 w-20 overflow-hidden rounded-lg bg-gray-100">
+                <View className="h-28 w-28 overflow-hidden rounded-lg bg-gray-100">
                   {item?.image ? (
                     <Image
                       source={{ uri: publicFileURL + '/' + item?.image }}
@@ -253,11 +317,11 @@ export default function ClientCartPage() {
                 </View>
 
                 {/* Product info */}
-                <View className="flex-1 flex-col gap-2">
+                <View className="flex-1 flex-col">
                   {/* Name and delete icon */}
-                  <View className="flex-row items-start justify-between">
+                  <View className="flex-row items-center justify-between">
                     <Text
-                      className="flex-1 pr-2 text-base font-bold text-gray-900"
+                      className="flex-1 pr-2 text-md font-bold text-gray-900"
                       numberOfLines={2}
                     >
                       {item.name}
@@ -266,14 +330,13 @@ export default function ClientCartPage() {
                   </View>
 
                   {/* Variant select */}
-                  {/* <ProductVariantSelect variant={item.allVariants} onChange={handleChangeVariant} /> */}
                   <ProductVariantDropdown
                     variant={item.allVariants}
                     onChange={handleChangeVariant}
                   />
 
                   {/* Price and quantity */}
-                  <View className="flex-row items-center justify-between">
+                  <View className="flex-row mt-1 items-center justify-between">
                     <View className="flex-row items-center gap-1">
                       {(() => {
                         const displayItem = displayItems.find(
@@ -332,7 +395,7 @@ export default function ClientCartPage() {
                                 </Text>
                               )}
                             <Text 
-                              className="text-sm font-bold"
+                              className="text-lg font-bold"
                               style={{ color: primaryColor }}
                             >
                               {formatCurrency(displayPrice)}
@@ -362,6 +425,9 @@ export default function ClientCartPage() {
         </View>
         {/* Order note */}
         <View className="mb-4">
+          <Text className="mb-2 text-md font-bold text-gray-900">
+            {t('order.orderNote')}
+          </Text>
           <OrderNoteInput order={currentCartItems} />
         </View>
 
@@ -444,17 +510,17 @@ export default function ClientCartPage() {
               </Text>
             </Badge>
           ) : (
-            <TouchableOpacity className="flex-row items-center justify-between rounded-lg bg-orange-500 px-4 py-3">
-              <Text className="text-sm font-semibold text-white">
-                Sử dụng voucher
+            <TouchableOpacity className="flex-row items-center justify-between rounded-lg bg-primary/10 px-4 py-3">
+              <Text className="text-sm font-semibold text-primary">
+                { t('order.useVoucher', 'Sử dụng voucher') }
               </Text>
-              <ChevronRight size={16} color="#fff" />
+              <ChevronRight size={16} color={primaryColor} />
             </TouchableOpacity>
           )}
         </View>
 
         {/* Order summary */}
-        <View className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+        <View className="mb-4 rounded-lg border border-gray-100 bg-white p-4">
           <View className="flex-col gap-2">
             {/* Tổng giá gốc */}
             <View className="flex-row justify-between">
@@ -508,7 +574,7 @@ export default function ClientCartPage() {
             )}
 
             {/* Total */}
-            <View className="mt-2 flex-row items-center justify-between border-t border-gray-200 pt-2">
+            <View className="mt-2 flex-row items-center justify-between border-t border-gray-100 pt-2">
               <Text className="text-base font-semibold text-gray-900">
                 {t('order.totalPayment')}
               </Text>
@@ -524,34 +590,56 @@ export default function ClientCartPage() {
           </View>
         </View>
       </View>
+      </ScrollView>
+      </View>
 
-      {/* Bottom action bar */}
-      <View
-        className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white shadow-lg"
-        style={{ paddingBottom: 20 }}
-      >
-        <View className="flex-row items-center justify-between px-4 py-3">
-          <View className="flex-1">
-            <Text 
-              className="text-xl font-bold"
-              style={{ color: primaryColor }}
-            >
-              {formatCurrency(cartTotals.finalTotal + deliveryFee.deliveryFee)}
-            </Text>
-          </View>
-          <View className="flex-1 items-end">
-            {isMounted && (
-              <CreateOrderDialog
-                disabled={
-                  !currentCartItems ||
-                  (currentCartItems?.type === OrderTypeEnum.AT_TABLE &&
-                    !currentCartItems?.table)
-                }
-              />
-            )}
+      {/* Bottom action bar - Fixed at bottom */}
+      <SafeAreaView edges={['bottom']} className="border-t border-gray-100 bg-white shadow-lg">
+        <View
+          style={{
+            paddingBottom: 80,
+            paddingTop: 12,
+            paddingHorizontal: 16,
+          }}
+        >
+          <View className="flex-row items-center justify-between gap-4">
+            {/* Total price */}
+            <View className="flex-1">
+              <Text className="text-xs text-gray-600 mb-1">
+                {t('order.totalPayment')}
+              </Text>
+              <Text 
+                className="text-2xl font-bold"
+                style={{ color: primaryColor }}
+              >
+                {formatCurrency(cartTotals.finalTotal + deliveryFee.deliveryFee)}
+              </Text>
+            </View>
+            {/* Payment button */}
+            <View style={{ minWidth: 140 }}>
+              {isMounted && (
+                <CreateOrderDialog
+                  disabled={
+                    !currentCartItems ||
+                    (currentCartItems?.type === OrderTypeEnum.AT_TABLE &&
+                      !currentCartItems?.table)
+                  }
+                />
+              )}
+            </View>
           </View>
         </View>
-      </View>
-    </ScrollView>
+      </SafeAreaView>
+
+      {/* Logout Dialog */}
+      <LogoutDialog
+        isOpen={isLogoutDialogOpen}
+        onOpenChange={setIsLogoutDialogOpen}
+        onLogout={handleLogout}
+      />
+
+      {/* TableSelectSheet - Render at the end to ensure it's on top layer */}
+      <TableSelectSheet branchSlug={branchSlug} />
+    </SafeAreaView>
   )
 }

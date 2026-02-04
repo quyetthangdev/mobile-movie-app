@@ -1,3 +1,4 @@
+import { NotepadText } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { View } from 'react-native'
 
@@ -18,11 +19,14 @@ export default function OrderNoteInput({ order }: OrderNoteInputProps) {
   }
 
   return (
-    <View className="flex w-full flex-row items-center justify-center gap-2.5">
-      <View className="flex flex-row flex-1 gap-2 justify-between items-start w-full">
+    <View className="flex w-full flex-row items-start gap-2.5">
+      <View className="mt-2">
+        <NotepadText color="#6b7280" size={20} />
+      </View>
+      <View className="flex-1">
         <Textarea
           defaultValue={order?.note || ''}
-          className="bg-white text-[11px] shadow-none xl:text-sm dark:border-muted-foreground/60 dark:bg-transparent"
+          className="min-h-[60px] text-sm shadow-none dark:border-gray-700"
           placeholder={t('order.enterOrderNote')}
           onChangeText={handleNoteChange}
         />

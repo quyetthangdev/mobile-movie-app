@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Check, ChevronDown } from 'lucide-react-native'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
-  Animated,
   Modal,
   Pressable,
   ScrollView,
@@ -11,6 +10,13 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 
 /* ------------------------------------------------------------------ */
 /* Context */
@@ -154,25 +160,41 @@ function SelectContent({
   noModal?: boolean
 }) {
   const ctx = React.useContext(SelectContext)
-  const scale = useMemo(() => new Animated.Value(0.95), [])
-  const opacity = useMemo(() => new Animated.Value(0), [])
+  
+  // Shared values for UI thread animations
+  const scale = useSharedValue(0.95)
+  const opacity = useSharedValue(0)
+
+  // Animated style running on UI thread (must be called before any early returns)
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    }
+  })
 
   useEffect(() => {
-    if (!ctx?.open) return
-    Animated.parallel([
-      Animated.spring(scale, {
-        toValue: 1,
-        tension: 400,
-        friction: 25,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }, [ctx?.open, scale, opacity])
+    if (!ctx?.open) {
+      // Reset when closed
+      scale.value = 0.95
+      opacity.value = 0
+      return
+    }
+    
+    // Animate in (UI thread)
+    // Optimized for POS: quick and clear (200ms)
+    scale.value = withSpring(1, {
+      damping: 20,
+      stiffness: 300,
+      mass: 0.5,
+    })
+    opacity.value = withTiming(1, {
+      duration: 200,
+      easing: Easing.out(Easing.ease),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx?.open])
 
   if (!ctx) return null
 
@@ -180,9 +202,12 @@ function SelectContent({
   if (noModal) {
     if (!ctx.open) return null
     return (
-      <View className={cn('max-h-[300px]', className)}>
+      <Animated.View
+        style={animatedStyle}
+        className={cn('max-h-[300px]', className)}
+      >
         <ScrollView>{children}</ScrollView>
-      </View>
+      </Animated.View>
     )
   }
 
@@ -196,7 +221,7 @@ function SelectContent({
 
       {/* dropdown */}
       <Animated.View
-        style={{ transform: [{ scale }], opacity }}
+        style={animatedStyle}
         className={cn(
           'absolute top-20 max-h-[300px] w-[90%] self-center',
           'bg-white dark:bg-gray-900',

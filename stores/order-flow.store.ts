@@ -329,7 +329,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           return
         }
 
-        // ✅ Theo logic cũ: không merge, chỉ thêm item mới vào array
+        // According to old logic: don't merge, only add new item to array
         const updatedItems = [
           ...orderingData.orderItems,
           {
@@ -551,10 +551,10 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       setOrderingType: (type: OrderTypeEnum) => {
         const { orderingData } = get()
 
-        // Nếu orderingData là null, khởi tạo nó trước
+        // If orderingData is null, initialize it first
         if (!orderingData) {
           get().initializeOrdering()
-          // Lấy lại orderingData sau khi khởi tạo
+          // Get orderingData after initialization
           const { orderingData: newOrderingData } = get()
           if (!newOrderingData) {
             return
@@ -563,7 +563,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           const updatedData = {
             ...newOrderingData,
             type,
-            // Nếu type là take-out, remove table
+            // If type is take-out, remove table
             ...(type === OrderTypeEnum.TAKE_OUT && {
               table: '',
               tableName: '',
@@ -578,7 +578,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           const updatedData = {
             ...orderingData,
             type,
-            // Nếu type là take-out, remove table
+            // If type is take-out, remove table
             ...(type === OrderTypeEnum.TAKE_OUT && {
               table: '',
               tableName: '',
@@ -840,13 +840,13 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           deliveryPhone: originalOrder.deliveryPhone,
           deliveryTo: originalOrder.deliveryTo,
           deliveryFee: originalOrder.deliveryFee,
-          // ✅ Đảm bảo voucher được copy vào updatedOriginalOrder
+          // Ensure voucher is copied into updatedOriginalOrder
           voucher: originalOrder.voucher || null,
         }
 
-        // Create initial draft from original order với cùng IDs
+        // Create initial draft from original order with same IDs
         const updateDraft: IOrderToUpdate = {
-          id: generateOrderId(), // Draft có ID riêng
+          id: generateOrderId(), // Draft has a separate ID
           slug: updatedOriginalOrder.slug,
           productSlug:
             updatedOriginalOrder.orderItems[0]?.variant.product.slug || '',
@@ -865,14 +865,14 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           tableName: updatedOriginalOrder.table?.name || '',
           orderItems: orderItemsWithIds.map((item) => ({
             ...convertOrderDetailToOrderItem(item),
-            id: item.id, // Sử dụng cùng ID
+            id: item.id, // Use same ID
           })),
           deliveryAddress:
             updatedOriginalOrder.deliveryTo?.formattedAddress || '',
           deliveryDistance: updatedOriginalOrder.deliveryDistance,
           deliveryDuration: updatedOriginalOrder.deliveryDuration,
           deliveryPhone: updatedOriginalOrder.deliveryPhone,
-          // deliveryPlaceId: updatedOriginalOrder.deliveryPlaceId,
+          // deliveryPlaceId: updatedOriginalOrder.deliveryPlaceId, // Keep the same placeId
           voucher: updatedOriginalOrder.voucher,
           description: updatedOriginalOrder.description || '',
           approvalBy: updatedOriginalOrder.approvalBy?.slug || '',

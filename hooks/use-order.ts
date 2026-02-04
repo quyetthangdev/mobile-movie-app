@@ -2,51 +2,52 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tans
 
 import {
   addNewOrderItem,
+  callCustomerToGetOrder,
   createOrder,
   createOrderTracking,
+  createOrderWithoutLogin,
   deleteOrder,
   deleteOrderItem,
+  deleteOrderWithoutLogin,
   exportOrderInvoice,
   exportPaymentQRCode,
-  getAllOrders,
-  getOrderBySlug,
-  getOrderInvoice,
-  initiatePayment,
-  updateOrderType,
-  createOrderWithoutLogin,
-  deleteOrderWithoutLogin,
   exportPublicOrderInvoice,
+  getAddressByPlaceId,
+  getAddressDirection,
+  getAddressSuggestions,
+  getAllOrders,
   getAllOrdersPublic,
   getAllOrderWithoutLogin,
+  getDistanceAndDuration,
+  getOrderBySlug,
+  getOrderInvoice,
+  getOrderProvisionalBill,
+  getPrinterEvents,
   getPublicOrderInvoice,
+  initiatePayment,
   initiatePublicPayment,
+  reprintFailedInvoicePrinterJobs,
   updateNoteOrderItem,
   updateOrderItem,
-  updateVoucherInOrder,
-  getOrderProvisionalBill,
+  updateOrderType,
   updatePublicVoucherInOrder,
-  getAddressDirection,
-  getDistanceAndDuration,
-  getAddressByPlaceId,
-  getAddressSuggestions,
-  callCustomerToGetOrder,
-  getPrinterEvents,
-  reprintFailedInvoicePrinterJobs,
+  updateVoucherInOrder,
 } from '@/api'
+import { QUERYKEY } from '@/constants'
 import {
+  IAddNewOrderItemRequest,
   ICreateOrderRequest,
-  IInitiatePaymentRequest,
   ICreateOrderTrackingRequest,
   IGetOrderInvoiceRequest,
-  IOrdersQuery,
-  IAddNewOrderItemRequest,
-  IUpdateOrderTypeRequest,
-  IUpdateOrderItemRequest,
-  IUpdateNoteRequest,
-  IOrderItemsParam,
   IGetPrinterEventsRequest,
+  IInitiatePaymentRequest,
+  IOrderItemsParam,
+  IOrdersQuery,
+  IUpdateNoteRequest,
+  IUpdateOrderItemRequest,
+  IUpdateOrderTypeRequest,
 } from '@/types'
-import { QUERYKEY } from '@/constants'
+import { useDownloadImage } from './use-download-image'
 
 export const useOrders = (q: IOrdersQuery) => {
   return useQuery({
@@ -72,7 +73,7 @@ export const useOrderBySlug = (slug: string | null | undefined) => {
   return useQuery({
     queryKey: ['order', slug],
     queryFn: () => getOrderBySlug(slug!), // dùng ! vì đã kiểm tra ở trên
-    enabled: isValidSlug, // ✅ Chặn không fetch nếu slug không hợp lệ
+    enabled: isValidSlug, // Block fetching if slug is not valid
     placeholderData: keepPreviousData,
   })
 }
@@ -146,6 +147,29 @@ export const useExportPublicOrderInvoice = () => {
       return exportPublicOrderInvoice(slug)
     },
   })
+}
+
+/**
+ * Hook to download order-related images (product images, etc.)
+ * Uses useDownloadImage hook internally
+ */
+export const useDownloadOrderImage = () => {
+  const { downloadImage } = useDownloadImage()
+
+  const downloadProductImage = async (
+    imageUrl: string,
+    productName?: string,
+  ) => {
+    const fileName = productName
+      ? `product_${productName.replace(/\s+/g, '_')}`
+      : undefined
+    return await downloadImage(imageUrl, fileName)
+  }
+
+  return {
+    downloadProductImage,
+    downloadImage, // Expose general download function
+  }
 }
 
 export const useExportPayment = () => {
@@ -339,7 +363,7 @@ export const useGetDistanceAndDuration = (
 }
 
 export const useGetPrinterEvents = (params?: IGetPrinterEventsRequest) => {
-  // Tách page và size ra khỏi params để dùng cho pagination
+  // Separate page and size from params for pagination
   const { page: _, size: __, ...baseParams } = params || {}
   const pageSize = params?.size || 10
 
@@ -354,7 +378,7 @@ export const useGetPrinterEvents = (params?: IGetPrinterEventsRequest) => {
         },
       })
 
-      // Response có cấu trúc: { result: { items: IPrinterEvent[], hasNext, page, ... } }
+      // Response structure: { result: { items: IPrinterEvent[], hasNext, page, ... } }
       return response
     },
     initialPageParam: 1,

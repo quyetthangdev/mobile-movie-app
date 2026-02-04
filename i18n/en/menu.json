@@ -332,7 +332,9 @@
     "deliveryAddress": "Delivery address",
     "deliveryPhone": "Delivery phone",
     "deliveryFee": "Delivery fee",
-    "callCustomerToGetOrder": "Call customer to get order"
+    "callCustomerToGetOrder": "Call customer to get order",
+    "wifi": "WiFi",
+    "wifiInfo": "Please contact the staff to get support"
   },
   "paymentMethod": {
     "bankTransfer": "Bank transfer",

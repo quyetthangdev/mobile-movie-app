@@ -1,14 +1,14 @@
 import { Trash2, TriangleAlert } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Text, View } from 'react-native'
+import { Text, useColorScheme, View } from 'react-native'
 
 import {
   Button,
   Dialog,
   Label,
 } from '@/components/ui'
-import { VOUCHER_TYPE } from '@/constants'
+import { colors, VOUCHER_TYPE } from '@/constants'
 import { useOrderFlowStore } from '@/stores'
 import { IOrderItem } from '@/types'
 import { showErrorToast } from '@/utils'
@@ -22,6 +22,7 @@ export default function DeleteCartItemDialog({
 }: DialogDeleteCartItemProps) {
   const { t } = useTranslation('menu')
   const { t: tCommon } = useTranslation('common')
+  const isDark = useColorScheme() === 'dark'
   const [isOpen, setIsOpen] = useState(false)
   const { removeOrderingItem, getCartItems, removeVoucher } = useOrderFlowStore()
 
@@ -66,15 +67,21 @@ export default function DeleteCartItemDialog({
   }, [getCartItems, removeVoucher])
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <Button variant="outline" onPress={() => setIsOpen(true)}>
-        <Trash2 size={20} color="#ef4444" />
-      </Button>
-      <Dialog.Content className="max-w-[22rem] rounded-md sm:max-w-[32rem]">
+    <>
+      <Dialog.Trigger>
+        <Button variant="ghost" onPress={() => setIsOpen(true)}>
+          { }
+          <Trash2 size={20} color={isDark ? colors.destructive.dark : colors.destructive.light} />
+        </Button>
+      </Dialog.Trigger>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog.Content className="max-w-[22rem] rounded-md sm:max-w-[32rem]">
         <Dialog.Header>
-          <Dialog.Title className="flex gap-2 items-center text-destructive">
-            <TriangleAlert size={20} color="#ef4444" />
-            {t('order.deleteItem')}
+          <Dialog.Title className="flex-row gap-2 items-center text-destructive">
+            <TriangleAlert size={20} color={isDark ? colors.destructive.dark : colors.destructive.light} />
+            <Text className="text-lg font-semibold text-destructive">
+              {t('order.deleteItem')}
+            </Text>
           </Dialog.Title>
           <Dialog.Description className={`p-2 bg-red-100 rounded-md dark:bg-transparent text-destructive`}>
             {tCommon('common.deleteNote')}
@@ -101,6 +108,7 @@ export default function DeleteCartItemDialog({
           </Button>
         </Dialog.Footer>
       </Dialog.Content>
-    </Dialog>
+      </Dialog>
+    </>
   )
 }

@@ -1,114 +1,72 @@
-import { useMemo, useState } from 'react'
+import { ChevronDown } from 'lucide-react-native'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Text, TouchableOpacity, useColorScheme } from 'react-native'
 
-import { Select } from '@/components/ui'
-import { TableStatus } from '@/constants'
 import { useTables } from '@/hooks'
+import { cn } from '@/lib/utils'
 import { useBranchStore, useOrderFlowStore, useUserStore } from '@/stores'
-import { ITable, OrderTypeEnum } from '@/types'
-import { SelectReservedTableDialog } from '../dialog'
+import { OrderTypeEnum } from '@/types'
+import TableSelectSheet from './table-select-sheet'
 
-interface ITableSelectProps {
-  tableOrder?: ITable | null
-  onTableSelect?: (table: ITable) => void
-}
-
-export default function TableSelect({
-  tableOrder,
-  onTableSelect,
-}: ITableSelectProps) {
+export default function TableSelect() {
   const { t } = useTranslation('table')
-  const { getCartItems, addTable } = useOrderFlowStore()
+  const isDark = useColorScheme() === 'dark'
+
+  const { getCartItems } = useOrderFlowStore()
+  const cartItems = getCartItems()
+  const cartType = cartItems?.type
+  const selectedTableId = cartItems?.table
+
   const { branch } = useBranchStore()
   const { userInfo } = useUserStore()
-  const { data: tables } = useTables(
-    branch?.slug || userInfo?.branch?.slug || '',
+
+  const branchSlug = useMemo(
+    () => branch?.slug || userInfo?.branch?.slug || '',
+    [branch?.slug, userInfo?.branch?.slug]
   )
 
-  const [selectedTable, setSelectedTable] = useState<ITable | null>(null)
-  const [userSelectedTableId, setUserSelectedTableId] = useState<
-    string | undefined
-  >()
+  // Get tables to find selected table name
+  const { data: tables } = useTables(branchSlug)
+  const selectedTable = useMemo(() => {
+    if (!selectedTableId || !tables?.result) return null
+    return tables.result.find((t) => t.slug === selectedTableId)
+  }, [selectedTableId, tables])
 
-  const cartItems = getCartItems()
+  // Format display text: "Tên bàn - Trạng thái"
+  const displayText = useMemo(() => {
+    if (!selectedTable) return t('table.title')
+    const statusLabel = selectedTable.status ? t(`table.${selectedTable.status}`) : ''
+    return `${selectedTable.name} - ${statusLabel}`
+  }, [selectedTable, t])
 
-  // Derive selectedTableId from props/cart, with user selection taking precedence
-  const selectedTableId = useMemo(() => {
-    if (userSelectedTableId) return userSelectedTableId
-    if (tableOrder?.slug) return tableOrder.slug
-    if (cartItems?.table) return cartItems.table
-    return undefined
-  }, [userSelectedTableId, tableOrder?.slug, cartItems?.table])
-
-  // Derive selectedTable from tableOrder or tables
-  const currentSelectedTable = useMemo(() => {
-    if (selectedTable) return selectedTable
-    if (tableOrder) return tableOrder
-    if (selectedTableId && tables?.result) {
-      return tables.result.find((t) => t.slug === selectedTableId) || null
-    }
-    return null
-  }, [selectedTable, tableOrder, selectedTableId, tables])
-
-  if (getCartItems()?.type === OrderTypeEnum.TAKE_OUT) {
-    return null
-  }
-
-  const handleTableSelect = (tableId: string) => {
-    const table = tables?.result?.find((t) => t.slug === tableId)
-    if (!table) return
-    if (table.status === TableStatus.RESERVED) {
-      setSelectedTable(table)
-    } else {
-      addTable(table)
-      setUserSelectedTableId(tableId)
-      onTableSelect?.(table)
-    }
-  }
-
-  const handleConfirmTable = (table: ITable) => {
-    addTable(table)
-    onTableSelect?.(table)
-    setUserSelectedTableId(table.slug)
-    setSelectedTable(null) // Đóng dialog
-  }
+  // TAKE OUT không chọn bàn
+  if (cartType === OrderTypeEnum.TAKE_OUT) return null
 
   return (
-    <>
-      <Select onValueChange={handleTableSelect} value={selectedTableId}>
-        <Select.Trigger
-          className={`w-full bg-white dark:bg-transparent ${!selectedTableId ? 'highlight-blink-border' : ''}`}
-        >
-          <Select.Value placeholder={t('table.title')} />
-        </Select.Trigger>
-        <Select.Content>
-          <Select.Group>
-            <Select.Label>{t('table.title')}</Select.Label>
-            {tables?.result?.map((table) => (
-              <Select.Item
-                key={table.slug}
-                value={table.slug}
-                className={
-                  table.status === TableStatus.RESERVED ? 'text-red-400' : ''
-                }
-              >
-                {`${table.name} - ${t(`table.${table.status}`)}`}
-              </Select.Item>
-            ))}
-          </Select.Group>
-        </Select.Content>
-      </Select>
-
-      {/* Dialog hiển thị khi chọn bàn đã đặt */}
-      {currentSelectedTable &&
-        currentSelectedTable.status === TableStatus.RESERVED &&
-        currentSelectedTable.slug !== tableOrder?.slug && (
-          <SelectReservedTableDialog
-            table={currentSelectedTable}
-            onConfirm={handleConfirmTable}
-            onCancel={() => setSelectedTable(null)}
-          />
+    <TouchableOpacity
+      onPress={() => TableSelectSheet.open()}
+      className={cn(
+        'flex-row items-center gap-2 h-11 px-3 py-2 rounded-md w-full',
+        'bg-white dark:bg-gray-800',
+        'border border-gray-200 dark:border-gray-700',
+        !selectedTableId && 'border-red-300 dark:border-red-700',
+        'active:bg-gray-100/50 dark:active:bg-gray-700/50'
+      )}
+    >
+      <Text
+        numberOfLines={1}
+        className={cn(
+          'flex-1 text-sm',
+          selectedTableId
+            ? 'font-medium text-gray-900 dark:text-gray-50'
+            : 'text-gray-500 dark:text-gray-400'
         )}
-    </>
+      >
+        {displayText}
+      </Text>
+
+      <ChevronDown size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+    </TouchableOpacity>
   )
 }

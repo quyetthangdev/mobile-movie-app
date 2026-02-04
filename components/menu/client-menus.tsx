@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dimensions, FlatList, Text, View } from 'react-native'
 
@@ -22,28 +22,73 @@ interface IClientMenuProps {
  * <ClientMenus menu={menuData} isLoading={false} />
  * ```
  */
-export function ClientMenus({ menu, isLoading }: IClientMenuProps) {
+export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: IClientMenuProps) {
   const { t } = useTranslation('menu')
   const { t: tCommon } = useTranslation('common')
   const { data: catalogs, isPending: isLoadingCatalog } = useCatalog()
 
-  // Sort menu items: unlocked first, then by stock availability (same logic as web)
-  const menuItems = menu?.menuItems?.sort((a, b) => {
-    // Đưa các mục không bị khóa lên trước
-    if (a.isLocked !== b.isLocked) {
-      return Number(a.isLocked) - Number(b.isLocked)
+  // Memoize sorted menu items to avoid sorting each render
+  const menuItems = useMemo(() => {
+    if (!menu?.menuItems) return undefined
+    
+    return [...menu.menuItems].sort((a, b) => {
+      // Bring items that are not locked first
+      if (a.isLocked !== b.isLocked) {
+        return Number(a.isLocked) - Number(b.isLocked)
+      }
+      // Consider items with currentStock = null as "in stock" when isLimit = false
+      const aInStock =
+        (a.currentStock !== 0 && a.currentStock !== null) || !a.product.isLimit
+      const bInStock =
+        (b.currentStock !== 0 && b.currentStock !== null) || !b.product.isLimit
+      // Bring items in stock first
+      if (aInStock !== bInStock) {
+        return Number(bInStock) - Number(aInStock) // In stock first
+      }
+      return 0
+    })
+  }, [menu])
+
+  // Memoize grouped items and dimensions to avoid re-calculating
+  const { groupedItems, itemWidth, numColumns, isMobile, gap } = useMemo(() => {
+    const screenWidth = Dimensions.get('window').width
+    const padding = 32 // px-4 * 2 = 16 * 2 = 32
+    const gapValue = 16
+    const mobile = screenWidth < 768
+    const columns = mobile ? 1 : 4
+    const width = mobile 
+      ? screenWidth - padding 
+      : (screenWidth - padding - (columns - 1) * gapValue) / columns
+
+    // Group items by catalog (same logic as web)
+    const grouped = catalogs?.result?.map((catalog) => ({
+      catalog,
+      items: menuItems?.filter(
+        (item) => item.product.catalog.slug === catalog.slug,
+      ) || [],
+    })) || []
+
+    // Sort groups by number of items (descending) - same as web
+    grouped.sort((a, b) => b.items.length - a.items.length)
+
+    return {
+      groupedItems: grouped,
+      itemWidth: width,
+      numColumns: columns,
+      isMobile: mobile,
+      gap: gapValue,
     }
-    // Coi mục với currentStock = null là "còn hàng" khi isLimit = false
-    const aInStock =
-      (a.currentStock !== 0 && a.currentStock !== null) || !a.product.isLimit
-    const bInStock =
-      (b.currentStock !== 0 && b.currentStock !== null) || !b.product.isLimit
-    // Đưa các mục còn hàng lên trước
-    if (aInStock !== bInStock) {
-      return Number(bInStock) - Number(aInStock) // Còn hàng trước hết hàng
-    }
-    return 0
-  })
+  }, [catalogs?.result, menuItems])
+
+  // Memoize renderItem to avoid re-rendering items that are not needed
+  const renderItem = useCallback(({ item }: { item: IMenuItem }) => (
+    <View style={{ width: itemWidth, marginBottom: 16 }}>
+      <ClientMenuItem item={item} />
+    </View>
+  ), [itemWidth])
+
+  // Memoize keyExtractor
+  const keyExtractor = useCallback((item: IMenuItem) => item.slug, [])
 
   if (isLoading || isLoadingCatalog) {
     return (
@@ -66,34 +111,6 @@ export function ClientMenus({ menu, isLoading }: IClientMenuProps) {
     )
   }
 
-  // Group items by catalog (same logic as web)
-  const groupedItems =
-    catalogs?.result?.map((catalog) => ({
-      catalog,
-      items: menuItems.filter(
-        (item) => item.product.catalog.slug === catalog.slug,
-      ),
-    })) || []
-
-  // Sort groups by number of items (descending) - same as web
-  groupedItems.sort((a, b) => b.items.length - a.items.length)
-
-  // Calculate item width based on screen size (similar to web grid-cols-4 on lg)
-  const screenWidth = Dimensions.get('window').width
-  const padding = 32 // px-4 * 2 = 16 * 2 = 32
-  const gap = 16
-  const isMobile = screenWidth < 768
-  const numColumns = isMobile ? 1 : 4
-  const itemWidth = isMobile 
-    ? screenWidth - padding 
-    : (screenWidth - padding - (numColumns - 1) * gap) / numColumns
-
-  const renderItem = ({ item }: { item: IMenuItem }) => (
-    <View style={{ width: itemWidth, marginBottom: 16 }}>
-      <ClientMenuItem item={item} />
-    </View>
-  )
-
   return (
     <View>
       {groupedItems.length > 0 ? (
@@ -110,11 +127,22 @@ export function ClientMenus({ menu, isLoading }: IClientMenuProps) {
               <FlatList
                 data={group.items}
                 renderItem={renderItem}
-                keyExtractor={(item) => item.slug}
+                keyExtractor={keyExtractor}
                 numColumns={numColumns}
                 scrollEnabled={false}
                 columnWrapperStyle={!isMobile ? { gap } : undefined}
                 ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
+                // Performance optimizations for POS/Kiosk
+                removeClippedSubviews={true}
+                initialNumToRender={8}
+                maxToRenderPerBatch={8}
+                windowSize={5}
+                updateCellsBatchingPeriod={50}
+                getItemLayout={isMobile ? undefined : (_, index) => ({
+                  length: itemWidth + 16, // itemWidth + marginBottom
+                  offset: (itemWidth + 16) * Math.floor(index / numColumns),
+                  index,
+                })}
               />
             </View>
           )
@@ -128,5 +156,5 @@ export function ClientMenus({ menu, isLoading }: IClientMenuProps) {
       )}
     </View>
   )
-}
+})
 

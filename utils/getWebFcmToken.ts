@@ -96,15 +96,15 @@
 //     // ⚠️ Check nếu app không có projectId
 //     if (!existingApp.options?.projectId) {
       
-//       // ✅ Reset để force reinitialize
+//       // Reset to force reinitialize
 //       if (messagingInstance) {
 //         console.warn('[getWebFcmToken] Resetting messaging instance due to missing projectId')
 //         messagingInstance = null
 //       }
       
-//       // ❌ Không thể dùng app không có projectId
+//       // Cannot use app without projectId
 //       // Firebase không cho phép delete default app, và không thể tạo app mới nếu đã có default app
-//       // Return null để caller biết cần reset
+//       // Return null to caller to know they need to reset
 //       console.error(
 //         '[getWebFcmToken] ❌ Cannot proceed: Existing app has no projectId. Please reset and reload.',
 //       )
@@ -123,13 +123,13 @@
 //         },
 //       )
       
-//       // ✅ Reset messaging instan  ce để force reinitialize với app hiện tại
+//       // Reset messaging instance to force reinitialize with current app
 //       if (messagingInstance) {
 //         console.warn('[getWebFcmToken] Resetting messaging instance due to project ID conflict')
 //         messagingInstance = null
 //       }
       
-//       // ⚠️ Vẫn dùng app hiện tại vì Firebase không cho phép delete app
+//       // Still using current app because Firebase doesn't allow deleting app
 //       // Nhưng cảnh báo rõ ràng rằng token có thể không hoạt động
 //       console.warn(
 //         '[getWebFcmToken] ⚠️ Using existing app with different project ID. Token may not work correctly.',
@@ -143,7 +143,7 @@
 //   }
 
 //   try {
-//     // Log config trước khi initialize để debug
+//     // Log config before initialize to debug
 //     firebaseApp = initializeApp(config)
     
 //     if (!firebaseApp.options?.projectId || firebaseApp.options.projectId !== config.projectId) {
@@ -285,7 +285,7 @@
 //  * @returns Promise<string | null> FCM token or null if failed
 //  */
 // export async function getWebFcmToken(): Promise<string | null> {
-//   // ✅ Check platform first - only for web
+//   // Check platform first - only for web
 //   if (Capacitor.isNativePlatform()) {
 //     console.error('[getWebFcmToken] ❌ Not a web platform')
 //     return null

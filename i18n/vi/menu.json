@@ -333,7 +333,9 @@
     "deliveryAddress": "Địa chỉ giao hàng",
     "deliveryPhone": "Số điện thoại giao hàng",
     "deliveryFee": "Phí giao hàng",
-    "callCustomerToGetOrder": "Gọi khách đến lấy đơn"
+    "callCustomerToGetOrder": "Gọi khách đến lấy đơn",
+    "wifi": "WiFi",
+    "wifiInfo": "Vui lòng liên hệ nhân viên để được hỗ trợ"
   },
   "paymentMethod": {
     "bankTransfer": "Chuyển khoản ngân hàng",

@@ -43,7 +43,7 @@
 //     return
 //   }
 
-//   // ✅ Dùng Deep Link Handler để xử lý thống nhất
+//   // Use Deep Link Handler to handle navigation
 //   if (Capacitor.isNativePlatform()) {
 //     // Register callback nếu chưa có
 //     deepLinkHandler.registerNavigationCallback(navigate)

@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router'
 import { Clock, Loader2, MapPin, Notebook, Phone, Receipt, ShoppingCart, User } from 'lucide-react-native'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Text, View } from 'react-native'
+import { Text, useColorScheme, View } from 'react-native'
 
 import {
   Badge,
@@ -11,7 +11,7 @@ import {
   ScrollArea,
 } from '@/components/ui'
 
-import { PHONE_NUMBER_REGEX, Role, ROUTE } from '@/constants'
+import { colors, PHONE_NUMBER_REGEX, Role, ROUTE } from '@/constants'
 import { useCreateOrder, useCreateOrderWithoutLogin } from '@/hooks'
 import { IOrderingData, useBranchStore, useOrderFlowStore, useUpdateOrderStore, useUserStore } from '@/stores'
 import { ICreateOrderRequest, OrderTypeEnum } from '@/types'
@@ -35,6 +35,9 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
   const [isOpen, setIsOpen] = useState(false)
   const { getUserInfo, userInfo } = useUserStore()
   const { branch } = useBranchStore()
+
+  const isDark = useColorScheme() === 'dark'
+  const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
   const order = orderingData
 
@@ -122,7 +125,7 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
         onSuccess: (data) => {
           onSuccess?.()
 
-          // ✅ Chuyển sang payment phase với order slug
+          // Chuyển sang payment phase với order slug
           transitionToPayment(data.result.slug)
 
           router.push(`${ROUTE.CLIENT_PAYMENT}?order=${data.result.slug}` as unknown as Parameters<typeof router.push>[0])
@@ -140,7 +143,7 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
       <Dialog.Trigger>
         <Button
           disabled={disabled || isPending || isPendingWithoutLogin}
-          className="flex items-center w-full text-sm rounded-full"
+          className="flex items-center w-full text-sm rounded-full bg-primary"
           onPress={() => setIsOpen(true)}
         >
           {(isPending || isPendingWithoutLogin) && <Loader2 size={16} color="#6b7280" />}
@@ -163,8 +166,8 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
           <Dialog.Header className="p-4">
           <View className="pb-2 border-b border-gray-200 dark:border-gray-700">
             <View className="flex-row gap-2 items-center">
-              <View className="flex justify-center items-center p-1 w-8 h-8 rounded-lg bg-red-600/20">
-                <ShoppingCart size={16} color="#dc2626" />
+              <View className="flex justify-center items-center p-1 w-8 h-8 rounded-lg bg-primary/20">
+                <ShoppingCart size={16} color={primaryColor} />
               </View>
               <Dialog.Title>{t('order.create')}</Dialog.Title>
             </View>
@@ -290,12 +293,12 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
                           <Text className="mr-1 line-through text-gray-400">
                             {formatCurrency(original)}
                           </Text>
-                          <Text className="font-bold text-red-600 dark:text-red-400">
+                          <Text className="font-bold text-primary dark:text-primary">
                             {formatCurrency(finalPrice)}
                           </Text>
                         </>
                       ) : (
-                        <Text className="font-bold text-red-600 dark:text-red-400">
+                        <Text className="font-bold text-primary dark:text-primary">
                           {formatCurrency(finalPrice)}
                         </Text>
                       )}
@@ -345,7 +348,7 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
             )}
             <View className="flex-row gap-2 justify-between items-center pt-2 mt-4 w-full border-t border-gray-200 dark:border-gray-700">
               <Text className="font-semibold text-base">{t('order.totalPayment')}: </Text>
-              <Text className="text-2xl font-extrabold text-red-600 dark:text-red-400">
+              <Text className="text-2xl font-extrabold text-primary">
                 {formatCurrency(cartTotals.finalTotal + (deliveryFee?.deliveryFee || 0))}
               </Text>
             </View>
@@ -358,21 +361,25 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
               >
                 {tCommon('common.cancel')}
               </Button>
-              {(() => {
-                const isDelivery = order?.type === OrderTypeEnum.DELIVERY
-                const phoneOk = !!order?.deliveryPhone && PHONE_NUMBER_REGEX.test(order.deliveryPhone || '')
-                const createDisabled = (isPending || isPendingWithoutLogin) || (isDelivery && (!order?.deliveryAddress || !phoneOk))
-                return (
-                  <Button onPress={() => {
-                    if (order) {
-                      handleSubmit(order)
-                    }
-                  }} disabled={createDisabled}>
-                    {(isPending || isPendingWithoutLogin) && <Loader2 size={16} color="#ffffff" />}
-                    {t('order.create')}
-                  </Button>
-                )
-              })()}
+               {(() => {
+                 const isDelivery = order?.type === OrderTypeEnum.DELIVERY
+                 const phoneOk = !!order?.deliveryPhone && PHONE_NUMBER_REGEX.test(order.deliveryPhone || '')
+                 const createDisabled = (isPending || isPendingWithoutLogin) || (isDelivery && (!order?.deliveryAddress || !phoneOk))
+                 return (
+                   <Button 
+                     onPress={() => {
+                       if (order) {
+                         handleSubmit(order)
+                       }
+                     }} 
+                     disabled={createDisabled}
+                     className="bg-primary"
+                   >
+                     {(isPending || isPendingWithoutLogin) && <Loader2 size={16} color="#ffffff" />}
+                     {t('order.create')}
+                   </Button>
+                 )
+               })()}
             </View>
           </View>
         </Dialog.Footer>

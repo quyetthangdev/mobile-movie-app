@@ -23,7 +23,7 @@ export default function DeleteAllCartDialog() {
         <Button
           variant="destructive"
           onPress={() => setIsOpen(true)}
-          className="h-14 rounded-md"
+          className="rounded-md"
         >
           <View className="flex-row items-center justify-center gap-2">
             <Trash2 size={20} color="#fff" />

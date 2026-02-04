@@ -28,7 +28,7 @@ interface IClientMenuItemProps {
  * <ClientMenuItem item={menuItem} onAddToCart={handleAddToCart} />
  * ```
  */
-export function ClientMenuItem({ item }: IClientMenuItemProps) {
+export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClientMenuItemProps) {
   const { t } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
   const router = useRouter()
@@ -316,5 +316,5 @@ export function ClientMenuItem({ item }: IClientMenuItemProps) {
       )}
     </View>
   )
-}
+})
 

@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import { Tabs, usePathname, useRouter } from 'expo-router'
 import { Gift, Home, Menu, ShoppingCart, User } from 'lucide-react-native'
-import React from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, Text, TouchableOpacity, View, useColorScheme } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,58 +18,61 @@ const PILL_BAR_CONFIG = {
   BORDER_RADIUS: 20,
 } as const
 
-const Layout = () => {
+const Layout = React.memo(() => {
   const { t } = useTranslation('tabs')
   const router = useRouter()
   const pathname = usePathname()
   const isDark = useColorScheme() === 'dark'
-  const { getCartItems } = useOrderFlowStore()
-  const insets = useSafeAreaInsets()
   
-  // ============================================================================
-  // CART LOGIC
-  // ============================================================================
-  const currentCartItems = getCartItems()
-  const cartItemCount =
-    currentCartItems?.orderItems?.reduce(
+  // Performance optimize Zustand selector: chỉ subscribe cart count, không subscribe toàn bộ store
+  const cartItemCount = useOrderFlowStore((state) => {
+    const cartItems = state.getCartItems()
+    return cartItems?.orderItems?.reduce(
       (total, item) => total + (item.quantity || 0),
       0,
     ) || 0
-
+  })
+  
+  const insets = useSafeAreaInsets()
+  
   // ============================================================================
-  // THEME COLORS
+  // THEME COLORS - Memoize to avoid re-calculating
   // ============================================================================
-  const colors = getThemeColor(isDark)
+  const colors = useMemo(() => getThemeColor(isDark), [isDark])
   const primaryColor = colors.primary
   const backgroundColor = colors.background
-  const borderColor = colors.border
+  // const borderColor = colors.border
 
   // ============================================================================
-  // ACTIVE TAB DETECTION
+  // ACTIVE TAB DETECTION - Memoize to avoid re-calculating
   // ============================================================================
-  const isMenuActive = 
-    pathname === '/menu' || 
-    pathname === '/(tabs)/menu' ||
-    pathname?.startsWith('/menu')
-  const isGiftCardActive = 
-    pathname === '/gift-card' || 
-    pathname === '/(tabs)/gift-card' || 
-    pathname?.includes('/gift-card')
-  const isProfileActive = 
-    pathname === '/profile' || 
-    pathname === '/(tabs)/profile' ||
-    pathname?.startsWith('/profile')
-  const isHomeActive = !isMenuActive && !isGiftCardActive && !isProfileActive
+  const { isMenuActive, isGiftCardActive, isProfileActive, isHomeActive } = useMemo(() => {
+    const menuActive = 
+      pathname === '/menu' || 
+      pathname === '/(tabs)/menu' ||
+      pathname?.startsWith('/menu')
+    const giftCardActive = 
+      pathname === '/gift-card' || 
+      pathname === '/(tabs)/gift-card' || 
+      pathname?.includes('/gift-card')
+    const profileActive = 
+      pathname === '/profile' || 
+      pathname === '/(tabs)/profile' ||
+      pathname?.startsWith('/profile')
+    const homeActive = !menuActive && !giftCardActive && !profileActive
+    
+    return { isMenuActive: menuActive, isGiftCardActive: giftCardActive, isProfileActive: profileActive, isHomeActive: homeActive }
+  }, [pathname])
 
-  const getTabColor = (isActive: boolean) => {
+  const getTabColor = useCallback((isActive: boolean) => {
     return isActive ? primaryColor : colors.mutedForeground
-  }
+  }, [primaryColor, colors.mutedForeground])
 
 
   // ============================================================================
-  // RENDER HELPERS
+  // RENDER HELPERS - Memoize callbacks
   // ============================================================================
-  const renderTabIcon = (
+  const renderTabIcon = useCallback((
     IconComponent: React.ComponentType<{ color: string; size: number }>,
     isActive: boolean
   ) => {
@@ -81,20 +84,33 @@ const Layout = () => {
         />
       </View>
     )
-  }
+  }, [getTabColor])
+
+  // Memoize navigation handlers to avoid re-render
+  const handleHomePress = useCallback(() => router.push('/(tabs)/home'), [router])
+  const handleMenuPress = useCallback(() => router.push('/(tabs)/menu'), [router])
+  const handleGiftCardPress = useCallback(() => router.push('/(tabs)/gift-card'), [router])
+  const handleProfilePress = useCallback(() => router.push('/(tabs)/profile'), [router])
+  const handleCartPress = useCallback(() => router.push(ROUTE.CLIENT_CART), [router])
 
   // ============================================================================
-  // DIMENSIONS
+  // DIMENSIONS - Memoize to avoid re-calculating
   // ============================================================================
-  const pillBarHeight = 48
-  const bottomBarPadding = 8
-  const bottomBarTotalHeight = pillBarHeight + bottomBarPadding + insets.bottom
-  const fadeHeight = 80
-  const backgroundHeight = bottomBarTotalHeight - 36
+  const { fadeHeight, backgroundHeight } = useMemo(() => {
+    const height = 48
+    const padding = 8
+    const totalHeight = height + padding + insets.bottom
+    const fade = 80
+    const bgHeight = totalHeight - 36
+    return {
+      fadeHeight: fade,
+      backgroundHeight: bgHeight,
+    }
+  }, [insets.bottom])
 
   return (
     <View className="flex-1">
-      {/* Solid background - only covers the bottom bar area */}
+      {/* Solid background - only covers the bottom bar area, white to blend with navigation bar */}
       <View
         style={{
           position: 'absolute',
@@ -102,12 +118,12 @@ const Layout = () => {
           left: 0,
           right: 0,
           height: backgroundHeight,
-          backgroundColor: backgroundColor,
+          backgroundColor: '#ffffff',
           zIndex: 5,
         }}
       />
 
-      {/* Gradient Overlay - fades from bottom bar upward */}
+      {/* Gradient Overlay - fades from bottom bar upward, blending with white navigation bar */}
       <View
         style={{
           position: 'absolute',
@@ -122,13 +138,13 @@ const Layout = () => {
         <LinearGradient
           colors={[
             'transparent',
-            hexToRgba(colors.background, 0.05),
-            hexToRgba(colors.background, 0.15),
-            hexToRgba(colors.background, 0.3),
-            hexToRgba(colors.background, 0.5),
-            hexToRgba(colors.background, 0.7),
-            hexToRgba(colors.background, 0.9),
-            colors.background,
+            hexToRgba('#ffffff', 0.05),
+            hexToRgba('#ffffff', 0.15),
+            hexToRgba('#ffffff', 0.3),
+            hexToRgba('#ffffff', 0.5),
+            hexToRgba('#ffffff', 0.7),
+            hexToRgba('#ffffff', 0.9),
+            '#ffffff',
           ]}
           locations={[0, 0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 1]}
           style={{ flex: 1 }}
@@ -187,20 +203,20 @@ const Layout = () => {
             alignItems: 'center',
             backgroundColor: backgroundColor,
             paddingHorizontal: PILL_BAR_CONFIG.PADDING_HORIZONTAL,
-            paddingVertical: 6,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 8,
-            borderWidth: 1,
-            borderColor: borderColor,
+            paddingVertical: 8,
+            shadowColor: colors.mutedForeground,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.01,
+            shadowRadius: 16,
+            elevation: 24,
+            borderWidth: 0,
+            // borderColor: borderColor,
             position: 'relative',
           }}
         >
           {/* Home Tab */}
           <Pressable
-            onPress={() => router.push('/(tabs)/home')}
+            onPress={handleHomePress}
             className="flex-1 items-center justify-center py-1"
           >
             {renderTabIcon(Home, isHomeActive)}
@@ -211,7 +227,7 @@ const Layout = () => {
 
           {/* Menu Tab */}
           <Pressable
-            onPress={() => router.push('/(tabs)/menu')}
+            onPress={handleMenuPress}
             className="flex-1 items-center justify-center py-1"
           >
             {renderTabIcon(Menu, isMenuActive)}
@@ -222,7 +238,7 @@ const Layout = () => {
 
           {/* Gift Card Tab */}
           <Pressable
-            onPress={() => router.push('/(tabs)/gift-card')}
+            onPress={handleGiftCardPress}
             className="flex-1 items-center justify-center py-1"
           >
             {renderTabIcon(Gift, isGiftCardActive)}
@@ -233,7 +249,7 @@ const Layout = () => {
 
           {/* Profile Tab */}
           <Pressable
-            onPress={() => router.push('/(tabs)/profile')}
+            onPress={handleProfilePress}
             className="flex-1 items-center justify-center py-1"
           >
             {renderTabIcon(User, isProfileActive)}
@@ -245,40 +261,42 @@ const Layout = () => {
 
         {/* Floating Cart Button */}
         <TouchableOpacity
-          onPress={() => router.push(ROUTE.CLIENT_CART)}
+          onPress={handleCartPress}
           style={{
             width: 64,
             height: 64,
             borderRadius: 32,
             backgroundColor: primaryColor,
+            borderWidth: 0,
+            // borderColor: primaryColor,
             alignItems: 'center',
             justifyContent: 'center',
             shadowColor: primaryColor,
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
             elevation: 8,
           }}
         >
-          <ShoppingCart size={28} color="#ffffff" />
+          <ShoppingCart size={24} color="#ffffff" />
           {cartItemCount > 0 && (
             <View
               style={{
                 position: 'absolute',
-                top: 4,
-                right: 4,
-                minWidth: 20,
-                height: 20,
-                borderRadius: 10,
-                backgroundColor: '#ffffff',
+                top: -4,
+                right: -4,
+                minWidth: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: '#ef4444',
                 borderWidth: 2,
-                borderColor: primaryColor,
+                borderColor: '#ffffff',
                 alignItems: 'center',
                 justifyContent: 'center',
-                paddingHorizontal: 4,
+                paddingHorizontal: 5,
               }}
             >
-              <Text style={{ color: primaryColor, fontSize: 10, fontWeight: 'bold' }}>
+              <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
                 {cartItemCount > 99 ? '99+' : cartItemCount}
               </Text>
             </View>
@@ -287,6 +305,8 @@ const Layout = () => {
       </View>
     </View>
   )
-}
+})
+
+Layout.displayName = 'TabsLayout'
 
 export default Layout

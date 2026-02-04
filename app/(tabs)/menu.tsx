@@ -131,7 +131,7 @@ export default function ClientMenuPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <SafeAreaView className="flex-1 pb-12" edges={['top']}>
       {/* Header */}
       <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
         {/* Left side: Logo */}

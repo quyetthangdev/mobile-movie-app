@@ -46,7 +46,7 @@ export const useUserStore = create<IUserStore>()(
       clearUserData: () => {
         set({
           userInfo: null,
-          deviceToken: null, // ✅ Clear device token khi logout
+          deviceToken: null, // Clear device token when logout
           emailVerificationStatus: null,
           phoneNumberVerificationStatus: null,
           isVerifyingEmail: false,

@@ -1,6 +1,14 @@
 import { AlertCircle, CheckCircle, Info, XCircle } from 'lucide-react-native'
-import { useEffect, useMemo } from 'react'
-import { Animated, StyleSheet, Text, View } from 'react-native'
+import React, { useEffect } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ToastData {
@@ -16,51 +24,49 @@ interface ToastItemProps {
   onHide: (id: string) => void
 }
 
-function ToastItem({ toast, onHide }: ToastItemProps) {
-  const translateY = useMemo(() => new Animated.Value(-100), [])
-  const opacity = useMemo(() => new Animated.Value(0), [])
+const ToastItem = React.memo(function ToastItem({ toast, onHide }: ToastItemProps) {
+  // Shared values for UI thread animations
+  const translateY = useSharedValue(-100)
+  const opacity = useSharedValue(0)
   const insets = useSafeAreaInsets()
 
   useEffect(() => {
     // Reset values
-    translateY.setValue(-100)
-    opacity.setValue(0)
+    translateY.value = -100
+    opacity.value = 0
 
-    // Animation vào - từ trên xuống
-    Animated.parallel([
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start()
+    // Animation vào - từ trên xuống (UI thread)
+    // Optimized for POS: smooth and clear (250ms)
+    translateY.value = withSpring(0, {
+      damping: 20,
+      stiffness: 300,
+      mass: 0.5,
+    })
+    opacity.value = withTiming(1, {
+      duration: 250,
+      easing: Easing.out(Easing.ease),
+    })
 
     // Tự động ẩn sau duration
     const timer = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: -100,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        onHide(toast.id)
+      translateY.value = withTiming(-100, {
+        duration: 250,
+        easing: Easing.in(Easing.ease),
+      })
+      opacity.value = withTiming(0, {
+        duration: 250,
+        easing: Easing.in(Easing.ease),
+      }, (finished) => {
+        // Callback runs after animation completes
+        if (finished) {
+          runOnJS(onHide)(toast.id)
+        }
       })
     }, toast.duration * 1000)
 
     return () => clearTimeout(timer)
-  }, [toast.id, toast.duration, onHide, translateY, opacity])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast.id, toast.duration, onHide])
 
 //   const getToastStyle = () => {
 //     switch (toast.type) {
@@ -101,15 +107,23 @@ function ToastItem({ toast, onHide }: ToastItemProps) {
     }
   }
 
+  // Animated style running on UI thread
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      transform: [{ translateY: translateY.value }],
+      opacity: opacity.value,
+    }
+  })
+
   return (
     <Animated.View
       style={[
         styles.toastContainer,
         {
           top: insets.top + 10,
-          transform: [{ translateY }],
-          opacity,
         },
+        animatedStyle,
       ]}
       className="pointer-events-none"
     >
@@ -123,7 +137,7 @@ function ToastItem({ toast, onHide }: ToastItemProps) {
       </View>
     </Animated.View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   toastContainer: {

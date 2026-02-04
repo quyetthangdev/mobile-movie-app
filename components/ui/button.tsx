@@ -79,7 +79,7 @@ export const Button = React.forwardRef<
       )}
       {...rest}
     >
-      {      loading ? (
+      {loading ? (
         <ActivityIndicator 
           color={
             variant === 'secondary' ? '#000' : 
@@ -87,23 +87,31 @@ export const Button = React.forwardRef<
             '#fff'
           } 
         />
-      ) : React.isValidElement(children) ||
-        (Array.isArray(children) &&
-          children.some((child: unknown) => React.isValidElement(child))) ? (
-        typeof children === 'function' ? (
-          (children as (props: { pressed: boolean }) => React.ReactNode)({
-            pressed: false,
-          })
-        ) : (
-          children
-        )
+      ) : typeof children === 'function' ? (
+        (children as (props: { pressed: boolean }) => React.ReactNode)({
+          pressed: false,
+        })
+      ) : Array.isArray(children) ? (
+        <>
+          {children.map((child: React.ReactNode, index: number) => {
+            if (React.isValidElement(child)) {
+              return <React.Fragment key={index}>{child}</React.Fragment>
+            }
+            if (typeof child === 'string' || typeof child === 'number') {
+              return (
+                <Text key={index} className={cn(textVariants({ variant, size }))}>
+                  {child}
+                </Text>
+              )
+            }
+            return null
+          })}
+        </>
+      ) : React.isValidElement(children) ? (
+        children
       ) : (
         <Text className={cn(textVariants({ variant, size }))}>
-          {typeof children === 'function'
-            ? (children as (props: { pressed: boolean }) => React.ReactNode)({
-                pressed: false,
-              })
-            : children}
+          {children}
         </Text>
       )}
     </Pressable>

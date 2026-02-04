@@ -13,6 +13,7 @@ import {
   IVoucher,
   IVoucherProduct,
 } from '@/types'
+import { asyncStorage } from '@/utils/storage'
 
 // Transform IOrderItem to IOrderDetail for calculation compatibility
 export function transformOrderItemToOrderDetail(
@@ -53,35 +54,50 @@ export function transformOrderItemToOrderDetail(
   }))
 }
 
-export const setupAutoClearCart = () => {
+/**
+ * Setup auto clear cart based on expiration time
+ * Sử dụng AsyncStorage thay vì localStorage để tương thích với React Native
+ * 
+ * @returns Promise<void>
+ */
+export const setupAutoClearCart = async (): Promise<void> => {
   const { clearCart, getCartItems } = useCartItemStore.getState()
   const cartItems = getCartItems()
 
   if (cartItems) {
-    // Check if cart should be cleared
-    const expirationTime = localStorage.getItem('cart-expiration-time')
-    if (expirationTime && moment().valueOf() > parseInt(expirationTime)) {
-      clearCart()
-      localStorage.removeItem('cart-expiration-time')
-      return
-    }
-
-    // Set new expiration time if not exists
-    if (!expirationTime) {
-      const tomorrow = moment().add(1, 'day').startOf('day')
-      localStorage.setItem(
-        'cart-expiration-time',
-        tomorrow.valueOf().toString(),
-      )
-    }
-
-    // Set timeout for current session
-    const timeUntilExpiration = parseInt(expirationTime!) - moment().valueOf()
-    if (timeUntilExpiration > 0) {
-      setTimeout(() => {
+    try {
+      // Check if cart should be cleared
+      const expirationTime = await asyncStorage.getItem('cart-expiration-time')
+      if (expirationTime && moment().valueOf() > parseInt(expirationTime)) {
         clearCart()
-        localStorage.removeItem('cart-expiration-time')
-      }, timeUntilExpiration)
+        await asyncStorage.removeItem('cart-expiration-time')
+        return
+      }
+
+      // Set new expiration time if not exists
+      if (!expirationTime) {
+        const tomorrow = moment().add(1, 'day').startOf('day')
+        await asyncStorage.setItem(
+          'cart-expiration-time',
+          tomorrow.valueOf().toString(),
+        )
+      }
+
+      // Set timeout for current session
+      const timeUntilExpiration = parseInt(expirationTime || '0') - moment().valueOf()
+      if (timeUntilExpiration > 0) {
+        setTimeout(async () => {
+          try {
+            clearCart()
+            await asyncStorage.removeItem('cart-expiration-time')
+          } catch (error) {
+            throw new Error(`Error clearing cart expiration: ${error}`)
+          }
+        }, timeUntilExpiration)
+      }
+    } catch (error) {
+      throw new Error(`Error setting up auto clear cart: ${error}`)
+      // Không throw error để không làm gián đoạn flow chính
     }
   }
 }

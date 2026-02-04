@@ -4,6 +4,7 @@ export * from './banner.constant';
 export * from './card-order.constant';
 export * from './chef-area.constant';
 export * from './coin-policy.constant';
+export * from './colors.constant';
 export * from './enu.constant';
 export * from './env';
 export * from './filter.constant';

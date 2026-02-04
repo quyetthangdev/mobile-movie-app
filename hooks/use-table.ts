@@ -1,11 +1,11 @@
 import {
-  getAllTables,
-  createTable,
-  updateTable,
-  deleteTable,
-  updateTableStatus,
-  getAllLocations,
   createMultipleTables,
+  createTable,
+  deleteTable,
+  getAllLocations,
+  getAllTables,
+  updateTable,
+  updateTableStatus,
 } from '@/api'
 import { QUERYKEY } from '@/constants'
 import {
@@ -20,6 +20,10 @@ export const useTables = (branch?: string) => {
   return useQuery({
     queryKey: [QUERYKEY.tables, branch],
     queryFn: async () => getAllTables(branch as string),
+    enabled: !!branch, // Chỉ fetch khi có branch
+    staleTime: 60 * 1000, // Cache 1 phút (lâu hơn default 30s)
+    refetchOnMount: false, // Không refetch khi component mount lại (tránh refetch khi mở dropdown)
+    refetchOnWindowFocus: false, // Đã có trong defaultOptions nhưng set lại để chắc chắn
   })
 }
 

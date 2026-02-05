@@ -1,13 +1,15 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { ArrowLeft, Package } from 'lucide-react-native'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, FlatList, Image, type ImageSourcePropType, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { FlatList, Image, type ImageSourcePropType, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { getOrderBySlug } from '@/api'
 import { Images } from '@/assets/images'
 import { CancelOrderDialog } from '@/components/dialog'
-import { Badge, Button } from '@/components/ui'
+import { Badge, Button, Skeleton } from '@/components/ui'
 import { APPLICABILITY_RULE, colors, publicFileURL, ROUTE, VOUCHER_TYPE } from '@/constants'
 import { useOrders } from '@/hooks'
 import { cn } from '@/lib/utils'
@@ -19,6 +21,7 @@ export default function OrderHistoryPage() {
   const { t } = useTranslation('menu')
   const { t: tProfile } = useTranslation('profile')
   const router = useRouter()
+  const queryClient = useQueryClient()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
@@ -43,11 +46,27 @@ export default function OrderHistoryPage() {
   const currentPage = orderResponse?.page || 1
   const totalPages = orderResponse?.totalPages || 0
 
-  const handleViewDetail = (orderSlug: string) => {
-    router.push(`${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug)}` as Parameters<typeof router.push>[0])
-  }
+  // Memoize callbacks
+  const handleViewDetail = useCallback(
+    (orderSlug: string) => {
+      // Prefetch order detail to speed up navigation to payment page
+      if (orderSlug) {
+        queryClient.prefetchQuery({
+          queryKey: ['order', orderSlug],
+          queryFn: () => getOrderBySlug(orderSlug),
+        })
+      }
 
-  const handleUpdateOrder = (order: IOrder) => {
+      router.push(
+        `${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug)}` as Parameters<
+          typeof router.push
+        >[0],
+      )
+    },
+    [queryClient, router],
+  )
+
+  const handleUpdateOrder = useCallback((order: IOrder) => {
     if (!getUserInfo()?.slug) {
       showErrorToast(1042)
       router.push(ROUTE.LOGIN as Parameters<typeof router.push>[0])
@@ -55,9 +74,10 @@ export default function OrderHistoryPage() {
     }
     setOrderItems(order)
     // TODO: Navigate to update order page
-  }
+  }, [router, setOrderItems, getUserInfo])
 
-  const getStatusBadgeColor = (status: OrderStatus) => {
+  // Memoize getStatusBadgeColor to use in renderOrderItem
+  const getStatusBadgeColor = useCallback((status: OrderStatus) => {
     switch (status) {
       case OrderStatus.PENDING:
         return 'bg-yellow-500 dark:bg-yellow-900/30'
@@ -72,9 +92,10 @@ export default function OrderHistoryPage() {
       default:
         return 'bg-gray-500 dark:bg-gray-800'
     }
-  }
+  }, [])
 
-  const getStatusTextColor = (status: OrderStatus) => {
+  // Memoize getStatusTextColor to use in renderOrderItem
+  const getStatusTextColor = useCallback((status: OrderStatus) => {
     switch (status) {
       case OrderStatus.PENDING:
         return 'text-white'
@@ -89,9 +110,10 @@ export default function OrderHistoryPage() {
       default:
         return 'text-white'
     }
-  }
+  }, [])
 
-  const getStatusLabel = (status: OrderStatus) => {
+  // Memoize getStatusLabel to use in renderOrderItem
+  const getStatusLabel = useCallback((status: OrderStatus) => {
     switch (status) {
       case OrderStatus.PENDING:
         return t('order.pending', 'Chờ xử lý')
@@ -106,9 +128,10 @@ export default function OrderHistoryPage() {
       default:
         return status
     }
-  }
+  }, [t, tProfile])
 
-  const renderOrderItem = ({ item: orderItem }: { item: IOrder }) => {
+  // Memoize renderItem to avoid re-create each render
+  const renderOrderItem = useCallback(({ item: orderItem }: { item: IOrder }) => {
     const orderItems = orderItem.orderItems || []
     const voucher = orderItem.voucher || null
     const displayItems = calculateOrderItemDisplay(orderItems, voucher)
@@ -326,17 +349,54 @@ export default function OrderHistoryPage() {
         </View>
       </View>
     )
-  }
+  }, [t, handleUpdateOrder, handleViewDetail, getStatusLabel, primaryColor, getStatusBadgeColor, getStatusTextColor])
 
   if (isPending && page === 1) {
     return (
-      <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={primaryColor} />
-          <Text className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            {t('order.loading', 'Đang tải...')}
-          </Text>
+      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top', 'bottom']}>
+        {/* Header skeleton */}
+        <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
+          <Skeleton className="w-6 h-6 rounded-full mr-3" />
+          <Skeleton className="h-5 w-40 rounded-md" />
         </View>
+
+        {/* List skeleton */}
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+          {[1, 2, 3].map((key) => (
+            <View
+              key={key}
+              className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4"
+            >
+              {/* Header */}
+              <View className="flex-row items-center justify-between mb-4">
+                <Skeleton className="h-3 w-32 rounded-md" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+              </View>
+
+              {/* Items */}
+              <View className="flex-row gap-3 mb-4">
+                <Skeleton className="w-16 h-16 rounded-md" />
+                <View className="flex-1 gap-2">
+                  <Skeleton className="h-4 w-40 rounded-md mb-1" />
+                  <Skeleton className="h-3 w-24 rounded-md mb-1" />
+                  <Skeleton className="h-4 w-28 rounded-md" />
+                </View>
+              </View>
+
+              {/* Summary */}
+              <View className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <View className="flex-row justify-between mb-2">
+                  <Skeleton className="h-3 w-24 rounded-md" />
+                  <Skeleton className="h-3 w-20 rounded-md" />
+                </View>
+                <View className="flex-row justify-between">
+                  <Skeleton className="h-4 w-28 rounded-md" />
+                  <Skeleton className="h-4 w-24 rounded-md" />
+                </View>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
       </SafeAreaView>
     )
   }
@@ -399,6 +459,12 @@ export default function OrderHistoryPage() {
           keyExtractor={(item) => item.slug}
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
+          // Performance optimizations
+          initialNumToRender={10}
+          windowSize={5}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews={true}
           ListFooterComponent={
             totalPages > 1 ? (
               <View className="flex-row items-center justify-center gap-4 mt-4">

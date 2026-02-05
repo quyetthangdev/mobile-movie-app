@@ -22,6 +22,7 @@ export * from './request.store'
 export * from './selected-chef-order.store'
 export * from './selected-order.store'
 export * from './theme.store'
+export * from './ui.store'
 export * from './update-order.store'
 export * from './user.store'
 

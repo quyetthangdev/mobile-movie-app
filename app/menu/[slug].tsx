@@ -3,13 +3,13 @@ import { ArrowLeft, ShoppingBag, ShoppingCart } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
 import NonPropQuantitySelector from '@/components/button/non-prop-quantity-selector'
 import { ProductImageCarousel, SliderRelatedProducts } from '@/components/menu'
-import { Badge, Button } from '@/components/ui'
+import { Badge, Button, Skeleton } from '@/components/ui'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
 import { useSpecificMenuItem } from '@/hooks'
 import { useOrderFlowStore, useUserStore } from '@/stores'
@@ -100,10 +100,41 @@ export default function MenuItemDetailPage() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#e50914" />
-          <Text className="mt-4 text-gray-600 dark:text-gray-400">Đang tải...</Text>
+        {/* Header skeleton */}
+        <View className="flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <Skeleton className="w-8 h-8 rounded-full mr-3" />
+          <Skeleton className="h-5 w-48 rounded-md" />
         </View>
+
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <View className="px-4 py-4 gap-6">
+            {/* Image skeleton */}
+            <Skeleton className="w-full h-56 rounded-2xl" />
+
+            {/* Title & price skeleton */}
+            <View className="gap-3">
+              <Skeleton className="h-5 w-3/4 rounded-md" />
+              <Skeleton className="h-4 w-1/2 rounded-md" />
+              <Skeleton className="h-4 w-1/3 rounded-md" />
+            </View>
+
+            {/* Quantity & button skeleton */}
+            <View className="flex-row items-center justify-between gap-4 mt-4">
+              <Skeleton className="h-10 w-28 rounded-full" />
+              <Skeleton className="h-11 flex-1 rounded-full" />
+            </View>
+
+            {/* Related products skeleton */}
+            <View className="mt-6 gap-3">
+              <Skeleton className="h-4 w-32 rounded-md" />
+              <View className="flex-row gap-3">
+                <Skeleton className="h-28 w-28 rounded-xl" />
+                <Skeleton className="h-28 w-28 rounded-xl" />
+                <Skeleton className="h-28 w-28 rounded-xl" />
+              </View>
+            </View>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     )
   }

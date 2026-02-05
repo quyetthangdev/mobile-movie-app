@@ -1,8 +1,9 @@
 import _ from 'lodash'
-import { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 // import Joyride from 'react-joyride';
 import { useRouter } from 'expo-router'
 import {
+  ArrowLeft,
   ChevronRight,
   CircleAlert,
   ShoppingCartIcon,
@@ -12,12 +13,11 @@ import { Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
-import { SelectBranchDropdown } from '@/components/branch'
 import { QuantitySelector } from '@/components/button'
 import {
   CreateOrderDialog,
   DeleteAllCartDialog,
-  DeleteCartItemDialog, LogoutDialog, SettingsDropdown, UserAvatarDropdown
+  DeleteCartItemDialog,
 } from '@/components/dialog'
 import { ProductVariantDropdown } from '@/components/dropdown'
 import { CartNoteInput, OrderNoteInput } from '@/components/input'
@@ -27,6 +27,7 @@ import {
   TableSelect,
   TableSelectSheet,
 } from '@/components/select'
+import VoucherListDrawer from '@/components/sheet/voucher-list-drawer'
 import { Badge } from '@/components/ui'
 import {
   APPLICABILITY_RULE,
@@ -34,7 +35,7 @@ import {
   ROUTE,
   VOUCHER_TYPE,
 } from '@/constants'
-import { useAuthStore, useBranchStore, useOrderFlowStore, useUserStore } from '@/stores'
+import { useBranchStore, useOrderFlowStore, useUserStore } from '@/stores'
 import { OrderTypeEnum } from '@/types'
 import {
   calculateCartItemDisplay,
@@ -47,52 +48,64 @@ import {
 } from '@/utils'
 // import { MapAddressSelector } from './components'
 
-export default function ClientCartPage() {
+function ClientCartPage() {
   const { t } = useTranslation('menu')
   const { t: tVoucher } = useTranslation('voucher')
-  const { branch } = useBranchStore()
+  // Optimize Zustand selectors - only subscribe the necessary functions
+  const branchSlug = useBranchStore((state) => state.branch?.slug)
   const router = useRouter()
-  const userInfo = useUserStore((state) => state.userInfo)
+  const userBranchSlug = useUserStore((state) => state.userInfo?.branch?.slug)
   
-  // Calculate branchSlug for TableSelectSheet (render outside ScrollView)
-  const branchSlug = branch?.slug || userInfo?.branch?.slug || ''
-  const setLogout = useAuthStore((state) => state.setLogout)
-  const removeUserInfo = useUserStore((state) => state.removeUserInfo)
-  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
-  // const [runJoyride, setRunJoyride] = useState(false)
-  const { removeVoucher, getCartItems, addOrderingProductVariant } =
-    useOrderFlowStore()
+  // Memoize branchSlug calculation
+  const calculatedBranchSlug = useMemo(() => 
+    branchSlug || userBranchSlug || '',
+    [branchSlug, userBranchSlug]
+  )
+  
+  // Optimize store selectors - only subscribe the necessary functions
+  const removeVoucher = useOrderFlowStore((state) => state.removeVoucher)
+  const getCartItems = useOrderFlowStore((state) => state.getCartItems)
+  const addOrderingProductVariant = useOrderFlowStore((state) => state.addOrderingProductVariant)
+  
   const [isMounted] = useState(true)
 
-  const currentCartItems = getCartItems()
-  const voucherSlug = currentCartItems?.voucher?.slug
-  const voucherMaxItems = currentCartItems?.voucher?.maxItems || 0
-  const cartItemQuantity =
+  // Memoize cart items to avoid re-calculate
+  const currentCartItems = useMemo(() => getCartItems(), [getCartItems])
+  // Memoize expensive calculations
+  const voucherSlug = useMemo(() => currentCartItems?.voucher?.slug, [currentCartItems?.voucher?.slug])
+  const voucherMaxItems = useMemo(() => currentCartItems?.voucher?.maxItems || 0, [currentCartItems?.voucher?.maxItems])
+  const cartItemQuantity = useMemo(() =>
     currentCartItems?.orderItems?.reduce(
       (total, item) => total + (item.quantity || 0),
       0,
-    ) || 0
+    ) || 0,
+    [currentCartItems?.orderItems]
+  )
 
-  const displayItems = calculateCartItemDisplay(
+  const voucher = useMemo(() => currentCartItems?.voucher || null, [currentCartItems?.voucher])
+  
+  const displayItems = useMemo(() => calculateCartItemDisplay(
     currentCartItems,
-    currentCartItems?.voucher || null,
-  )
+    voucher,
+  ), [currentCartItems, voucher])
 
-  const cartTotals = calculateCartTotals(
+  const cartTotals = useMemo(() => calculateCartTotals(
     displayItems,
-    currentCartItems?.voucher || null,
-  )
+    voucher,
+  ), [displayItems, voucher])
 
+  const deliveryDistance = useMemo(() => parseKm(currentCartItems?.deliveryDistance) || 0, [currentCartItems?.deliveryDistance])
   const deliveryFee = useCalculateDeliveryFee(
-    parseKm(currentCartItems?.deliveryDistance) || 0,
-    branch?.slug || '',
+    deliveryDistance,
+    calculatedBranchSlug,
   )
 
-  const handleChangeVariant = (id: string) => {
+  // Memoize callbacks
+  const handleChangeVariant = useCallback((id: string) => {
     addOrderingProductVariant(id)
-  }
+  }, [addOrderingProductVariant])
 
-  // Kiểm tra voucher validity cho SAME_PRICE_PRODUCT
+  // Check voucher validity for SAME_PRICE_PRODUCT
   useEffect(() => {
     if (
       currentCartItems?.voucher &&
@@ -118,12 +131,12 @@ export default function ClientCartPage() {
     if (currentCartItems && currentCartItems.voucher) {
       const { voucher, orderItems } = currentCartItems
 
-      // Nếu không phải SAME_PRICE_PRODUCT thì mới cần check
+      // If not SAME_PRICE_PRODUCT, then we need to check
       const shouldCheckMinOrderValue =
         voucher.type !== VOUCHER_TYPE.SAME_PRICE_PRODUCT
 
       if (shouldCheckMinOrderValue) {
-        // Tính subtotal trực tiếp từ orderItems sau promotion, không sử dụng calculations để tránh circular dependency
+        // Calculate subtotal directly from orderItems after promotion, without using calculations to avoid circular dependency
         const subtotalAfterPromotion = orderItems.reduce((total, item) => {
           const original = item?.originalPrice
           const afterPromotion = (original || 0) - (item.promotionDiscount || 0)
@@ -153,34 +166,15 @@ export default function ClientCartPage() {
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? '#D68910' : '#F7A737' // hsl(35 70% 53%) vs hsl(35 93% 55%)
 
-  const handleLogout = () => {
-    setLogout()
-    removeUserInfo()
-  }
-
-  const handleLogoutPress = () => {
-    setIsLogoutDialogOpen(true)
-  }
-
   if (_.isEmpty(currentCartItems?.orderItems)) {
     return (
       <SafeAreaView className="flex-1" edges={['top']}>
         {/* Header */}
-        <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
-          {/* Left side: Logo */}
-          <View className="flex-row items-center">
-            <Image
-              source={Images.Brand.Logo as unknown as number}
-              className="h-8 w-28"
-              resizeMode="contain"
-            />
-          </View>
-          {/* Right side: Branch Select, Settings and Avatar with Dropdown */}
-          <View className="flex-row items-center gap-3">
-            <SelectBranchDropdown />
-            <SettingsDropdown />
-            <UserAvatarDropdown userInfo={userInfo} onLogoutPress={handleLogoutPress} />
-          </View>
+        <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
+          {/* Back button */}
+          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+            <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
+          </TouchableOpacity>
         </View>
 
         <View className="flex-1 items-center justify-center px-4">
@@ -217,13 +211,6 @@ export default function ClientCartPage() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Logout Dialog */}
-        <LogoutDialog
-          isOpen={isLogoutDialogOpen}
-          onOpenChange={setIsLogoutDialogOpen}
-          onLogout={handleLogout}
-        />
       </SafeAreaView>
     )
   }
@@ -231,20 +218,18 @@ export default function ClientCartPage() {
   return (
     <SafeAreaView className="flex-1" edges={['top']}>
       {/* Header */}
-      <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
-        {/* Left side: Logo */}
-        <View className="flex-row items-center">
+      <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
+        {/* Back button */}
+        <TouchableOpacity onPress={() => router.back()} className="absolute left-5 z-10">
+          <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
+        </TouchableOpacity>
+        {/* Logo centered */}
+        <View className="flex-1 items-center">
           <Image
             source={Images.Brand.Logo as unknown as number}
             className="h-8 w-28"
             resizeMode="contain"
           />
-        </View>
-        {/* Right side: Branch Select, Settings and Avatar with Dropdown */}
-        <View className="flex-row items-center gap-3">
-          <SelectBranchDropdown />
-          <SettingsDropdown />
-          <UserAvatarDropdown userInfo={userInfo} onLogoutPress={handleLogoutPress} />
         </View>
       </View>
 
@@ -510,7 +495,10 @@ export default function ClientCartPage() {
               </Text>
             </Badge>
           ) : (
-            <TouchableOpacity className="flex-row items-center justify-between rounded-lg bg-primary/10 px-4 py-3">
+            <TouchableOpacity
+              onPress={() => VoucherListDrawer.open()}
+              className="flex-row items-center justify-between rounded-lg bg-primary/10 px-4 py-3 active:bg-primary/20"
+            >
               <Text className="text-sm font-semibold text-primary">
                 { t('order.useVoucher', 'Sử dụng voucher') }
               </Text>
@@ -597,7 +585,7 @@ export default function ClientCartPage() {
       <SafeAreaView edges={['bottom']} className="border-t border-gray-100 bg-white shadow-lg">
         <View
           style={{
-            paddingBottom: 80,
+            paddingBottom: 30,
             paddingTop: 12,
             paddingHorizontal: 16,
           }}
@@ -631,15 +619,14 @@ export default function ClientCartPage() {
         </View>
       </SafeAreaView>
 
-      {/* Logout Dialog */}
-      <LogoutDialog
-        isOpen={isLogoutDialogOpen}
-        onOpenChange={setIsLogoutDialogOpen}
-        onLogout={handleLogout}
-      />
-
       {/* TableSelectSheet - Render at the end to ensure it's on top layer */}
-      <TableSelectSheet branchSlug={branchSlug} />
+      <TableSelectSheet branchSlug={calculatedBranchSlug} />
+      
+      {/* VoucherListDrawer - Render at the end to ensure it's on top layer */}
+      <VoucherListDrawer />
     </SafeAreaView>
   )
 }
+
+// Memoize screen component to avoid unnecessary re-render
+export default React.memo(ClientCartPage)

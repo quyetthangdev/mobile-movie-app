@@ -1,6 +1,9 @@
+import { Button, Dialog } from '@/components/ui'
+import { colors } from '@/constants'
 import { LogOut } from 'lucide-react-native'
 import React from 'react'
-import { Modal, Pressable, Text, TouchableOpacity, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import { View } from 'react-native'
 
 interface LogoutDialogProps {
   isOpen: boolean
@@ -13,59 +16,36 @@ export default function LogoutDialog({
   onOpenChange,
   onLogout,
 }: LogoutDialogProps) {
+  const { t } = useTranslation('auth')
+
   const handleConfirm = () => {
     onLogout()
     onOpenChange(false)
   }
 
   return (
-    <Modal
-      visible={isOpen}
-      transparent
-      animationType="fade"
-      onRequestClose={() => onOpenChange(false)}
-    >
-      <Pressable
-        className="flex-1 bg-black/50 items-center justify-center px-6"
-        onPress={() => onOpenChange(false)}
-      >
-        <Pressable
-          className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-xl"
-          onPress={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <View className="items-center mb-4">
-            <View className="bg-red-100 dark:bg-red-900/30 rounded-full p-3 mb-3">
-              <LogOut size={24} color="#ef4444" />
-            </View>
-            <Text className="text-gray-900 dark:text-white text-xl font-bold">
-              Đăng xuất
-            </Text>
-            <Text className="text-gray-600 dark:text-gray-400 text-center mt-2">
-              Bạn có chắc chắn muốn đăng xuất không?
-            </Text>
-          </View>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <Dialog.Content className="max-w-[22rem] rounded-md sm:max-w-[32rem]">
+        <Dialog.Header>
+          <Dialog.Title className="text-destructive flex items-center gap-2">
+            <LogOut size={20} color={colors.destructive.light} />
+            {t('logout.title')}
+          </Dialog.Title>
+          <Dialog.Description className="mt-2 text-muted-foreground">
+            {t('logout.description')}
+          </Dialog.Description>
+        </Dialog.Header>
 
-          {/* Footer */}
-          <View className="flex-row gap-3 mt-4">
-            <TouchableOpacity
-              className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-xl py-3 items-center"
-              onPress={() => onOpenChange(false)}
-            >
-              <Text className="text-gray-900 dark:text-white font-semibold">
-                Hủy
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="flex-1 bg-red-600 dark:bg-red-700 rounded-xl py-3 items-center"
-              onPress={handleConfirm}
-            >
-              <Text className="text-white font-semibold">Đăng xuất</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+        <View className="mt-6 flex flex-row justify-end gap-2">
+          <Button variant="outline" onPress={() => onOpenChange(false)}>
+            {t('logout.cancel')}
+          </Button>
+          <Button variant="destructive" onPress={handleConfirm}>
+            {t('logout.logout')}
+          </Button>
+        </View>
+      </Dialog.Content>
+    </Dialog>
   )
 }
 

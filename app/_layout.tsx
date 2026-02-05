@@ -16,10 +16,29 @@ import './global.css'
 // Enable native screens for better performance (POS/Kiosk critical)
 enableScreens(true)
 
+// ============================================================================
+// NAVIGATION TRANSITION CONFIG - Tối ưu animation chuyển trang
+// ============================================================================
+const stackScreenOptions = {
+  headerShown: false,
+  // Enable animation transitions
+  animation: Platform.select({
+    ios: 'default', // iOS native transition (mượt nhất)
+    android: 'fade_from_bottom', // Android native transition
+    default: 'default',
+  }) as 'default' | 'fade_from_bottom' | 'fade' | 'slide_from_right' | 'slide_from_left' | 'slide_from_bottom' | 'none',
+  // Animation enabled
+  animationEnabled: true,
+  // Gesture enabled for iOS swipe back
+  gestureEnabled: Platform.OS === 'ios',
+  // Presentation mode
+  presentation: 'card' as const,
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Performance optimizations for POS/Kiosk: stale time 30s, cache 5min
+      // Performance optimizations: stale time 30s, cache 5min
       staleTime: 30 * 1000,
       gcTime: 5 * 60 * 1000,
       retry: 1,
@@ -48,7 +67,7 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <I18nProvider>
               <AppToastProvider>
-                <Stack screenOptions={{ headerShown: false }} />
+                <Stack screenOptions={stackScreenOptions} />
               </AppToastProvider>
             </I18nProvider>
           </QueryClientProvider>

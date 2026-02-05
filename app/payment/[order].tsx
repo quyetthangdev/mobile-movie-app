@@ -1,18 +1,19 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ArrowLeft, CheckCircle2, CircleX, Download, FileDown, SquareMenu } from 'lucide-react-native'
-import { useMemo } from 'react'
+import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, Download, FileDown, SquareMenu } from 'lucide-react-native'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Image, type ImageSourcePropType, Platform, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { InvoiceTemplate } from '@/app/profile/components'
 import { Images } from '@/assets/images'
-import { Badge, Button } from '@/components/ui'
+import PaymentMethodRadioGroup from '@/components/radio/payment-method-radio-group'
+import { Badge, Button, Skeleton } from '@/components/ui'
 import { APPLICABILITY_RULE, colors, PaymentMethod, publicFileURL, ROUTE, VOUCHER_TYPE } from '@/constants'
-import { useExportPublicOrderInvoice, useOrderBySlug } from '@/hooks'
-import { useDownloadStore } from '@/stores'
+import { useExportPublicOrderInvoice, useInitiatePayment, useInitiatePublicPayment, useOrderBySlug } from '@/hooks'
+import { useDownloadStore, useUserStore } from '@/stores'
 import { OrderStatus, OrderTypeEnum } from '@/types'
-import { calculateOrderItemDisplay, calculatePlacedOrderTotals, capitalizeFirstLetter, downloadAndSavePDF, formatCurrency, formatDateTime, getPaymentStatusLabel, showToast } from '@/utils'
+import { calculateOrderItemDisplay, calculatePlacedOrderTotals, capitalizeFirstLetter, downloadAndSavePDF, formatCurrency, formatDateTime, getPaymentStatusLabel, showErrorToast, showErrorToastMessage, showToast } from '@/utils'
 
 export default function PaymentPage() {
   const { t } = useTranslation('menu')
@@ -22,10 +23,21 @@ export default function PaymentPage() {
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
-  const { data: orderResponse, isPending } = useOrderBySlug(orderSlug)
+  const { data: orderResponse, isPending, refetch: refetchOrder } = useOrderBySlug(orderSlug)
   const order = orderResponse?.result
   const { mutate: exportInvoice, isPending: isExportingInvoice } = useExportPublicOrderInvoice()
+  const { userInfo } = useUserStore()
+  const isLoggedIn = !!userInfo
+  
+  // Use authenticated payment hook if logged in, otherwise use public hook
+  const { mutate: initiatePaymentAuth, isPending: isInitiatingPaymentAuth } = useInitiatePayment()
+  const { mutate: initiatePaymentPublic, isPending: isInitiatingPaymentPublic } = useInitiatePublicPayment()
+  
+  const initiatePayment = isLoggedIn ? initiatePaymentAuth : initiatePaymentPublic
+  const isInitiatingPayment = isLoggedIn ? isInitiatingPaymentAuth : isInitiatingPaymentPublic
+  
   const { isDownloading, progress, fileName } = useDownloadStore()
+  const [qrCode, setQrCode] = useState<string | null>(null)
 
   const orderItems = useMemo(() => order?.orderItems || [], [order?.orderItems])
   const voucher = order?.voucher || null
@@ -73,15 +85,133 @@ export default function PaymentPage() {
     router.push(`${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug || '')}` as Parameters<typeof router.push>[0])
   }
 
+  const handlePaymentMethodSubmit = (paymentMethod: PaymentMethod, transactionId?: string) => {
+    if (!orderSlug || !order) {
+      showToast(t('paymentMethod.orderNotFound', 'Không tìm thấy đơn hàng'))
+      return
+    }
+
+    // Don't allow changing payment method if already paid
+    if (order.payment?.paymentMethod && order.payment.statusMessage === OrderStatus.COMPLETED) {
+      showToast(t('paymentMethod.alreadyPaid', 'Đơn hàng đã được thanh toán'))
+      return
+    }
+
+    // Don't allow initiating payment if order already has a payment method
+    // Only allow changing if order status is PENDING and payment is not completed
+    if (order.payment?.paymentMethod && order.payment.statusMessage !== OrderStatus.COMPLETED) {
+      // Allow changing payment method if order is still pending
+      // But check if the selected method is different from current
+      if (order.payment.paymentMethod === paymentMethod) {
+        showToast(t('paymentMethod.samePaymentMethod', 'Phương thức thanh toán này đã được chọn'))
+        return
+      }
+    }
+
+    // Validate transaction ID for credit card
+    if (paymentMethod === PaymentMethod.CREDIT_CARD && !transactionId?.trim()) {
+      showToast(t('paymentMethod.transactionIdRequired', 'Vui lòng nhập mã giao dịch'))
+      return
+    }
+
+    // Prepare request payload
+    const requestPayload: {
+      paymentMethod: string
+      orderSlug: string
+      transactionId?: string
+    } = {
+      paymentMethod: paymentMethod as string, // Ensure it's a string
+      orderSlug,
+    }
+
+    // Only include transactionId if it's provided and not empty
+    if (transactionId?.trim()) {
+      requestPayload.transactionId = transactionId.trim()
+    }
+
+    // eslint-disable-next-line no-console
+    console.log('Initiating payment with payload:', requestPayload)
+
+    initiatePayment(
+      requestPayload,
+      {
+        onSuccess: (response) => {
+          // Store QR code if available
+          if (response?.result?.qrCode) {
+            setQrCode(response.result.qrCode)
+          }
+          
+          // Refresh order data to get updated payment info
+          refetchOrder()
+          
+          // Show success message
+          if (paymentMethod === PaymentMethod.BANK_TRANSFER) {
+            showToast(t('paymentMethod.paymentInitiated', 'Đã khởi tạo thanh toán. Vui lòng quét QR code để thanh toán.'))
+          } else {
+            showToast(t('paymentMethod.paymentMethodUpdated', 'Đã cập nhật phương thức thanh toán'))
+          }
+        },
+        onError: (error: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('Error initiating payment:', error)
+          // eslint-disable-next-line no-console
+          console.error('Request payload was:', requestPayload)
+          
+          // Check if it's an Axios error with response data
+          if (error && typeof error === 'object' && 'response' in error) {
+            const axiosError = error as { response?: { data?: { statusCode?: number; message?: string } } }
+             
+            if (axiosError.response?.data) {
+              const errorData = axiosError.response.data
+              // eslint-disable-next-line no-console
+              console.error('Error response data:', errorData)
+              
+              // Use statusCode to show appropriate error toast
+              if (errorData.statusCode) {
+                showErrorToast(errorData.statusCode)
+              } else if (errorData.message) {
+                // Use message from server if available
+                showErrorToastMessage(errorData.message)
+              } else {
+                showToast(t('paymentMethod.paymentError', 'Lỗi khi cập nhật phương thức thanh toán'))
+              }
+              return
+            }
+          }
+          
+          // Fallback to generic error message
+          showToast(t('paymentMethod.paymentError', 'Lỗi khi cập nhật phương thức thanh toán'))
+        },
+      }
+    )
+  }
+
   if (isPending) {
     return (
-      <SafeAreaView className="flex-1" edges={['top']}>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={primaryColor} />
-          <Text className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            {t('order.loading', 'Đang tải...')}
-          </Text>
+      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top']}>
+        {/* Header skeleton */}
+        <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
+          <Skeleton className="w-8 h-8 rounded-full mr-3" />
+          <Skeleton className="h-5 w-48 rounded-md" />
         </View>
+
+        {/* Content skeleton */}
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+          {/* Order summary card skeleton */}
+          <View className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 gap-3">
+            <Skeleton className="h-4 w-32 rounded-md" />
+            <Skeleton className="h-6 w-40 rounded-md" />
+            <Skeleton className="h-4 w-28 rounded-md" />
+            <Skeleton className="h-4 w-24 rounded-md" />
+          </View>
+
+          {/* Payment method skeleton */}
+          <View className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 gap-3">
+            <Skeleton className="h-4 w-40 rounded-md" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     )
   }
@@ -386,6 +516,67 @@ export default function PaymentPage() {
               </View>
             )}
           </View>
+
+          {/* Payment Method Selection */}
+          {order.status === OrderStatus.PENDING && (
+            <View className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+              <View className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <Text className="text-base font-semibold text-gray-900 dark:text-gray-50">
+                  {t('paymentMethod.title', 'Phương thức thanh toán')}
+                </Text>
+                <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  ({t('paymentMethod.cashMethodNote', 'Chọn phương thức thanh toán')})
+                </Text>
+              </View>
+              <View className="p-4">
+                <PaymentMethodRadioGroup
+                  order={order}
+                  defaultValue={order.payment?.paymentMethod || null}
+                  disabledMethods={order.payment?.paymentMethod ? [order.payment.paymentMethod as PaymentMethod] : []}
+                  disabledReasons={order.payment?.paymentMethod ? { [order.payment.paymentMethod as PaymentMethod]: t('paymentMethod.alreadyPaid', 'Đã thanh toán') } as Record<PaymentMethod, string> : undefined}
+                  onSubmit={handlePaymentMethodSubmit}
+                />
+              </View>
+              {isInitiatingPayment && (
+                <View className="px-4 pb-4">
+                  <View className="flex-row items-center gap-2">
+                    <ActivityIndicator size="small" color={primaryColor} />
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">
+                      {t('paymentMethod.processing', 'Đang xử lý...')}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {/* QR Code Display */}
+              {(qrCode || order.payment?.qrCode) && order.payment?.paymentMethod === PaymentMethod.BANK_TRANSFER && (
+                <View className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                  <View className="flex-col justify-center items-center">
+                    <Image 
+                      source={{ uri: qrCode || order.payment.qrCode || '' }} 
+                      className="w-2/5 aspect-square"
+                      resizeMode="contain"
+                    />
+                    <View className="flex-col gap-2 justify-center items-center mt-2">
+                      <View className="flex-row items-center gap-1">
+                        <Text className="text-sm text-gray-700 dark:text-gray-300">
+                          {t('paymentMethod.total', 'Tổng tiền')}:
+                        </Text>
+                        <Text className="text-lg font-bold" style={{ color: primaryColor }}>
+                          {formatCurrency(order.subtotal || 0)}
+                        </Text>
+                      </View>
+                      <View className="flex-row gap-1 items-center px-4">
+                        <CircleAlert size={12} color="#3b82f6" />
+                        <Text className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                          {t('paymentMethod.paymentNote', 'Quét QR code để thanh toán')}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Payment Information */}
           <View className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">

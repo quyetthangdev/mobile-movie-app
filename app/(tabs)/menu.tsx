@@ -1,43 +1,35 @@
 import { MapPin, X } from 'lucide-react-native'
 import moment from 'moment'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  ActivityIndicator,
-  Image,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import { Image, InteractionManager, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
 import { SelectBranchDropdown } from '@/components/branch'
 import { LogoutDialog, SettingsDropdown, UserAvatarDropdown } from '@/components/dialog'
-import {
-  ClientCatalogSelect,
-  ClientMenus,
-  PriceRangeFilter,
-  ProductNameSearch,
-} from '@/components/menu'
+import { ClientCatalogSelect, ClientMenus, PriceRangeFilter, ProductNameSearch } from '@/components/menu'
+import { Skeleton } from '@/components/ui'
 import { FILTER_VALUE } from '@/constants'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks'
 import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
 import { IMenuFilter, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
 
-export default function ClientMenuPage() {
+function ClientMenuContent() {
   const { t } = useTranslation(['menu'])
+  // Optimize Zustand selectors - subscribe the necessary
   const userInfo = useUserStore((state) => state.userInfo)
+  const userSlug = useUserStore((state) => state.userInfo?.slug) // Only subscribe slug
   const setLogout = useAuthStore((state) => state.setLogout)
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
   const { menuFilter, setMenuFilter } = useMenuFilterStore()
-  const { branch } = useBranchStore()
+  const branch = useBranchStore((state) => state.branch) // Only subscribe branch
+  const branchSlug = useBranchStore((state) => state.branch?.slug) // Only subscribe slug
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
 
-  const mapMenuFilterToRequest = (
+  // Memoize expensive calculation
+  const mapMenuFilterToRequest = useCallback((
     filter: IMenuFilter,
   ): ISpecificMenuRequest => {
     return {
@@ -49,35 +41,42 @@ export default function ClientMenuPage() {
       maxPrice: filter.maxPrice,
       slug: filter.menu,
     }
-  }
+  }, [])
 
-  const hasUser = !!userInfo?.slug
+  // Memoize request object to avoid re-create
+  const menuRequest = useMemo(() => mapMenuFilterToRequest(menuFilter), [menuFilter, mapMenuFilterToRequest])
+
+  const hasUser = !!userSlug
   const hasBranch = !!menuFilter.branch
 
   const {
     data: specificMenuData,
     isPending: specificMenuPending,
     refetch: refetchSpecificMenu,
-  } = useSpecificMenu(mapMenuFilterToRequest(menuFilter), hasUser && hasBranch)
+  } = useSpecificMenu(menuRequest, hasUser && hasBranch)
 
   const {
     data: publicSpecificMenuData,
     isPending: publicSpecificMenuPending,
     refetch: refetchPublicSpecificMenu,
   } = usePublicSpecificMenu(
-    mapMenuFilterToRequest(menuFilter),
+    menuRequest,
     !hasUser && hasBranch,
   )
 
-  const specificMenu = userInfo?.slug
-    ? specificMenuData
-    : publicSpecificMenuData
-  const isPending = userInfo?.slug
-    ? specificMenuPending
-    : publicSpecificMenuPending
-  const refetchMenu = userInfo?.slug
-    ? refetchSpecificMenu
-    : refetchPublicSpecificMenu
+  // Memoize computed values
+  const specificMenu = useMemo(() => 
+    userSlug ? specificMenuData : publicSpecificMenuData,
+    [userSlug, specificMenuData, publicSpecificMenuData]
+  )
+  const isPending = useMemo(() => 
+    userSlug ? specificMenuPending : publicSpecificMenuPending,
+    [userSlug, specificMenuPending, publicSpecificMenuPending]
+  )
+  const refetchMenu = useMemo(() => 
+    userSlug ? refetchSpecificMenu : refetchPublicSpecificMenu,
+    [userSlug, refetchSpecificMenu, refetchPublicSpecificMenu]
+  )
 
   const [refreshing, setRefreshing] = React.useState(false)
 
@@ -96,8 +95,8 @@ export default function ClientMenuPage() {
       let changed = false
 
       // sync branch
-      if (branch?.slug && prev.branch !== branch.slug) {
-        next.branch = branch.slug
+      if (branchSlug && prev.branch !== branchSlug) {
+        next.branch = branchSlug
         changed = true
       }
 
@@ -110,25 +109,26 @@ export default function ClientMenuPage() {
 
       return changed ? next : prev
     })
-  }, [branch?.slug, setMenuFilter])
+  }, [branchSlug, setMenuFilter])
 
-  const handleClear = () => {
+  // Memoize callbacks
+  const handleClear = useCallback(() => {
     setMenuFilter((prev) => ({
       ...prev,
       minPrice: FILTER_VALUE.MIN_PRICE,
       maxPrice: FILTER_VALUE.MAX_PRICE,
-      branch: branch?.slug,
+      branch: branchSlug,
     }))
-  }
+  }, [setMenuFilter, branchSlug])
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setLogout()
     removeUserInfo()
-  }
+  }, [setLogout, removeUserInfo])
 
-  const handleLogoutPress = () => {
+  const handleLogoutPress = useCallback(() => {
     setIsLogoutDialogOpen(true)
-  }
+  }, [])
 
   return (
     <SafeAreaView className="flex-1 pb-12" edges={['top']}>
@@ -218,11 +218,22 @@ export default function ClientMenuPage() {
                   </Text>
                 </View>
               ) : isPending ? (
-                <View className="items-center justify-center py-10">
-                  <ActivityIndicator size="large" color="#6b7280" />
-                  <Text className="mt-4 text-gray-600 dark:text-gray-400">
-                    Đang tải menu...
-                  </Text>
+                <View className="gap-4">
+                  {[1, 2, 3].map((key) => (
+                    <View
+                      key={key}
+                      className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4"
+                    >
+                      <View className="flex-row gap-3">
+                        <Skeleton className="w-20 h-20 rounded-md" />
+                        <View className="flex-1 gap-2">
+                          <Skeleton className="h-4 w-40 rounded-md" />
+                          <Skeleton className="h-3 w-28 rounded-md" />
+                          <Skeleton className="h-3 w-24 rounded-md" />
+                        </View>
+                      </View>
+                    </View>
+                  ))}
                 </View>
               ) : (
                 <ClientMenus menu={specificMenu?.result} isLoading={false} />
@@ -242,3 +253,87 @@ export default function ClientMenuPage() {
     </SafeAreaView>
   )
 }
+
+function ClientMenuPageWrapper() {
+  const [deferData, setDeferData] = useState(true)
+
+  // Defer mounting heavy data logic until after initial interactions
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setDeferData(false)
+    })
+
+    return () => task.cancel()
+  }, [])
+
+  // First frame: render very light skeleton screen to avoid any lag
+  if (deferData) {
+    return (
+      <SafeAreaView className="flex-1 pb-12" edges={['top']}>
+        {/* Header skeleton */}
+        <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
+          <View className="flex-row items-center">
+            <Skeleton className="h-8 w-28 rounded-md" />
+          </View>
+          <View className="flex-row items-center gap-3">
+            <Skeleton className="h-8 w-24 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </View>
+        </View>
+
+        {/* Body skeleton */}
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        >
+          <View className="px-4 py-4 gap-6">
+            {/* Filters skeleton - match real layout more closely */}
+            <View className="gap-3">
+              {/* Branch info (centered) */}
+              <View className="items-center justify-center py-2">
+                <Skeleton className="h-3 w-52 rounded-md" />
+              </View>
+
+              {/* Product name search */}
+              <Skeleton className="h-10 w-full rounded-lg" />
+
+              {/* Catalog + Price filter row */}
+              <View className="flex-row gap-2">
+                <Skeleton className="h-10 flex-1 rounded-lg" />
+                <Skeleton className="h-10 flex-1 rounded-lg" />
+              </View>
+            </View>
+
+            {/* Menu items skeleton - mimic catalog header + grid */}
+            <View className="mt-6">
+              {/* Catalog header skeleton */}
+              <Skeleton className="h-5 w-40 rounded-md mb-4" />
+
+              {/* Grid skeleton: 2 columns giống card grid */}
+              <View className="flex-row flex-wrap justify-between gap-y-4">
+                {[1, 2, 3, 4].map((key) => (
+                  <View
+                    key={key}
+                    className="w-[48%] rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-3"
+                  >
+                    <Skeleton className="w-full h-24 rounded-md mb-2" />
+                    <Skeleton className="h-3 w-5/6 rounded-md mb-1" />
+                    <Skeleton className="h-3 w-1/2 rounded-md mb-1" />
+                    <Skeleton className="h-3 w-2/3 rounded-md" />
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    )
+  }
+
+  return <ClientMenuContent />
+}
+
+// Memoize screen component to avoid unnecessary re-render
+export default React.memo(ClientMenuPageWrapper)

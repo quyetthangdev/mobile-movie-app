@@ -1,9 +1,12 @@
 import {
-    IApiResponse,
-    ILoginRequest,
-    ILoginResponse,
-    IRefreshTokenResponse,
-    IRegisterRequest,
+  IApiResponse,
+  IEmailVerificationResponse,
+  ILoginRequest,
+  ILoginResponse,
+  IRefreshTokenResponse,
+  IRegisterRequest,
+  IVerifyEmailRequest,
+  IVerifyPhoneNumberRequest,
 } from '@/types'
 import { http } from '@/utils'
   
@@ -29,6 +32,63 @@ import { http } from '@/utils'
     const response = await http.post<IApiResponse<IRefreshTokenResponse>>(
       '/auth/refresh',
       params,
+    )
+    return response.data
+  }
+
+  export async function verifyEmail(
+    verifyParams: IVerifyEmailRequest,
+  ): Promise<IApiResponse<IEmailVerificationResponse>> {
+    const response = await http.post<IApiResponse<IEmailVerificationResponse>>(
+      `/auth/initiate-verify-email`,
+      verifyParams,
+    )
+    return response.data
+  }
+  
+  export async function verifyPhoneNumber(): Promise<
+    IApiResponse<IVerifyPhoneNumberRequest>
+  > {
+    const response = await http.post<IApiResponse<IVerifyPhoneNumberRequest>>(
+      `/auth/initiate-verify-phone-number`,
+    )
+    return response.data
+  }
+  
+  export async function confirmEmailVerification(
+    code: string,
+  ): Promise<IApiResponse<null>> {
+    const response = await http.post<IApiResponse<null>>(
+      `/auth/confirm-email-verification/code`,
+      { code },
+    )
+    return response.data
+  }
+  
+  export async function confirmPhoneNumberVerification(
+    code: string,
+  ): Promise<IApiResponse<null>> {
+    const response = await http.post<IApiResponse<null>>(
+      `/auth/confirm-phone-number-verification/code`,
+      { code },
+    )
+    return response.data
+  }
+  
+  export async function resendEmailVerification(): Promise<
+    IApiResponse<IEmailVerificationResponse>
+  > {
+    const response = await http.post<IApiResponse<IEmailVerificationResponse>>(
+      `/auth/resend-verify-email`,
+    )
+    return response.data
+  }
+  
+  export async function resendPhoneNumberVerification(): Promise<
+    IApiResponse<IVerifyPhoneNumberRequest>
+  > {
+    const response = await http.post<IApiResponse<IVerifyPhoneNumberRequest>>(
+      `/auth/resend-verify-phone-number`,
     )
     return response.data
   }

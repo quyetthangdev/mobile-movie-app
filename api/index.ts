@@ -8,4 +8,5 @@ export * from './menu'
 export * from './order'
 export * from './profile'
 export * from './table'
+export * from './voucher'
 

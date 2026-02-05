@@ -24,6 +24,9 @@ const Layout = React.memo(() => {
   const pathname = usePathname()
   const isDark = useColorScheme() === 'dark'
   
+  // Check if current route is cart page
+  const isCartPage = pathname === '/cart' || pathname === '/(tabs)/cart' || pathname?.includes('/cart')
+  
   // Performance optimize Zustand selector: chỉ subscribe cart count, không subscribe toàn bộ store
   const cartItemCount = useOrderFlowStore((state) => {
     const cartItems = state.getCartItems()
@@ -124,32 +127,34 @@ const Layout = React.memo(() => {
       />
 
       {/* Gradient Overlay - fades from bottom bar upward, blending with white navigation bar */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: backgroundHeight,
-          left: 0,
-          right: 0,
-          height: fadeHeight,
-          pointerEvents: 'none',
-          zIndex: 6,
-        }}
-      >
-        <LinearGradient
-          colors={[
-            'transparent',
-            hexToRgba('#ffffff', 0.05),
-            hexToRgba('#ffffff', 0.15),
-            hexToRgba('#ffffff', 0.3),
-            hexToRgba('#ffffff', 0.5),
-            hexToRgba('#ffffff', 0.7),
-            hexToRgba('#ffffff', 0.9),
-            '#ffffff',
-          ]}
-          locations={[0, 0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 1]}
-          style={{ flex: 1 }}
-        />
-      </View>
+      {!isCartPage && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: backgroundHeight,
+            left: 0,
+            right: 0,
+            height: fadeHeight,
+            pointerEvents: 'none',
+            zIndex: 6,
+          }}
+        >
+          <LinearGradient
+            colors={[
+              'transparent',
+              hexToRgba('#ffffff', 0.05),
+              hexToRgba('#ffffff', 0.15),
+              hexToRgba('#ffffff', 0.3),
+              hexToRgba('#ffffff', 0.5),
+              hexToRgba('#ffffff', 0.7),
+              hexToRgba('#ffffff', 0.9),
+              '#ffffff',
+            ]}
+            locations={[0, 0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 1]}
+            style={{ flex: 1 }}
+          />
+        </View>
+      )}
 
       <Tabs
         screenOptions={{
@@ -167,6 +172,8 @@ const Layout = React.memo(() => {
           },
           tabBarLabelStyle: { display: 'none' },
           tabBarIconStyle: { display: 'none' },
+          // Note: Expo Router automatically optimizes transitions with react-native-screens
+          // Transitions được handle bởi native screens (đã enable ở root layout)
         }}
       >
         <Tabs.Screen name="home" options={{ title: t('tabs.home', 'Trang chủ'), headerTitle: t('tabs.home', 'Trang chủ'), tabBarButton: () => null }} />
@@ -177,7 +184,8 @@ const Layout = React.memo(() => {
       </Tabs>
 
       {/* Custom Bottom Bar with Pill Shape and Floating Cart */}
-      <View
+      {!isCartPage && (
+        <View
         style={{
           position: 'absolute',
           bottom: 0,
@@ -194,115 +202,116 @@ const Layout = React.memo(() => {
           zIndex: 10,
         }}
       >
-        {/* Pill Shape Tab Bar */}
-        <View
-          className="rounded-full"
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: backgroundColor,
-            paddingHorizontal: PILL_BAR_CONFIG.PADDING_HORIZONTAL,
-            paddingVertical: 8,
-            shadowColor: colors.mutedForeground,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.01,
-            shadowRadius: 16,
-            elevation: 24,
-            borderWidth: 0,
-            // borderColor: borderColor,
-            position: 'relative',
-          }}
-        >
-          {/* Home Tab */}
-          <Pressable
-            onPress={handleHomePress}
-            className="flex-1 items-center justify-center py-1"
+          {/* Pill Shape Tab Bar */}
+          <View
+            className="rounded-full"
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: backgroundColor,
+              paddingHorizontal: PILL_BAR_CONFIG.PADDING_HORIZONTAL,
+              paddingVertical: 8,
+              shadowColor: colors.mutedForeground,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.01,
+              shadowRadius: 16,
+              elevation: 24,
+              borderWidth: 0,
+              // borderColor: borderColor,
+              position: 'relative',
+            }}
           >
-            {renderTabIcon(Home, isHomeActive)}
-            <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getTabColor(isHomeActive), zIndex: 1 }}>
-              {t('tabs.home', 'Trang chủ')}
-            </Text>
-          </Pressable>
-
-          {/* Menu Tab */}
-          <Pressable
-            onPress={handleMenuPress}
-            className="flex-1 items-center justify-center py-1"
-          >
-            {renderTabIcon(Menu, isMenuActive)}
-            <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getTabColor(isMenuActive), zIndex: 1 }}>
-              {t('tabs.menu', 'Thực đơn')}
-            </Text>
-          </Pressable>
-
-          {/* Gift Card Tab */}
-          <Pressable
-            onPress={handleGiftCardPress}
-            className="flex-1 items-center justify-center py-1"
-          >
-            {renderTabIcon(Gift, isGiftCardActive)}
-            <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getTabColor(isGiftCardActive), zIndex: 1 }}>
-              {t('tabs.giftCard', 'Thẻ quà')}
-            </Text>
-          </Pressable>
-
-          {/* Profile Tab */}
-          <Pressable
-            onPress={handleProfilePress}
-            className="flex-1 items-center justify-center py-1"
-          >
-            {renderTabIcon(User, isProfileActive)}
-            <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getTabColor(isProfileActive), zIndex: 1 }}>
-              {t('tabs.profile', 'Tài khoản')}
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Floating Cart Button */}
-        <TouchableOpacity
-          onPress={handleCartPress}
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            backgroundColor: primaryColor,
-            borderWidth: 0,
-            // borderColor: primaryColor,
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: primaryColor,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-            elevation: 8,
-          }}
-        >
-          <ShoppingCart size={24} color="#ffffff" />
-          {cartItemCount > 0 && (
-            <View
-              style={{
-                position: 'absolute',
-                top: -4,
-                right: -4,
-                minWidth: 24,
-                height: 24,
-                borderRadius: 12,
-                backgroundColor: '#ef4444',
-                borderWidth: 2,
-                borderColor: '#ffffff',
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingHorizontal: 5,
-              }}
+            {/* Home Tab */}
+            <Pressable
+              onPress={handleHomePress}
+              className="flex-1 items-center justify-center py-1"
             >
-              <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
-                {cartItemCount > 99 ? '99+' : cartItemCount}
+              {renderTabIcon(Home, isHomeActive)}
+              <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getTabColor(isHomeActive), zIndex: 1 }}>
+                {t('tabs.home', 'Trang chủ')}
               </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+            </Pressable>
+
+            {/* Menu Tab */}
+            <Pressable
+              onPress={handleMenuPress}
+              className="flex-1 items-center justify-center py-1"
+            >
+              {renderTabIcon(Menu, isMenuActive)}
+              <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getTabColor(isMenuActive), zIndex: 1 }}>
+                {t('tabs.menu', 'Thực đơn')}
+              </Text>
+            </Pressable>
+
+            {/* Gift Card Tab */}
+            <Pressable
+              onPress={handleGiftCardPress}
+              className="flex-1 items-center justify-center py-1"
+            >
+              {renderTabIcon(Gift, isGiftCardActive)}
+              <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getTabColor(isGiftCardActive), zIndex: 1 }}>
+                {t('tabs.giftCard', 'Thẻ quà')}
+              </Text>
+            </Pressable>
+
+            {/* Profile Tab */}
+            <Pressable
+              onPress={handleProfilePress}
+              className="flex-1 items-center justify-center py-1"
+            >
+              {renderTabIcon(User, isProfileActive)}
+              <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getTabColor(isProfileActive), zIndex: 1 }}>
+                {t('tabs.profile', 'Tài khoản')}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Floating Cart Button */}
+          <TouchableOpacity
+            onPress={handleCartPress}
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: primaryColor,
+              borderWidth: 0,
+              // borderColor: primaryColor,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: primaryColor,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
+            <ShoppingCart size={24} color="#ffffff" />
+            {cartItemCount > 0 && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  minWidth: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: '#ef4444',
+                  borderWidth: 2,
+                  borderColor: '#ffffff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 5,
+                }}
+              >
+                <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
+                  {cartItemCount > 99 ? '99+' : cartItemCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   )
 })

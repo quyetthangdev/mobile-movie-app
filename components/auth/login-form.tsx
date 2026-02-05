@@ -1,13 +1,25 @@
+import { useRouter } from 'expo-router'
 import { Eye, EyeOff } from 'lucide-react-native'
 import React, { useState } from 'react'
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import { z } from 'zod'
 
 import { useLogin, useProfile } from '@/hooks'
 import { loginSchema } from '@/schemas'
 import { useAuthStore, useUserStore } from '@/stores'
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onLoginSuccess?: () => void
+}
+
+export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
+  const router = useRouter()
   const [phonenumber, setPhonenumber] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -90,6 +102,11 @@ export default function LoginForm() {
 
               // Step 4: Set slug từ userInfo
               useAuthStore.getState().setSlug(profile.data.result.slug)
+
+              // Step 5: Callback cho màn hình (điều hướng, v.v.)
+              if (onLoginSuccess) {
+                onLoginSuccess()
+              }
             } else {
               // Nếu không fetch được profile, rollback auth state
               setLogout()
@@ -190,6 +207,19 @@ export default function LoginForm() {
         ) : (
           <Text className="text-white text-base font-semibold">Đăng nhập</Text>
         )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        className="items-center mt-6"
+        onPress={() => router.replace('/auth/register')}
+        disabled={isLoading}
+      >
+        <Text className="text-gray-600 dark:text-gray-400 text-sm">
+          Chưa có tài khoản?{' '}
+          <Text className="text-red-600 dark:text-primary font-semibold">
+            Đăng ký
+          </Text>
+        </Text>
       </TouchableOpacity>
     </View>
   )

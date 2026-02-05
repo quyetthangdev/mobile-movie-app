@@ -1,20 +1,22 @@
 import { cn } from '@/lib/utils'
-import React, { useEffect } from 'react'
+import React, { useMemo } from 'react'
 import {
+  Dimensions,
   Modal,
   Pressable,
+  ScrollView,
   Text,
   View,
   useColorScheme
 } from 'react-native'
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface SheetProps {
   open: boolean
@@ -26,6 +28,8 @@ interface SheetContentProps {
   children: React.ReactNode
   className?: string
   onClose?: () => void
+  open?: boolean
+  direction?: 'left' | 'right' | 'bottom'
 }
 
 interface SheetHeaderProps {
@@ -49,87 +53,212 @@ interface SheetFooterProps {
 }
 
 function Sheet({ open, onOpenChange, children }: SheetProps) {
-  // Wrap children to pass onOpenChange
-  const childrenWithProps = React.Children.map(children, (child) => {
-    if (React.isValidElement(child) && child.type === SheetContent) {
-      return React.cloneElement(child, {
-        onClose: () => onOpenChange(false),
-      } as Parameters<typeof React.cloneElement>[1])
+  // Local state to delay Modal unmount until close animation completes
+  const [modalVisible, setModalVisible] = React.useState(open)
+
+  // Find SheetContent child and pass props
+  const childrenArray = React.Children.toArray(children)
+  const sheetContentChild = childrenArray.find(
+    (child) => React.isValidElement(child) && child.type === SheetContent
+  )
+  const otherChildren = childrenArray.filter(
+    (child) => !React.isValidElement(child) || child.type !== SheetContent
+  )
+
+  // Handle Modal visibility with animation delay
+  React.useEffect(() => {
+    if (open) {
+      setModalVisible(true)
+    } else {
+      const timeoutId = setTimeout(() => {
+        setModalVisible(false)
+      }, 350) // Match animation duration
+      return () => clearTimeout(timeoutId)
     }
-    return child
-  })
+  }, [open])
+
+  if (!sheetContentChild || !React.isValidElement(sheetContentChild)) {
+    return <>{children}</>
+  }
 
   return (
-    <Modal
-      visible={open}
-      transparent
-      animationType="none"
-      onRequestClose={() => onOpenChange(false)}
-    >
-      {childrenWithProps}
-    </Modal>
+    <>
+      {/* Render trigger/other children outside Modal */}
+      {otherChildren}
+      {/* Render SheetContent inside Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => onOpenChange(false)}
+      >
+        {React.cloneElement(sheetContentChild, {
+          open,
+          onClose: () => onOpenChange(false),
+        } as Parameters<typeof React.cloneElement>[1])}
+      </Modal>
+    </>
   )
 }
 
-function SheetContent({ children, className, onClose }: SheetContentProps) {
+function SheetContent({ children, className, onClose, open, direction = 'right' }: SheetContentProps) {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
+  const insets = useSafeAreaInsets()
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
   
-  // Shared values for UI thread animations
-  const slideProgress = useSharedValue(0)
-  const fadeProgress = useSharedValue(0)
+  // Animation values
+  const slideValue = useSharedValue(1)
+  const fadeValue = useSharedValue(0)
+  const isInitialMount = React.useRef(true)
 
-  useEffect(() => {
-    // Animate in (UI thread)
-    // Optimized for POS: smooth bottom sheet (250ms)
-    fadeProgress.value = withTiming(1, {
-      duration: 250,
-      easing: Easing.out(Easing.ease),
-    })
-    slideProgress.value = withSpring(1, {
-      damping: 25,
-      stiffness: 300,
-      mass: 0.6,
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleClose = () => {
-    // Close animation (UI thread)
-    fadeProgress.value = withTiming(0, {
-      duration: 200,
-      easing: Easing.in(Easing.ease),
-    })
-    slideProgress.value = withTiming(0, {
-      duration: 200,
-      easing: Easing.in(Easing.ease),
-    }, (finished) => {
-      if (finished && onClose) {
-        runOnJS(onClose)()
+  // Handle animation
+  React.useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      if (open) {
+        const timeoutId = setTimeout(() => {
+          slideValue.value = withSpring(0, {
+            damping: 20,
+            stiffness: 300,
+            mass: 0.5,
+          })
+          fadeValue.value = withTiming(1, {
+            duration: 250,
+            easing: Easing.out(Easing.ease),
+          })
+        }, 16)
+        return () => clearTimeout(timeoutId)
       }
-    })
+      return
+    }
+
+    if (open) {
+      slideValue.value = withSpring(0, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.5,
+      })
+      fadeValue.value = withTiming(1, {
+        duration: 250,
+        easing: Easing.out(Easing.ease),
+      })
+    } else {
+      slideValue.value = withSpring(1, {
+        damping: 20,
+        stiffness: 300,
+        mass: 0.5,
+      })
+      fadeValue.value = withTiming(0, {
+        duration: 200,
+        easing: Easing.in(Easing.ease),
+      })
+    }
+  }, [open, slideValue, fadeValue])
+
+  // Calculate slide range
+  const slideRange = useMemo(() => {
+    switch (direction) {
+      case 'left':
+        return [-screenWidth, 0]
+      case 'right':
+        return [screenWidth, 0]
+      case 'bottom':
+        return [screenHeight, 0]
+      default:
+        return [screenWidth, 0]
+    }
+  }, [direction, screenWidth, screenHeight])
+
+  // Get position style with safe area insets
+  const positionStyle = useMemo(() => {
+    switch (direction) {
+      case 'left':
+        return { 
+          left: 0, 
+          top: insets.top, 
+          bottom: insets.bottom 
+        }
+      case 'right':
+        return { 
+          right: 0, 
+          top: insets.top, 
+          bottom: insets.bottom 
+        }
+      case 'bottom':
+        return { 
+          bottom: insets.bottom, 
+          left: 0, 
+          right: 0 
+        }
+      default:
+        return { 
+          right: 0, 
+          top: insets.top, 
+          bottom: insets.bottom 
+        }
+    }
+  }, [direction, insets])
+
+  // Get size style with safe area consideration
+  const sizeStyle = useMemo(() => {
+    switch (direction) {
+      case 'left':
+      case 'right':
+        return { 
+          width: Math.min(screenWidth * 0.85, 400),
+          height: screenHeight - insets.top - insets.bottom
+        }
+      case 'bottom':
+        return { 
+          maxHeight: screenHeight * 0.9 - insets.top 
+        }
+      default:
+        return { 
+          width: Math.min(screenWidth * 0.85, 400),
+          height: screenHeight - insets.top - insets.bottom
+        }
+    }
+  }, [direction, screenWidth, screenHeight, insets])
+
+  // Animated styles
+  const sheetAnimatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    const [start, end] = slideRange
+    const progress = slideValue.value
+
+    if (direction === 'left' || direction === 'right') {
+      return {
+        transform: [
+          {
+            translateX: start + (end - start) * (1 - progress),
+          },
+        ],
+      }
+    } else {
+      return {
+        transform: [
+          {
+            translateY: start + (end - start) * (1 - progress),
+          },
+        ],
+      }
+    }
+  })
+
+  const backdropAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: fadeValue.value,
+  }))
+
+  const handleBackdropPress = () => {
+    if (onClose) {
+      onClose()
+    }
   }
 
-  // Animated styles running on UI thread
-  const backdropStyle = useAnimatedStyle(() => {
-    'worklet'
-    return {
-      opacity: fadeProgress.value,
-    }
-  })
-
-  const sheetStyle = useAnimatedStyle(() => {
-    'worklet'
-    const translateY = slideProgress.value * 800 - 800
-    return {
-      transform: [{ translateY }],
-      shadowOpacity: slideProgress.value * 0.25,
-    }
-  })
-
   return (
-    <View className="flex-1 justify-end">
-      {/* Overlay - Fade animation */}
+    <View className="flex-1">
+      {/* Backdrop */}
       <Animated.View
         style={[
           {
@@ -140,37 +269,58 @@ function SheetContent({ children, className, onClose }: SheetContentProps) {
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
           },
-          backdropStyle,
+          backdropAnimatedStyle,
         ]}
       >
-        <Pressable className="flex-1" onPress={handleClose} />
+        <Pressable className="flex-1" onPress={handleBackdropPress} />
       </Animated.View>
 
-      {/* Sheet - Slide animation */}
+      {/* Sheet */}
       <Animated.View
         style={[
           {
+            position: 'absolute',
             backgroundColor: isDark ? '#1f2937' : '#ffffff',
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            maxHeight: '85%',
             shadowColor: '#000',
             shadowOffset: {
               width: 0,
-              height: -2,
+              height: direction === 'bottom' ? -2 : 0,
             },
             shadowRadius: 10,
             elevation: 10,
+            ...positionStyle,
+            ...sizeStyle,
           },
-          sheetStyle,
+          direction === 'bottom' && {
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+          },
+          (direction === 'left' || direction === 'right') && {
+            borderTopLeftRadius: direction === 'right' ? 0 : 24,
+            borderTopRightRadius: direction === 'left' ? 0 : 24,
+            borderBottomLeftRadius: direction === 'right' ? 0 : 24,
+            borderBottomRightRadius: direction === 'left' ? 0 : 24,
+          },
+          sheetAnimatedStyle,
         ]}
       >
-        {/* Grabber */}
-        <View className="items-center py-3">
-          <View className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-        </View>
+        {/* Handle indicator for bottom sheet */}
+        {direction === 'bottom' && (
+          <View className="items-center py-3">
+            <View className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+          </View>
+        )}
 
-        <View className={cn('px-4 pb-6', className)}>{children}</View>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 24,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View className={cn('', className)}>{children}</View>
+        </ScrollView>
       </Animated.View>
     </View>
   )

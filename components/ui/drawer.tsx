@@ -15,6 +15,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface DrawerContextType {
   open: boolean
@@ -45,6 +46,7 @@ interface DrawerCloseProps {
 interface DrawerContentProps {
   children: ReactNode
   className?: string
+  height?: number | string
 }
 
 interface DrawerHeaderProps {
@@ -170,8 +172,10 @@ function DrawerContent({
   children,
   className,
   direction = 'left',
+  height,
 }: DrawerContentProps & { direction?: 'left' | 'right' | 'top' | 'bottom' }) {
   const context = React.useContext(DrawerContext)
+  const insets = useSafeAreaInsets()
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
 
   // Always start from closed state (1) to ensure animation plays
@@ -232,13 +236,13 @@ function DrawerContent({
   const getPositionStyle = (): { left?: number; right?: number; top?: number; bottom?: number } => {
     switch (direction) {
       case 'left':
-        return { left: 0, top: 0, bottom: 0 }
+        return { left: 0, top: insets.top, bottom: insets.bottom }
       case 'right':
-        return { right: 0, top: 0, bottom: 0 }
+        return { right: 0, top: insets.top, bottom: insets.bottom }
       case 'top':
-        return { top: 0, left: 0, right: 0 }
+        return { top: insets.top, left: 0, right: 0 }
       case 'bottom':
-        return { bottom: 0, left: 0, right: 0 }
+        return { bottom: insets.bottom, left: 0, right: 0 }
     }
   }
 
@@ -246,9 +250,29 @@ function DrawerContent({
     switch (direction) {
       case 'left':
       case 'right':
+        if (height) {
+          // Calculate height from percentage string or use number directly
+          const calculatedHeight = typeof height === 'string' && height.includes('%')
+            ? (parseFloat(height) / 100) * (screenHeight - insets.top - insets.bottom)
+            : typeof height === 'number' 
+              ? height 
+              : screenHeight - insets.top - insets.bottom
+          return { 
+            width: Math.min(screenWidth * 0.8, 340),
+            height: calculatedHeight
+          }
+        }
         return { width: Math.min(screenWidth * 0.8, 340) }
       case 'top':
       case 'bottom':
+        if (height) {
+          const calculatedHeight = typeof height === 'string' && height.includes('%')
+            ? (parseFloat(height) / 100) * (screenHeight - insets.top - insets.bottom)
+            : typeof height === 'number' 
+              ? height 
+              : screenHeight - insets.top - insets.bottom
+          return { height: calculatedHeight }
+        }
         // For bottom drawer, use auto height if className doesn't specify max-h
         return {}
     }

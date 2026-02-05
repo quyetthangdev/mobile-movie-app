@@ -42,11 +42,29 @@ interface DialogContentProps extends BaseProps {
 /* -------------------------------------------------------------------------- */
 
 function Dialog({ open, onOpenChange, children }: DialogProps) {
-  // Wrap children to pass onOpenChange and open state
+  // Giữ Modal hiển thị trong khi chạy exit animation để tránh giật
+  const [isMounted, setIsMounted] = React.useState(open)
+
+  // Khi external open = true → đảm bảo Modal được mount
+  useEffect(() => {
+    if (open) {
+      // Đẩy setState sang tick tiếp theo để tránh setState sync trong effect
+      const id = setTimeout(() => setIsMounted(true), 0)
+      return () => clearTimeout(id)
+    }
+  }, [open])
+
+  const handleClosed = () => {
+    // Gọi callback external và unmount Modal sau khi animation kết thúc
+    onOpenChange(false)
+    setIsMounted(false)
+  }
+
+  // Truyền open + onClose xuống Content để điều khiển animation
   const childrenWithProps = React.Children.map(children, (child) => {
     if (React.isValidElement(child) && child.type === DialogContent) {
       return React.cloneElement(child, {
-        onClose: () => onOpenChange(false),
+        onClose: handleClosed,
         open,
       } as Parameters<typeof React.cloneElement>[1])
     }
@@ -55,10 +73,10 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
 
   return (
     <Modal
-      visible={open}
+      visible={isMounted}
       transparent
       animationType="none"
-      onRequestClose={() => onOpenChange(false)}
+      onRequestClose={handleClosed}
     >
       {childrenWithProps}
     </Modal>
@@ -79,64 +97,70 @@ function DialogContent({ children, className, onClose, open = true }: DialogCont
   const backdropOpacity = useSharedValue(0)
 
   useEffect(() => {
-    if (!open) {
-      // Reset to initial state when closed (UI thread)
+    const duration = 220
+
+    if (open) {
+      // Reset về trạng thái bắt đầu trước khi animate in
       scale.value = 0.95
       opacity.value = 0
       translateY.value = -8
       backdropOpacity.value = 0
-      return
+
+      const timeoutId = setTimeout(() => {
+        backdropOpacity.value = withTiming(1, {
+          duration,
+          easing: Easing.out(Easing.cubic),
+        })
+        opacity.value = withTiming(1, {
+          duration,
+          easing: Easing.out(Easing.cubic),
+        })
+        scale.value = withTiming(1, {
+          duration,
+          easing: Easing.out(Easing.cubic),
+        })
+        translateY.value = withTiming(0, {
+          duration,
+          easing: Easing.out(Easing.cubic),
+        })
+      }, 16) // one frame delay để tránh giật khung đầu
+
+      return () => clearTimeout(timeoutId)
     }
 
-    // Animate in (UI thread) - shadcn style animation
-    // Duration: 200ms (matching shadcn)
-    // Small delay to ensure component is fully mounted
-    const timeoutId = setTimeout(() => {
-      backdropOpacity.value = withTiming(1, {
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-      })
-      opacity.value = withTiming(1, {
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-      })
-      scale.value = withTiming(1, {
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-      })
-      translateY.value = withTiming(0, {
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-      })
-    }, 16) // One frame delay
-
-    return () => clearTimeout(timeoutId)
+    // Khi open chuyển từ true -> false (đóng từ bên ngoài) thì animate out
+    backdropOpacity.value = withTiming(0, {
+      duration,
+      easing: Easing.in(Easing.cubic),
+    })
+    opacity.value = withTiming(0, {
+      duration,
+      easing: Easing.in(Easing.cubic),
+    })
+    scale.value = withTiming(0.95, {
+      duration,
+      easing: Easing.in(Easing.cubic),
+    })
+    translateY.value = withTiming(
+      -8,
+      {
+        duration,
+        easing: Easing.in(Easing.cubic),
+      },
+      (finished) => {
+        if (finished && onClose) {
+          runOnJS(onClose)()
+        }
+      },
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const handleClose = () => {
-    // Close animation (UI thread) - shadcn style exit
-    // zoom-out-95, fade-out-0, slide-out-to-top-[48%]
-    backdropOpacity.value = withTiming(0, {
-      duration: 200,
-      easing: Easing.in(Easing.ease),
-    })
-    opacity.value = withTiming(0, {
-      duration: 200,
-      easing: Easing.in(Easing.ease),
-    })
-    scale.value = withTiming(0.95, {
-      duration: 200,
-      easing: Easing.in(Easing.ease),
-    })
-    translateY.value = withTiming(-8, {
-      duration: 200,
-      easing: Easing.in(Easing.ease),
-    }, (finished) => {
-      if (finished && onClose) {
-        runOnJS(onClose)()
-      }
-    })
+    // Đóng khi bấm backdrop: set open=false qua onClose (Dialog root sẽ xử lý unmount)
+    if (onClose) {
+      onClose()
+    }
   }
 
   // Animated styles running on UI thread

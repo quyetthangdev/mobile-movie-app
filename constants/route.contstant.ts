@@ -21,6 +21,10 @@ export const ROUTE = {
 
   CLIENT_PROFILE: '/profile',
   CLIENT_PROFILE_INFO: '/profile/info',
+  CLIENT_PROFILE_EDIT: '/profile/edit',
+  CLIENT_PROFILE_VERIFY_EMAIL: '/profile/verify-email',
+  CLIENT_PROFILE_VERIFY_PHONE_NUMBER: '/profile/verify-phone-number',
+  CLIENT_PROFILE_CHANGE_PASSWORD: '/profile/change-password',
   CLIENT_PROFILE_HISTORY: '/profile/history',
   CLIENT_PROFILE_LOYALTY_POINT: '/profile/loyalty-point',
   CLIENT_PROFILE_COIN: '/profile/coin',

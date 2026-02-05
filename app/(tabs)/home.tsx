@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import React, { useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -15,12 +15,12 @@ import {
   SwiperBanner,
   YouTubeVideoSection,
 } from '@/components/home'
-import { Button } from '@/components/ui'
+import { Button, Skeleton } from '@/components/ui'
 import { BannerPage, ROUTE, youtubeVideoId } from '@/constants'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useQuery } from '@tanstack/react-query'
 
-export default function Home() {
+function Home() {
   const { t } = useTranslation('home')
   const router = useRouter()
   const userInfo = useUserStore((state) => state.userInfo)
@@ -29,21 +29,27 @@ export default function Home() {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
 
   // Fetch banners for home page
-  const { data: bannersData } = useQuery({
+  const { data: bannersData, isPending: isBannersPending } = useQuery({
     queryKey: ['banners', BannerPage.HOME],
     queryFn: () => getBanners({ page: BannerPage.HOME, isActive: true }),
   })
 
-  const banners = bannersData?.result || []
+  // Memoize banners to avoid re-calculate
+  const banners = useMemo(() => bannersData?.result || [], [bannersData?.result])
 
-  const handleLogout = () => {
+  // Memoize callbacks to avoid re-create
+  const handleLogout = useCallback(() => {
     setLogout()
     removeUserInfo()
-  }
+  }, [setLogout, removeUserInfo])
 
-  const handleLogoutPress = () => {
+  const handleLogoutPress = useCallback(() => {
     setIsLogoutDialogOpen(true)
-  }
+  }, [])
+
+  const handleViewMenuPress = useCallback(() => {
+    router.push(ROUTE.CLIENT_MENU)
+  }, [router])
 
   return (
     <SafeAreaView className="flex-1" edges={['top']}>
@@ -73,11 +79,20 @@ export default function Home() {
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           {/* Section 1: Hero - Full width Banner */}
-          {banners.length > 0 && (
-            <View className="mb-6">
+          <View className="mb-6">
+            {isBannersPending ? (
+              <View className="px-4">
+                <Skeleton className="w-full h-48 rounded-2xl mb-3" />
+                <View className="flex-row justify-center gap-2 mt-2">
+                  <Skeleton className="h-2 w-8 rounded-full" />
+                  <Skeleton className="h-2 w-4 rounded-full" />
+                  <Skeleton className="h-2 w-4 rounded-full" />
+                </View>
+              </View>
+            ) : banners.length > 0 ? (
               <SwiperBanner bannerData={banners} />
-            </View>
-          )}
+            ) : null}
+          </View>
 
           {/* Section Info: TREND Coffee description + Store Carousel */}
           <View className="px-4 sm:px-5 mb-6">
@@ -126,7 +141,7 @@ export default function Home() {
                 <Button
                   className="bg-primary text-white"
                   size="sm"
-                  onPress={() => router.push(ROUTE.CLIENT_MENU)}
+                  onPress={handleViewMenuPress}
                 >
                   {t('viewMenu')}
                 </Button>
@@ -168,4 +183,7 @@ export default function Home() {
     </SafeAreaView>
   )
 }
+
+// Memoize screen component to avoid unnecessary re-render
+export default React.memo(Home)
 

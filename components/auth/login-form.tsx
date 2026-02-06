@@ -8,10 +8,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { useLogin, useProfile } from '@/hooks'
 import { loginSchema } from '@/schemas'
+import { ROUTE } from '@/constants'
 import { useAuthStore, useUserStore } from '@/stores'
 
 interface LoginFormProps {
@@ -20,6 +22,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const router = useRouter()
+  const { t } = useTranslation('auth')
   const [phonenumber, setPhonenumber] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -163,8 +166,18 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         )}
       </View>
 
-      <View className="mb-8">
-        <Text className="text-gray-900 dark:text-white text-sm mb-2 font-medium">Mật khẩu</Text>
+      <View className="mb-6">
+        <View className="flex-row items-center justify-between mb-2">
+          <Text className="text-gray-900 dark:text-white text-sm font-medium">Mật khẩu</Text>
+          <TouchableOpacity
+            onPress={() => router.push(ROUTE.FORGOT_PASSWORD)}
+            disabled={isLoading}
+          >
+            <Text className="text-primary text-sm font-medium">
+              {t('login.forgotPassword')}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View className="relative">
           <TextInput
             className={`bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 pr-12 text-base border ${

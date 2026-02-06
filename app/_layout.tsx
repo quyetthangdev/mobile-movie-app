@@ -16,6 +16,55 @@ import './global.css'
 // Enable native screens for better performance (POS/Kiosk critical)
 enableScreens(true)
 
+// Global error handlers để suppress lỗi keep awake không cần thiết
+// Lỗi này đến từ expo-modules-core khi một dependency cố gắng activate keep awake
+// nhưng không thành công (có thể do không có quyền hoặc không được setup đúng)
+
+// Handler cho synchronous errors
+if (__DEV__ && typeof ErrorUtils !== 'undefined') {
+  const originalErrorHandler = ErrorUtils.getGlobalHandler()
+  ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+    const errorMessage = error?.message || String(error)
+    
+    // Suppress lỗi keep awake - không ảnh hưởng đến chức năng
+    if (errorMessage.includes('Unable to activate keep awake') || 
+        errorMessage.includes('keep awake')) {
+      // Silently ignore - không cần thiết cho app này
+      return
+    }
+    
+    // Gọi original handler cho các lỗi khác
+    if (originalErrorHandler) {
+      originalErrorHandler(error, isFatal)
+    }
+  })
+}
+
+// Handler cho unhandled promise rejections (chạy ở đây để đảm bảo chạy sau polyfills)
+if (typeof global !== 'undefined' && !global.onunhandledrejection) {
+  global.onunhandledrejection = function(event: PromiseRejectionEvent) {
+    const error = event?.reason as Error | undefined
+    const errorMessage = error?.message || String(error || '')
+    
+    // Suppress lỗi keep awake - không ảnh hưởng đến chức năng
+    if (typeof errorMessage === 'string' && 
+        (errorMessage.includes('Unable to activate keep awake') || 
+         errorMessage.includes('keep awake'))) {
+      // Prevent default error logging
+      if (event?.preventDefault) {
+        event.preventDefault()
+      }
+      return
+    }
+    
+    // Log các lỗi promise rejection khác (chỉ trong dev)
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn('Unhandled promise rejection:', error)
+    }
+  }
+}
+
 // ============================================================================
 // NAVIGATION TRANSITION CONFIG - Tối ưu animation chuyển trang
 // ============================================================================
@@ -54,9 +103,12 @@ export default function RootLayout() {
     SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {})
     
     if (Platform.OS === 'android') {
+      // Tăng delay để đảm bảo Activity đã được attach
       setTimeout(() => {
-        setNavigationBarColorFixed('#FFFFFF', true, true).catch(() => {})
-      }, 300)
+        setNavigationBarColorFixed('#FFFFFF', true, true).catch(() => {
+          // Silently fail - error đã được handle trong function
+        })
+      }, 800)
     }
   }, [])
 

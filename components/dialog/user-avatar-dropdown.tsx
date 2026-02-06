@@ -1,15 +1,17 @@
-import { LogOut } from 'lucide-react-native'
+import { LogOut, User } from 'lucide-react-native'
 import React from 'react'
 import { Image, Text, TouchableOpacity, View } from 'react-native'
 
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from '@/components/ui'
+import { colors } from '@/constants'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface UserAvatarDropdownProps {
   userInfo: {
@@ -18,6 +20,7 @@ interface UserAvatarDropdownProps {
     image?: string
   } | null
   onLogoutPress: () => void
+  onLoginPress?: () => void
 }
 
 /**
@@ -37,7 +40,9 @@ interface UserAvatarDropdownProps {
 export default function UserAvatarDropdown({
   userInfo,
   onLogoutPress,
+  onLoginPress,
 }: UserAvatarDropdownProps) {
+  const {t} = useTranslation('auth')
   const getInitials = () => {
     if (!userInfo) return 'U'
     const first = userInfo.firstName?.charAt(0) || ''
@@ -50,8 +55,25 @@ export default function UserAvatarDropdown({
     return `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim() || 'User'
   }
 
+  // Nếu chưa đăng nhập, hiển thị nút đăng nhập
   if (!userInfo) {
-    return <View className="w-10 h-10" />
+    return (
+      <TouchableOpacity
+        onPress={onLoginPress}
+        className={cn(
+          'px-3 py-1.5 rounded-full',
+          'bg-primary/10 dark:bg-primary/20',
+          'border border-primary/30 dark:border-primary/40',
+          'flex-row items-center gap-1.5',
+          'active:opacity-80'
+        )}
+      >
+        <User size={16} color={colors.primary.light} />
+        <Text className="text-primary text-sm font-medium">
+          {t('login.title')}
+        </Text>
+      </TouchableOpacity>
+    )
   }
 
   return (

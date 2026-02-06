@@ -41,24 +41,43 @@ export function useNavigationBarFixed(
       }
 
       try {
-        await new Promise((resolve) => setTimeout(resolve, 200))
+        // Tăng delay để đảm bảo Activity đã được attach
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        
+        // Kiểm tra lại AppState sau delay
+        if (AppState.currentState !== 'active') {
+          return
+        }
+        
         await NavigationBarColor.changeNavigationBarColor(backgroundColor, light, animated)
       } catch (error) {
-        if (__DEV__) {
+        // Chỉ log error nếu không phải lỗi "not attached to Activity"
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        if (__DEV__ && !errorMessage.includes('not attached to an Activity')) {
           // eslint-disable-next-line no-console
           console.error('Navigation bar error:', error)
         }
       }
     }
 
-    setColor()
+    // Delay initial call để đảm bảo Activity đã sẵn sàng
+    const timeoutId = setTimeout(() => {
+      setColor()
+    }, 500)
+
     const subscription = AppState.addEventListener('change', () => {
       if (AppState.currentState === 'active') {
-        setColor()
+        // Delay khi app trở lại active
+        setTimeout(() => {
+          setColor()
+        }, 300)
       }
     })
 
-    return () => subscription?.remove()
+    return () => {
+      clearTimeout(timeoutId)
+      subscription?.remove()
+    }
   }, [backgroundColor, light, animated])
 }
 
@@ -81,11 +100,20 @@ export const setNavigationBarColorFixed = async (
       return { success: false }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 150))
+    // Tăng delay để đảm bảo Activity đã được attach
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    
+    // Kiểm tra lại AppState sau delay
+    if (AppState.currentState !== 'active') {
+      return { success: false }
+    }
+    
     const result = await NavigationBarColor.changeNavigationBarColor(backgroundColor, light, animated)
     return result ?? { success: true }
   } catch (error) {
-    if (__DEV__) {
+    // Chỉ log error nếu không phải lỗi "not attached to Activity"
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    if (__DEV__ && !errorMessage.includes('not attached to an Activity')) {
       // eslint-disable-next-line no-console
       console.error('Navigation bar error:', error)
     }

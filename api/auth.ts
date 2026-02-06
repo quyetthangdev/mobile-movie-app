@@ -1,11 +1,17 @@
 import {
   IApiResponse,
+  IConfirmForgotPasswordRequest,
   IEmailVerificationResponse,
+  IInitiateForgotPasswordRequest,
+  IInitiateForgotPasswordResponse,
   ILoginRequest,
   ILoginResponse,
   IRefreshTokenResponse,
   IRegisterRequest,
+  IResendOTPForgotPasswordRequest,
   IVerifyEmailRequest,
+  IVerifyOTPForgotPasswordRequest,
+  IVerifyOTPForgotPasswordResponse,
   IVerifyPhoneNumberRequest,
 } from '@/types'
 import { http } from '@/utils'
@@ -31,6 +37,43 @@ import { http } from '@/utils'
   }): Promise<IApiResponse<IRefreshTokenResponse>> {
     const response = await http.post<IApiResponse<IRefreshTokenResponse>>(
       '/auth/refresh',
+      params,
+    )
+    return response.data
+  }
+
+  export async function initiateForgotPassword(
+    params: IInitiateForgotPasswordRequest,
+  ): Promise<IApiResponse<IInitiateForgotPasswordResponse>> {
+    const response = await http.post<
+      IApiResponse<IInitiateForgotPasswordResponse>
+    >('/auth/forgot-password/initiate', params)
+    return response.data
+  }
+  
+  export async function verifyOTPForgotPassword(
+    params: IVerifyOTPForgotPasswordRequest,
+  ): Promise<IApiResponse<IVerifyOTPForgotPasswordResponse>> {
+    const response = await http.post<
+      IApiResponse<IVerifyOTPForgotPasswordResponse>
+    >('/auth/forgot-password/confirm', params)
+    return response.data
+  }
+  
+  export async function resendOTPForgotPassword(
+    params: IResendOTPForgotPasswordRequest,
+  ): Promise<IApiResponse<IInitiateForgotPasswordResponse>> {
+    const response = await http.post<
+      IApiResponse<IInitiateForgotPasswordResponse>
+    >('/auth/forgot-password/resend', params)
+    return response.data
+  }
+  
+  export async function confirmForgotPassword(
+    params: IConfirmForgotPasswordRequest,
+  ): Promise<IApiResponse<null>> {
+    const response = await http.post<IApiResponse<null>>(
+      '/auth/forgot-password/change',
       params,
     )
     return response.data

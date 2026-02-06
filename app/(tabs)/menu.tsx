@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { MapPin, X } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
@@ -10,17 +11,19 @@ import { SelectBranchDropdown } from '@/components/branch'
 import { LogoutDialog, SettingsDropdown, UserAvatarDropdown } from '@/components/dialog'
 import { ClientCatalogSelect, ClientMenus, PriceRangeFilter, ProductNameSearch } from '@/components/menu'
 import { Skeleton } from '@/components/ui'
-import { FILTER_VALUE } from '@/constants'
+import { FILTER_VALUE, ROUTE } from '@/constants'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks'
 import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
 import { IMenuFilter, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
 
 function ClientMenuContent() {
+  const router = useRouter()
   const { t } = useTranslation(['menu'])
   // Optimize Zustand selectors - subscribe the necessary
   const userInfo = useUserStore((state) => state.userInfo)
   const userSlug = useUserStore((state) => state.userInfo?.slug) // Only subscribe slug
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated())
   const setLogout = useAuthStore((state) => state.setLogout)
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
   const { menuFilter, setMenuFilter } = useMenuFilterStore()
@@ -46,15 +49,19 @@ function ClientMenuContent() {
   // Memoize request object to avoid re-create
   const menuRequest = useMemo(() => mapMenuFilterToRequest(menuFilter), [menuFilter, mapMenuFilterToRequest])
 
-  const hasUser = !!userSlug
+  // Kiểm tra user đã đăng nhập: cần cả authentication và userInfo
+  // Memoize để tránh re-compute không cần thiết
+  const hasUser = useMemo(() => isAuthenticated && !!userSlug, [isAuthenticated, userSlug])
   const hasBranch = !!menuFilter.branch
 
+  // Nếu đã đăng nhập: dùng useSpecificMenu (có thông tin user)
   const {
     data: specificMenuData,
     isPending: specificMenuPending,
     refetch: refetchSpecificMenu,
   } = useSpecificMenu(menuRequest, hasUser && hasBranch)
 
+  // Nếu chưa đăng nhập: dùng usePublicSpecificMenu (public API)
   const {
     data: publicSpecificMenuData,
     isPending: publicSpecificMenuPending,
@@ -64,18 +71,18 @@ function ClientMenuContent() {
     !hasUser && hasBranch,
   )
 
-  // Memoize computed values
+  // Memoize computed values - chọn data từ hook phù hợp
   const specificMenu = useMemo(() => 
-    userSlug ? specificMenuData : publicSpecificMenuData,
-    [userSlug, specificMenuData, publicSpecificMenuData]
+    hasUser ? specificMenuData : publicSpecificMenuData,
+    [hasUser, specificMenuData, publicSpecificMenuData]
   )
   const isPending = useMemo(() => 
-    userSlug ? specificMenuPending : publicSpecificMenuPending,
-    [userSlug, specificMenuPending, publicSpecificMenuPending]
+    hasUser ? specificMenuPending : publicSpecificMenuPending,
+    [hasUser, specificMenuPending, publicSpecificMenuPending]
   )
   const refetchMenu = useMemo(() => 
-    userSlug ? refetchSpecificMenu : refetchPublicSpecificMenu,
-    [userSlug, refetchSpecificMenu, refetchPublicSpecificMenu]
+    hasUser ? refetchSpecificMenu : refetchPublicSpecificMenu,
+    [hasUser, refetchSpecificMenu, refetchPublicSpecificMenu]
   )
 
   const [refreshing, setRefreshing] = React.useState(false)
@@ -130,6 +137,10 @@ function ClientMenuContent() {
     setIsLogoutDialogOpen(true)
   }, [])
 
+  const handleLoginPress = useCallback(() => {
+    router.push(ROUTE.LOGIN)
+  }, [router])
+
   return (
     <SafeAreaView className="flex-1 pb-12" edges={['top']}>
       {/* Header */}
@@ -146,7 +157,11 @@ function ClientMenuContent() {
         <View className="flex-row items-center gap-3">
           <SelectBranchDropdown />
           <SettingsDropdown />
-          <UserAvatarDropdown userInfo={userInfo} onLogoutPress={handleLogoutPress} />
+          <UserAvatarDropdown 
+            userInfo={userInfo} 
+            onLogoutPress={handleLogoutPress}
+            onLoginPress={handleLoginPress}
+          />
         </View>
       </View>
 

@@ -47,6 +47,10 @@ function Home() {
     setIsLogoutDialogOpen(true)
   }, [])
 
+  const handleLoginPress = useCallback(() => {
+    router.push(ROUTE.LOGIN)
+  }, [router])
+
   const handleViewMenuPress = useCallback(() => {
     router.push(ROUTE.CLIENT_MENU)
   }, [router])
@@ -67,7 +71,11 @@ function Home() {
         <View className="flex-row items-center gap-3">
           <SelectBranchDropdown />
           <SettingsDropdown />
-          <UserAvatarDropdown userInfo={userInfo} onLogoutPress={handleLogoutPress} />
+          <UserAvatarDropdown 
+            userInfo={userInfo} 
+            onLogoutPress={handleLogoutPress}
+            onLoginPress={handleLoginPress}
+          />
         </View>
       </View>
 

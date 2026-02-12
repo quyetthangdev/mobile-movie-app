@@ -1,9 +1,9 @@
-import { Button, Dialog } from '@/components/ui'
 import { colors } from '@/constants'
 import { LogOut } from 'lucide-react-native'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { View } from 'react-native'
+
+import { ConfirmationDialog } from './confirmation-dialog'
 
 interface LogoutDialogProps {
   isOpen: boolean
@@ -24,28 +24,18 @@ export default function LogoutDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <Dialog.Content className="max-w-[22rem] rounded-md sm:max-w-[32rem]">
-        <Dialog.Header>
-          <Dialog.Title className="text-destructive flex items-center gap-2">
-            <LogOut size={20} color={colors.destructive.light} />
-            {t('logout.title')}
-          </Dialog.Title>
-          <Dialog.Description className="mt-2 text-muted-foreground">
-            {t('logout.description')}
-          </Dialog.Description>
-        </Dialog.Header>
-
-        <View className="mt-6 flex flex-row justify-end gap-2">
-          <Button variant="outline" onPress={() => onOpenChange(false)}>
-            {t('logout.cancel')}
-          </Button>
-          <Button variant="destructive" onPress={handleConfirm}>
-            {t('logout.logout')}
-          </Button>
-        </View>
-      </Dialog.Content>
-    </Dialog>
+    <ConfirmationDialog
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      title={t('logout.title')}
+      description={t('logout.description')}
+      confirmLabel={t('logout.logout')}
+      cancelLabel={t('logout.cancel')}
+      onConfirm={handleConfirm}
+      variant="destructive"
+      icon={<LogOut size={20} color={colors.destructive.light} />}
+      descriptionClassName="mt-2 text-muted-foreground"
+    />
   )
 }
 

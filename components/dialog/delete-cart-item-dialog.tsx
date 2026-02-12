@@ -3,15 +3,13 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, useColorScheme, View } from 'react-native'
 
-import {
-  Button,
-  Dialog,
-  Label,
-} from '@/components/ui'
+import { Button, Dialog, Label } from '@/components/ui'
 import { colors, VOUCHER_TYPE } from '@/constants'
 import { useOrderFlowStore } from '@/stores'
 import { IOrderItem } from '@/types'
 import { showErrorToast } from '@/utils'
+
+import { ConfirmationDialog } from './confirmation-dialog'
 
 interface DialogDeleteCartItemProps {
   cartItem: IOrderItem
@@ -74,41 +72,28 @@ export default function DeleteCartItemDialog({
           <Trash2 size={20} color={isDark ? colors.destructive.dark : colors.destructive.light} />
         </Button>
       </Dialog.Trigger>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <Dialog.Content className="max-w-[22rem] rounded-md sm:max-w-[32rem]">
-        <Dialog.Header>
-          <Dialog.Title className="flex-row gap-2 items-center text-destructive">
-            <TriangleAlert size={20} color={isDark ? colors.destructive.dark : colors.destructive.light} />
-            <Text className="text-lg font-semibold text-destructive">
-              {t('order.deleteItem')}
-            </Text>
-          </Dialog.Title>
-          <Dialog.Description className={`p-2 bg-red-100 rounded-md dark:bg-transparent text-destructive`}>
-            {tCommon('common.deleteNote')}
-          </Dialog.Description>
-        </Dialog.Header>
-        <View>
-          <View className="flex gap-4 items-center mt-4">
+      <ConfirmationDialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title={t('order.deleteItem')}
+        description={tCommon('common.deleteNote')}
+        confirmLabel={tCommon('common.confirmDelete')}
+        cancelLabel={tCommon('common.cancel')}
+        onConfirm={() => handleDelete(cartItem.id)}
+        variant="destructive"
+        icon={<TriangleAlert size={20} color={isDark ? colors.destructive.dark : colors.destructive.light} />}
+        content={
+          <View className="flex gap-4 items-center">
             <Label className="leading-5 text-left">
               {t('order.deleteContent')}{' '}
               <Text className="font-bold">{cartItem.name}</Text>
               {t('order.deleteContent2')}
             </Label>
           </View>
-        </View>
-        <Dialog.Footer className="flex flex-row gap-2 justify-end">
-          <Button variant="outline" onPress={() => setIsOpen(false)}>
-            {tCommon('common.cancel')}
-          </Button>
-          <Button
-            variant="destructive"
-            onPress={() => handleDelete(cartItem.id)}
-          >
-            {tCommon('common.confirmDelete')}
-          </Button>
-        </Dialog.Footer>
-      </Dialog.Content>
-      </Dialog>
+        }
+        titleClassName="flex-row gap-2 items-center text-destructive"
+        descriptionClassName="p-2 bg-red-100 rounded-md dark:bg-transparent text-destructive"
+      />
     </>
   )
 }

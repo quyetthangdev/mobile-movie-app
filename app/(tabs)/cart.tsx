@@ -62,15 +62,15 @@ function ClientCartPage() {
     [branchSlug, userBranchSlug]
   )
   
-  // Optimize store selectors - only subscribe the necessary functions
+  // Optimize store selectors - subscribe to concrete values instead of getter functions
+  const currentCartItems = useOrderFlowStore((state) => state.getCartItems())
   const removeVoucher = useOrderFlowStore((state) => state.removeVoucher)
-  const getCartItems = useOrderFlowStore((state) => state.getCartItems)
   const addOrderingProductVariant = useOrderFlowStore((state) => state.addOrderingProductVariant)
+  const addNote = useOrderFlowStore((state) => state.addNote)
+  const addOrderNote = useOrderFlowStore((state) => state.addOrderNote)
+  const updateOrderingItemQuantity = useOrderFlowStore((state) => state.updateOrderingItemQuantity)
   
   const [isMounted] = useState(true)
-
-  // Memoize cart items to avoid re-calculate
-  const currentCartItems = useMemo(() => getCartItems(), [getCartItems])
   // Memoize expensive calculations
   const voucherSlug = useMemo(() => currentCartItems?.voucher?.slug, [currentCartItems?.voucher?.slug])
   const voucherMaxItems = useMemo(() => currentCartItems?.voucher?.maxItems || 0, [currentCartItems?.voucher?.maxItems])
@@ -395,7 +395,12 @@ function ClientCartPage() {
                       })()}
                     </View>
                     <View className="w-24 flex-row items-center gap-1">
-                      <QuantitySelector cartItem={item} />
+                      <QuantitySelector
+                        value={item.quantity}
+                        onChange={(newQuantity) =>
+                          updateOrderingItemQuantity(item.id!, newQuantity)
+                        }
+                      />
                     </View>
                   </View>
                 </View>
@@ -403,7 +408,10 @@ function ClientCartPage() {
 
               {/* Item note */}
               <View className="mt-3">
-                <CartNoteInput cartItem={item} />
+                <CartNoteInput
+                  value={item.note || ''}
+                  onChange={(text) => addNote(item.id, text)}
+                />
               </View>
             </View>
           ))}
@@ -413,7 +421,10 @@ function ClientCartPage() {
           <Text className="mb-2 text-md font-bold text-gray-900">
             {t('order.orderNote')}
           </Text>
-          <OrderNoteInput order={currentCartItems} />
+          <OrderNoteInput
+            value={currentCartItems?.description || ''}
+            onChange={(text) => addOrderNote(text)}
+          />
         </View>
 
         {/* Discount explanation box */}

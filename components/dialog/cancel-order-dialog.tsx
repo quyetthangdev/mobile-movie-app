@@ -11,6 +11,8 @@ import { IOrder } from '@/types'
 import { showToast } from '@/utils'
 import { useQueryClient } from '@tanstack/react-query'
 
+import { ConfirmationDialog } from './confirmation-dialog'
+
 function CancelOrderDialogComponent({
   order,
 }: {
@@ -41,9 +43,11 @@ function CancelOrderDialogComponent({
     setIsOpen(true)
   }, [])
 
-  const handleClose = useCallback(() => {
-    setIsOpen(false)
-  }, [])
+  const handleConfirm = useCallback(() => {
+    if (order?.slug) {
+      handleSubmit(order.slug)
+    }
+  }, [order, handleSubmit])
 
   return (
     <>
@@ -59,46 +63,27 @@ function CancelOrderDialogComponent({
         </Button>
       </Dialog.Trigger>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <Dialog.Content className="max-w-[22rem] rounded-md sm:max-w-[32rem]">
-          <Dialog.Header>
-            <Dialog.Title className="pb-4 border-b border-red-500">
-              <View className="flex-row items-center gap-2">
-                <TriangleAlert size={24} color="#ef4444" />
-                <Text className="text-lg font-semibold text-red-500">
-                  {t('order.cancelOrder')}
-                </Text>
-              </View>
-            </Dialog.Title>
-            <Dialog.Description className="p-2 bg-red-100 dark:bg-red-900/30 rounded-md">
-              <Text className="text-sm text-red-600 dark:text-red-400">
-                {tCommon('common.deleteNote')}
-              </Text>
-            </Dialog.Description>
-
-          </Dialog.Header>
+      <ConfirmationDialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title={t('order.cancelOrder')}
+        description={tCommon('common.deleteNote')}
+        confirmLabel={tCommon('common.confirmCancel')}
+        cancelLabel={tCommon('common.cancel')}
+        onConfirm={handleConfirm}
+        variant="destructive"
+        icon={<TriangleAlert size={24} color="#ef4444" />}
+        alignButtons="center"
+        titleClassName="pb-4 border-b border-red-500 flex-row items-center gap-2"
+        descriptionClassName="p-2 bg-red-100 dark:bg-red-900/30 rounded-md"
+        content={
           <View className="py-4">
             <Text className="text-sm text-gray-600 dark:text-gray-400">
               {t('order.cancelOrderWarning')}
             </Text>
           </View>
-          <Dialog.Footer className="flex-row justify-center gap-2">
-            <Button variant="outline" onPress={handleClose}>
-              {tCommon('common.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              onPress={() => {
-                if (order?.slug) {
-                  handleSubmit(order.slug)
-                }
-              }}
-            >
-              {tCommon('common.confirmCancel')}
-            </Button>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog>
+        }
+      />
     </>
   )
 }

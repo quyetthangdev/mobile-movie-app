@@ -3,42 +3,50 @@ import React from 'react'
 import { Text, View } from 'react-native'
 
 import { Button } from '@/components/ui'
-import { useOrderFlowStore } from '@/stores'
-import { IOrderDetail, IOrderItem } from '@/types'
-import { useStore } from 'zustand'
 
 interface QuantitySelectorProps {
-  cartItem: IOrderDetail | IOrderItem
+  value: number
+  onChange: (value: number) => void
+  min?: number
+  disabled?: boolean
 }
 
-export default function QuantitySelector({ cartItem }: QuantitySelectorProps) {
-  const [quantity, setQuantity] = React.useState(cartItem.quantity)
-  const updateOrderingItemQuantity = useStore(useOrderFlowStore, (state) => state.updateOrderingItemQuantity)
-
+// Presentational component only: nhận value + onChange, không truy cập store
+export default function QuantitySelector({
+  value,
+  onChange,
+  min = 1,
+  disabled,
+}: QuantitySelectorProps) {
   const handleIncrement = () => {
-    setQuantity((prev) => {
-      const newQuantity = prev + 1
-      updateOrderingItemQuantity(cartItem.id!, newQuantity)
-      return newQuantity
-    })
+    onChange(value + 1)
   }
 
   const handleDecrement = () => {
-    setQuantity((prev) => {
-      const newQuantity = Math.max(prev - 1, 1)
-      updateOrderingItemQuantity(cartItem.id!, newQuantity)
-      return newQuantity
-    })
+    const newQuantity = Math.max(value - 1, min)
+    onChange(newQuantity)
   }
 
   return (
     <View className="flex items-center gap-1.5 w-full">
       <View className="flex-row items-center gap-1.5 w-full">
-        <Button variant="outline" size="sm" onPress={handleDecrement} className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 h-fit w-fit">
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={handleDecrement}
+          className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 h-fit w-fit"
+          disabled={disabled || value <= min}
+        >
           <Minus size={12} color="#6b7280" />
         </Button>
-        <Text className="w-4 text-sm text-center text-gray-900 dark:text-white">{quantity}</Text>
-        <Button variant="outline" size="sm" onPress={handleIncrement} className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 h-fit w-fit">
+        <Text className="w-4 text-sm text-center text-gray-900 dark:text-white">{value}</Text>
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={handleIncrement}
+          className="p-1.5 rounded-full border border-gray-300 dark:border-gray-700 h-fit w-fit"
+          disabled={disabled}
+        >
           <Plus size={12} color="#6b7280" />
         </Button>
       </View>

@@ -1,77 +1,37 @@
 import { ChevronDown } from 'lucide-react-native'
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, View, useColorScheme } from 'react-native'
 import { Dropdown } from 'react-native-element-dropdown'
 
-import { useOrderFlowStore } from '@/stores'
-import { OrderTypeEnum } from '@/types'
+import { usePickupTime } from '@/hooks'
 
 interface IPickupTimeDropdownProps {
   defaultValue?: number
   onPickupTimeSelect?: (minutes: number) => void
 }
 
-interface PickupTimeOption {
-  label: string
-  value: string
-}
-
-const PICKUP_TIME_OPTIONS = [0, 5, 10, 15, 30, 45, 60]
-
 export default function PickupTimeDropdown({
   defaultValue,
   onPickupTimeSelect,
 }: IPickupTimeDropdownProps) {
   const { t } = useTranslation('menu')
-  const { getCartItems, addPickupTime } = useOrderFlowStore()
   const [isFocus, setIsFocus] = useState(false)
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
-
-  const cartItems = getCartItems()
-
-  // Map pickup time options to dropdown format
-  const pickupTimeOptions = useMemo<PickupTimeOption[]>(() => {
-    return PICKUP_TIME_OPTIONS.map((minutes) => ({
-      value: minutes.toString(),
-      label:
-        minutes === 0
-          ? t('menu.immediately')
-          : `${minutes} ${t('menu.minutes')}`,
-    }))
-  }, [t])
-
-  // Get selected value
-  const selectedValue = useMemo(() => {
-    if (defaultValue !== undefined) {
-      return defaultValue.toString()
-    }
-    if (cartItems?.timeLeftTakeOut !== undefined) {
-      return cartItems.timeLeftTakeOut.toString()
-    }
-    return '0' // Default to immediately
-  }, [defaultValue, cartItems])
-
-  // Initialize pickup time if not set
-  useEffect(() => {
-    if (
-      defaultValue === undefined &&
-      cartItems?.timeLeftTakeOut === undefined
-    ) {
-      addPickupTime(0)
-    }
-  }, [defaultValue, cartItems?.timeLeftTakeOut, addPickupTime])
+  const { shouldRender, selectedValue, options, handleChange: handleValueChange } = usePickupTime(
+    defaultValue,
+    onPickupTimeSelect
+  )
 
   // Nếu không phải đơn mang đi thì không render
-  if (cartItems?.type !== OrderTypeEnum.TAKE_OUT) {
+  if (!shouldRender) {
     return null
   }
 
-  const handleChange = (item: PickupTimeOption) => {
-    const minutes = parseInt(item.value, 10)
-    addPickupTime(minutes)
-    onPickupTimeSelect?.(minutes)
+  const handleDropdownChange = (item: { label: string; value: string }) => {
+    // Re-use hook's handler với value string
+    handleValueChange(item.value)
     setIsFocus(false)
   }
 
@@ -115,7 +75,7 @@ export default function PickupTimeDropdown({
           width: 20,
           height: 20,
         }}
-        data={pickupTimeOptions}
+        data={options}
         search={false}
         maxHeight={300}
         labelField="label"
@@ -124,7 +84,7 @@ export default function PickupTimeDropdown({
         value={selectedValue}
         onFocus={() => setIsFocus(true)}
         onBlur={() => setIsFocus(false)}
-        onChange={handleChange}
+        onChange={handleDropdownChange}
         renderLeftIcon={() => (
           <View className="mr-2">
             <ChevronDown

@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native'
 
-import { PasswordWithRulesForResetInput } from '@/components/input/password-with-rules-for-reset-input-mobile'
+import { PasswordRulesInput } from '@/components/input/password-rules-input'
 import { Button } from '@/components/ui'
 import { TResetPasswordSchema, useResetPasswordSchema } from '@/schemas'
 
@@ -47,7 +47,7 @@ export function ResetPasswordForm({ onSubmit, isLoading = false, token }: ResetP
           control={control}
           name="newPassword"
           render={({ field: { onChange, value } }) => (
-            <PasswordWithRulesForResetInput
+            <PasswordRulesInput
               value={value}
               onChange={onChange}
               placeholder={t('forgotPassword.enterNewPassword')}

@@ -1,58 +1,45 @@
 import { Eye, EyeOff } from 'lucide-react-native'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
 import { Text, TextInput, TouchableOpacity, View } from 'react-native'
 
-import { AuthRules } from '@/constants'
+import { usePasswordRules, type PasswordRules } from '@/hooks'
 import { cn } from '@/lib/utils'
 
-interface PasswordWithRulesForResetInputProps {
+export interface PasswordRulesInputProps {
   value: string | undefined
   onChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
+  rules?: PasswordRules
+  strength?: string | null
+  labels?: {
+    minLength: string
+    maxLength: string
+    hasLetter: string
+    hasNumber: string
+    strength: string
+  }
+  showRules?: boolean
 }
 
-export function PasswordWithRulesForResetInput({
+export function PasswordRulesInput({
   value,
   onChange,
   placeholder,
   disabled,
-}: PasswordWithRulesForResetInputProps) {
-  const { t } = useTranslation('auth')
-
+  rules: rulesProp,
+  strength: strengthProp,
+  labels: labelsProp,
+  showRules = true,
+}: PasswordRulesInputProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [touched, setTouched] = useState(false)
 
-  const hasInput = value && value.length > 0
-
-  // Tính toán rules trực tiếp từ value thay vì dùng useEffect
-  const rules = useMemo(() => {
-    if (!hasInput || !value) {
-      return {
-        minLength: false,
-        maxLength: false,
-        hasLetter: false,
-        hasNumber: false,
-      }
-    }
-
-    return {
-      minLength: value.length >= AuthRules.MIN_LENGTH,
-      maxLength: value.length <= AuthRules.MAX_LENGTH,
-      hasLetter: /[A-Za-z]/.test(value),
-      hasNumber: /\d/.test(value),
-    }
-  }, [value, hasInput])
-
-  // Optionally evaluate strength (basic)
-  const strength = useMemo(() => {
-    const passed = Object.values(rules).filter(Boolean).length
-    if (!hasInput) return null
-    if (passed <= 1) return t('rule.weak')
-    if (passed === 2 || passed === 3) return t('rule.medium')
-    return t('rule.strong')
-  }, [rules, hasInput, t])
+  // Nếu không có props từ bên ngoài, dùng hook (backward compatibility)
+  const hookResult = usePasswordRules(value)
+  const rules = rulesProp || hookResult.rules
+  const strength = strengthProp ?? hookResult.strength
+  const labels = labelsProp || hookResult.labels
 
   return (
     <View className="gap-2">
@@ -84,7 +71,7 @@ export function PasswordWithRulesForResetInput({
         </TouchableOpacity>
       </View>
 
-      {touched && (
+      {showRules && touched && (
         <View className="gap-1">
           <Text
             className={cn(
@@ -92,7 +79,7 @@ export function PasswordWithRulesForResetInput({
               rules.minLength ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
             )}
           >
-            • {t('rule.minLength', { count: AuthRules.MIN_LENGTH })}
+            • {labels.minLength}
           </Text>
           <Text
             className={cn(
@@ -100,7 +87,7 @@ export function PasswordWithRulesForResetInput({
               rules.maxLength ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
             )}
           >
-            • {t('rule.maxLength', { count: AuthRules.MAX_LENGTH })}
+            • {labels.maxLength}
           </Text>
           <Text
             className={cn(
@@ -108,7 +95,7 @@ export function PasswordWithRulesForResetInput({
               rules.hasLetter ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
             )}
           >
-            • {t('rule.hasLetter')}
+            • {labels.hasLetter}
           </Text>
           <Text
             className={cn(
@@ -116,19 +103,20 @@ export function PasswordWithRulesForResetInput({
               rules.hasNumber ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
             )}
           >
-            • {t('rule.hasNumber')}
+            • {labels.hasNumber}
           </Text>
 
           {strength && (
             <Text
               className={cn(
                 'text-xs font-medium mt-1',
-                strength === t('rule.weak') && 'text-red-600 dark:text-red-400',
-                strength === t('rule.medium') && 'text-yellow-600 dark:text-yellow-400',
-                strength === t('rule.strong') && 'text-green-600 dark:text-green-400'
+                // So sánh strength string để xác định màu (weak/medium/strong)
+                strength.toLowerCase().includes('weak') && 'text-red-600 dark:text-red-400',
+                strength.toLowerCase().includes('medium') && 'text-yellow-600 dark:text-yellow-400',
+                strength.toLowerCase().includes('strong') && 'text-green-600 dark:text-green-400'
               )}
             >
-              {t('rule.strength')}: {strength}
+              {labels.strength}: {strength}
             </Text>
           )}
         </View>

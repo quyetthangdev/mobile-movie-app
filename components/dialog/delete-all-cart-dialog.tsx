@@ -6,6 +6,8 @@ import { Text, View } from 'react-native'
 import { Button, Dialog, Label } from '@/components/ui'
 import { useOrderFlowStore } from '@/stores'
 
+import { ConfirmationDialog } from './confirmation-dialog'
+
 export default function DeleteAllCartDialog() {
   const { t } = useTranslation('menu')
   const { t: tCommon } = useTranslation('common')
@@ -31,36 +33,25 @@ export default function DeleteAllCartDialog() {
           </View>
         </Button>
       </Dialog.Trigger>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <Dialog.Content className="max-w-[22rem] rounded-md sm:max-w-[32rem]">
-          <Dialog.Header>
-            <Dialog.Title className="text-destructive flex items-center gap-2">
-              <TriangleAlert size={20} color="#ef4444" />
-              {t('order.deleteAll')}
-            </Dialog.Title>
-            <Dialog.Description
-              className={`text-destructive rounded-md bg-red-100 p-2 dark:bg-transparent`}
-            >
-              {tCommon('common.deleteNote')}
-            </Dialog.Description>
-          </Dialog.Header>
-          <View>
-            <View className="mt-4 flex items-center gap-4">
+      <ConfirmationDialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title={t('order.deleteAll')}
+        description={tCommon('common.deleteNote')}
+        confirmLabel={tCommon('common.confirmDelete')}
+        cancelLabel={tCommon('common.cancel')}
+        onConfirm={handleDelete}
+        variant="destructive"
+        icon={<TriangleAlert size={20} color="#ef4444" />}
+        content={
+          <View className="flex items-center gap-4">
               <Label className="text-left leading-5">
                 {t('order.deleteAllWarning')}
               </Label>
             </View>
-          </View>
-          <Dialog.Footer className="flex flex-row justify-end gap-2">
-            <Button variant="outline" onPress={() => setIsOpen(false)}>
-              {tCommon('common.cancel')}
-            </Button>
-            <Button variant="destructive" onPress={() => handleDelete()}>
-              {tCommon('common.confirmDelete')}
-            </Button>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog>
+        }
+        descriptionClassName="text-destructive rounded-md bg-red-100 p-2 dark:bg-transparent"
+      />
     </>
   )
 }

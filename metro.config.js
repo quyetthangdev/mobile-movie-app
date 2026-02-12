@@ -1,4 +1,11 @@
-// Load polyfills FIRST before any other modules
+// Load .env FIRST so EXPO_PUBLIC_* is available when Metro bundles
+// (needed when running from Android Studio - Metro must have env before bundling)
+const path = require('path');
+const projectRoot = path.resolve(__dirname);
+require('dotenv').config({ path: path.join(projectRoot, '.env') });
+require('dotenv').config({ path: path.join(projectRoot, '.env.local') });
+
+// Load polyfills before any other modules
 require('./polyfills');
 
 const { getDefaultConfig } = require("expo/metro-config");
@@ -10,7 +17,6 @@ const config = getDefaultConfig(__dirname);
 config.watchFolders = [__dirname];
 
 // Optimize resolver for better performance
-const path = require('path');
 config.resolver = {
   ...config.resolver,
   sourceExts: [...(config.resolver?.sourceExts || []), 'css'],

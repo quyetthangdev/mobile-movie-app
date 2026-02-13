@@ -50,7 +50,13 @@ export function FormInput<T extends FieldValues>({
       render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
         const handleChangeText = (text: string) => {
           const transformedValue = transformOnChange ? transformOnChange(text) : text
-          onChange(transformedValue)
+          try {
+            // react-hook-form can return/reject Promise on validation.
+            // Swallow it here to avoid noisy "Uncaught (in promise)" logs in RN.
+            void Promise.resolve(onChange(transformedValue)).catch(() => undefined)
+          } catch {
+            // Sync validation errors are reflected by fieldState.error.
+          }
         }
 
         const showError = !!error

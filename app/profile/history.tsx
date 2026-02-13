@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { ArrowLeft, Package } from 'lucide-react-native'
-import { useCallback, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlatList, Image, type ImageSourcePropType, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -10,14 +10,14 @@ import { getOrderBySlug } from '@/api'
 import { Images } from '@/assets/images'
 import { CancelOrderDialog } from '@/components/dialog'
 import { Badge, Button, Skeleton } from '@/components/ui'
-import { APPLICABILITY_RULE, colors, publicFileURL, ROUTE, VOUCHER_TYPE } from '@/constants'
-import { useOrders } from '@/hooks'
+import { APPLICABILITY_RULE, colors, FLATLIST_PROPS, publicFileURL, ROUTE, VOUCHER_TYPE } from '@/constants'
+import { useOrders, useRunAfterTransition } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { useUpdateOrderStore, useUserStore } from '@/stores'
 import { IOrder, OrderStatus, OrderTypeEnum } from '@/types'
 import { calculateOrderItemDisplay, calculatePlacedOrderTotals, capitalizeFirstLetter, formatCurrency, formatDateTime, showErrorToast } from '@/utils'
 
-export default function OrderHistoryPage() {
+function OrderHistoryPage() {
   const { t } = useTranslation('menu')
   const { t: tProfile } = useTranslation('profile')
   const router = useRouter()
@@ -31,14 +31,21 @@ export default function OrderHistoryPage() {
   const [page, setPage] = useState(1)
   const pageSize = 10
 
-  const { data: orderResponse, isPending } = useOrders({
-    page,
-    size: pageSize,
-    owner: userInfo?.slug,
-    order: 'DESC',
-    hasPaging: true,
-    status: status === OrderStatus.ALL ? undefined : status,
-  })
+  // Fetch sau khi transition xong → màn trượt ngay, skeleton hiện, data load không block animation
+  const [allowFetch, setAllowFetch] = useState(false)
+  useRunAfterTransition(() => setAllowFetch(true), [])
+
+  const { data: orderResponse, isPending } = useOrders(
+    {
+      page,
+      size: pageSize,
+      owner: userInfo?.slug,
+      order: 'DESC',
+      hasPaging: true,
+      status: status === OrderStatus.ALL ? undefined : status,
+    },
+    { enabled: allowFetch && !!userInfo?.slug },
+  )
 
   const orders = orderResponse?.items || []
   const hasNext = orderResponse?.hasNext || false
@@ -351,7 +358,8 @@ export default function OrderHistoryPage() {
     )
   }, [t, handleUpdateOrder, handleViewDetail, getStatusLabel, primaryColor, getStatusBadgeColor, getStatusTextColor])
 
-  if (isPending && page === 1) {
+  const showSkeleton = !allowFetch || (isPending && page === 1)
+  if (showSkeleton) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top', 'bottom']}>
         {/* Header skeleton */}
@@ -459,12 +467,7 @@ export default function OrderHistoryPage() {
           keyExtractor={(item) => item.slug}
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
-          // Performance optimizations
-          initialNumToRender={10}
-          windowSize={5}
-          maxToRenderPerBatch={10}
-          updateCellsBatchingPeriod={50}
-          removeClippedSubviews={true}
+          {...FLATLIST_PROPS}
           ListFooterComponent={
             totalPages > 1 ? (
               <View className="flex-row items-center justify-center gap-4 mt-4">
@@ -508,3 +511,5 @@ export default function OrderHistoryPage() {
   )
 }
 
+OrderHistoryPage.displayName = 'OrderHistoryPage'
+export default React.memo(OrderHistoryPage)

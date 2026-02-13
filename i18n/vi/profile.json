@@ -6,6 +6,25 @@
     "info": {
       "title": "Thông tin cá nhân"
     },
+    "verifyEmailScreen": {
+      "title": "Xác minh email",
+      "description": {
+        "otp": "Nhập mã OTP 6 ký tự (chữ và số)",
+        "email": "Chúng tôi sẽ gửi mã xác minh đến email của bạn"
+      },
+      "label": {
+        "email": "Email"
+      },
+      "button": {
+        "send": "Gửi email xác minh",
+        "verify": "Xác minh",
+        "resend": "Gửi lại OTP"
+      },
+      "toast": {
+        "sent": "Đã gửi mã xác minh đến email của bạn",
+        "resendSuccess": "Đã gửi lại mã OTP, vui lòng kiểm tra email"
+      }
+    },
     "contactInfo": {
       "title": "Thông tin liên hệ",
       "name": "Họ và tên",
@@ -70,7 +89,12 @@
     },
     "points": {
       "title": "Điểm tích lũy",
+      "add": "Tích lũy",
+      "use": "Sử dụng",
+      "reserve": "Tạm giữ",
+      "refund": "Hoàn lại",
       "type": "Loại giao dịch",
+      "point": "điểm",
       "points": "Điểm tích lũy",
       "pointsReceived": "Điểm tích lũy nhận được",
       "pointsSpent": "Điểm tích lũy dùng",
@@ -234,7 +258,6 @@
     "useGiftCard": "Sử dụng thẻ quà tặng",
     "verified": "Đã xác minh",
     "verify": "Xác minh",
-    "verifyEmail": "Xác minh email",
     "verifyEmailDescription": "Kiểm tra và xác nhận email để nhận mã OTP.",
     "verifyEmailFailed": "Xác minh email thất bại. Vui lòng thử lại",
     "verifyEmailSuccessfully": "Email đã được xác minh thành công!",

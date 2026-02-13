@@ -16,11 +16,59 @@ import {
   YouTubeVideoSection,
 } from '@/components/home'
 import { Button, Skeleton } from '@/components/ui'
+import { useRunAfterTransition } from '@/hooks'
 import { BannerPage, ROUTE, youtubeVideoId } from '@/constants'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useQuery } from '@tanstack/react-query'
 
-function Home() {
+/** Shell cực nhẹ cho frame đầu khi chuyển tab Home — 0 store, 0 query. */
+function HomeSkeletonShell() {
+  return (
+    <SafeAreaView className="flex-1" edges={['top']}>
+      <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
+        <Skeleton className="h-8 w-28 rounded-md" />
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Skeleton className="h-8 w-24 rounded-full" />
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-8 w-8 rounded-full" />
+        </View>
+      </View>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+        <View className="px-4 mb-6">
+          <Skeleton className="w-full h-48 rounded-2xl mb-3" />
+          <View className="flex-row justify-center gap-2 mt-2">
+            <Skeleton className="h-2 w-8 rounded-full" />
+            <Skeleton className="h-2 w-4 rounded-full" />
+            <Skeleton className="h-2 w-4 rounded-full" />
+          </View>
+        </View>
+        <View className="px-4 mb-6">
+          <Skeleton className="h-4 w-48 rounded-md mb-2" />
+          <Skeleton className="h-3 w-full rounded-md mb-4" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+        </View>
+        <View className="px-4">
+          <Skeleton className="h-6 w-40 rounded-md mb-4" />
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
+
+function HomeFallbackBanner() {
+  return (
+    <View className="px-4">
+      <Image
+        source={Images.Landing.Desktop as unknown as number}
+        className="w-full h-48 rounded-2xl"
+        resizeMode="cover"
+      />
+    </View>
+  )
+}
+
+function HomeContent() {
   const { t } = useTranslation('home')
   const router = useRouter()
   const userInfo = useUserStore((state) => state.userInfo)
@@ -28,10 +76,13 @@ function Home() {
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
 
-  // Fetch banners for home page
-  const { data: bannersData, isPending: isBannersPending } = useQuery({
+  const [allowFetch, setAllowFetch] = useState(false)
+  useRunAfterTransition(() => setAllowFetch(true), [])
+
+  const { data: bannersData, isPending: isBannersPending, isError: isBannersError } = useQuery({
     queryKey: ['banners', BannerPage.HOME],
     queryFn: () => getBanners({ page: BannerPage.HOME, isActive: true }),
+    enabled: allowFetch,
   })
 
   // Memoize banners to avoid re-calculate
@@ -97,9 +148,11 @@ function Home() {
                   <Skeleton className="h-2 w-4 rounded-full" />
                 </View>
               </View>
-            ) : banners.length > 0 ? (
+            ) : banners.length > 0 && !isBannersError ? (
               <SwiperBanner bannerData={banners} />
-            ) : null}
+            ) : (
+              <HomeFallbackBanner />
+            )}
           </View>
 
           {/* Section Info: TREND Coffee description + Store Carousel */}
@@ -192,6 +245,17 @@ function Home() {
   )
 }
 
-// Memoize screen component to avoid unnecessary re-render
-export default React.memo(Home)
+HomeContent.displayName = 'HomeContent'
+
+/** Wrapper: frame đầu chỉ shell → commit <16ms. Sau transition mount HomeContent. */
+function HomeScreen() {
+  const [ready, setReady] = useState(false)
+  useRunAfterTransition(() => setReady(true), [])
+  if (!ready) return <HomeSkeletonShell />
+  return <HomeContent />
+}
+
+HomeScreen.displayName = 'HomeScreen'
+
+export default React.memo(HomeScreen)
 

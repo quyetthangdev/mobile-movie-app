@@ -8,24 +8,38 @@ interface OTPInputProps {
   onChange: (val: string) => void
   length?: number
   disabled?: boolean
+  characterSet?: 'numeric' | 'alphanumeric'
 }
 
-export function OTPInput({ value, onChange, length = 6, disabled = false }: OTPInputProps) {
+export function OTPInput({
+  value,
+  onChange,
+  length = 6,
+  disabled = false,
+  characterSet = 'numeric',
+}: OTPInputProps) {
   const inputRefs = useRef<(TextInput | null)[]>([])
 
   const handleChange = (text: string, index: number) => {
-    // Chỉ cho phép số
-    const numericText = text.replace(/\D/g, '')
-    
-    if (numericText.length > 0) {
-      const next = value.split('')
-      next[index] = numericText[0]
+    const normalizedText = text.toUpperCase()
+    const filteredText =
+      characterSet === 'numeric'
+        ? normalizedText.replace(/\D/g, '')
+        : normalizedText.replace(/[^A-Z0-9]/g, '')
+
+    if (filteredText.length > 0) {
+      const next = value.toUpperCase().split('')
+      const chars = filteredText.slice(0, length - index).split('')
+      chars.forEach((char, offset) => {
+        next[index + offset] = char
+      })
       const newValue = next.join('').slice(0, length)
       onChange(newValue)
 
       // Auto focus next input
-      if (index < length - 1 && numericText.length > 0) {
-        inputRefs.current[index + 1]?.focus()
+      const nextIndex = index + chars.length
+      if (nextIndex < length) {
+        inputRefs.current[nextIndex]?.focus()
       }
     } else {
       // Xóa ký tự
@@ -62,13 +76,15 @@ export function OTPInput({ value, onChange, length = 6, disabled = false }: OTPI
               'border-gray-300 dark:border-gray-600',
               disabled && 'opacity-50'
             )}
-            keyboardType="number-pad"
+            keyboardType={characterSet === 'numeric' ? 'number-pad' : 'default'}
             maxLength={1}
-            value={value[index] ?? ''}
+            value={(value[index] ?? '').toUpperCase()}
             onChangeText={(text) => handleChange(text, index)}
             onKeyPress={(e) => handleKeyPress(e, index)}
             editable={!disabled}
             selectTextOnFocus
+            autoCapitalize={characterSet === 'alphanumeric' ? 'characters' : 'none'}
+            autoCorrect={false}
           />
         </TouchableOpacity>
       ))}

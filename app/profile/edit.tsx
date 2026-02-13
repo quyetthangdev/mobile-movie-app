@@ -121,6 +121,7 @@ function EditProfileScreen() {
   )
 }
 
+EditProfileScreen.displayName = 'EditProfileScreen'
 export default React.memo(EditProfileScreen)
 
 

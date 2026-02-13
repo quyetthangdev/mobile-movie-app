@@ -6,6 +6,8 @@ interface SettingsItemProps {
   icon: React.ComponentType<{ size?: number; color?: string }>
   title: string
   subtitle?: string
+  /** Màu chữ subtitle (vd. verified = success, chưa = xám). Nếu không truyền thì dùng màu mặc định. */
+  subtitleColor?: string
   value?: string
   onPress?: () => void
   showChevron?: boolean
@@ -17,6 +19,7 @@ export function SettingsItem({
   icon: Icon,
   title,
   subtitle,
+  subtitleColor,
   value,
   onPress,
   showChevron = true,
@@ -67,7 +70,10 @@ export function SettingsItem({
             {subtitle && (
               <Text
                 className="text-sm mt-0.5"
-                style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
+                style={{
+                  color:
+                    subtitleColor ?? (isDark ? '#9ca3af' : '#6b7280'),
+                }}
               >
                 {subtitle}
               </Text>

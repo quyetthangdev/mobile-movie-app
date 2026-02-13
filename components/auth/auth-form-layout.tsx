@@ -15,9 +15,9 @@ export function AuthFormLayout({
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900">
       <View className="px-4 py-6">
-        <Text className="text-xl font-semibold mb-2">{title}</Text>
+        <Text className="mb-2 text-xl font-semibold">{title}</Text>
         {description && (
-          <Text className="text-sm text-gray-500 mb-4">{description}</Text>
+          <Text className="mb-4 text-sm text-gray-500">{description}</Text>
         )}
         {children}
       </View>

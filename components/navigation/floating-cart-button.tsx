@@ -1,0 +1,68 @@
+import { useRouter } from 'expo-router'
+import { ShoppingCart } from 'lucide-react-native'
+import React from 'react'
+import { Text, TouchableOpacity, View } from 'react-native'
+
+import { TAB_ROUTES } from '@/constants'
+import { useOrderFlowStore } from '@/stores'
+
+type Props = { primaryColor: string }
+
+/**
+ * Chỉ component này subscribe Zustand cart count → bottom bar không re-render khi cart đổi.
+ * Tab switch chỉ đổi pathname → Layout re-render; cart count đổi → chỉ button này re-render.
+ */
+const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor }: Props) {
+  const router = useRouter()
+  const cartItemCount = useOrderFlowStore((state) => {
+    const cartItems = state.getCartItems()
+    return cartItems?.orderItems?.reduce((total, item) => total + (item.quantity || 0), 0) ?? 0
+  })
+
+  const onPress = () => router.replace(TAB_ROUTES.CART)
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: primaryColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: primaryColor,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+      }}
+    >
+      <ShoppingCart size={24} color="#ffffff" />
+      {cartItemCount > 0 && (
+        <View
+          style={{
+            position: 'absolute',
+            top: -4,
+            right: -4,
+            minWidth: 24,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: '#ef4444',
+            borderWidth: 2,
+            borderColor: '#ffffff',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 5,
+          }}
+        >
+          <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
+            {cartItemCount > 99 ? '99+' : cartItemCount}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  )
+})
+
+export { FloatingCartButton }

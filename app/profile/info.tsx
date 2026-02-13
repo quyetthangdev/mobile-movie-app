@@ -227,6 +227,7 @@ function ProfileInfoScreen() {
   )
 }
 
+ProfileInfoScreen.displayName = 'ProfileInfoScreen'
 export default React.memo(ProfileInfoScreen)
 
 

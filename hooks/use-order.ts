@@ -49,12 +49,16 @@ import {
 } from '@/types'
 import { useDownloadImage } from './use-download-image'
 
-export const useOrders = (q: IOrdersQuery) => {
+export const useOrders = (
+  q: IOrdersQuery,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: ['orders', q],
     queryFn: () => getAllOrders(q),
     placeholderData: keepPreviousData,
     select: (data) => data.result,
+    enabled: options?.enabled ?? true,
   })
 }
 

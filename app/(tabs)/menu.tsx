@@ -3,7 +3,7 @@ import { MapPin, X } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, InteractionManager, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import { Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
@@ -12,10 +12,65 @@ import { LogoutDialog, SettingsDropdown, UserAvatarDropdown } from '@/components
 import { ClientCatalogSelect, ClientMenus, PriceRangeFilter, ProductNameSearch } from '@/components/menu'
 import { Skeleton } from '@/components/ui'
 import { FILTER_VALUE, ROUTE } from '@/constants'
-import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks'
+import { usePublicSpecificMenu, useRunAfterTransition, useSpecificMenu } from '@/hooks'
 import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
 import { IMenuFilter, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
+
+/** Shell cực nhẹ: không store, không query. Chỉ dùng cho frame đầu khi chuyển tab → commit <16ms. */
+function MenuListSkeleton() {
+  return (
+    <View>
+      {[1, 2, 3, 4, 5, 6].map((key) => (
+        <View
+          key={key}
+          className="rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 flex-row"
+          style={{ marginBottom: key < 6 ? 16 : 0, gap: 12 }}
+        >
+          <Skeleton className="w-20 h-20 rounded-md" />
+          <View className="flex-1" style={{ gap: 8 }}>
+            <Skeleton className="h-4 rounded-md" style={{ width: '80%' }} />
+            <Skeleton className="h-3 rounded-md" style={{ width: '50%' }} />
+            <Skeleton className="h-3 rounded-md" style={{ width: '35%' }} />
+          </View>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+/** Shell cực nhẹ: có header + filter + list để giữ layout ổn định khi loading. */
+function MenuSkeletonShell() {
+  return (
+    <SafeAreaView className="flex-1 pb-12" edges={['top']}>
+      <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
+        <Skeleton className="h-8 w-28 rounded-md" />
+        <View className="flex-row items-center" style={{ gap: 12 }}>
+          <Skeleton className="h-8 w-24 rounded-full" />
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-8 w-8 rounded-full" />
+        </View>
+      </View>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+      >
+        <View style={{ marginBottom: 20 }}>
+          <View className="items-center py-2" style={{ marginBottom: 8 }}>
+            <Skeleton className="h-4 rounded-md" style={{ width: '72%' }} />
+          </View>
+          <Skeleton className="h-10 w-full rounded-lg" style={{ marginBottom: 8 }} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Skeleton className="h-10 flex-1 rounded-lg" />
+            <Skeleton className="h-10 w-12 rounded-lg" />
+          </View>
+        </View>
+        <MenuListSkeleton />
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
 
 function ClientMenuContent() {
   const router = useRouter()
@@ -30,6 +85,10 @@ function ClientMenuContent() {
   const branch = useBranchStore((state) => state.branch) // Only subscribe branch
   const branchSlug = useBranchStore((state) => state.branch?.slug) // Only subscribe slug
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
+
+  // Fetch sau khi transition tab xong → trang chuyển ngay (skeleton), không khựng
+  const [allowFetch, setAllowFetch] = useState(false)
+  useRunAfterTransition(() => setAllowFetch(true), [])
 
   // Memoize expensive calculation
   const mapMenuFilterToRequest = useCallback((
@@ -54,22 +113,21 @@ function ClientMenuContent() {
   const hasUser = useMemo(() => isAuthenticated && !!userSlug, [isAuthenticated, userSlug])
   const hasBranch = !!menuFilter.branch
 
-  // Nếu đã đăng nhập: dùng useSpecificMenu (có thông tin user)
+  // Chỉ bật query sau khi transition xong → chuyển tab mượt như Insta/Tele
+  const shouldFetchSpecific = allowFetch && hasUser && hasBranch
+  const shouldFetchPublic = allowFetch && !hasUser && hasBranch
+
   const {
     data: specificMenuData,
     isPending: specificMenuPending,
     refetch: refetchSpecificMenu,
-  } = useSpecificMenu(menuRequest, hasUser && hasBranch)
+  } = useSpecificMenu(menuRequest, shouldFetchSpecific)
 
-  // Nếu chưa đăng nhập: dùng usePublicSpecificMenu (public API)
   const {
     data: publicSpecificMenuData,
     isPending: publicSpecificMenuPending,
     refetch: refetchPublicSpecificMenu,
-  } = usePublicSpecificMenu(
-    menuRequest,
-    !hasUser && hasBranch,
-  )
+  } = usePublicSpecificMenu(menuRequest, shouldFetchPublic)
 
   // Memoize computed values - chọn data từ hook phù hợp
   const specificMenu = useMemo(() => 
@@ -232,24 +290,8 @@ function ClientMenuContent() {
                     Vui lòng chọn chi nhánh để xem menu
                   </Text>
                 </View>
-              ) : isPending ? (
-                <View className="gap-4">
-                  {[1, 2, 3].map((key) => (
-                    <View
-                      key={key}
-                      className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4"
-                    >
-                      <View className="flex-row gap-3">
-                        <Skeleton className="w-20 h-20 rounded-md" />
-                        <View className="flex-1 gap-2">
-                          <Skeleton className="h-4 w-40 rounded-md" />
-                          <Skeleton className="h-3 w-28 rounded-md" />
-                          <Skeleton className="h-3 w-24 rounded-md" />
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
+              ) : !allowFetch || isPending ? (
+                <MenuListSkeleton />
               ) : (
                 <ClientMenus menu={specificMenu?.result} isLoading={false} />
               )}
@@ -269,86 +311,19 @@ function ClientMenuContent() {
   )
 }
 
-function ClientMenuPageWrapper() {
-  const [deferData, setDeferData] = useState(true)
+ClientMenuContent.displayName = 'ClientMenuContent'
 
-  // Defer mounting heavy data logic until after initial interactions
-  useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
-      setDeferData(false)
-    })
-
-    return () => task.cancel()
-  }, [])
-
-  // First frame: render very light skeleton screen to avoid any lag
-  if (deferData) {
-    return (
-      <SafeAreaView className="flex-1 pb-12" edges={['top']}>
-        {/* Header skeleton */}
-        <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
-          <View className="flex-row items-center">
-            <Skeleton className="h-8 w-28 rounded-md" />
-          </View>
-          <View className="flex-row items-center gap-3">
-            <Skeleton className="h-8 w-24 rounded-full" />
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-8 w-8 rounded-full" />
-          </View>
-        </View>
-
-        {/* Body skeleton */}
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        >
-          <View className="px-4 py-4 gap-6">
-            {/* Filters skeleton - match real layout more closely */}
-            <View className="gap-3">
-              {/* Branch info (centered) */}
-              <View className="items-center justify-center py-2">
-                <Skeleton className="h-3 w-52 rounded-md" />
-              </View>
-
-              {/* Product name search */}
-              <Skeleton className="h-10 w-full rounded-lg" />
-
-              {/* Catalog + Price filter row */}
-              <View className="flex-row gap-2">
-                <Skeleton className="h-10 flex-1 rounded-lg" />
-                <Skeleton className="h-10 flex-1 rounded-lg" />
-              </View>
-            </View>
-
-            {/* Menu items skeleton - mimic catalog header + grid */}
-            <View className="mt-6">
-              {/* Catalog header skeleton */}
-              <Skeleton className="h-5 w-40 rounded-md mb-4" />
-
-              {/* Grid skeleton: 2 columns giống card grid */}
-              <View className="flex-row flex-wrap justify-between gap-y-4">
-                {[1, 2, 3, 4].map((key) => (
-                  <View
-                    key={key}
-                    className="w-[48%] rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-3"
-                  >
-                    <Skeleton className="w-full h-24 rounded-md mb-2" />
-                    <Skeleton className="h-3 w-5/6 rounded-md mb-1" />
-                    <Skeleton className="h-3 w-1/2 rounded-md mb-1" />
-                    <Skeleton className="h-3 w-2/3 rounded-md" />
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    )
-  }
-
+/**
+ * Wrapper: frame đầu chỉ mount shell (0 store, 0 query) → commit <16ms, tab chuyển ngay.
+ * Sau runAfterInteractions mới mount ClientMenuContent (fetch + store).
+ */
+function MenuScreen() {
+  const [ready, setReady] = useState(false)
+  useRunAfterTransition(() => setReady(true), [])
+  if (!ready) return <MenuSkeletonShell />
   return <ClientMenuContent />
 }
 
-// Memoize screen component to avoid unnecessary re-render
-export default React.memo(ClientMenuPageWrapper)
+MenuScreen.displayName = 'MenuScreen'
+
+export default React.memo(MenuScreen)

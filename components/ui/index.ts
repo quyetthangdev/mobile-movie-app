@@ -18,5 +18,15 @@ export { ScrollArea } from './scroll-area'
 export { Select } from './select'
 export { Sheet } from './sheet'
 export { Skeleton } from './skeleton'
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './table'
 export { Textarea } from './textarea'
 

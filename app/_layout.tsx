@@ -6,15 +6,15 @@ import { useLayoutEffect } from 'react'
 import { Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { enableScreens } from 'react-native-screens'
 
+import { stackScreenOptions } from '@/constants/navigation.config'
 import { setNavigationBarColorFixed, useNavigationBarFixed } from '@/hooks/use-navigation-bar-fixed'
+import '@/lib/navigation-setup'
 import { AppToastProvider, I18nProvider } from '@/providers'
 
 import './global.css'
 
-// Enable native screens for better performance (POS/Kiosk critical)
-enableScreens(true)
+// Stack từ expo-router = Native Stack (createNativeStackNavigator) + react-native-screens
 
 // Global error handlers để suppress lỗi keep awake không cần thiết
 // Lỗi này đến từ expo-modules-core khi một dependency cố gắng activate keep awake
@@ -63,25 +63,6 @@ if (typeof global !== 'undefined' && !global.onunhandledrejection) {
       console.warn('Unhandled promise rejection:', error)
     }
   }
-}
-
-// ============================================================================
-// NAVIGATION TRANSITION CONFIG - Tối ưu animation chuyển trang
-// ============================================================================
-const stackScreenOptions = {
-  headerShown: false,
-  // Enable animation transitions
-  animation: Platform.select({
-    ios: 'default', // iOS native transition (mượt nhất)
-    android: 'fade_from_bottom', // Android native transition
-    default: 'default',
-  }) as 'default' | 'fade_from_bottom' | 'fade' | 'slide_from_right' | 'slide_from_left' | 'slide_from_bottom' | 'none',
-  // Animation enabled
-  animationEnabled: true,
-  // Gesture enabled for iOS swipe back
-  gestureEnabled: Platform.OS === 'ios',
-  // Presentation mode
-  presentation: 'card' as const,
 }
 
 const queryClient = new QueryClient({

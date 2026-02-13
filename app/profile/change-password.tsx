@@ -111,6 +111,7 @@ function ChangePasswordScreen() {
   )
 }
 
+ChangePasswordScreen.displayName = 'ChangePasswordScreen'
 export default React.memo(ChangePasswordScreen)
 
 

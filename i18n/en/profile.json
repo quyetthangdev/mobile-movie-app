@@ -70,7 +70,12 @@
     },
     "points": {
       "title": "Loyalty Points",
+      "add": "Add",
+      "use": "Use",
+      "reserve": "Reserve",
+      "refund": "Refund",
       "type": "Transaction Type",
+      "point": "points",
       "points": "Loyalty Points",
       "pointsReceived": "Points Received",
       "pointsSpent": "Points Spent",
@@ -235,6 +240,25 @@
     "verified": "Verified",
     "verify": "Verify",
     "verifyEmail": "Verify Email",
+    "verifyEmailScreen": {
+      "title": "Verify Email",
+      "description": {
+        "otp": "Enter the 6-character OTP code (letters and numbers)",
+        "email": "We will send a verification code to your email"
+      },
+      "label": {
+        "email": "Email"
+      },
+      "button": {
+        "send": "Send Verification Email",
+        "verify": "Verify",
+        "resend": "Resend OTP"
+      },
+      "toast": {
+        "sent": "Verification code has been sent to your email",
+        "resendSuccess": "OTP resent. Please check your email"
+      }
+    },
     "verifyEmailDescription": "Check and confirm your email to receive OTP code.",
     "verifyEmailFailed": "Email verification failed. Please try again",
     "verifyEmailSuccessfully": "Email has been verified successfully!",

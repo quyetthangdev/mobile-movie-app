@@ -5,17 +5,35 @@ import React, { useMemo, useState } from 'react'
 import { Text, View, useColorScheme } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { Button, Input } from '@/components/ui'
+import { Button, Input, Skeleton } from '@/components/ui'
 import { QUERYKEY, colors } from '@/constants'
 import {
-    useConfirmPhoneNumberVerification,
-    useResendPhoneNumberVerification,
-    useVerifyPhoneNumber,
+  useConfirmPhoneNumberVerification,
+  useResendPhoneNumberVerification,
+  useScreenTransition,
+  useVerifyPhoneNumber,
 } from '@/hooks'
 import { useUserStore } from '@/stores'
 import { showToast } from '@/utils'
 
-function VerifyPhoneNumberScreen() {
+/** Shell nhẹ cho frame đầu khi push màn verify phone. */
+function VerifyPhoneNumberSkeleton() {
+  return (
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top', 'bottom']}>
+      <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
+        <Skeleton className="h-10 w-10 rounded-full mr-2" />
+        <Skeleton className="h-6 w-40 rounded" />
+      </View>
+      <View className="flex-1 px-4 py-6">
+        <Skeleton className="h-4 w-full rounded mb-4" />
+        <Skeleton className="h-5 w-48 rounded mb-6" />
+        <Skeleton className="h-11 w-full rounded" />
+      </View>
+    </SafeAreaView>
+  )
+}
+
+function VerifyPhoneNumberContent() {
   const router = useRouter()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
@@ -188,6 +206,13 @@ function VerifyPhoneNumberScreen() {
   )
 }
 
+function VerifyPhoneNumberScreen() {
+  const { isTransitionComplete } = useScreenTransition()
+  if (!isTransitionComplete) return <VerifyPhoneNumberSkeleton />
+  return <VerifyPhoneNumberContent />
+}
+
+VerifyPhoneNumberScreen.displayName = 'VerifyPhoneNumberScreen'
 export default React.memo(VerifyPhoneNumberScreen)
 
 

@@ -1,17 +1,10 @@
-/**
- * Routing: React Navigation + Native Stack + React Native Screens
- * → Animation 60fps/120fps, transition chạy trên native thread.
- *
- * - Root Stack (Expo Router): Native Stack (createNativeStackNavigator).
- * - Push màn con: slide_from_right 280ms, gesture back native.
- * - Bottom tabs: fade 250ms, lazy + freezeOnBlur.
- *
- * Bootstrap: lib/navigation-setup.ts (enableScreens + enableFreeze).
- */
+/** Native Stack + Tabs. Bootstrap: lib/navigation-setup.ts */
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack'
 import { Easing } from 'react-native'
 
-/** Tab segment paths — dùng với router.replace() để đổi tab (không push stack). */
+const LAZY_DEBUG = process.env.EXPO_PUBLIC_PHASE4_LAZY_DEBUG === 'true'
+
+/** Tab paths — dùng router.replace() để đổi tab. */
 export const TAB_ROUTES = {
   HOME: '/(tabs)/home',
   MENU: '/(tabs)/menu',
@@ -22,7 +15,7 @@ export const TAB_ROUTES = {
 
 export type TabRouteKey = keyof typeof TAB_ROUTES
 
-/** Native Stack: slide từ phải, gesture back, freezeOnBlur. Áp cho mọi màn push. */
+/** Stack: slide_from_right, gesture, freezeOnBlur. */
 export const stackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   animation: 'slide_from_right',
@@ -35,10 +28,10 @@ export const stackScreenOptions: NativeStackNavigationOptions = {
   contentStyle: { backgroundColor: '#ffffff' },
 }
 
-/** Bottom Tabs (native screens): fade 250ms, lazy + freezeOnBlur, detachInactiveScreens=false ở layout. */
+/** Bottom Tabs: fade 250ms, freezeOnBlur. lazy: false khi PHASE4_LAZY_DEBUG để debug crash. */
 export const tabsScreenOptions = {
   headerShown: false,
-  lazy: true,
+  lazy: !LAZY_DEBUG,
   freezeOnBlur: true,
   animation: 'fade' as const,
   transitionSpec: {

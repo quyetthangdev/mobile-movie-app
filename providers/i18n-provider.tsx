@@ -1,7 +1,6 @@
-// providers/i18n-provider.tsx
 import i18n from '@/i18n'
 import { useUserStore } from '@/stores'
-import { PropsWithChildren, useEffect } from 'react'
+import { type PropsWithChildren, useEffect } from 'react'
 
 const normalizeLanguage = (lang?: string) => {
   if (!lang) return null
@@ -10,15 +9,18 @@ const normalizeLanguage = (lang?: string) => {
   return null
 }
 
-export function I18nProvider({ children }: PropsWithChildren) {
-  const language = useUserStore(state => state.userInfo?.language)
+function syncLanguage() {
+  const lang = useUserStore.getState().userInfo?.language
+  const normalized = normalizeLanguage(lang)
+  if (normalized) i18n.changeLanguage(normalized)
+}
 
+export function I18nProvider({ children }: PropsWithChildren) {
   useEffect(() => {
-    const normalized = normalizeLanguage(language)
-    if (normalized) {
-      i18n.changeLanguage(normalized)
-    }
-  }, [language])
+    syncLanguage()
+    const unsub = useUserStore.subscribe(syncLanguage)
+    return unsub
+  }, [])
 
   return children
 }

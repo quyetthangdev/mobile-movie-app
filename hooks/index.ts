@@ -14,6 +14,7 @@ export * from './use-navigation-bar-fixed';
 export * from './use-order';
 export * from './use-order-type-options';
 export * from './use-pagination';
+export * from './use-predictive-prefetch';
 export * from './use-password-rules';
 export * from './use-run-after-transition';
 export * from './use-screen-transition';

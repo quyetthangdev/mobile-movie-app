@@ -28,7 +28,7 @@ import {
   TableSelectSheet,
 } from '@/components/select'
 import VoucherListDrawer from '@/components/sheet/voucher-list-drawer'
-import { Badge } from '@/components/ui'
+import { Badge, Skeleton } from '@/components/ui'
 import {
   APPLICABILITY_RULE,
   publicFileURL,
@@ -46,7 +46,42 @@ import {
   showErrorToastMessage,
   useCalculateDeliveryFee,
 } from '@/utils'
+import { useRunAfterTransition } from '@/hooks'
+import { useGpuWarmup } from '@/lib/navigation'
+import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 // import { MapAddressSelector } from './components'
+
+function CartSkeletonShell() {
+  return (
+    <SafeAreaView className="flex-1" edges={['top']}>
+      <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
+        <Skeleton className="w-8 h-8 rounded-full mr-3" />
+        <View className="flex-1 items-center">
+          <Skeleton className="h-8 w-28 rounded-md" />
+        </View>
+      </View>
+      <View className="flex-1 bg-gray-50 px-4 py-4">
+        <Skeleton className="h-12 w-full rounded-lg mb-4" />
+        <Skeleton className="h-12 w-full rounded-lg mb-4" />
+        {[1, 2, 3].map((i) => (
+          <View key={i} className="flex-row gap-3 mb-4 p-3 rounded-lg bg-white border border-gray-100">
+            <Skeleton className="w-28 h-28 rounded-lg" />
+            <View className="flex-1 gap-2">
+              <Skeleton className="h-4 rounded-md" style={{ width: '80%' }} />
+              <Skeleton className="h-4 rounded-md" style={{ width: '50%' }} />
+              <Skeleton className="h-8 w-24 rounded-md mt-2" />
+            </View>
+          </View>
+        ))}
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </View>
+      <View className="border-t border-gray-100 bg-white px-4 py-4">
+        <Skeleton className="h-12 w-32 rounded-md mb-2" />
+        <Skeleton className="h-11 w-full rounded-full" />
+      </View>
+    </SafeAreaView>
+  )
+}
 
 function ClientCartPage() {
   const { t } = useTranslation('menu')
@@ -639,5 +674,15 @@ function ClientCartPage() {
   )
 }
 
-// Memoize screen component to avoid unnecessary re-render
-export default React.memo(ClientCartPage)
+function CartScreen() {
+  useGpuWarmup()
+  usePhase4MountLog('cart')
+  const [ready, setReady] = useState(false)
+  useRunAfterTransition(() => setReady(true), [])
+  if (!ready) return <CartSkeletonShell />
+  return <ClientCartPage />
+}
+
+CartScreen.displayName = 'CartScreen'
+
+export default React.memo(CartScreen)

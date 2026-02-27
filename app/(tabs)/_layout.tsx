@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient'
-import { Tabs, usePathname, useRouter } from 'expo-router'
+import { Tabs, usePathname } from 'expo-router'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { View, useColorScheme } from 'react-native'
@@ -7,14 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { FloatingCartButton, TabBarPill } from '@/components/navigation'
 import { TAB_ROUTES, tabsScreenOptions } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { getThemeColor, hexToRgba } from '@/lib/utils'
-
-// ============================================================================
-// PRODUCTION TABS LAYOUT — Telegram/Discord-style
-// - Tab switch: router.replace (no stack), fade from tabsScreenOptions
-// - Bottom bar: tách component → cart count chỉ re-render FloatingCartButton
-// - Không subscribe Zustand ở Layout → không re-render bar khi cart đổi
-// ============================================================================
 
 const BAR_HEIGHT = 48
 const BAR_PADDING = 8
@@ -22,7 +16,6 @@ const FADE_HEIGHT = 80
 
 const TabsLayout = React.memo(function TabsLayout() {
   const { t } = useTranslation('tabs')
-  const router = useRouter()
   const pathname = usePathname()
   const isDark = useColorScheme() === 'dark'
   const insets = useSafeAreaInsets()
@@ -51,10 +44,10 @@ const TabsLayout = React.memo(function TabsLayout() {
     [tabState, isHomeActive],
   )
 
-  const onHome = useCallback(() => router.replace(TAB_ROUTES.HOME), [router])
-  const onMenu = useCallback(() => router.replace(TAB_ROUTES.MENU), [router])
-  const onGiftCard = useCallback(() => router.replace(TAB_ROUTES.GIFT_CARD), [router])
-  const onProfile = useCallback(() => router.replace(TAB_ROUTES.PROFILE), [router])
+  const onHome = useCallback(() => navigateNative.replace(TAB_ROUTES.HOME), [])
+  const onMenu = useCallback(() => navigateNative.replace(TAB_ROUTES.MENU), [])
+  const onGiftCard = useCallback(() => navigateNative.replace(TAB_ROUTES.GIFT_CARD), [])
+  const onProfile = useCallback(() => navigateNative.replace(TAB_ROUTES.PROFILE), [])
   const handlers = useMemo(
     () => ({ onHome, onMenu, onGiftCard, onProfile }),
     [onHome, onMenu, onGiftCard, onProfile],
@@ -154,7 +147,7 @@ const TabsLayout = React.memo(function TabsLayout() {
         />
       </Tabs>
 
-      {/* Custom bottom bar: pill + floating cart — chỉ hiện khi không ở cart */}
+      {/* Bottom bar: pill + floating cart */}
       {!isCartPage && (
         <View
           style={{

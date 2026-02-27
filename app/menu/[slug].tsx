@@ -11,12 +11,45 @@ import NonPropQuantitySelector from '@/components/button/non-prop-quantity-selec
 import { ProductImageCarousel, SliderRelatedProducts } from '@/components/menu'
 import { Badge, Button, Skeleton } from '@/components/ui'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
-import { useSpecificMenuItem } from '@/hooks'
+import { useRunAfterTransition, useSpecificMenuItem } from '@/hooks'
 import { useOrderFlowStore, useUserStore } from '@/stores'
 import { IOrderItem, IProductVariant } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
 
-export default function MenuItemDetailPage() {
+function MenuItemSkeletonShell() {
+  return (
+    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+      <View className="flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+        <Skeleton className="w-8 h-8 rounded-full mr-3" />
+        <Skeleton className="h-5 w-48 rounded-md" />
+      </View>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="px-4 py-4 gap-6">
+          <Skeleton className="w-full h-56 rounded-2xl" />
+          <View className="gap-3">
+            <Skeleton className="h-5 w-3/4 rounded-md" />
+            <Skeleton className="h-4 w-1/2 rounded-md" />
+            <Skeleton className="h-4 w-1/3 rounded-md" />
+          </View>
+          <View className="flex-row items-center justify-between gap-4 mt-4">
+            <Skeleton className="h-10 w-28 rounded-full" />
+            <Skeleton className="h-11 flex-1 rounded-full" />
+          </View>
+          <View className="mt-6 gap-3">
+            <Skeleton className="h-4 w-32 rounded-md" />
+            <View className="flex-row gap-3">
+              <Skeleton className="h-28 w-28 rounded-xl" />
+              <Skeleton className="h-28 w-28 rounded-xl" />
+              <Skeleton className="h-28 w-28 rounded-xl" />
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
+
+function MenuItemDetailContent() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
   const router = useRouter()
   const { t } = useTranslation('product')
@@ -512,4 +545,11 @@ export default function MenuItemDetailPage() {
       </View>
     </SafeAreaView>
   )
+}
+
+export default function MenuItemDetailPage() {
+  const [ready, setReady] = useState(false)
+  useRunAfterTransition(() => setReady(true), [])
+  if (!ready) return <MenuItemSkeletonShell />
+  return <MenuItemDetailContent />
 }

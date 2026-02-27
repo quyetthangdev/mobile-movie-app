@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, Download, FileDown, SquareMenu } from 'lucide-react-native'
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Image, type ImageSourcePropType, Platform, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -10,12 +10,36 @@ import { Images } from '@/assets/images'
 import PaymentMethodRadioGroup from '@/components/radio/payment-method-radio-group'
 import { Badge, Button, Skeleton } from '@/components/ui'
 import { APPLICABILITY_RULE, colors, PaymentMethod, publicFileURL, ROUTE, VOUCHER_TYPE } from '@/constants'
-import { useExportPublicOrderInvoice, useInitiatePayment, useInitiatePublicPayment, useOrderBySlug } from '@/hooks'
+import { useExportPublicOrderInvoice, useInitiatePayment, useInitiatePublicPayment, useOrderBySlug, useRunAfterTransition } from '@/hooks'
 import { useDownloadStore, useUserStore } from '@/stores'
 import { OrderStatus, OrderTypeEnum } from '@/types'
 import { calculateOrderItemDisplay, calculatePlacedOrderTotals, capitalizeFirstLetter, downloadAndSavePDF, formatCurrency, formatDateTime, getPaymentStatusLabel, showErrorToast, showErrorToastMessage, showToast } from '@/utils'
 
-export default function PaymentPage() {
+function PaymentSkeletonShell() {
+  return (
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top']}>
+      <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
+        <Skeleton className="w-8 h-8 rounded-full mr-3" />
+        <Skeleton className="h-5 w-48 rounded-md" />
+      </View>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <View className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 gap-3">
+          <Skeleton className="h-4 w-32 rounded-md" />
+          <Skeleton className="h-6 w-40 rounded-md" />
+          <Skeleton className="h-4 w-28 rounded-md" />
+          <Skeleton className="h-4 w-24 rounded-md" />
+        </View>
+        <View className="mb-4 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 gap-3">
+          <Skeleton className="h-4 w-40 rounded-md" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
+
+function PaymentPageContent() {
   const { t } = useTranslation('menu')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
@@ -815,4 +839,11 @@ export default function PaymentPage() {
       </SafeAreaView>
     </SafeAreaView>
   )
+}
+
+export default function PaymentPage() {
+  const [ready, setReady] = useState(false)
+  useRunAfterTransition(() => setReady(true), [])
+  if (!ready) return <PaymentSkeletonShell />
+  return <PaymentPageContent />
 }

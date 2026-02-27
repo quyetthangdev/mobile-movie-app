@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, ScrollView, Text, View } from 'react-native'
@@ -16,8 +15,11 @@ import {
   YouTubeVideoSection,
 } from '@/components/home'
 import { Button, Skeleton } from '@/components/ui'
-import { useRunAfterTransition } from '@/hooks'
+import { usePredictivePrefetch, useRunAfterTransition } from '@/hooks'
+import { useGpuWarmup } from '@/lib/navigation'
+import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import { BannerPage, ROUTE, youtubeVideoId } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useQuery } from '@tanstack/react-query'
 
@@ -70,7 +72,6 @@ function HomeFallbackBanner() {
 
 function HomeContent() {
   const { t } = useTranslation('home')
-  const router = useRouter()
   const userInfo = useUserStore((state) => state.userInfo)
   const setLogout = useAuthStore((state) => state.setLogout)
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
@@ -99,12 +100,12 @@ function HomeContent() {
   }, [])
 
   const handleLoginPress = useCallback(() => {
-    router.push(ROUTE.LOGIN)
-  }, [router])
+    navigateNative.push(ROUTE.LOGIN)
+  }, [])
 
   const handleViewMenuPress = useCallback(() => {
-    router.push(ROUTE.CLIENT_MENU)
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_MENU)
+  }, [])
 
   return (
     <SafeAreaView className="flex-1" edges={['top']}>
@@ -247,8 +248,10 @@ function HomeContent() {
 
 HomeContent.displayName = 'HomeContent'
 
-/** Wrapper: frame đầu chỉ shell → commit <16ms. Sau transition mount HomeContent. */
 function HomeScreen() {
+  useGpuWarmup()
+  usePhase4MountLog('home')
+  usePredictivePrefetch()
   const [ready, setReady] = useState(false)
   useRunAfterTransition(() => setReady(true), [])
   if (!ready) return <HomeSkeletonShell />

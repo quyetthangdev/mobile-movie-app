@@ -13,6 +13,8 @@ import { ClientCatalogSelect, ClientMenus, PriceRangeFilter, ProductNameSearch }
 import { Skeleton } from '@/components/ui'
 import { FILTER_VALUE, ROUTE } from '@/constants'
 import { usePublicSpecificMenu, useRunAfterTransition, useSpecificMenu } from '@/hooks'
+import { useGpuWarmup } from '@/lib/navigation'
+import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
 import { IMenuFilter, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
@@ -313,11 +315,9 @@ function ClientMenuContent() {
 
 ClientMenuContent.displayName = 'ClientMenuContent'
 
-/**
- * Wrapper: frame đầu chỉ mount shell (0 store, 0 query) → commit <16ms, tab chuyển ngay.
- * Sau runAfterInteractions mới mount ClientMenuContent (fetch + store).
- */
 function MenuScreen() {
+  useGpuWarmup()
+  usePhase4MountLog('menu')
   const [ready, setReady] = useState(false)
   useRunAfterTransition(() => setReady(true), [])
   if (!ready) return <MenuSkeletonShell />

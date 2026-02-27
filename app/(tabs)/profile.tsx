@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import {
   Award,
   Gift,
@@ -17,16 +16,46 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { LoginForm } from '@/components/auth'
 import { LogoutDialog } from '@/components/dialog'
+import { Skeleton } from '@/components/ui'
+import { useRunAfterTransition } from '@/hooks'
+import { useGpuWarmup } from '@/lib/navigation'
+import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import {
   SettingsItem,
   SettingsSection,
 } from '@/components/profile/settings-item'
 import { colors, ROUTE } from '@/constants'
+import { type HrefLike, navigateNative } from '@/lib/navigation'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useTranslation } from 'react-i18next'
 
+function ProfileSkeletonShell() {
+  return (
+    <SafeAreaView className="flex-1" edges={['top']}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <View className="min-h-full bg-gray-50 dark:bg-gray-900 px-4 pt-6">
+          <View className="mb-6 flex-row items-center rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+            <Skeleton className="mr-3 h-16 w-16 rounded-full" />
+            <View className="flex-1 gap-2">
+              <Skeleton className="h-5 w-32 rounded-md" />
+              <Skeleton className="h-4 w-48 rounded-md" />
+            </View>
+          </View>
+          <View className="gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <View key={i} className="flex-row items-center rounded-lg border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                <Skeleton className="mr-3 h-10 w-10 rounded-full" />
+                <Skeleton className="h-4 flex-1 rounded-md" />
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
+
 function Profile() {
-  const router = useRouter()
   const { t } = useTranslation('profile')
   // Optimize Zustand selectors: only subscribe the necessary parts
   const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
@@ -63,51 +92,36 @@ function Profile() {
 
   // Memoize navigation handlers
   const handleNavigateToInfo = useCallback(() => {
-    router.push(ROUTE.CLIENT_PROFILE_INFO as Parameters<typeof router.push>[0])
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_PROFILE_INFO)
+  }, [])
 
   const handleNavigateToHistory = useCallback(() => {
-    // Push ngay → màn trượt tức thì; màn history sẽ fetch + skeleton sau khi transition xong
-    router.push(
-      ROUTE.CLIENT_PROFILE_HISTORY as Parameters<typeof router.push>[0],
-    )
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_PROFILE_HISTORY)
+  }, [])
 
   const handleNavigateToGiftCard = useCallback(() => {
-    router.push(
-      ROUTE.CLIENT_PROFILE_GIFT_CARD as Parameters<typeof router.push>[0],
-    )
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_PROFILE_GIFT_CARD as HrefLike)
+  }, [])
 
   const handleNavigateToLoyaltyPoint = useCallback(() => {
-    router.push(
-      ROUTE.CLIENT_PROFILE_LOYALTY_POINT as Parameters<typeof router.push>[0],
-    )
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_PROFILE_LOYALTY_POINT)
+  }, [])
 
   const handleNavigateToCoin = useCallback(() => {
-    router.push(ROUTE.CLIENT_PROFILE_COIN as Parameters<typeof router.push>[0])
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_PROFILE_COIN as HrefLike)
+  }, [])
 
   const handleNavigateToVerifyEmail = useCallback(() => {
-    router.push(
-      ROUTE.CLIENT_PROFILE_VERIFY_EMAIL as Parameters<typeof router.push>[0],
-    )
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_PROFILE_VERIFY_EMAIL)
+  }, [])
 
   const handleNavigateToVerifyPhone = useCallback(() => {
-    router.push(
-      ROUTE.CLIENT_PROFILE_VERIFY_PHONE_NUMBER as Parameters<
-        typeof router.push
-      >[0],
-    )
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_PROFILE_VERIFY_PHONE_NUMBER)
+  }, [])
 
   const handleNavigateToChangePassword = useCallback(() => {
-    router.push(
-      ROUTE.CLIENT_PROFILE_CHANGE_PASSWORD as Parameters<typeof router.push>[0],
-    )
-  }, [router])
+    navigateNative.push(ROUTE.CLIENT_PROFILE_CHANGE_PASSWORD)
+  }, [])
 
   // If there is no userInfo, display the login form
   if (needsUserInfo || !userInfo) {
@@ -274,5 +288,15 @@ function Profile() {
   )
 }
 
-// Memoize screen component to avoid unnecessary re-render
-export default React.memo(Profile)
+function ProfileScreen() {
+  useGpuWarmup()
+  usePhase4MountLog('profile')
+  const [ready, setReady] = useState(false)
+  useRunAfterTransition(() => setReady(true), [])
+  if (!ready) return <ProfileSkeletonShell />
+  return <Profile />
+}
+
+ProfileScreen.displayName = 'ProfileScreen'
+
+export default React.memo(ProfileScreen)

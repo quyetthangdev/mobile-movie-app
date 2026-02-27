@@ -1,25 +1,16 @@
-import { useRouter } from 'expo-router'
 import { ShoppingCart } from 'lucide-react-native'
 import React from 'react'
 import { Text, TouchableOpacity, View } from 'react-native'
 
 import { TAB_ROUTES } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 
 type Props = { primaryColor: string }
 
-/**
- * Chỉ component này subscribe Zustand cart count → bottom bar không re-render khi cart đổi.
- * Tab switch chỉ đổi pathname → Layout re-render; cart count đổi → chỉ button này re-render.
- */
 const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor }: Props) {
-  const router = useRouter()
-  const cartItemCount = useOrderFlowStore((state) => {
-    const cartItems = state.getCartItems()
-    return cartItems?.orderItems?.reduce((total, item) => total + (item.quantity || 0), 0) ?? 0
-  })
-
-  const onPress = () => router.replace(TAB_ROUTES.CART)
+  const cartItemCount = useOrderFlowStore((state) => state.getCartItemCount())
+  const onPress = () => navigateNative.replace(TAB_ROUTES.CART)
 
   return (
     <TouchableOpacity

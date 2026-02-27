@@ -166,6 +166,7 @@ export interface IOrderFlowStore {
 
   // Compatibility methods for existing code
   getCartItems: () => IOrderingData | null
+  getCartItemCount: () => number
   getOrderItems: () => IUpdatingData | null
   clearCart: () => void
   clearStore: () => void
@@ -1487,6 +1488,11 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       getCartItems: () => {
         const { currentStep, orderingData } = get()
         return currentStep === OrderFlowStep.ORDERING ? orderingData : null
+      },
+
+      getCartItemCount: () => {
+        const cart = get().getCartItems()
+        return cart?.orderItems?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0
       },
 
       getOrderItems: () => {

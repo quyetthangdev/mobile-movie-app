@@ -6,12 +6,12 @@
  * Rule: Component gọi navigateNative.push/replace, không gọi router trực tiếp.
  */
 import type { Href } from 'expo-router'
-
-export type HrefLike = Href | string
 import { acquireTransitionLock } from './transition-lock'
 
-const STACK_ANIMATION_MS = 280
-const TAB_ANIMATION_MS = 250
+export type HrefLike = Href | string
+
+const STACK_ANIMATION_MS = 320
+const TAB_ANIMATION_MS = 320
 
 export type RouterLike = {
   push: (href: HrefLike) => void
@@ -27,8 +27,10 @@ export const setNavigationRouter = (router: RouterLike | null) => {
 
 const dispatch = (fn: () => void, durationMs: number) => {
   requestAnimationFrame(() => {
-    acquireTransitionLock(durationMs)
-    fn()
+    requestAnimationFrame(() => {
+      acquireTransitionLock(durationMs)
+      fn()
+    })
   })
 }
 

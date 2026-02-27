@@ -15,11 +15,15 @@ export const TAB_ROUTES = {
 
 export type TabRouteKey = keyof typeof TAB_ROUTES
 
-/** Stack: slide_from_right, gesture, freezeOnBlur. */
+/**
+ * Stack: slide_from_right, gesture, freezeOnBlur.
+ * Telegram-level: 220–240ms để tăng perceived velocity.
+ * gestureResponseDistance: Native Stack không hỗ trợ (chỉ JS Stack).
+ */
 export const stackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   animation: 'slide_from_right',
-  animationDuration: 280,
+  animationDuration: 230,
   gestureEnabled: true,
   fullScreenGestureEnabled: true,
   animationMatchesGesture: true,
@@ -28,7 +32,7 @@ export const stackScreenOptions: NativeStackNavigationOptions = {
   contentStyle: { backgroundColor: '#ffffff' },
 }
 
-/** Bottom Tabs: fade 250ms, freezeOnBlur. lazy: false khi PHASE4_LAZY_DEBUG để debug crash. */
+/** Bottom Tabs: fade 230ms (Telegram-level), freezeOnBlur. lazy: false khi PHASE4_LAZY_DEBUG để debug crash. */
 export const tabsScreenOptions = {
   headerShown: false,
   lazy: !LAZY_DEBUG,
@@ -37,7 +41,7 @@ export const tabsScreenOptions = {
   transitionSpec: {
     animation: 'timing' as const,
     config: {
-      duration: 250,
+      duration: 230,
       easing: Easing.bezier(0.4, 0, 0.2, 1),
     },
   },

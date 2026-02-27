@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import { Plus } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useEffect } from 'react'
@@ -8,7 +7,8 @@ import { Image, Pressable, Text, TouchableOpacity, View } from 'react-native'
 
 import { Images } from '@/assets/images'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
-import { useIsMobile } from '@/hooks'
+import { useIsMobile, usePressInPrefetchMenuItem } from '@/hooks'
+import { navigateNative } from '@/lib/navigation'
 import { useOrderFlowStore, useUserStore } from '@/stores'
 import { IMenuItem, IOrderItem, IProduct } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
@@ -31,7 +31,7 @@ interface IClientMenuItemProps {
 export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClientMenuItemProps) {
   const { t } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
-  const router = useRouter()
+  const prefetchMenuItem = usePressInPrefetchMenuItem()
   const isMobile = useIsMobile()
   const { userInfo } = useUserStore()
 
@@ -134,8 +134,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
   }
 
   const handleItemPress = () => {
-    // Navigate to menu item detail page
-    router.push({
+    navigateNative.push({
       pathname: ROUTE.CLIENT_MENU_ITEM_DETAIL,
       params: { slug: item.slug },
     })
@@ -152,6 +151,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
     <View className="flex-row sm:flex-col justify-between bg-white border border-gray-200 dark:border-gray-700 rounded-xl min-h-[2rem] dark:bg-gray-800 overflow-hidden">
       {/* Image - Square with rounded corners */}
       <Pressable
+        onPressIn={() => prefetchMenuItem(item.slug)}
         onPress={handleItemPress}
         className={`flex-shrink-0 justify-center items-center ${
           isMobile ? 'w-32 h-32 p-2' : 'w-full aspect-square p-0'

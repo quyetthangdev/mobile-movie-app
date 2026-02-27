@@ -15,7 +15,7 @@ import {
   YouTubeVideoSection,
 } from '@/components/home'
 import { Button, Skeleton } from '@/components/ui'
-import { usePredictivePrefetch, useRunAfterTransition } from '@/hooks'
+import { useRunAfterTransition } from '@/hooks'
 import { useGpuWarmup } from '@/lib/navigation'
 import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import { BannerPage, ROUTE, youtubeVideoId } from '@/constants'
@@ -251,7 +251,6 @@ HomeContent.displayName = 'HomeContent'
 function HomeScreen() {
   useGpuWarmup()
   usePhase4MountLog('home')
-  usePredictivePrefetch()
   const [ready, setReady] = useState(false)
   useRunAfterTransition(() => setReady(true), [])
   if (!ready) return <HomeSkeletonShell />

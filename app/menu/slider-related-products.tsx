@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import { ChevronRight } from 'lucide-react-native'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +5,7 @@ import { Dimensions, FlatList, Text, TouchableOpacity, View } from 'react-native
 
 import { ClientMenuItem } from '@/components/menu/client-menu-item'
 import { ROUTE } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks'
 import { useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
 import { ISpecificMenuRequest } from '@/types'
@@ -20,7 +20,6 @@ export default function SliderRelatedProducts({
   catalog,
 }: SliderRelatedProductsProps) {
   const { t } = useTranslation('product')
-  const router = useRouter()
   const { userInfo } = useUserStore()
   const { menuFilter } = useMenuFilterStore()
   const { branch } = useBranchStore()
@@ -70,7 +69,7 @@ export default function SliderRelatedProducts({
           {t('product.relatedProducts', 'Sản phẩm liên quan')}
         </Text>
         <TouchableOpacity
-          onPress={() => router.push(ROUTE.CLIENT_MENU)}
+          onPress={() => navigateNative.replace(ROUTE.CLIENT_MENU)}
           className="flex-row items-center gap-1"
         >
           <Text className="text-sm text-gray-600 dark:text-gray-400">

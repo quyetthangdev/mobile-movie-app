@@ -1,6 +1,8 @@
 /**
  * Predictive Prefetch — preload data khi user idle.
- * Chạy khi: user idle, không trong animation frame.
+ * Chạy khi: screen focus, idle time. Không chạy trong transition lock.
+ *
+ * Routes: Home → banners + menu | Menu → public-specific-menu | Cart → (payment prefetch ở create-order)
  */
 import { useQueryClient } from '@tanstack/react-query'
 import { usePathname } from 'expo-router'
@@ -25,6 +27,13 @@ export function usePredictivePrefetch() {
           queryKey: ['banners', BannerPage.HOME],
           queryFn: () => getBanners({ page: BannerPage.HOME, isActive: true }),
         })
+        queryClient.prefetchQuery({
+          queryKey: ['public-specific-menu', { date: '', branch: '', catalog: '' }],
+          queryFn: () => getPublicSpecificMenu({ date: '', branch: '', catalog: '' }),
+        })
+      }
+
+      if (pathname?.startsWith('/menu') || pathname?.includes('/(tabs)/menu')) {
         queryClient.prefetchQuery({
           queryKey: ['public-specific-menu', { date: '', branch: '', catalog: '' }],
           queryFn: () => getPublicSpecificMenu({ date: '', branch: '', catalog: '' }),

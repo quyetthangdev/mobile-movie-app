@@ -1,10 +1,12 @@
 import { ShoppingCart } from 'lucide-react-native'
 import React from 'react'
-import { Text, TouchableOpacity, View } from 'react-native'
+import { Text, View } from 'react-native'
 
 import { TAB_ROUTES } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
+
+import { NavigatePressable } from './navigate-pressable'
 
 type Props = { primaryColor: string }
 
@@ -13,7 +15,7 @@ const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor
   const onPress = () => navigateNative.replace(TAB_ROUTES.CART)
 
   return (
-    <TouchableOpacity
+    <NavigatePressable
       onPress={onPress}
       style={{
         width: 64,
@@ -52,7 +54,7 @@ const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor
           </Text>
         </View>
       )}
-    </TouchableOpacity>
+    </NavigatePressable>
   )
 })
 

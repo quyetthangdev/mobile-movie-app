@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'expo-router'
 import React from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +6,7 @@ import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native'
 
 import { Button } from '@/components/ui'
 import { ROUTE } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { TForgotPasswordByPhoneNumberSchema, useForgotPasswordByPhoneNumberSchema } from '@/schemas'
 
 import { FormInput } from './form-input'
@@ -17,7 +17,6 @@ interface ForgotPasswordByPhoneFormProps {
 }
 
 export function ForgotPasswordByPhoneForm({ onSubmit, isLoading = false }: ForgotPasswordByPhoneFormProps) {
-  const router = useRouter()
   const { t } = useTranslation('auth')
 
   const schema = useForgotPasswordByPhoneNumberSchema()
@@ -50,7 +49,7 @@ export function ForgotPasswordByPhoneForm({ onSubmit, isLoading = false }: Forgo
       />
 
       <View className="flex-row items-center justify-between mt-2">
-        <TouchableOpacity onPress={() => router.push(ROUTE.FORGOT_PASSWORD)} disabled={isLoading}>
+        <TouchableOpacity onPress={() => navigateNative.push(ROUTE.FORGOT_PASSWORD)} disabled={isLoading}>
           <Text className="text-primary text-sm font-medium">
             {t('forgotPassword.backButton')}
           </Text>

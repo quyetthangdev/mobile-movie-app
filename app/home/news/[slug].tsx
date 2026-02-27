@@ -1,10 +1,11 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
 import { ArrowLeft } from 'lucide-react-native'
 import React from 'react'
 import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
+import { navigateNative } from '@/lib/navigation'
 import { Button } from '@/components/ui'
 import type { NewsArticleDetail } from '@/types'
 
@@ -356,7 +357,6 @@ const mockNewsArticles: Record<string, NewsArticleDetail> = {
 
 export default function NewsArticleDetailPage() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
-  const router = useRouter()
 
   const article = slug ? mockNewsArticles[slug] : null
 
@@ -365,7 +365,7 @@ export default function NewsArticleDetailPage() {
       <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
         <View className="flex-1 justify-center items-center px-4">
           <Text className="text-2xl font-bold mb-4">Không tìm thấy bài viết</Text>
-          <Button onPress={() => router.back()}>
+          <Button onPress={() => navigateNative.back()}>
             Quay lại
           </Button>
         </View>
@@ -420,7 +420,7 @@ export default function NewsArticleDetailPage() {
       <ScrollView className="flex-1">
         <View className="container py-6 px-4 max-w-4xl mx-auto">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => navigateNative.back()}
             className="flex-row items-center mb-6 w-fit"
           >
             <ArrowLeft size={16} color="#000" />

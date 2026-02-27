@@ -1,9 +1,10 @@
-import { useRouter } from 'expo-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { Clock, Loader2, MapPin, Notebook, Phone, Receipt, ShoppingCart, User } from 'lucide-react-native'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, useColorScheme, View } from 'react-native'
 
+import { getOrderBySlug } from '@/api/order'
 import {
   Badge,
   Button,
@@ -13,6 +14,7 @@ import {
 
 import { colors, PHONE_NUMBER_REGEX, Role, ROUTE } from '@/constants'
 import { useCreateOrder, useCreateOrderWithoutLogin } from '@/hooks'
+import { navigateNative } from '@/lib/navigation'
 import { IOrderingData, useBranchStore, useOrderFlowStore, useUpdateOrderStore, useUserStore } from '@/stores'
 import { ICreateOrderRequest, OrderTypeEnum } from '@/types'
 import { calculateCartItemDisplay, calculateCartTotals, formatCurrency, parseKm, showErrorToast, showToast, useCalculateDeliveryFee } from '@/utils'
@@ -24,7 +26,7 @@ interface IPlaceOrderDialogProps {
 }
 
 export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSuccess }: IPlaceOrderDialogProps) {
-  const router = useRouter()
+  const queryClient = useQueryClient()
   const { t } = useTranslation(['menu'])
   const { t: tCommon } = useTranslation('common')
   const { t: tToast } = useTranslation('toast')
@@ -97,22 +99,18 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
     if (userInfo) {
       createOrder(createOrderRequest, {
         onSuccess: (data) => {
-          const orderSlug = data.result.slug;
+          const orderSlug = data.result.slug
+          const paymentRoute = userInfo?.role.name === Role.CUSTOMER ? ROUTE.CLIENT_PAYMENT : ROUTE.SYSTEM_PAYMENT
 
-          if (userInfo?.role.name === Role.CUSTOMER) {
-            router.push({
-              pathname: ROUTE.CLIENT_PAYMENT,
-              params: { order: orderSlug },
-            });
-          } else {
-            router.push({
-              pathname: ROUTE.SYSTEM_PAYMENT,
-              params: { order: orderSlug },
-            });
-          }
+          queryClient.prefetchQuery({
+            queryKey: ['order', orderSlug],
+            queryFn: () => getOrderBySlug(orderSlug),
+          })
 
-          onSuccess?.();
-          transitionToPayment(orderSlug);
+          navigateNative.push({ pathname: paymentRoute, params: { order: orderSlug } })
+
+          onSuccess?.()
+          transitionToPayment(orderSlug)
 
           setIsOpen(false)
           onSuccessfulOrder?.()
@@ -123,12 +121,18 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
     } else {
       createOrderWithoutLogin(createOrderRequest, {
         onSuccess: (data) => {
+          const orderSlug = data.result.slug
+
+          queryClient.prefetchQuery({
+            queryKey: ['order', orderSlug],
+            queryFn: () => getOrderBySlug(orderSlug),
+          })
+
+          navigateNative.push({ pathname: ROUTE.CLIENT_PAYMENT, params: { order: orderSlug } })
+
           onSuccess?.()
+          transitionToPayment(orderSlug)
 
-          // Chuyển sang payment phase với order slug
-          transitionToPayment(data.result.slug)
-
-          router.push(`${ROUTE.CLIENT_PAYMENT}?order=${data.result.slug}` as unknown as Parameters<typeof router.push>[0])
           setIsOpen(false)
           onSuccessfulOrder?.()
           clearUpdateOrderStore()

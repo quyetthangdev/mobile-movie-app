@@ -1,5 +1,4 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
 import { ArrowLeft, Package } from 'lucide-react-native'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +10,7 @@ import { Images } from '@/assets/images'
 import { CancelOrderDialog } from '@/components/dialog'
 import { Badge, Button, Skeleton } from '@/components/ui'
 import { APPLICABILITY_RULE, colors, FLATLIST_PROPS, publicFileURL, ROUTE, VOUCHER_TYPE } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useOrders, useRunAfterTransition } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { useUpdateOrderStore, useUserStore } from '@/stores'
@@ -20,7 +20,6 @@ import { calculateOrderItemDisplay, calculatePlacedOrderTotals, capitalizeFirstL
 function OrderHistoryPage() {
   const { t } = useTranslation('menu')
   const { t: tProfile } = useTranslation('profile')
-  const router = useRouter()
   const queryClient = useQueryClient()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
@@ -64,24 +63,24 @@ function OrderHistoryPage() {
         })
       }
 
-      router.push(
+      navigateNative.push(
         `${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug)}` as Parameters<
-          typeof router.push
+          typeof navigateNative.push
         >[0],
       )
     },
-    [queryClient, router],
+    [queryClient],
   )
 
   const handleUpdateOrder = useCallback((order: IOrder) => {
     if (!getUserInfo()?.slug) {
       showErrorToast(1042)
-      router.push(ROUTE.LOGIN as Parameters<typeof router.push>[0])
+      navigateNative.push(ROUTE.LOGIN)
       return
     }
     setOrderItems(order)
     // TODO: Navigate to update order page
-  }, [router, setOrderItems, getUserInfo])
+  }, [setOrderItems, getUserInfo])
 
   // Memoize getStatusBadgeColor to use in renderOrderItem
   const getStatusBadgeColor = useCallback((status: OrderStatus) => {
@@ -413,7 +412,7 @@ function OrderHistoryPage() {
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top', 'bottom']}>
       {/* Header */}
       <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+        <TouchableOpacity onPress={() => navigateNative.back()} className="mr-3">
           <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
         </TouchableOpacity>
         <View className="flex-row items-center gap-2 flex-1">

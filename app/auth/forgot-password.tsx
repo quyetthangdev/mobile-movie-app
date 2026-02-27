@@ -1,4 +1,4 @@
-import { Redirect, useRouter } from 'expo-router'
+import { Redirect } from 'expo-router'
 import { ArrowRight, Mail, Phone } from 'lucide-react-native'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,10 +6,10 @@ import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ROUTE, VerificationMethod } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useAuthStore, useForgotPasswordStore } from '@/stores'
 
 export default function ForgotPasswordScreen() {
-  const router = useRouter()
   const { t } = useTranslation('auth')
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated())
   const { setVerificationMethod, setStep } = useForgotPasswordStore()
@@ -23,9 +23,9 @@ export default function ForgotPasswordScreen() {
     setVerificationMethod(method)
     setStep(1)
     if (method === VerificationMethod.EMAIL) {
-      router.push(ROUTE.FORGOT_PASSWORD_EMAIL)
+      navigateNative.push(ROUTE.FORGOT_PASSWORD_EMAIL)
     } else {
-      router.push(ROUTE.FORGOT_PASSWORD_PHONE)
+      navigateNative.push(ROUTE.FORGOT_PASSWORD_PHONE)
     }
   }
 
@@ -86,7 +86,7 @@ export default function ForgotPasswordScreen() {
 
           {/* Back to Login */}
           <TouchableOpacity
-            onPress={() => router.push(ROUTE.LOGIN)}
+            onPress={() => navigateNative.push(ROUTE.LOGIN)}
             className="mt-6"
           >
             <Text className="text-primary text-sm font-medium text-center">

@@ -1,7 +1,6 @@
 import _ from 'lodash'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 // import Joyride from 'react-joyride';
-import { useRouter } from 'expo-router'
 import {
   ArrowLeft,
   ChevronRight,
@@ -47,7 +46,7 @@ import {
   useCalculateDeliveryFee,
 } from '@/utils'
 import { useRunAfterTransition } from '@/hooks'
-import { useGpuWarmup } from '@/lib/navigation'
+import { navigateNative, useGpuWarmup } from '@/lib/navigation'
 import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 // import { MapAddressSelector } from './components'
 
@@ -88,7 +87,6 @@ function ClientCartPage() {
   const { t: tVoucher } = useTranslation('voucher')
   // Optimize Zustand selectors - only subscribe the necessary functions
   const branchSlug = useBranchStore((state) => state.branch?.slug)
-  const router = useRouter()
   const userBranchSlug = useUserStore((state) => state.userInfo?.branch?.slug)
   
   // Memoize branchSlug calculation
@@ -207,7 +205,7 @@ function ClientCartPage() {
         {/* Header */}
         <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
           {/* Back button */}
-          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+          <TouchableOpacity onPress={() => navigateNative.back()} className="mr-3">
             <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
           </TouchableOpacity>
         </View>
@@ -229,7 +227,7 @@ function ClientCartPage() {
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => router.push(ROUTE.CLIENT_MENU)}
+              onPress={() => navigateNative.replace(ROUTE.CLIENT_MENU)}
               className="mt-2 px-6 py-3 rounded-lg items-center justify-center"
               style={{
                 backgroundColor: primaryColor,
@@ -255,7 +253,7 @@ function ClientCartPage() {
       {/* Header */}
       <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
         {/* Back button */}
-        <TouchableOpacity onPress={() => router.back()} className="absolute left-5 z-10">
+        <TouchableOpacity onPress={() => navigateNative.back()} className="absolute left-5 z-10">
           <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
         </TouchableOpacity>
         {/* Logo centered */}

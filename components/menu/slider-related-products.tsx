@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import moment from 'moment'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +13,7 @@ import {
 
 import { Images } from '@/assets/images'
 import { ROUTE, publicFileURL } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks'
 import { useBranchStore, useUserStore } from '@/stores'
 import { IMenuItem, IProduct } from '@/types'
@@ -29,7 +29,6 @@ export default function SliderRelatedProducts({
   catalog,
 }: SliderRelatedProductsProps) {
   const { t } = useTranslation('menu')
-  const router = useRouter()
   const { branch } = useBranchStore()
   const { userInfo } = useUserStore()
 
@@ -73,7 +72,7 @@ export default function SliderRelatedProducts({
   const itemSpacing = 12
 
   const handleItemPress = (slug: string) => {
-    router.push({
+    navigateNative.push({
       pathname: ROUTE.CLIENT_MENU_ITEM_DETAIL,
       params: { slug },
     })

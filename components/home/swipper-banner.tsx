@@ -1,7 +1,7 @@
 import { Images } from '@/assets/images'
 import { ROUTE, publicFileURL } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { IBanner } from '@/types'
-import { useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { ImageSourcePropType } from 'react-native'
 import { Dimensions, FlatList, Image, Linking, Pressable, View } from 'react-native'
@@ -30,7 +30,6 @@ interface SwiperBannerProps {
  * ```
  */
 const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBannerProps): React.ReactElement | null {
-  const router = useRouter()
   const flatListRef = useRef<FlatList>(null)
   const screenWidth = Dimensions.get('window').width
   const screenHeight = Dimensions.get('window').height
@@ -121,7 +120,7 @@ const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBann
 
     if (isInternal) {
       // Navigate internally using expo-router
-      router.push(linkUrl as Parameters<typeof router.push>[0])
+      navigateNative.push(linkUrl as Parameters<typeof navigateNative.push>[0])
     } else {
       // Open external link in browser
       Linking.openURL(linkUrl).catch((err) => {
@@ -129,7 +128,7 @@ const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBann
         console.error('Failed to open URL:', err)
       })
     }
-  }, [router, getBannerLink, isInternalRoute])
+  }, [getBannerLink, isInternalRoute])
 
   const getBannerImage = (banner: IBanner): ImageSourcePropType => {
     if (banner.image) {

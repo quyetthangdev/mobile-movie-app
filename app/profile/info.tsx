@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import { ArrowLeft, Mail, MapPin, Phone, Shield, SquarePen, User as UserIcon } from 'lucide-react-native'
 import React, { useMemo } from 'react'
 import { Image, ScrollView, Text, View, useColorScheme } from 'react-native'
@@ -6,12 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui'
 import { ROUTE, colors } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useUserStore } from '@/stores'
 import { useTranslation } from 'react-i18next'
 
 function ProfileInfoScreen() {
   const {t} = useTranslation('profile' )
-  const router = useRouter()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
@@ -26,7 +25,7 @@ function ProfileInfoScreen() {
 
   if (!userInfo) {
     // Nếu chưa có thông tin user (chưa đăng nhập) thì quay lại màn Profile chính
-    router.back()
+    navigateNative.back()
     return null
   }
 
@@ -40,7 +39,7 @@ function ProfileInfoScreen() {
         <Button
           variant="ghost"
           className="mr-2 px-0 min-h-0 h-10 w-10 rounded-full justify-center items-center"
-          onPress={() => router.back()}
+          onPress={() => navigateNative.back()}
         >
           <ArrowLeft size={22} color={isDark ? '#9ca3af' : '#6b7280'} />
         </Button>
@@ -87,11 +86,7 @@ function ProfileInfoScreen() {
           <Button
             variant="ghost"
             className="px-0 min-h-0 h-10 w-10 rounded-full justify-center items-center"
-            onPress={() =>
-              router.push(
-                ROUTE.CLIENT_PROFILE_EDIT as Parameters<typeof router.push>[0],
-              )
-            }
+            onPress={() => navigateNative.push(ROUTE.CLIENT_PROFILE_EDIT)}
           >
             <SquarePen size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
           </Button>
@@ -140,11 +135,7 @@ function ProfileInfoScreen() {
                 <Button
                   variant="outline"
                   className="px-2 h-8 rounded-md border border-muted"
-                  onPress={() =>
-                    router.push(
-                      ROUTE.CLIENT_PROFILE_VERIFY_PHONE_NUMBER as Parameters<typeof router.push>[0],
-                    )
-                  }
+                  onPress={() => navigateNative.push(ROUTE.CLIENT_PROFILE_VERIFY_PHONE_NUMBER)}
                 >
                   <Text className="text-xs font-medium text-muted-foreground">
                     {t('profile.contactInfo.verify')}
@@ -180,11 +171,7 @@ function ProfileInfoScreen() {
                     <Button
                     variant="outline"
                     className="px-2 h-8 rounded-md border border-muted"
-                    onPress={() =>
-                        router.push(
-                        ROUTE.CLIENT_PROFILE_VERIFY_EMAIL as Parameters<typeof router.push>[0],
-                        )
-                    }
+                    onPress={() => navigateNative.push(ROUTE.CLIENT_PROFILE_VERIFY_EMAIL)}
                     >
                     <Text className="text-xs font-medium text-muted-foreground">
                         {t('profile.contactInfo.verify')}

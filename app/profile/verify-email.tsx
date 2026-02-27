@@ -1,5 +1,4 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Text, View } from 'react-native'
@@ -9,6 +8,7 @@ import { AuthFormLayout, OTPInput } from '@/components/auth'
 import { FormInput } from '@/components/form'
 import { Button, Skeleton } from '@/components/ui'
 import { QUERYKEY } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import {
   useConfirmEmailVerification,
   useProfile,
@@ -40,7 +40,6 @@ function VerifyEmailSkeleton() {
 }
 
 function VerifyEmailContent() {
-  const router = useRouter()
   const queryClient = useQueryClient()
   const { token } = useAuthStore()
   const { t } = useTranslation('profile')
@@ -171,7 +170,7 @@ function VerifyEmailContent() {
             queryClient.invalidateQueries({ queryKey: [QUERYKEY.profile] })
           })
         showToast(t('profile.verifyEmailSuccessfully'))
-        router.back()
+        navigateNative.back()
       },
       // onError: (err: unknown) => {
       //   const code =

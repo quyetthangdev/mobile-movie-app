@@ -7,7 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { FloatingCartButton, TabBarPill } from '@/components/navigation'
 import { TAB_ROUTES, tabsScreenOptions } from '@/constants'
+import { usePredictivePrefetch } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
+import { useAuthStore, useUserStore } from '@/stores'
 import { getThemeColor, hexToRgba } from '@/lib/utils'
 
 const BAR_HEIGHT = 48
@@ -17,11 +19,22 @@ const FADE_HEIGHT = 80
 const TabsLayout = React.memo(function TabsLayout() {
   const { t } = useTranslation('tabs')
   const pathname = usePathname()
+  usePredictivePrefetch()
   const isDark = useColorScheme() === 'dark'
   const insets = useSafeAreaInsets()
 
   const isCartPage =
     pathname === '/cart' || pathname === TAB_ROUTES.CART || pathname?.includes('/cart')
+
+  const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
+  const userInfo = useUserStore((state) => state.userInfo)
+  const isAuthOrVerifyScreen =
+    pathname?.startsWith('/auth') ||
+    pathname?.startsWith('/forgot-password') ||
+    pathname?.includes('/verify-email') ||
+    pathname?.includes('/verify-phone-number') ||
+    ((pathname === '/profile' || pathname?.includes('/(tabs)/profile')) && (needsUserInfo || !userInfo))
+  const shouldHideBottomBar = isCartPage || isAuthOrVerifyScreen
 
   const colors = useMemo(() => getThemeColor(isDark), [isDark])
   const tabState = useMemo(
@@ -63,21 +76,23 @@ const TabsLayout = React.memo(function TabsLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Nền bar (tránh nháy) */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: backgroundHeight,
-          backgroundColor: '#ffffff',
-          zIndex: 5,
-        }}
-      />
+      {/* Nền bar (tránh nháy) — ẩn khi auth/verify */}
+      {!shouldHideBottomBar && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: backgroundHeight,
+            backgroundColor: '#ffffff',
+            zIndex: 5,
+          }}
+        />
+      )}
 
       {/* Gradient overlay (chỉ khi không ở cart) */}
-      {!isCartPage && (
+      {!shouldHideBottomBar && (
         <View
           style={{
             position: 'absolute',
@@ -147,8 +162,8 @@ const TabsLayout = React.memo(function TabsLayout() {
         />
       </Tabs>
 
-      {/* Bottom bar: pill + floating cart */}
-      {!isCartPage && (
+      {/* Bottom bar: pill + floating cart — ẩn khi cart, auth, đăng ký, quên pass, xác minh sdt/email */}
+      {!shouldHideBottomBar && (
         <View
           style={{
             position: 'absolute',

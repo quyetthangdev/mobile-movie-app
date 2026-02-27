@@ -1,4 +1,4 @@
-import { Redirect, useRouter } from 'expo-router'
+import { Redirect } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native'
@@ -8,6 +8,7 @@ import { OTPInput } from '@/components/auth'
 import { ForgotPasswordByEmailForm, ResetPasswordForm } from '@/components/form'
 import { Button } from '@/components/ui'
 import { ROUTE, VerificationMethod } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import {
     useConfirmForgotPassword,
     useInitiateForgotPassword,
@@ -19,7 +20,6 @@ import { useAuthStore, useForgotPasswordStore } from '@/stores'
 import { showToast } from '@/utils'
 
 export default function ForgotPasswordByEmailScreen() {
-  const router = useRouter()
   const { t } = useTranslation('auth')
   const { t: tToast } = useTranslation('toast')
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated())
@@ -199,7 +199,7 @@ export default function ForgotPasswordByEmailScreen() {
         onSuccess: () => {
           showToast(tToast('toast.confirmForgotPasswordSuccess'))
           clearForgotPassword()
-          router.replace(ROUTE.LOGIN)
+          navigateNative.replace(ROUTE.LOGIN)
         },
       },
     )
@@ -226,7 +226,7 @@ export default function ForgotPasswordByEmailScreen() {
       setStep(2)
       setOtpValue('')
     } else {
-      router.push(ROUTE.FORGOT_PASSWORD)
+      navigateNative.push(ROUTE.FORGOT_PASSWORD)
     }
   }
 

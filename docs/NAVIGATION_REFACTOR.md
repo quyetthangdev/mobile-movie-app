@@ -1,6 +1,6 @@
-# Navigation & Animation Refactor — Phase 1–6
+# React Native — Telegram-Level Navigation Transition Refactor
 
-**Mục tiêu:** Transition mượt mức Telegram/Instagram  
+**Mục tiêu:** Transition mức Telegram/Instagram — instant, responsive, physically natural  
 **Tech stack:** React Native ≥0.73, Expo Router, Hermes, react-native-screens, Zustand, TanStack Query
 
 ---
@@ -10,93 +10,157 @@
 | Hạng mục | Trạng thái | Ghi chú |
 |----------|------------|---------|
 | enableScreens + enableFreeze | ✅ | `lib/navigation-setup.ts` |
-| Native Stack config | ✅ | slide_from_right, gesture, freezeOnBlur |
+| Native Stack config | ✅ | slide_from_right, 230ms, gesture, freezeOnBlur |
 | Tab switch navigateNative | ✅ | `app/(tabs)/_layout.tsx` |
-| Layout không subscribe Zustand | ✅ | I18nProvider dùng store.subscribe |
-| Shell-first (useRunAfterTransition) | ✅ | Cart, Profile, menu/[slug], payment/[order] |
-| lazy: false | ❌ Revert (crash release) | Diagnostic mode để tìm nguyên nhân |
-| getCartItemCount O(1) | ✅ | `stores/order-flow.store.ts` |
-| Hermes | ✅ | `app.json` jsEngine |
-| Navigation Engine | ✅ | `lib/navigation` |
-| Predictive Prefetch | ✅ | Home → banners, menu |
+| Shell-first (useRunAfterTransition) | ✅ | Cart, Profile, menu/[slug], payment/[order], Home, Menu |
+| Navigation Engine (RAF dispatch) | ✅ | `lib/navigation/navigation-engine.ts` |
+| Transition Lock | ✅ | ~250ms, runWhenUnlocked |
+| GPU Warmup | ✅ | useGpuWarmup trên tab screens |
+| Predictive Prefetch | ✅ | Home/Menu → banners, menu; Menu → Product (PressIn); Cart → Payment |
+| gestureResponseDistance | ✅ | Phase 7: CustomStack (JS Stack) |
+| Phase 7 Velocity-Driven | ✅ | CustomStack, gesture + spring, parallax |
 
 ---
 
-## PHASE 1 — Native Navigation Foundation
+## CORE PRINCIPLE
 
-**Logic:** Navigation chạy native thread, tap → animation <16ms, không block frame đầu.
+**Navigation = Native Animation System**  
+**React = Content Hydration Layer**
 
-**Thay đổi:** `app.json` jsEngine hermes; `app/_layout.tsx` useEffect + InteractionManager; `lib/navigation-setup.ts` enableScreens, enableFreeze; `constants/navigation.config.ts` stackScreenOptions.
+Animation must NEVER wait for React. JS rendering, data fetching, store updates, and heavy logic must NEVER compete with transition animation.
 
-**Stack config:** animation: slide_from_right, 280ms, gestureEnabled, fullScreenGestureEnabled, animationMatchesGesture, freezeOnBlur.
-
----
-
-## PHASE 2 — Layout Isolation
-
-**Logic:** Layout không re-render khi navigate. Chỉ leaf subscribe Zustand.
-
-**Thay đổi:** `providers/i18n-provider.tsx` — dùng `store.subscribe` thay `useUserStore` hook.
+**Pipeline:** Tap → Motion starts <16ms → Screen slides immediately → Content hydrates after transition → Fully interactive <300ms
 
 ---
 
-## PHASE 3 — Shell-First Rendering
+## PHASE A — Transition Timing Optimization ✅
 
-**Logic:** First render chỉ skeleton, sau transition mount content + fetch.
+**Thay đổi:** `constants/navigation.config.ts`, `lib/navigation/navigation-engine.ts`, `lib/navigation/transition-lock.ts`
 
-**Pattern:** `useRunAfterTransition(() => setReady(true), [])` → if (!ready) return SkeletonShell; return Content.
-
-**Thay đổi:** cart, profile, menu/[slug], payment/[order] — thêm SkeletonShell + wrapper.
-
-**Shell yêu cầu:** Không useQuery, store, async. Chỉ Skeleton, placeholder.
-
----
-
-## PHASE 4 — Frame Budget
-
-**Logic:** Selector O(1), không reduce trong mỗi subscribe.
-
-**Thay đổi:** `getCartItemCount()` trong order-flow.store; FloatingCartButton dùng `state.getCartItemCount()`.
-
-**Revert:** lazy: false — gây crash release. Giữ lazy: true.
-
-**Diagnostic mode:** `EXPO_PUBLIC_PHASE4_LAZY_DEBUG=true` → lazy: false + log `[Phase4Diag] Tab mounted: X`. Capture logcat để tìm tab crash.
+- animation: `slide_from_right`
+- animationDuration: **230ms** (220–240ms)
+- gestureEnabled, fullScreenGestureEnabled, animationMatchesGesture
+- freezeOnBlur: true,
+- gestureResponseDistance: 1000 — **Native Stack không hỗ trợ**
 
 ---
 
-## PHASE 5 — JS-Independent Navigation Engine
+## PHASE B — Instant Motion Start ✅
 
-**Logic:** Dispatch trong requestAnimationFrame, transition lock ~280ms.
+**Rule:** NEVER call router.push directly. ALWAYS dispatch in requestAnimationFrame.
 
-**Files:** `lib/navigation/navigation-engine.ts`, `transition-lock.ts`, `store-safe-scheduler.ts`, `gpu-warmup.ts`, `navigation-engine-provider.tsx`.
-
-**Rule:** Component gọi `navigateNative.push/replace/back`, không gọi router trực tiếp.
-
-**Đã migrate:** Tabs layout, FloatingCartButton, Profile, Home.
-
-**Transition Lock:** `acquireTransitionLock`, `isTransitionLocked`, `runWhenUnlocked`. Trong lock: không fetch, analytics, store update lớn.
-
-**GPU Warmup:** `useGpuWarmup()` — requestAnimationFrame noop. Đã thêm vào 5 tab screens.
+- `lib/navigation/navigation-engine.ts`: `dispatch()` chạy trong RAF
+- `acquireTransitionLock()` trước khi gọi `router.push()`
 
 ---
 
-## PHASE 6 — Predictive Navigation
+## PHASE C — Transition Lock System ✅
 
-**Predictive Prefetch:** `hooks/use-predictive-prefetch.ts` — khi ở Home prefetch banners, menu. Đã thêm vào HomeScreen.
+**Trong ~250ms:** BLOCK API requests, analytics, Zustand large updates, expensive calculations.
 
-**Chưa implement:** Route Prediction hook, lazy: false (crash), PressIn warmup.
+**Allow:** Skeleton UI, static layout render.
 
-**Perception Pipeline:** Tap → animation (<16ms) → skeleton (<80ms) → content hydrate khi idle → interactive (<300ms).
+- `acquireTransitionLock(durationMs)`
+- `runWhenUnlocked(callback)` — Promise
+- `isTransitionLocked()`
+- `scheduleStoreUpdate()` — delay store update khi transition
 
 ---
 
-## Phase 4 Crash — Diagnostic & Phân tích
+## PHASE D — Shell First Rendering ✅
 
-**Triệu chứng:** lazy: false gây crash Android release.
+**Pattern:** `if (!ready) return <ScreenShell />` → hydrate content via `InteractionManager.runAfterInteractions`.
 
-**Diagnostic:** Thêm `EXPO_PUBLIC_PHASE4_LAZY_DEBUG=true` vào .env → rebuild → chạy app → capture `adb logcat | tee phase4_crash.log`. Tìm `[Phase4Diag] Tab mounted: X` và `FATAL EXCEPTION` / `OOM`.
+**Shell rules:** NO store subscription, NO useQuery, NO async logic, NO heavy components.
 
-**Nguyên nhân khả dĩ:** lazy: false (cao) — 5 tab mount cùng lúc, memory spike, hydration race. getCartItemCount (thấp). **Kết luận:** Giữ lazy: true. getCartItemCount đã implement lại, ổn.
+**Đã áp dụng:** cart, profile, menu, menu/[slug], payment/[order], home.
+
+---
+
+## PHASE E — GPU Warmup ✅
+
+**`useGpuWarmup()`** — `requestAnimationFrame(() => {})` trên tab/root screens.
+
+**Đã thêm:** Home, Menu, Cart, Profile, GiftCard.
+
+---
+
+## PHASE F — Predictive Navigation ✅
+
+**Prefetch routes:**
+- Home → Menu → banners, public-specific-menu
+- Menu → Product → `usePressInPrefetchMenuItem` trên ClientMenuItem
+- Cart → Payment → prefetch order trong create-order-dialog onSuccess
+
+**Trigger:** Screen focus (usePredictivePrefetch trong Tabs layout), PressIn (menu item), Idle (create order success).
+
+---
+
+## PHASE G — Perceived Speed Optimization
+
+**Pipeline:**
+Tap → Native animation start (<16ms) → Skeleton visible (<80ms) → Content hydration (idle) → Interaction ready (<300ms)
+
+**Rules:** Motion must start instantly. Content may load later. User must never wait before animation.
+
+---
+
+## PHASE 7 — Velocity-Driven Interactive Transition (Telegram Level) ✅
+
+**Mục tiêu:** Chuyển từ animation theo thời gian → gesture-driven, giống Telegram.
+
+**Kiến trúc:**
+- `@react-navigation/stack` thay Native Stack cho các layout dùng CustomStack
+- Gesture progress = animation progress (ngón tay điều khiển trực tiếp)
+- Spring cho close (velocity continuation), timing 230ms cho open
+- Parallax: màn trước `translateX(-30 + progress*30)` tạo chiều sâu
+
+**Files:**
+- `lib/navigation/interactive-transition.ts` — TELEGRAM_SPRING, OPEN_SPEC, CLOSE_SPEC, GESTURE_RESPONSE_DISTANCE
+- `lib/transitions/velocity-driven-transition.tsx` — `forVelocityDrivenHorizontal` (cardStyleInterpolator)
+- `layouts/custom-stack.tsx` — CustomStack + velocityDrivenScreenOptions
+
+**Đã áp dụng:** `app/_layout.tsx`, `app/profile/_layout.tsx`
+
+**Success checklist:**
+- Swipe theo ngón tay
+- Velocity ảnh hưởng completion
+- Cancel cảm giác elastic
+- Back gesture giống Android/iOS
+
+---
+
+## PHASE 7.5 — Stabilization (Telegram-Level Fix) ✅
+
+**Vấn đề:** Tap đôi khi không navigate, transition quá nhanh, navigation bị ignore.
+
+**Đã sửa:**
+
+1. **Transition Lock Timeout**
+   - LOCK_DURATION: 320ms
+   - Auto-release sau ~400ms (timeout protection)
+   - `lib/navigation/transition-lock.ts`
+
+2. **Double RAF**
+   - Navigation chạy trong 2 frame RAF → tránh React batching
+   - `lib/navigation/navigation-engine.ts`
+
+3. **Spring mượt hơn (TELEGRAM_SPRING_STABLE)**
+   - damping: 26, stiffness: 180, mass: 1.1
+   - overshootClamping: true
+   - restDisplacementThreshold/restSpeedThreshold: 0.2
+
+4. **gestureVelocityImpact: 0.55**
+   - Velocity projection → threshold 0.45
+   - `layouts/custom-stack.tsx`
+
+5. **NavigatePressable**
+   - `unstable_pressDelay={0}` — tránh lost press
+   - Dùng thay TouchableOpacity cho nút navigation
+   - `components/navigation/navigate-pressable.tsx`
+
+**Debug:** Đặt `DEBUG = true` trong `navigation-engine.ts` để xem logs:
+`[Nav] Tap received` → `[Nav] Lock acquired` → `[Nav] Commit navigation`
 
 ---
 
@@ -109,27 +173,32 @@ lib/navigation/
 ├── navigation-engine-provider.tsx
 ├── transition-lock.ts
 ├── store-safe-scheduler.ts
-└── gpu-warmup.ts
+├── gpu-warmup.ts
+└── interactive-transition.ts   # Phase 7 constants
+
+lib/transitions/
+└── velocity-driven-transition.tsx   # Phase 7 cardStyleInterpolator
+
+layouts/
+└── custom-stack.tsx   # Phase 7 CustomStack
 ```
 
----
-
-## Danh sách files đã thay đổi
-
-| Phase | File | Thay đổi |
-|-------|------|----------|
-| 1 | app.json, app/_layout.tsx, lib/navigation-setup.ts, constants/navigation.config.ts | jsEngine, useEffect, enableScreens, stack/tabs options |
-| 2 | providers/i18n-provider.tsx | store.subscribe |
-| 3 | cart, profile, menu/[slug], payment/[order] | SkeletonShell + wrapper |
-| 4 | order-flow.store, floating-cart-button, phase4-diagnostic | getCartItemCount, lazy: !LAZY_DEBUG |
-| 5 | lib/navigation/*, app/_layout (provider) | Navigation Engine, GPU warmup |
-| 6 | hooks/use-predictive-prefetch, home.tsx | Predictive prefetch |
+**Hooks mới:**
+- `hooks/use-press-in-prefetch.ts` — `usePressInPrefetchMenuItem()` cho Menu → Product
 
 ---
 
-## Migration còn lại
+## Migration ✅ Hoàn thành
 
-Thay `router.push/replace/back` bằng `navigateNative.push/replace/back` tại: auth, cart, menu, payment, profile sub-screens, components.
+Đã thay toàn bộ `router.push/replace/back` bằng `navigateNative.push/replace/back` tại:
+
+- **Auth:** login, register, forgot-password, forgot-password/email, forgot-password/phone
+- **Components auth/form:** login-form, forgot-password-by-email-form, forgot-password-by-phone-form
+- **Profile:** info, edit, history, verify-email, verify-phone-number, change-password, loyalty-point
+- **Menu:** menu tab, menu/[slug], app/menu/slider-related-products, components/menu/slider-related-products, client-menu-item
+- **Cart:** cart tab, create-order-dialog
+- **Payment:** payment/[order]
+- **Home:** swipper-banner, news-carousel, home/news/[slug]
 
 ---
 
@@ -138,4 +207,5 @@ Thay `router.push/replace/back` bằng `navigateNative.push/replace/back` tại:
 ```bash
 eas build --profile production --platform android
 # Test: tap tab → animation; chuyển màn → shell → content
+# Metric: Tap → animation <16ms, interactive <300ms
 ```

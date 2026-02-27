@@ -1,5 +1,4 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
 import { ArrowLeft } from 'lucide-react-native'
 import React, { useMemo, useState } from 'react'
 import { Text, View, useColorScheme } from 'react-native'
@@ -7,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button, Input, Skeleton } from '@/components/ui'
 import { QUERYKEY, colors } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import {
   useConfirmPhoneNumberVerification,
   useResendPhoneNumberVerification,
@@ -34,7 +34,6 @@ function VerifyPhoneNumberSkeleton() {
 }
 
 function VerifyPhoneNumberContent() {
-  const router = useRouter()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
@@ -65,7 +64,7 @@ function VerifyPhoneNumberContent() {
   )
 
   if (!userInfo) {
-    router.back()
+    navigateNative.back()
     return null
   }
 
@@ -99,7 +98,7 @@ function VerifyPhoneNumberContent() {
         showToast('Xác minh số điện thoại thành công')
         setPhoneNumberVerificationStatus(null)
         setOtpValue('')
-        router.back()
+        navigateNative.back()
       },
       onSettled: () => {
         setIsVerifyingOtp(false)
@@ -126,7 +125,7 @@ function VerifyPhoneNumberContent() {
         <Button
           variant="ghost"
           className="mr-2 px-0 min-h-0 h-10 w-10 rounded-full justify-center items-center"
-          onPress={() => router.back()}
+          onPress={() => navigateNative.back()}
         >
           <ArrowLeft size={22} color={isDark ? '#9ca3af' : '#6b7280'} />
         </Button>

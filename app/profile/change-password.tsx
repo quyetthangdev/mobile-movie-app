@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import { ArrowLeft } from 'lucide-react-native'
 import React, { useState } from 'react'
 import { Text, View, useColorScheme } from 'react-native'
@@ -6,10 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button, Input } from '@/components/ui'
 import { colors } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { showToast } from '@/utils'
 
 function ChangePasswordScreen() {
-  const router = useRouter()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
@@ -35,7 +34,7 @@ function ChangePasswordScreen() {
     setTimeout(() => {
       setIsSubmitting(false)
       showToast('Cập nhật mật khẩu (demo). Vui lòng nối API backend.')
-      router.back()
+      navigateNative.back()
     }, 500)
   }
 
@@ -46,7 +45,7 @@ function ChangePasswordScreen() {
         <Button
           variant="ghost"
           className="mr-2 px-0 min-h-0 h-10 w-10 rounded-full justify-center items-center"
-          onPress={() => router.back()}
+          onPress={() => navigateNative.back()}
         >
           <ArrowLeft size={22} color={isDark ? '#9ca3af' : '#6b7280'} />
         </Button>

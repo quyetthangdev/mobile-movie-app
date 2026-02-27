@@ -1,11 +1,9 @@
-import { Stack } from 'expo-router'
-
-import { stackScreenOptions } from '@/constants/navigation.config'
+import { CustomStack, velocityDrivenScreenOptions } from '@/layouts/custom-stack'
 
 /**
  * Profile stack: các màn profile/info, profile/edit, profile/history, ...
- * Dùng chung stackScreenOptions → trượt từ phải 280ms, gesture back, freezeOnBlur.
+ * Phase 7: velocity-driven gesture, spring close.
  */
 export default function ProfileLayout() {
-  return <Stack screenOptions={stackScreenOptions} />
+  return <CustomStack screenOptions={velocityDrivenScreenOptions} />
 }

@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
 import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, Download, FileDown, SquareMenu } from 'lucide-react-native'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +10,7 @@ import { Images } from '@/assets/images'
 import PaymentMethodRadioGroup from '@/components/radio/payment-method-radio-group'
 import { Badge, Button, Skeleton } from '@/components/ui'
 import { APPLICABILITY_RULE, colors, PaymentMethod, publicFileURL, ROUTE, VOUCHER_TYPE } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useExportPublicOrderInvoice, useInitiatePayment, useInitiatePublicPayment, useOrderBySlug, useRunAfterTransition } from '@/hooks'
 import { useDownloadStore, useUserStore } from '@/stores'
 import { OrderStatus, OrderTypeEnum } from '@/types'
@@ -42,7 +43,6 @@ function PaymentSkeletonShell() {
 function PaymentPageContent() {
   const { t } = useTranslation('menu')
   const { t: tCommon } = useTranslation('common')
-  const router = useRouter()
   const { order: orderSlug } = useLocalSearchParams<{ order: string }>()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
@@ -79,7 +79,7 @@ function PaymentPageContent() {
   }, [displayItems, voucher])
 
   const handleBack = () => {
-    router.back()
+    navigateNative.back()
   }
 
   const handleDownloadInvoice = () => {
@@ -106,7 +106,7 @@ function PaymentPageContent() {
   // }
 
   const handleCheckout = () => {
-    router.push(`${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug || '')}` as Parameters<typeof router.push>[0])
+    navigateNative.push(`${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug || '')}` as Parameters<typeof navigateNative.push>[0])
   }
 
   const handlePaymentMethodSubmit = (paymentMethod: PaymentMethod, transactionId?: string) => {

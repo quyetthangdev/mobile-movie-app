@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
 import { ArrowLeft, ShoppingBag, ShoppingCart } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -11,6 +11,7 @@ import NonPropQuantitySelector from '@/components/button/non-prop-quantity-selec
 import { ProductImageCarousel, SliderRelatedProducts } from '@/components/menu'
 import { Badge, Button, Skeleton } from '@/components/ui'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useRunAfterTransition, useSpecificMenuItem } from '@/hooks'
 import { useOrderFlowStore, useUserStore } from '@/stores'
 import { IOrderItem, IProductVariant } from '@/types'
@@ -51,7 +52,6 @@ function MenuItemSkeletonShell() {
 
 function MenuItemDetailContent() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
-  const router = useRouter()
   const { t } = useTranslation('product')
   const { t: tMenu } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
@@ -177,7 +177,7 @@ function MenuItemDetailContent() {
       <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
         <View className="flex-1 justify-center items-center px-4">
           <Text className="text-2xl font-bold mb-4">Không tìm thấy món</Text>
-          <Button onPress={() => router.back()}>
+          <Button onPress={() => navigateNative.back()}>
             <Text>Quay lại</Text>
           </Button>
         </View>
@@ -301,7 +301,7 @@ function MenuItemDetailContent() {
       }
       
       // Navigate to cart
-      router.push(ROUTE.CLIENT_CART)
+      navigateNative.replace(ROUTE.CLIENT_CART)
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('❌ Error adding item to cart:', error)
@@ -319,14 +319,14 @@ function MenuItemDetailContent() {
     <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <TouchableOpacity onPress={() => router.back()} className="p-2">
+        <TouchableOpacity onPress={() => navigateNative.back()} className="p-2">
           <ArrowLeft size={24} color={isDark ? '#ffffff' : '#000000'} />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-gray-900 dark:text-white">
           {t('product.detail', 'Chi tiết món')}
         </Text>
         <TouchableOpacity
-          onPress={() => router.push(ROUTE.CLIENT_CART)}
+          onPress={() => navigateNative.replace(ROUTE.CLIENT_CART)}
           className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 items-center justify-center bg-white dark:bg-gray-800"
         >
           <ShoppingCart size={20} color={isDark ? '#ffffff' : '#111827'} />

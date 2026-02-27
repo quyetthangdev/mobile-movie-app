@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import { Eye, EyeOff } from 'lucide-react-native'
 import React, { useState } from 'react'
 import {
@@ -14,6 +13,7 @@ import { z } from 'zod'
 import { useLogin, useProfile } from '@/hooks'
 import { loginSchema } from '@/schemas'
 import { ROUTE } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useAuthStore, useUserStore } from '@/stores'
 
 interface LoginFormProps {
@@ -21,7 +21,6 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
-  const router = useRouter()
   const { t } = useTranslation('auth')
   const [phonenumber, setPhonenumber] = useState('')
   const [password, setPassword] = useState('')
@@ -170,7 +169,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-gray-900 dark:text-white text-sm font-medium">Mật khẩu</Text>
           <TouchableOpacity
-            onPress={() => router.push(ROUTE.FORGOT_PASSWORD)}
+            onPress={() => navigateNative.push(ROUTE.FORGOT_PASSWORD)}
             disabled={isLoading}
           >
             <Text className="text-primary text-sm font-medium">
@@ -224,7 +223,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
       <TouchableOpacity
         className="items-center mt-6"
-        onPress={() => router.replace('/auth/register')}
+        onPress={() => navigateNative.replace('/auth/register')}
         disabled={isLoading}
       >
         <Text className="text-gray-600 dark:text-gray-400 text-sm">

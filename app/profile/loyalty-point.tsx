@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import { ArrowLeft, Check, Tag, TrendingUp } from 'lucide-react-native'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,6 +22,7 @@ import {
 } from '@/components/ui'
 import { DataTable } from '@/components/ui/data-table'
 import { LoyaltyPointHistoryType } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
 import { useLoyaltyPointHistory, useLoyaltyPoints } from '@/hooks'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/stores'
@@ -42,7 +42,6 @@ const TYPE_OPTIONS = [
 
 export default function LoyaltyPointScreen() {
   const { t } = useTranslation(['profile', 'common'])
-  const router = useRouter()
   const { userInfo } = useUserStore()
   const slug = userInfo?.slug ?? ''
   const isDark = useColorScheme() === 'dark'
@@ -81,8 +80,8 @@ export default function LoyaltyPointScreen() {
   }, [])
 
   const handleBack = useCallback(() => {
-    router.back()
-  }, [router])
+    navigateNative.back()
+  }, [])
 
   const isLoading = loadingTotal || loadingHistory
 

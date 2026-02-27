@@ -1,18 +1,18 @@
-import { Redirect, useRouter } from 'expo-router'
+import { Redirect } from 'expo-router'
 import React, { useCallback } from 'react'
 import { ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { LoginForm } from '@/components/auth'
+import { navigateNative } from '@/lib/navigation'
 import { useAuthStore } from '@/stores'
 
 export default function LoginScreen() {
-  const router = useRouter()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated())
 
   const handleLoginSuccess = useCallback(() => {
-    router.replace('/(tabs)/home')
-  }, [router])
+    navigateNative.replace('/(tabs)/home')
+  }, [])
 
   if (isAuthenticated) {
     return <Redirect href="/(tabs)/home" />

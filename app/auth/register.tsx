@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import {
     ActivityIndicator,
@@ -12,11 +11,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { z } from 'zod'
 
 import { useProfile, useRegister } from '@/hooks'
+import { navigateNative } from '@/lib/navigation'
 import { useRegisterSchema } from '@/schemas'
 import { useAuthStore, useUserStore } from '@/stores'
 
 export default function RegisterScreen() {
-  const router = useRouter()
   const registerSchema = useRegisterSchema()
 
   const [firstName, setFirstName] = useState('')
@@ -130,7 +129,7 @@ export default function RegisterScreen() {
               setUserInfo(profile.data.result)
               useAuthStore.getState().setSlug(profile.data.result.slug)
 
-              router.replace('/(tabs)/home')
+              navigateNative.replace('/(tabs)/home')
             } else {
               setLogout()
               throw new Error('Failed to fetch user profile')
@@ -340,7 +339,7 @@ export default function RegisterScreen() {
 
         <TouchableOpacity
           className="items-center mb-8"
-          onPress={() => router.replace('/auth/login')}
+          onPress={() => navigateNative.replace('/auth/login')}
           disabled={isLoading}
         >
           <Text className="text-gray-600 dark:text-gray-400 text-sm">

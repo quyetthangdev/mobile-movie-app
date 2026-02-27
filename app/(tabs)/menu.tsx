@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router'
 import { MapPin, X } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
@@ -13,7 +12,7 @@ import { ClientCatalogSelect, ClientMenus, PriceRangeFilter, ProductNameSearch }
 import { Skeleton } from '@/components/ui'
 import { FILTER_VALUE, ROUTE } from '@/constants'
 import { usePublicSpecificMenu, useRunAfterTransition, useSpecificMenu } from '@/hooks'
-import { useGpuWarmup } from '@/lib/navigation'
+import { navigateNative, useGpuWarmup } from '@/lib/navigation'
 import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
 import { IMenuFilter, ISpecificMenuRequest } from '@/types'
@@ -75,7 +74,6 @@ function MenuSkeletonShell() {
 }
 
 function ClientMenuContent() {
-  const router = useRouter()
   const { t } = useTranslation(['menu'])
   // Optimize Zustand selectors - subscribe the necessary
   const userInfo = useUserStore((state) => state.userInfo)
@@ -198,8 +196,8 @@ function ClientMenuContent() {
   }, [])
 
   const handleLoginPress = useCallback(() => {
-    router.push(ROUTE.LOGIN)
-  }, [router])
+    navigateNative.push(ROUTE.LOGIN)
+  }, [])
 
   return (
     <SafeAreaView className="flex-1 pb-12" edges={['top']}>

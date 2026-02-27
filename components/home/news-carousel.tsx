@@ -1,8 +1,8 @@
 import { Images } from '@/assets/images'
-import { useRouter } from 'expo-router'
 import React, { useRef } from 'react'
 import { Dimensions, FlatList, Image, Pressable, Text, View } from 'react-native'
 
+import { navigateNative } from '@/lib/navigation'
 import { NewsArticle } from '@/types'
 
 interface NewsCarouselProps {
@@ -27,7 +27,6 @@ interface NewsCarouselProps {
  * ```
  */
 export default function NewsCarousel({ articles }: NewsCarouselProps) {
-  const router = useRouter()
   const flatListRef = useRef<FlatList>(null)
   const screenWidth = Dimensions.get('window').width
 
@@ -63,7 +62,7 @@ export default function NewsCarousel({ articles }: NewsCarouselProps) {
 
   const handleArticlePress = (slug: string) => {
     // Navigate to news detail page
-    router.push(`/home/news/${slug}`)
+    navigateNative.push(`/home/news/${slug}`)
   }
 
   // Calculate item width based on screen size (similar to web: max-w-[180px] sm:max-w-[320px])

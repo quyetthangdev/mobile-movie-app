@@ -1,6 +1,6 @@
-import { ChevronRight } from 'lucide-react-native';
-import React from 'react';
-import { Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { ChevronRight } from 'lucide-react-native'
+import React from 'react'
+import { Text, TouchableOpacity, View, useColorScheme } from 'react-native'
 
 interface SettingsItemProps {
   icon: React.ComponentType<{ size?: number; color?: string }>
@@ -11,8 +11,8 @@ interface SettingsItemProps {
   value?: string
   onPress?: () => void
   showChevron?: boolean
-  iconColor?: string
   destructive?: boolean
+  iconBackgroundColor?: string
 }
 
 export function SettingsItem({
@@ -23,21 +23,27 @@ export function SettingsItem({
   value,
   onPress,
   showChevron = true,
-  iconColor,
   destructive = false,
+  iconBackgroundColor,
 }: SettingsItemProps) {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
-  
-  const defaultIconColor = destructive 
-    ? '#ef4444' 
-    : iconColor || (isDark ? '#9ca3af' : '#6b7280')
-  
-  const textColor = destructive
-    ? '#ef4444'
-    : isDark
-    ? '#ffffff'
-    : '#000000'
+
+  const resolvedIconBackground = iconBackgroundColor
+    ? iconBackgroundColor
+    : destructive
+      ? isDark
+        ? '#4b5563'
+        : '#fee2e2'
+      : isDark
+        ? '#111827'
+        : '#4b5563'
+
+  const rowBackgroundColor = undefined
+
+  const iconColor = destructive ? '#dc2626' : '#ffffff'
+
+  const textColor = destructive ? '#ef4444' : isDark ? '#ffffff' : '#000000'
 
   return (
     <TouchableOpacity
@@ -45,34 +51,33 @@ export function SettingsItem({
       activeOpacity={0.7}
       className="bg-white dark:bg-gray-800"
     >
-      <View className="flex-row items-center px-4 py-3 min-h-[44px]">
-        {/* Icon với vòng tròn xám nhạt */}
-        <View className="w-10 h-10 items-center justify-center mr-3">
+      <View
+        className="min-h-[44px] flex-row items-center px-4 py-3"
+        style={rowBackgroundColor ? { backgroundColor: rowBackgroundColor } : undefined}
+      >
+        {/* Icon: vòng tròn màu + icon trắng */}
+        <View className="mr-3 h-10 w-10 items-center justify-center">
           <View
-            className="w-10 h-10 rounded-full items-center justify-center"
+            className="h-10 w-10 items-center justify-center rounded-full"
             style={{
-              backgroundColor: isDark ? '#374151' : '#f3f4f6',
+              backgroundColor: resolvedIconBackground,
             }}
           >
-            <Icon size={20} color={defaultIconColor} />
+            <Icon size={20} color={iconColor} />
           </View>
         </View>
 
         {/* Content */}
         <View className="flex-1 flex-row items-center justify-between">
           <View className="flex-1">
-            <Text
-              className="text-base"
-              style={{ color: textColor }}
-            >
+            <Text className="text-base" style={{ color: textColor }}>
               {title}
             </Text>
             {subtitle && (
               <Text
-                className="text-sm mt-0.5"
+                className="mt-0.5 text-sm"
                 style={{
-                  color:
-                    subtitleColor ?? (isDark ? '#9ca3af' : '#6b7280'),
+                  color: subtitleColor ?? (isDark ? '#9ca3af' : '#6b7280'),
                 }}
               >
                 {subtitle}
@@ -83,7 +88,7 @@ export function SettingsItem({
           {/* Value */}
           {value && (
             <Text
-              className="text-sm mr-2"
+              className="mr-2 text-sm"
               style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
             >
               {value}
@@ -92,10 +97,12 @@ export function SettingsItem({
 
           {/* Chevron */}
           {showChevron && (
-            <ChevronRight
-              size={20}
-              color={isDark ? '#6b7280' : '#9ca3af'}
-            />
+        <ChevronRight
+          size={20}
+          color={
+            destructive ? '#dc2626' : isDark ? '#6b7280' : '#9ca3af'
+          }
+        />
           )}
         </View>
       </View>
@@ -124,17 +131,20 @@ export function SettingsSection({ children, header }: SettingsSectionProps) {
           </Text>
         </View>
       )}
-      <View className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden">
+      <View className="overflow-hidden rounded-2xl bg-white dark:bg-gray-800">
         {React.Children.map(children, (child, index) => {
           if (!React.isValidElement(child)) return child
-          
+
           return (
             <View key={index}>
               {child}
               {index < React.Children.count(children) - 1 && (
                 <View
-                  className="h-px ml-16"
-                  style={{ backgroundColor: isDark ? '#374151' : '#e5e7eb' }}
+                  className="ml-16 mr-10 h-px"
+                  style={{
+                    backgroundColor: isDark ? '#374151' : '#e5e7eb',
+                    opacity: isDark ? 0.35 : 0.5,
+                  }}
                 />
               )}
             </View>
@@ -144,4 +154,3 @@ export function SettingsSection({ children, header }: SettingsSectionProps) {
     </View>
   )
 }
-

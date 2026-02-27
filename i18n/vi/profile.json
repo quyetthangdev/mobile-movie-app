@@ -1,9 +1,16 @@
 {
   "profile": {
     "accountAndSecurity": "Tài khoản và bảo mật",
-    "orderHistory": "Lịch sử đơn hàng",
-    "memberAndPromotion": "Thành viên và khuyến mãi",
-    "info": {
+    "orderHistory": {
+      "title": "Lịch sử đơn hàng"
+    },
+    "financial": {
+      "title": "Tài chính"
+    },
+    "memberAndPromotion": {
+      "title": "Thành viên và khuyến mãi"
+    },
+    "generalInfo": {
       "title": "Thông tin cá nhân"
     },
     "verifyEmailScreen": {
@@ -24,6 +31,21 @@
         "sent": "Đã gửi mã xác minh đến email của bạn",
         "resendSuccess": "Đã gửi lại mã OTP, vui lòng kiểm tra email"
       }
+    },
+    "security": {
+      "title": "Bảo mật"
+    },
+    "verifyEmail": {
+      "title": "Xác minh email"
+    },
+    "verifyPhone": {
+      "title": "Xác minh số điện thoại"
+    },
+    "changePassword": {
+      "title": "Đổi mật khẩu"
+    },
+    "logout": {
+      "title": "Đăng xuất"
     },
     "contactInfo": {
       "title": "Thông tin liên hệ",
@@ -112,9 +134,13 @@
     },
     "clearFilter": "Xóa lọc",
     "close": "Đóng",
-    "loyaltyPoints": "Điểm tích lũy",
+    "loyaltyPoint": {
+      "title": "Điểm tích lũy"
+    },
     "code": "Mã giao dịch",
-    "coin": "Quản lý xu",
+    "coin": {
+      "title": "Quản lý xu"
+    },
     "coinBalance": "Số dư",
     "coinEarned": "Nhận xu",
     "coinSpent": "Dùng xu",
@@ -161,10 +187,10 @@
     "firstNameRequired": "Tên không được để trống",
     "firstNameTooLong": "Tên không được vượt quá 100 ký tự",
     "fromDate": "Từ ngày",
-    "generalInfo": "Thông tin chung",
     "hideBalance": "Ẩn số dư",
     "showBalance": "Hiện số dư",
     "giftCard": {
+      "title": "Thẻ quà tặng",
       "code": "Mã thẻ quà tặng",
       "copyCode": "Sao chép mã",
       "createdAt": "Tạo vào lúc",

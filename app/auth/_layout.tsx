@@ -1,9 +1,9 @@
 import { CustomStack, velocityDrivenScreenOptions } from '@/layouts/custom-stack'
 
 /**
- * Home stack: tin tức /home/news/[slug], ...
+ * Auth stack: login, register, forgot-password, ...
  * Phase 7: velocity-driven gesture, spring close — đồng bộ với profile → history.
  */
-export default function HomeLayout() {
+export default function AuthLayout() {
   return <CustomStack screenOptions={velocityDrivenScreenOptions} />
 }

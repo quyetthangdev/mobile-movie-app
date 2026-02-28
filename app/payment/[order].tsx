@@ -3,13 +3,14 @@ import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, Download, FileDown, Squa
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Image, type ImageSourcePropType, Platform, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { InvoiceTemplate } from '@/app/profile/components'
 import { Images } from '@/assets/images'
 import PaymentMethodRadioGroup from '@/components/radio/payment-method-radio-group'
 import { Badge, Button, Skeleton } from '@/components/ui'
-import { APPLICABILITY_RULE, colors, PaymentMethod, publicFileURL, ROUTE, VOUCHER_TYPE } from '@/constants'
+import { APPLICABILITY_RULE, colors, PaymentMethod, publicFileURL, ROUTE, TAB_ROUTES, VOUCHER_TYPE } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
 import { useExportPublicOrderInvoice, useInitiatePayment, useInitiatePublicPayment, useOrderBySlug, useRunAfterTransition } from '@/hooks'
 import { useDownloadStore, useUserStore } from '@/stores'
@@ -79,7 +80,7 @@ function PaymentPageContent() {
   }, [displayItems, voucher])
 
   const handleBack = () => {
-    navigateNative.back()
+    navigateNative.replace(TAB_ROUTES.HOME)
   }
 
   const handleDownloadInvoice = () => {
@@ -257,26 +258,27 @@ function PaymentPageContent() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top']}>
-      {/* Header */}
-      <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
-        <TouchableOpacity onPress={handleBack} className="mr-3">
-          <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
-        </TouchableOpacity>
-        <View className="flex-row items-center gap-2 flex-1">
-          <SquareMenu size={20} color={primaryColor} />
-          <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-            {t('order.orderDetail', 'Chi tiết đơn hàng')}
-          </Text>
+    <View style={{ flex: 1 }} className="bg-gray-50 dark:bg-gray-900">
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        {/* Header */}
+        <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
+          <TouchableOpacity onPress={handleBack} className="mr-3">
+            <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
+          </TouchableOpacity>
+          <View className="flex-row items-center gap-2 flex-1">
+            <SquareMenu size={20} color={primaryColor} />
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">
+              {t('order.orderDetail', 'Chi tiết đơn hàng')}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      {/* Content */}
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
+        {/* Content — GestureScrollView tránh conflict với Stack swipe-back */}
+        <GestureScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={true}
+        >
         <View className="px-4 py-4">
           {/* Order Info Card */}
           <View className="mb-4 rounded-lg bg-white dark:bg-gray-800 p-3 border border-gray-100 dark:border-gray-700">
@@ -815,29 +817,30 @@ function PaymentPageContent() {
             </View>
           )}
         </View>
-      </ScrollView>
+        </GestureScrollView>
 
-      {/* Bottom Action Bar */}
-      <SafeAreaView edges={['bottom']} className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <View className="px-4 py-4 flex-row gap-2 justify-between">
-          {/* <Button
-            variant="outline"
-            className="flex-1"
-            onPress={handleGoToHistory}
-          >
-            {tCommon('common.goBack', 'Quay lại')}
-          </Button> */}
-          {order.status === OrderStatus.PENDING && (
-            <Button
-              className="flex-1 bg-primary"
-              onPress={handleCheckout}
+        {/* Bottom Action Bar */}
+        <SafeAreaView edges={['bottom']} className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <View className="px-4 py-4 flex-row gap-2 justify-between">
+            {/* <Button
+              variant="outline"
+              className="flex-1"
+              onPress={handleGoToHistory}
             >
-              {tCommon('common.checkout', 'Thanh toán')}
-            </Button>
-          )}
-        </View>
+              {tCommon('common.goBack', 'Quay lại')}
+            </Button> */}
+            {order.status === OrderStatus.PENDING && (
+              <Button
+                className="flex-1 bg-primary"
+                onPress={handleCheckout}
+              >
+                {tCommon('common.checkout', 'Thanh toán')}
+              </Button>
+            )}
+          </View>
+        </SafeAreaView>
       </SafeAreaView>
-    </SafeAreaView>
+    </View>
   )
 }
 

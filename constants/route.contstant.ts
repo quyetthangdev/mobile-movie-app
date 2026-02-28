@@ -17,6 +17,7 @@ export const ROUTE = {
   CLIENT_CART: '/cart',
   CLIENT_CHECKOUT_ORDER: '/checkout-order',
   CLIENT_PAYMENT: '/payment/[order]',
+  CLIENT_UPDATE_ORDER: '/update-order/[slug]',
   CLIENT_ORDER_HISTORY: '/history',
 
   CLIENT_PROFILE: '/profile',

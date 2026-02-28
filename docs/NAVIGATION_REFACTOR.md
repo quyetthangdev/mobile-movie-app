@@ -112,7 +112,7 @@ Tap → Native animation start (<16ms) → Skeleton visible (<80ms) → Content 
 **Kiến trúc:**
 - `@react-navigation/stack` thay Native Stack cho các layout dùng CustomStack
 - Gesture progress = animation progress (ngón tay điều khiển trực tiếp)
-- Spring cho close (velocity continuation), timing 230ms cho open
+- Spring cho cả open và close (đồng bộ, mượt khi history → payment)
 - Parallax: màn trước `translateX(-30 + progress*30)` tạo chiều sâu
 
 **Files:**
@@ -120,7 +120,7 @@ Tap → Native animation start (<16ms) → Skeleton visible (<80ms) → Content 
 - `lib/transitions/velocity-driven-transition.tsx` — `forVelocityDrivenHorizontal` (cardStyleInterpolator)
 - `layouts/custom-stack.tsx` — CustomStack + velocityDrivenScreenOptions
 
-**Đã áp dụng:** `app/_layout.tsx`, `app/profile/_layout.tsx`
+**Đã áp dụng:** `app/_layout.tsx`, `app/profile/_layout.tsx`, `app/update-order/_layout.tsx`, `app/payment/_layout.tsx`, `app/auth/_layout.tsx`, `app/menu/_layout.tsx`, `app/home/_layout.tsx`
 
 **Success checklist:**
 - Swipe theo ngón tay

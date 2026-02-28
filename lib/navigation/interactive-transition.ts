@@ -10,7 +10,6 @@
  * Note: React Navigation Stack's gesture is already progress-driven.
  * This module provides constants and coordination logic.
  */
-import { Easing } from 'react-native'
 
 /** Spring config — Telegram feel: velocity continuation, elastic cancel */
 export const TELEGRAM_SPRING = {
@@ -50,16 +49,13 @@ export const PARALLAX_FACTOR = 0.3
 /** Gesture response distance — full screen edge swipe */
 export const GESTURE_RESPONSE_DISTANCE = 1000
 
-/** Transition spec for open (push) — timing 230ms */
+/** Transition spec for open (push) — spring đồng bộ với close để animation mượt, đồng nhất (history → payment) */
 export const OPEN_SPEC = {
-  animation: 'timing' as const,
-  config: {
-    duration: 230,
-    easing: Easing.bezier(0.4, 0, 0.2, 1),
-  },
+  animation: 'spring' as const,
+  config: TELEGRAM_SPRING_STABLE,
 }
 
-/** Transition spec for close (pop) — spring for velocity (Phase 7.5: stable) */
+/** Transition spec for close (pop) — spring cho velocity (Phase 7.5: stable) */
 export const CLOSE_SPEC = {
   animation: 'spring' as const,
   config: TELEGRAM_SPRING_STABLE,

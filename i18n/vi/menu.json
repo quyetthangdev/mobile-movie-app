@@ -143,6 +143,7 @@
     "deliveryAddressNote": "Lưu ý: Hệ thống không hỗ trợ giao hàng với khoảng cách lớn hơn {{distance}}km."
   },
   "order": {
+    "all": "Tất cả",
     "added": "Thêm",
     "address": "Địa chỉ",
     "aListOfOrders": "Danh sách đơn hàng",

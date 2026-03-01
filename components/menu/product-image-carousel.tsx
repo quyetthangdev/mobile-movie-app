@@ -147,6 +147,8 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
         ref={flatListRef}
         data={validImages}
         horizontal
+        initialNumToRender={1}
+        maxToRenderPerBatch={1}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item, index) => `image-${index}`}
         renderItem={renderItem}

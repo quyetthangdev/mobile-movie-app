@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, ScrollView, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { getBanners } from '@/api/banner'
 import { Images } from '@/assets/images'
@@ -19,14 +19,14 @@ import { useRunAfterTransition } from '@/hooks'
 import { useGpuWarmup } from '@/lib/navigation'
 import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import { BannerPage, ROUTE, youtubeVideoId } from '@/constants'
-import { navigateNative } from '@/lib/navigation'
+import { navigateNative, navigateSafely } from '@/lib/navigation'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useQuery } from '@tanstack/react-query'
 
 /** Shell cực nhẹ cho frame đầu khi chuyển tab Home — 0 store, 0 query. */
 function HomeSkeletonShell() {
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
         <Skeleton className="h-8 w-28 rounded-md" />
         <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -54,7 +54,7 @@ function HomeSkeletonShell() {
           <Skeleton className="h-48 w-full rounded-xl" />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -107,8 +107,20 @@ function HomeContent() {
     navigateNative.push(ROUTE.CLIENT_MENU)
   }, [])
 
+  /** __DEV__ only: Block JS 500ms rồi navigate — verify animation mượt = UI thread */
+  const handleUiThreadVerifyPress = useCallback(() => {
+    if (!__DEV__) return
+    navigateSafely.push(ROUTE.CLIENT_MENU)
+    setTimeout(() => {
+      const t0 = Date.now()
+      while (Date.now() - t0 < 500) {
+        // Block JS thread 500ms
+      }
+    }, 100)
+  }, [])
+
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       {/* Header */}
       <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
         {/* Left side: Logo */}
@@ -121,6 +133,16 @@ function HomeContent() {
         </View>
         {/* Right side: Branch Select, Settings and Avatar with Dropdown */}
         <View className="flex-row items-center gap-3">
+          {__DEV__ && (
+            <Button
+              size="sm"
+              variant="outline"
+              onPress={handleUiThreadVerifyPress}
+              className="border-amber-500"
+            >
+              <Text className="text-amber-600 text-xs">UI✓</Text>
+            </Button>
+          )}
           <SelectBranchDropdown />
           <SettingsDropdown />
           <UserAvatarDropdown 
@@ -242,7 +264,7 @@ function HomeContent() {
         onOpenChange={setIsLogoutDialogOpen}
         onLogout={handleLogout}
       />
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

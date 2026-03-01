@@ -1,6 +1,6 @@
 {
   "name": "mobile-movie-app",
-  "main": "expo-router/entry",
+  "main": "index.js",
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
@@ -16,6 +16,7 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier . --write",
     "check": "npm run typecheck && npm run lint",
+    "check-circular": "madge --circular --ts-config tsconfig.json --extensions ts,tsx app stores utils api hooks lib providers",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },
@@ -98,6 +99,7 @@
     "eslint-plugin-react-native": "^5.0.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^16.5.0",
+    "madge": "^8.0.0",
     "patch-package": "^8.0.1",
     "postinstall-postinstall": "^2.1.0",
     "prettier": "^3.7.4",

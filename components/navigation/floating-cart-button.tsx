@@ -3,20 +3,18 @@ import React from 'react'
 import { Text, View } from 'react-native'
 
 import { TAB_ROUTES } from '@/constants'
-import { navigateNative } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 
-import { NavigatePressable } from './navigate-pressable'
+import { NativeGesturePressable } from './native-gesture-pressable'
 
 type Props = { primaryColor: string }
 
 const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor }: Props) {
   const cartItemCount = useOrderFlowStore((state) => state.getCartItemCount())
-  const onPress = () => navigateNative.replace(TAB_ROUTES.CART)
 
   return (
-    <NavigatePressable
-      onPress={onPress}
+    <NativeGesturePressable
+      navigation={{ type: 'replace', href: TAB_ROUTES.CART }}
       style={{
         width: 64,
         height: 64,
@@ -54,7 +52,7 @@ const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor
           </Text>
         </View>
       )}
-    </NavigatePressable>
+    </NativeGesturePressable>
   )
 })
 

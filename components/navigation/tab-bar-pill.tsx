@@ -1,7 +1,9 @@
 import type { TFunction } from 'i18next'
 import { Gift, Home, Menu, User } from 'lucide-react-native'
 import React, { useCallback, useMemo } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
+
+import { NativeGesturePressable } from './native-gesture-pressable'
 
 const PILL_PADDING = 6
 
@@ -18,18 +20,18 @@ type Colors = {
   background: string
 }
 
-type Handlers = {
-  onHome: () => void
-  onMenu: () => void
-  onGiftCard: () => void
-  onProfile: () => void
+type TabRoutes = {
+  home: string
+  menu: string
+  giftCard: string
+  profile: string
 }
 
 type TabBarPillProps = {
   t: TFunction<'tabs'>
   colors: Colors
   tabState: TabState
-  handlers: Handlers
+  tabRoutes: TabRoutes
 }
 
 /**
@@ -40,19 +42,19 @@ const TabBarPill = React.memo(function TabBarPill({
   t,
   colors,
   tabState,
-  handlers,
+  tabRoutes,
 }: TabBarPillProps) {
   const { primary, mutedForeground, background } = colors
   const getColor = useCallback((active: boolean) => (active ? primary : mutedForeground), [primary, mutedForeground])
 
   const items = useMemo(
     () => [
-      { Icon: Home, active: tabState.isHomeActive, onPress: handlers.onHome, label: t('tabs.home', 'Trang chủ') },
-      { Icon: Menu, active: tabState.isMenuActive, onPress: handlers.onMenu, label: t('tabs.menu', 'Thực đơn') },
-      { Icon: Gift, active: tabState.isGiftCardActive, onPress: handlers.onGiftCard, label: t('tabs.giftCard', 'Thẻ quà') },
-      { Icon: User, active: tabState.isProfileActive, onPress: handlers.onProfile, label: t('tabs.profile', 'Tài khoản') },
+      { Icon: Home, active: tabState.isHomeActive, href: tabRoutes.home, label: t('tabs.home', 'Trang chủ') },
+      { Icon: Menu, active: tabState.isMenuActive, href: tabRoutes.menu, label: t('tabs.menu', 'Thực đơn') },
+      { Icon: Gift, active: tabState.isGiftCardActive, href: tabRoutes.giftCard, label: t('tabs.giftCard', 'Thẻ quà') },
+      { Icon: User, active: tabState.isProfileActive, href: tabRoutes.profile, label: t('tabs.profile', 'Tài khoản') },
     ],
-    [tabState, handlers, t],
+    [tabState, tabRoutes, t],
   )
 
   return (
@@ -69,10 +71,10 @@ const TabBarPill = React.memo(function TabBarPill({
         elevation: 24,
       }}
     >
-      {items.map(({ Icon, active, onPress, label }) => (
-        <Pressable
+      {items.map(({ Icon, active, href, label }) => (
+        <NativeGesturePressable
           key={label}
-          onPress={onPress}
+          navigation={{ type: 'replace', href }}
           className="flex-1 items-center justify-center py-1"
         >
           <View className="items-center justify-center" style={{ zIndex: 1 }}>
@@ -81,11 +83,11 @@ const TabBarPill = React.memo(function TabBarPill({
           <Text className="text-[10px] mt-0.5 font-medium" style={{ color: getColor(active), zIndex: 1 }}>
             {label}
           </Text>
-        </Pressable>
+        </NativeGesturePressable>
       ))}
     </View>
   )
 })
 
 export { TabBarPill }
-export type { TabBarPillProps, TabState, Colors, Handlers }
+export type { TabBarPillProps, TabState, Colors, TabRoutes }

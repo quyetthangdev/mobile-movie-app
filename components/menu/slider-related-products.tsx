@@ -184,6 +184,8 @@ export default function SliderRelatedProducts({
           <FlatList
             data={[...Array(6).keys()]}
             horizontal
+            initialNumToRender={1}
+            maxToRenderPerBatch={1}
             showsHorizontalScrollIndicator={false}
             keyExtractor={(_, index) => `skeleton-${index}`}
             renderItem={renderSkeleton}
@@ -203,6 +205,8 @@ export default function SliderRelatedProducts({
       <FlatList
         data={relatedProductsData}
         horizontal
+        initialNumToRender={1}
+        maxToRenderPerBatch={1}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.slug}
         renderItem={renderItem}

@@ -1,8 +1,9 @@
 import { Images } from '@/assets/images'
 import React, { useRef } from 'react'
-import { Dimensions, FlatList, Image, Pressable, Text, View } from 'react-native'
+import { Dimensions, FlatList, Image, Text, View } from 'react-native'
 
-import { navigateNative } from '@/lib/navigation'
+import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
+import { useGhostMount } from '@/lib/navigation'
 import { NewsArticle } from '@/types'
 
 interface NewsCarouselProps {
@@ -29,6 +30,7 @@ interface NewsCarouselProps {
 export default function NewsCarousel({ articles }: NewsCarouselProps) {
   const flatListRef = useRef<FlatList>(null)
   const screenWidth = Dimensions.get('window').width
+  const { preload } = useGhostMount()
 
   // Mock data - matching web version
   const mockNewsArticles: NewsArticle[] = [
@@ -60,10 +62,6 @@ export default function NewsCarousel({ articles }: NewsCarouselProps) {
 
   const newsArticles = articles || mockNewsArticles
 
-  const handleArticlePress = (slug: string) => {
-    // Navigate to news detail page
-    navigateNative.push(`/home/news/${slug}`)
-  }
 
   // Calculate item width based on screen size (similar to web: max-w-[180px] sm:max-w-[320px])
   const itemWidth = screenWidth < 640 ? 180 : 320
@@ -79,8 +77,9 @@ export default function NewsCarousel({ articles }: NewsCarouselProps) {
           marginRight: itemSpacing,
         }}
       >
-        <Pressable
-          onPress={() => handleArticlePress(item.slug)}
+        <NativeGesturePressable
+          navigation={{ type: 'push', href: `/home/news/${item.slug}` }}
+          onPressIn={() => preload('news', { slug: item.slug })}
           className="bg-transparent w-full"
         >
           {/* Card container - matches web: bg-transparent border-none shadow-none */}
@@ -113,7 +112,7 @@ export default function NewsCarousel({ articles }: NewsCarouselProps) {
               </Text>
             </View>
           </View>
-        </Pressable>
+        </NativeGesturePressable>
       </View>
     )
   }

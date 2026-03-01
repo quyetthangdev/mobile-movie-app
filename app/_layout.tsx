@@ -2,15 +2,18 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as SystemUI from 'expo-system-ui'
 
-import { CustomStack, velocityDrivenScreenOptions } from '@/layouts/custom-stack'
+import { StackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { MasterTransitionProvider } from '@/lib/navigation/master-transition-provider'
 import { useEffect } from 'react'
 import { InteractionManager, Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
-import { NavigationEngineProvider } from '@/lib/navigation'
+import { GhostMountProvider, NavigationEngineProvider } from '@/lib/navigation'
+import { useBackHandlerForExit } from '@/hooks'
 import { setNavigationBarColorFixed, useNavigationBarFixed } from '@/hooks/use-navigation-bar-fixed'
-import '@/lib/navigation-setup'
+import '@/lib/http-setup'
+import '@/lib/store-sync-setup'
 import { AppToastProvider, I18nProvider } from '@/providers'
 
 import './global.css'
@@ -78,6 +81,7 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   useNavigationBarFixed('#FFFFFF', true, true)
+  useBackHandlerForExit()
 
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
@@ -98,11 +102,15 @@ export default function RootLayout() {
         <BottomSheetModalProvider>
           <QueryClientProvider client={queryClient}>
             <I18nProvider>
-              <NavigationEngineProvider>
-                <AppToastProvider>
-                  <CustomStack screenOptions={velocityDrivenScreenOptions} />
-                </AppToastProvider>
-              </NavigationEngineProvider>
+              <GhostMountProvider>
+                <NavigationEngineProvider>
+                  <MasterTransitionProvider>
+                    <AppToastProvider>
+                      <StackWithMasterTransition />
+                    </AppToastProvider>
+                  </MasterTransitionProvider>
+                </NavigationEngineProvider>
+              </GhostMountProvider>
             </I18nProvider>
           </QueryClientProvider>
         </BottomSheetModalProvider>

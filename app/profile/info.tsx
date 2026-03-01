@@ -9,7 +9,7 @@ import {
 } from 'lucide-react-native'
 import React, { useMemo } from 'react'
 import { Image, ScrollView, Text, View, useColorScheme } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { Button } from '@/components/ui'
 import { ROUTE, colors } from '@/constants'
@@ -41,9 +41,9 @@ function ProfileInfoScreen() {
   const successColor = isDark ? colors.success.dark : colors.success.light
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-gray-50 dark:bg-gray-900"
+    <ScreenContainer
       edges={['top', 'bottom']}
+      className="flex-1 bg-gray-50 dark:bg-gray-900"
     >
       {/* Header */}
       <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
@@ -238,7 +238,7 @@ function ProfileInfoScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

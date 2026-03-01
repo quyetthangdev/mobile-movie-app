@@ -1,7 +1,7 @@
 import { Redirect } from 'expo-router'
 import React, { useCallback } from 'react'
 import { ScrollView } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { LoginForm } from '@/components/auth'
 import { navigateNative } from '@/lib/navigation'
@@ -19,11 +19,11 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <LoginForm onLoginSuccess={handleLoginSuccess} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

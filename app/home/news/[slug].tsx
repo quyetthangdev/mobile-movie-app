@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router'
 import { ArrowLeft } from 'lucide-react-native'
 import React from 'react'
 import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { Images } from '@/assets/images'
 import { navigateNative } from '@/lib/navigation'
@@ -362,14 +362,14 @@ export default function NewsArticleDetailPage() {
 
   if (!article) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+      <ScreenContainer edges={['top']} className="flex-1 bg-white dark:bg-gray-900">
         <View className="flex-1 justify-center items-center px-4">
           <Text className="text-2xl font-bold mb-4">Không tìm thấy bài viết</Text>
           <Button onPress={() => navigateNative.back()}>
             Quay lại
           </Button>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     )
   }
 
@@ -416,7 +416,7 @@ export default function NewsArticleDetailPage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+    <ScreenContainer edges={['top']} className="flex-1 bg-white dark:bg-gray-900">
       <ScrollView className="flex-1">
         <View className="container py-6 px-4 max-w-4xl mx-auto">
           <TouchableOpacity
@@ -457,7 +457,7 @@ export default function NewsArticleDetailPage() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

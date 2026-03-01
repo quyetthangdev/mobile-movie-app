@@ -2,8 +2,9 @@ import { MapPin, X } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Image, RefreshControl, Text, TouchableOpacity, View } from 'react-native'
+import { ScrollView } from 'react-native-gesture-handler'
+import { ScreenContainer } from '@/components/layout'
 
 import { Images } from '@/assets/images'
 import { SelectBranchDropdown } from '@/components/branch'
@@ -43,7 +44,7 @@ function MenuListSkeleton() {
 /** Shell cực nhẹ: có header + filter + list để giữ layout ổn định khi loading. */
 function MenuSkeletonShell() {
   return (
-    <SafeAreaView className="flex-1 pb-12" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1 pb-12">
       <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
         <Skeleton className="h-8 w-28 rounded-md" />
         <View className="flex-row items-center" style={{ gap: 12 }}>
@@ -69,7 +70,7 @@ function MenuSkeletonShell() {
         </View>
         <MenuListSkeleton />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -200,7 +201,7 @@ function ClientMenuContent() {
   }, [])
 
   return (
-    <SafeAreaView className="flex-1 pb-12" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1 pb-12">
       {/* Header */}
       <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
         {/* Left side: Logo */}
@@ -307,7 +308,7 @@ function ClientMenuContent() {
         onOpenChange={setIsLogoutDialogOpen}
         onLogout={handleLogout}
       />
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

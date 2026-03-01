@@ -1,7 +1,7 @@
 import { ArrowLeft } from 'lucide-react-native'
 import React, { useState } from 'react'
 import { ScrollView, Text, View, useColorScheme } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { Button, Input } from '@/components/ui'
 import { colors } from '@/constants'
@@ -32,7 +32,7 @@ function EditProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top', 'bottom']}>
+    <ScreenContainer edges={['top', 'bottom']} className="flex-1 bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
         <Button
@@ -116,7 +116,7 @@ function EditProfileScreen() {
           </Button>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

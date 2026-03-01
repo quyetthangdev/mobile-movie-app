@@ -4,7 +4,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 import { IGiftCardCartItem } from '@/types'
-import { showToast } from '@/utils'
+import { showToast } from '@/utils/toast'
 import { createSafeStorage } from '@/utils/storage'
 
 interface IGiftCardStore {

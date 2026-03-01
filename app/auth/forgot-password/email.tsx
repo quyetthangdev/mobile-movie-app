@@ -2,7 +2,7 @@ import { Redirect } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { OTPInput } from '@/components/auth'
 import { ForgotPasswordByEmailForm, ResetPasswordForm } from '@/components/form'
@@ -235,7 +235,7 @@ export default function ForgotPasswordByEmailScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="flex-1 px-6 pt-8">
           <Text className="text-gray-900 dark:text-white text-3xl font-bold mb-2">
@@ -332,7 +332,7 @@ export default function ForgotPasswordByEmailScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

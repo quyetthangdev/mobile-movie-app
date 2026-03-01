@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react-native'
 import React, { useMemo, useState } from 'react'
 import { Text, View, useColorScheme } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { Button, Input, Skeleton } from '@/components/ui'
 import { QUERYKEY, colors } from '@/constants'
@@ -19,7 +19,7 @@ import { showToast } from '@/utils'
 /** Shell nhẹ cho frame đầu khi push màn verify phone. */
 function VerifyPhoneNumberSkeleton() {
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top', 'bottom']}>
+    <ScreenContainer edges={['top', 'bottom']} className="flex-1 bg-gray-50 dark:bg-gray-900">
       <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
         <Skeleton className="h-10 w-10 rounded-full mr-2" />
         <Skeleton className="h-6 w-40 rounded" />
@@ -29,7 +29,7 @@ function VerifyPhoneNumberSkeleton() {
         <Skeleton className="h-5 w-48 rounded mb-6" />
         <Skeleton className="h-11 w-full rounded" />
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -119,7 +119,7 @@ function VerifyPhoneNumberContent() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top', 'bottom']}>
+    <ScreenContainer edges={['top', 'bottom']} className="flex-1 bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
         <Button
@@ -201,7 +201,7 @@ function VerifyPhoneNumberContent() {
           </>
         )}
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

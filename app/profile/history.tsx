@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native'
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { getOrderBySlug } from '@/api'
 import { Images } from '@/assets/images'
@@ -462,9 +462,9 @@ function OrderHistoryPage() {
   const showSkeleton = !allowFetch || (isPending && page === 1)
   if (showSkeleton) {
     return (
-      <SafeAreaView
-        className="flex-1 bg-gray-50 dark:bg-gray-900"
+      <ScreenContainer
         edges={['top', 'bottom']}
+        className="flex-1 bg-gray-50 dark:bg-gray-900"
       >
         {/* Header skeleton */}
         <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
@@ -509,13 +509,13 @@ function OrderHistoryPage() {
             </View>
           ))}
         </ScrollView>
-      </SafeAreaView>
+      </ScreenContainer>
     )
   }
 
   return (
     <View style={{ flex: 1 }} className="bg-gray-50 dark:bg-gray-900">
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+      <ScreenContainer edges={['top', 'bottom']} style={{ flex: 1 }}>
         {/* Header */}
         <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
           <TouchableOpacity
@@ -654,7 +654,7 @@ function OrderHistoryPage() {
             </GestureScrollView>
           )}
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     </View>
   )
 }

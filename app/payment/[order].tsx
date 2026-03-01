@@ -4,7 +4,8 @@ import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Image, type ImageSourcePropType, Platform, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native'
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { InvoiceTemplate } from '@/app/profile/components'
 import { Images } from '@/assets/images'
@@ -19,7 +20,7 @@ import { calculateOrderItemDisplay, calculatePlacedOrderTotals, capitalizeFirstL
 
 function PaymentSkeletonShell() {
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1 bg-gray-50 dark:bg-gray-900">
       <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
         <Skeleton className="w-8 h-8 rounded-full mr-3" />
         <Skeleton className="h-5 w-48 rounded-md" />
@@ -37,7 +38,7 @@ function PaymentSkeletonShell() {
           <Skeleton className="h-10 w-full rounded-lg" />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -48,6 +49,7 @@ function PaymentPageContent() {
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
+  const insets = useSafeAreaInsets()
   const { data: orderResponse, isPending, refetch: refetchOrder } = useOrderBySlug(orderSlug)
   const order = orderResponse?.result
   const { mutate: exportInvoice, isPending: isExportingInvoice } = useExportPublicOrderInvoice()
@@ -154,9 +156,6 @@ function PaymentPageContent() {
       requestPayload.transactionId = transactionId.trim()
     }
 
-    // eslint-disable-next-line no-console
-    console.log('Initiating payment with payload:', requestPayload)
-
     initiatePayment(
       requestPayload,
       {
@@ -213,7 +212,7 @@ function PaymentPageContent() {
 
   if (isPending) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top']}>
+      <ScreenContainer edges={['top']} className="flex-1 bg-gray-50 dark:bg-gray-900">
         {/* Header skeleton */}
         <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
           <Skeleton className="w-8 h-8 rounded-full mr-3" />
@@ -237,13 +236,13 @@ function PaymentPageContent() {
             <Skeleton className="h-10 w-full rounded-lg" />
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </ScreenContainer>
     )
   }
 
   if (!order) {
     return (
-      <SafeAreaView className="flex-1" edges={['top']}>
+      <ScreenContainer edges={['top']} className="flex-1">
         <View className="flex-1 items-center justify-center px-4">
           <CircleX size={64} color={isDark ? '#9ca3af' : '#6b7280'} />
           <Text className="mt-4 text-center text-gray-600 dark:text-gray-400">
@@ -253,13 +252,13 @@ function PaymentPageContent() {
             {tCommon('common.goBack', 'Quay lại')}
           </Button>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     )
   }
 
   return (
     <View style={{ flex: 1 }} className="bg-gray-50 dark:bg-gray-900">
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+      <ScreenContainer edges={['top']} style={{ flex: 1 }}>
         {/* Header */}
         <View className="bg-white dark:bg-gray-800 px-4 py-3 flex-row items-center border-b border-gray-200 dark:border-gray-700">
           <TouchableOpacity onPress={handleBack} className="mr-3">
@@ -820,7 +819,10 @@ function PaymentPageContent() {
         </GestureScrollView>
 
         {/* Bottom Action Bar */}
-        <SafeAreaView edges={['bottom']} className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <View
+          style={{ paddingBottom: insets.bottom }}
+          className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+        >
           <View className="px-4 py-4 flex-row gap-2 justify-between">
             {/* <Button
               variant="outline"
@@ -838,8 +840,8 @@ function PaymentPageContent() {
               </Button>
             )}
           </View>
-        </SafeAreaView>
-      </SafeAreaView>
+        </View>
+      </ScreenContainer>
     </View>
   )
 }

@@ -3,12 +3,13 @@ import moment from 'moment'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ImageSourcePropType } from 'react-native'
-import { Image, Pressable, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Text, TouchableOpacity, View } from 'react-native'
 
 import { Images } from '@/assets/images'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
+import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
+import { useGhostMount } from '@/lib/navigation'
 import { useIsMobile, usePressInPrefetchMenuItem } from '@/hooks'
-import { navigateNative } from '@/lib/navigation'
 import { useOrderFlowStore, useUserStore } from '@/stores'
 import { IMenuItem, IOrderItem, IProduct } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
@@ -32,6 +33,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
   const { t } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
   const prefetchMenuItem = usePressInPrefetchMenuItem()
+  const { preload } = useGhostMount()
   const isMobile = useIsMobile()
   const { userInfo } = useUserStore()
 
@@ -133,12 +135,6 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
     }
   }
 
-  const handleItemPress = () => {
-    navigateNative.push({
-      pathname: ROUTE.CLIENT_MENU_ITEM_DETAIL,
-      params: { slug: item.slug },
-    })
-  }
 
   // Handle null values for currentStock and defaultStock from API
   const currentStock = item.currentStock ?? 0
@@ -150,9 +146,15 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
   return (
     <View className="flex-row sm:flex-col justify-between bg-white border border-gray-200 dark:border-gray-700 rounded-xl min-h-[2rem] dark:bg-gray-800 overflow-hidden">
       {/* Image - Square with rounded corners */}
-      <Pressable
-        onPressIn={() => prefetchMenuItem(item.slug)}
-        onPress={handleItemPress}
+      <NativeGesturePressable
+        navigation={{
+          type: 'push',
+          href: { pathname: ROUTE.CLIENT_MENU_ITEM_DETAIL, params: { slug: item.slug } },
+        }}
+        onPressIn={() => {
+          prefetchMenuItem(item.slug)
+          preload('menu-item', { slug: item.slug })
+        }}
         className={`flex-shrink-0 justify-center items-center ${
           isMobile ? 'w-32 h-32 p-2' : 'w-full aspect-square p-0'
         }`}
@@ -188,7 +190,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
             </View>
           )}
         </View>
-      </Pressable>
+      </NativeGesturePressable>
 
       {/* Content */}
       <View className="flex-1 flex-col justify-between px-2 py-3">

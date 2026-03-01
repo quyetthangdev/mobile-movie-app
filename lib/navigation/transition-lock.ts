@@ -1,12 +1,8 @@
 /**
  * Transition Lock — Telegram pattern.
- * Phase 7.5: Timeout protection, auto-release.
- * Trong lúc animation chạy (~320ms): JS updates bị trì hoãn.
- * Mục tiêu: JS thread không phá animation frame.
+ * Tối ưu hóa: Đồng bộ hóa lock với vòng đời animation.
  */
-
-const LOCK_DURATION_MS = 320
-const MAX_LOCK_MS = 400
+const FALLBACK_LOCK_MS = 600 // Tăng thời gian fallback để an toàn
 
 let lockUntil = 0
 let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -20,13 +16,20 @@ const clearTimeoutIfAny = () => {
 
 export const isTransitionLocked = () => Date.now() < lockUntil
 
-export const acquireTransitionLock = (durationMs = LOCK_DURATION_MS) => {
+export const acquireTransitionLock = (durationMs = FALLBACK_LOCK_MS) => {
   clearTimeoutIfAny()
-  lockUntil = Date.now() + durationMs
-  timeoutId = setTimeout(() => {
-    lockUntil = 0
-    timeoutId = null
-  }, Math.min(durationMs + 80, MAX_LOCK_MS))
+
+  // Khóa dựa trên thời gian tối đa + buffer
+  lockUntil = Date.now() + Math.min(durationMs + 200, FALLBACK_LOCK_MS)
+
+  // Fallback timer an toàn: tự mở khóa nếu có lỗi xảy ra
+  timeoutId = setTimeout(
+    () => {
+      lockUntil = 0
+      timeoutId = null
+    },
+    Math.min(durationMs + 200, FALLBACK_LOCK_MS),
+  )
 }
 
 export const releaseTransitionLock = () => {

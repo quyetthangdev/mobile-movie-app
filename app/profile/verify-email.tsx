@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { AuthFormLayout, OTPInput } from '@/components/auth'
 import { FormInput } from '@/components/form'
@@ -28,14 +28,14 @@ const EMAIL_OTP_COUNTDOWN_SECONDS = 10 * 60
 /** Shell nhẹ cho frame đầu khi push màn verify email — không store/form. */
 function VerifyEmailSkeleton() {
   return (
-    <SafeAreaView className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900">
+    <ScreenContainer edges={['top', 'bottom']} className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-900">
       <View className="px-4 py-6">
         <Skeleton className="mb-2 h-7 w-48 rounded" />
         <Skeleton className="mb-6 h-4 w-full rounded" />
         <Skeleton className="mb-4 h-12 w-full rounded" />
         <Skeleton className="h-11 w-full rounded" />
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

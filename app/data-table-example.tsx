@@ -47,10 +47,7 @@ export default function DataTableExampleScreen() {
           filterDebounceMs: 300,
         }}
         rowKey="id"
-        onRowPress={(row) => {
-          // eslint-disable-next-line no-console
-          console.log('Row pressed', row.id)
-        }}
+        onRowPress={() => {}}
         emptyComponent={<DataTable.Empty message="No orders" />}
         loadingComponent={<DataTable.Loading />}
       >

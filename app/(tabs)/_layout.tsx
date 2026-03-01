@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FloatingCartButton, TabBarPill } from '@/components/navigation'
 import { TAB_ROUTES, tabsScreenOptions } from '@/constants'
 import { usePredictivePrefetch } from '@/hooks'
-import { navigateNative } from '@/lib/navigation'
 import { useAuthStore, useUserStore } from '@/stores'
 import { getThemeColor, hexToRgba } from '@/lib/utils'
 
@@ -57,13 +56,14 @@ const TabsLayout = React.memo(function TabsLayout() {
     [tabState, isHomeActive],
   )
 
-  const onHome = useCallback(() => navigateNative.replace(TAB_ROUTES.HOME), [])
-  const onMenu = useCallback(() => navigateNative.replace(TAB_ROUTES.MENU), [])
-  const onGiftCard = useCallback(() => navigateNative.replace(TAB_ROUTES.GIFT_CARD), [])
-  const onProfile = useCallback(() => navigateNative.replace(TAB_ROUTES.PROFILE), [])
-  const handlers = useMemo(
-    () => ({ onHome, onMenu, onGiftCard, onProfile }),
-    [onHome, onMenu, onGiftCard, onProfile],
+  const tabRoutes = useMemo(
+    () => ({
+      home: TAB_ROUTES.HOME,
+      menu: TAB_ROUTES.MENU,
+      giftCard: TAB_ROUTES.GIFT_CARD,
+      profile: TAB_ROUTES.PROFILE,
+    }),
+    [],
   )
 
   const { backgroundHeight, fadeHeight } = useMemo(() => {
@@ -162,7 +162,7 @@ const TabsLayout = React.memo(function TabsLayout() {
         />
       </Tabs>
 
-      {/* Bottom bar: pill + floating cart — ẩn khi cart, auth, đăng ký, quên pass, xác minh sdt/email */}
+      {/* Bottom bar: pill + floating cart */}
       {!shouldHideBottomBar && (
         <View
           style={{
@@ -184,7 +184,7 @@ const TabsLayout = React.memo(function TabsLayout() {
             t={t}
             colors={{ primary: colors.primary, mutedForeground: colors.mutedForeground, background: colors.background }}
             tabState={resolvedTabState}
-            handlers={handlers}
+            tabRoutes={tabRoutes}
           />
           <FloatingCartButton primaryColor={colors.primary} />
         </View>

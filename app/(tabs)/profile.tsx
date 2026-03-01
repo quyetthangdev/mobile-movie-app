@@ -20,7 +20,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { LoginForm } from '@/components/auth'
 import { LogoutDialog } from '@/components/dialog'
@@ -38,7 +38,7 @@ import { useTranslation } from 'react-i18next'
 
 function ProfileSkeletonShell() {
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -65,7 +65,7 @@ function ProfileSkeletonShell() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -190,17 +190,17 @@ function Profile() {
   // If there is no userInfo, display the login form
   if (needsUserInfo || !userInfo) {
     return (
-      <SafeAreaView className="flex-1" edges={['top']}>
+      <ScreenContainer edges={['top']} className="flex-1">
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <LoginForm />
         </ScrollView>
-      </SafeAreaView>
+      </ScreenContainer>
     )
   }
 
   // Nếu đã đăng nhập, hiển thị profile
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       {/* Header blur - overlay bán trong suốt */}
       <View
         className="absolute left-0 right-0 top-0 z-10"
@@ -398,7 +398,7 @@ function Profile() {
         onOpenChange={setIsLogoutDialogOpen}
         onLogout={handleLogout}
       />
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

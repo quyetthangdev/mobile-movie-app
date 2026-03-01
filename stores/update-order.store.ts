@@ -16,7 +16,8 @@ import {
   OrderStatus,
   OrderTypeEnum,
 } from '@/types'
-import { showToast } from '@/utils'
+import { requestClearStoresExcept } from '@/lib/store-sync'
+import { showToast } from '@/utils/toast'
 
 // Generate unique ID for React Native (crypto.randomUUID not available)
 const generateShortId = () => {
@@ -120,18 +121,7 @@ export const useUpdateOrderStore = create<IUpdateOrderStore>()(
       },
 
       setOrderItems: (order: IOrder) => {
-        // Clear other stores when setting update order data to ensure only update order store has data
-        // Import dynamically to avoid circular dependency
-        import('./cart.store').then(({ useCartItemStore }) => {
-          const { clearCart } = useCartItemStore.getState()
-          clearCart()
-        })
-
-        import('./payment-method.store').then(({ usePaymentMethodStore }) => {
-          const { clearStore: clearPaymentMethodStore } =
-            usePaymentMethodStore.getState()
-          clearPaymentMethodStore()
-        })
+        requestClearStoresExcept('update-order')
 
         const { orderItems } = get()
         const orderStatus = orderItems ? orderItems.status : OrderStatus.PENDING
@@ -181,19 +171,8 @@ export const useUpdateOrderStore = create<IUpdateOrderStore>()(
       },
 
       addOrderItem: (item: ICartItem) => {
-        // Clear other stores when adding item to update order to ensure only update order store has data
-        import('./cart.store').then(({ useCartItemStore }) => {
-          const { clearCart } = useCartItemStore.getState()
-          clearCart()
-        })
+        requestClearStoresExcept('update-order')
 
-        import('./payment-method.store').then(({ usePaymentMethodStore }) => {
-          const { clearStore: clearPaymentMethodStore } =
-            usePaymentMethodStore.getState()
-          clearPaymentMethodStore()
-        })
-
-        // console.log('Adding order item:', item)
         const { orderItems } = get()
         const orderStatus = orderItems ? orderItems.status : OrderStatus.PENDING
         if (!orderItems) {
@@ -302,17 +281,7 @@ export const useUpdateOrderStore = create<IUpdateOrderStore>()(
       },
 
       addTable: (table: ITable) => {
-        // Clear other stores when adding table to update order to ensure only update order store has data
-        import('./cart.store').then(({ useCartItemStore }) => {
-          const { clearCart } = useCartItemStore.getState()
-          clearCart()
-        })
-
-        import('./payment-method.store').then(({ usePaymentMethodStore }) => {
-          const { clearStore: clearPaymentMethodStore } =
-            usePaymentMethodStore.getState()
-          clearPaymentMethodStore()
-        })
+        requestClearStoresExcept('update-order')
 
         const { orderItems } = get()
         const orderStatus = orderItems ? orderItems.status : OrderStatus.PENDING

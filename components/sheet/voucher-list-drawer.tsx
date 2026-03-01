@@ -1,45 +1,48 @@
+import { APPLICABILITY_RULE, Role, VOUCHER_TYPE } from '@/constants'
 import {
-    APPLICABILITY_RULE,
-    Role,
-    VOUCHER_TYPE,
-} from '@/constants'
-import {
-    usePagination,
-    usePublicVouchersForOrder,
-    useSpecificPublicVoucher,
-    useSpecificVoucher,
-    useValidatePublicVoucher,
-    useValidateVoucher,
-    useVouchersForOrder,
+  usePagination,
+  usePublicVouchersForOrder,
+  useSpecificPublicVoucher,
+  useSpecificVoucher,
+  useValidatePublicVoucher,
+  useValidateVoucher,
+  useVouchersForOrder,
 } from '@/hooks'
 import { useOrderFlowStore, useUserStore } from '@/stores'
 import {
-    IGetAllVoucherRequest,
-    IValidateVoucherRequest,
-    IVoucher,
+  IGetAllVoucherRequest,
+  IValidateVoucherRequest,
+  IVoucher,
 } from '@/types'
 import {
-    calculateCartItemDisplay,
-    calculateCartTotals,
-    isVoucherApplicableToCartItems,
-    showErrorToast,
-    showToast
+  calculateCartItemDisplay,
+  calculateCartTotals,
+  isVoucherApplicableToCartItems,
+  showErrorToast,
+  showToast,
 } from '@/utils'
 import BottomSheet, {
-    BottomSheetBackdrop,
-    BottomSheetBackdropProps,
-    BottomSheetFlatList,
-    BottomSheetTextInput,
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetFlatList,
+  BottomSheetTextInput,
 } from '@gorhom/bottom-sheet'
 import moment from 'moment'
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-    ActivityIndicator,
-    Text,
-    TouchableOpacity,
-    useColorScheme,
-    View,
+  ActivityIndicator,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  View,
 } from 'react-native'
 import VoucherRow from './voucher-row'
 
@@ -72,24 +75,22 @@ function VoucherListDrawer() {
   // Update global ref when component mounts/updates
   useEffect(() => {
     isComponentMounted = true
-    
+
     const checkAndSetRef = () => {
       const currentRef = bottomSheetRef.current
       if (currentRef && isComponentMounted) {
         sheetRef = currentRef
         openCallback = () => {
-          // eslint-disable-next-line no-console
-          console.log('[VoucherListDrawer] openCallback called, setting shouldOpen=true')
           setShouldOpen(true)
         }
         return currentRef
       }
       return null
     }
-    
+
     // Check immediately
     checkAndSetRef()
-    
+
     // Also check after delays in case BottomSheet mounts asynchronously
     const timeoutId1 = setTimeout(() => {
       if (isComponentMounted) checkAndSetRef()
@@ -103,7 +104,7 @@ function VoucherListDrawer() {
     const timeoutId4 = setTimeout(() => {
       if (isComponentMounted) checkAndSetRef()
     }, 1000)
-    
+
     return () => {
       clearTimeout(timeoutId1)
       clearTimeout(timeoutId2)
@@ -111,18 +112,14 @@ function VoucherListDrawer() {
       clearTimeout(timeoutId4)
       // Don't clear ref in cleanup - it will be set again on next render
       // Only clear when component is truly unmounted (which we can't detect here)
-      // eslint-disable-next-line no-console
-      console.log('[VoucherListDrawer] Cleanup called, keeping ref')
     }
   }, [])
-  
+
   // Continuously update ref when bottomSheetRef changes (for re-renders)
   useEffect(() => {
     if (bottomSheetRef.current && isComponentMounted) {
       sheetRef = bottomSheetRef.current
       openCallback = () => {
-        // eslint-disable-next-line no-console
-        console.log('[VoucherListDrawer] openCallback called, setting shouldOpen=true')
         setShouldOpen(true)
       }
     }
@@ -289,7 +286,13 @@ function VoucherListDrawer() {
       removeVoucher()
       showToast(tToast('toast.removeVoucherSuccess'))
     }
-  }, [cartItems, cartItems?.orderItems, cartItems?.voucher, removeVoucher, tToast])
+  }, [
+    cartItems,
+    cartItems?.orderItems,
+    cartItems?.voucher,
+    removeVoucher,
+    tToast,
+  ])
 
   // Handle specific voucher refetch
   useEffect(() => {
@@ -351,12 +354,12 @@ function VoucherListDrawer() {
 
     // Don't update if data is not ready or if we already have data for this page
     if (!currentData) return
-    
+
     // If we already have vouchers and this is not page 1, skip to avoid resetting list
     if (currentData.page !== currentPage) {
       if (localVoucherList.length > 0) return
     }
-    
+
     // If drawer is not open yet but we have data, still update the list
     // This ensures data is ready when drawer opens
 
@@ -395,28 +398,29 @@ function VoucherListDrawer() {
     } else {
       startTransition(() => {
         setLocalVoucherList((prevList) => {
-        const newItems = currentData.items || []
-        const combined = [...prevList, ...newItems]
-        const unique = combined.filter(
-          (v, index, self) => index === self.findIndex((t) => t.slug === v.slug),
-        )
-        if (userInfo && specificVoucher?.result) {
-          const existingIndex = unique.findIndex(
-            (v) => v.slug === specificVoucher.result.slug,
+          const newItems = currentData.items || []
+          const combined = [...prevList, ...newItems]
+          const unique = combined.filter(
+            (v, index, self) =>
+              index === self.findIndex((t) => t.slug === v.slug),
           )
-          if (existingIndex === -1) {
-            unique.unshift(specificVoucher.result)
+          if (userInfo && specificVoucher?.result) {
+            const existingIndex = unique.findIndex(
+              (v) => v.slug === specificVoucher.result.slug,
+            )
+            if (existingIndex === -1) {
+              unique.unshift(specificVoucher.result)
+            }
           }
-        }
-        if (!userInfo && specificPublicVoucher?.result) {
-          const existingIndex = unique.findIndex(
-            (v) => v.slug === specificPublicVoucher.result.slug,
-          )
-          if (existingIndex === -1) {
-            unique.unshift(specificPublicVoucher.result)
+          if (!userInfo && specificPublicVoucher?.result) {
+            const existingIndex = unique.findIndex(
+              (v) => v.slug === specificPublicVoucher.result.slug,
+            )
+            if (existingIndex === -1) {
+              unique.unshift(specificPublicVoucher.result)
+            }
           }
-        }
-        return unique
+          return unique
         })
       })
     }
@@ -449,13 +453,20 @@ function VoucherListDrawer() {
         setIsLoadingMore(false)
         // Don't reset localVoucherList if we already have data - it will be updated by the data sync effect
         // Only reset if we don't have data yet to avoid showing stale data
-        const hasData = (voucherList?.result?.items?.length ?? 0) > 0 || (publicVoucherList?.result?.items?.length ?? 0) > 0
+        const hasData =
+          (voucherList?.result?.items?.length ?? 0) > 0 ||
+          (publicVoucherList?.result?.items?.length ?? 0) > 0
         if (!hasData && localVoucherList.length > 0) {
           setLocalVoucherList([])
         }
       })
     }
-  }, [isOpen, voucherList?.result?.items, publicVoucherList?.result?.items, localVoucherList.length])
+  }, [
+    isOpen,
+    voucherList?.result?.items,
+    publicVoucherList?.result?.items,
+    localVoucherList.length,
+  ])
 
   // Reset when filters change
   // Note: setState in useEffect is necessary here to reset pagination when filters change
@@ -506,8 +517,8 @@ function VoucherListDrawer() {
         voucher?.type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
           ? true
           : (voucher?.minOrderValue || 0) <=
-            ((cartTotals?.subTotalBeforeDiscount || 0) -
-              (cartTotals?.promotionDiscount || 0))
+            (cartTotals?.subTotalBeforeDiscount || 0) -
+              (cartTotals?.promotionDiscount || 0)
       const isActive = voucher.isActive
       const endDateWithGrace = moment.utc(voucher.endDate).add(30, 'minutes')
       const isExpired = endDateWithGrace.isBefore(moment())
@@ -524,13 +535,10 @@ function VoucherListDrawer() {
         const voucherProductSlugs = voucher.voucherProducts.map(
           (vp) => vp.product.slug,
         )
-        const cartProductSlugs = cartItems.orderItems.reduce(
-          (acc, item) => {
-            if (item.slug) acc.push(item.slug)
-            return acc
-          },
-          [] as string[],
-        )
+        const cartProductSlugs = cartItems.orderItems.reduce((acc, item) => {
+          if (item.slug) acc.push(item.slug)
+          return acc
+        }, [] as string[])
 
         return isVoucherApplicableToCartItems(
           cartProductSlugs,
@@ -547,7 +555,8 @@ function VoucherListDrawer() {
       const isValidDate = sevenAmToday.isSameOrBefore(moment(voucher.endDate))
       const requiresLogin = voucher.isVerificationIdentity === true
       const isUserLoggedIn = !!userInfo?.slug
-      const isIdentityValid = !requiresLogin || (requiresLogin && isUserLoggedIn)
+      const isIdentityValid =
+        !requiresLogin || (requiresLogin && isUserLoggedIn)
       return (
         isActive &&
         !isExpired &&
@@ -613,59 +622,60 @@ function VoucherListDrawer() {
 
   const getVoucherErrorMessage = useCallback(
     (voucher: IVoucher) => {
-    const cartProductSlugs =
-      cartItems?.orderItems?.map((item) => item.slug) || []
-    const voucherProductSlugs =
-      voucher.voucherProducts?.map((vp) => vp.product?.slug) || []
+      const cartProductSlugs =
+        cartItems?.orderItems?.map((item) => item.slug) || []
+      const voucherProductSlugs =
+        voucher.voucherProducts?.map((vp) => vp.product?.slug) || []
 
-    const allCartProductsInVoucher = cartProductSlugs.every((slug) =>
-      voucherProductSlugs.includes(slug),
-    )
-    const hasAnyCartProductInVoucher = cartProductSlugs.some((slug) =>
-      voucherProductSlugs.includes(slug),
-    )
+      const allCartProductsInVoucher = cartProductSlugs.every((slug) =>
+        voucherProductSlugs.includes(slug),
+      )
+      const hasAnyCartProductInVoucher = cartProductSlugs.some((slug) =>
+        voucherProductSlugs.includes(slug),
+      )
 
-    const subTotalAfterPromotion =
-      (cartTotals?.subTotalBeforeDiscount || 0) -
-      (cartTotals?.promotionDiscount || 0)
+      const subTotalAfterPromotion =
+        (cartTotals?.subTotalBeforeDiscount || 0) -
+        (cartTotals?.promotionDiscount || 0)
 
-    const errorChecks: Array<{ condition: boolean; message: string }> = [
-      {
-        condition: !!voucher.isVerificationIdentity && !isCustomerOwner,
-        message: t('voucher.needVerifyIdentity'),
-      },
-      {
-        condition: moment
-          .utc(voucher.endDate)
-          .add(30, 'minutes')
-          .isBefore(moment()),
-        message: t('voucher.expired'),
-      },
-      {
-        condition: voucher.remainingUsage === 0,
-        message: t('voucher.outOfStock'),
-      },
-      {
-        condition:
-          voucher.type !== VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
-          voucher.minOrderValue > subTotalAfterPromotion,
-        message: t('voucher.minOrderNotMet'),
-      },
-      {
-        condition:
-          (voucher.voucherProducts?.length || 0) > 0 &&
-          voucher.applicabilityRule === APPLICABILITY_RULE.ALL_REQUIRED &&
-          !allCartProductsInVoucher,
-        message: t('voucher.requireOnlyApplicableProducts'),
-      },
-      {
-        condition:
-          (voucher.voucherProducts?.length || 0) > 0 &&
-          voucher.applicabilityRule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
-          !hasAnyCartProductInVoucher,
-        message: t('voucher.requireSomeApplicableProducts'),
-      },
-    ]
+      const errorChecks: Array<{ condition: boolean; message: string }> = [
+        {
+          condition: !!voucher.isVerificationIdentity && !isCustomerOwner,
+          message: t('voucher.needVerifyIdentity'),
+        },
+        {
+          condition: moment
+            .utc(voucher.endDate)
+            .add(30, 'minutes')
+            .isBefore(moment()),
+          message: t('voucher.expired'),
+        },
+        {
+          condition: voucher.remainingUsage === 0,
+          message: t('voucher.outOfStock'),
+        },
+        {
+          condition:
+            voucher.type !== VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
+            voucher.minOrderValue > subTotalAfterPromotion,
+          message: t('voucher.minOrderNotMet'),
+        },
+        {
+          condition:
+            (voucher.voucherProducts?.length || 0) > 0 &&
+            voucher.applicabilityRule === APPLICABILITY_RULE.ALL_REQUIRED &&
+            !allCartProductsInVoucher,
+          message: t('voucher.requireOnlyApplicableProducts'),
+        },
+        {
+          condition:
+            (voucher.voucherProducts?.length || 0) > 0 &&
+            voucher.applicabilityRule ===
+              APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
+            !hasAnyCartProductInVoucher,
+          message: t('voucher.requireSomeApplicableProducts'),
+        },
+      ]
 
       const firstError = errorChecks.find((error) => error.condition)
       return firstError?.message || ''
@@ -674,43 +684,35 @@ function VoucherListDrawer() {
   )
 
   // Handle sheet index changes
-  const handleSheetChanges = useCallback((index: number) => {
-    // eslint-disable-next-line no-console
-    console.log('[VoucherListDrawer] Sheet index changed:', index, 'from isOpen:', isOpen, 'shouldOpen:', shouldOpen)
-    setIsOpen(index >= 0)
-    
-    // Only reset shouldOpen when actually closed, not when opening
-    if (index < 0) {
-      setShouldOpen(false) // Reset shouldOpen flag when closed
-      // Reset when closed
-      setSelectedVoucher('')
-      setTempSelectedVoucher('')
-    } else if (index >= 0 && shouldOpen) {
-      // Sheet opened successfully, reset shouldOpen flag
-      setShouldOpen(false)
-    }
-  }, [isOpen, shouldOpen])
-  
+  const handleSheetChanges = useCallback(
+    (index: number) => {
+      setIsOpen(index >= 0)
+
+      // Only reset shouldOpen when actually closed, not when opening
+      if (index < 0) {
+        setShouldOpen(false) // Reset shouldOpen flag when closed
+        // Reset when closed
+        setSelectedVoucher('')
+        setTempSelectedVoucher('')
+      } else if (index >= 0 && shouldOpen) {
+        // Sheet opened successfully, reset shouldOpen flag
+        setShouldOpen(false)
+      }
+    },
+    [shouldOpen],
+  )
+
   // Handle shouldOpen state change
   useEffect(() => {
     if (!shouldOpen) return
-    
-    // eslint-disable-next-line no-console
-    console.log('[VoucherListDrawer] shouldOpen triggered, opening sheet, ref:', !!bottomSheetRef.current)
-    
+
     const openSheet = () => {
       if (!bottomSheetRef.current) {
-        // eslint-disable-next-line no-console
-        console.log('[VoucherListDrawer] bottomSheetRef.current is null, retrying...')
         return false
       }
-      
+
       try {
-        // eslint-disable-next-line no-console
-        console.log('[VoucherListDrawer] Calling snapToIndex(0)')
         bottomSheetRef.current.snapToIndex(0)
-        // eslint-disable-next-line no-console
-        console.log('[VoucherListDrawer] snapToIndex(0) called successfully')
         return true
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -718,25 +720,25 @@ function VoucherListDrawer() {
         return false
       }
     }
-    
+
     // Try immediately
     if (openSheet()) {
       return // Success, no need to retry
     }
-    
+
     // Retry with delays if immediate attempt failed
     const timeout1 = setTimeout(() => {
       if (shouldOpen && openSheet()) return
     }, 50)
-    
+
     const timeout2 = setTimeout(() => {
       if (shouldOpen && openSheet()) return
     }, 100)
-    
+
     const timeout3 = setTimeout(() => {
       if (shouldOpen && openSheet()) return
     }, 200)
-    
+
     return () => {
       clearTimeout(timeout1)
       clearTimeout(timeout2)
@@ -797,22 +799,22 @@ function VoucherListDrawer() {
       }}
     >
       {/* Header */}
-      <View className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <View className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         <Text className="text-base font-semibold text-gray-900 dark:text-gray-50">
           {t('voucher.list')}
         </Text>
-        <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <Text className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {t('voucher.maxApply')}: 1
         </Text>
       </View>
 
       {/* Search Input */}
-      <View className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <View className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         <BottomSheetTextInput
           placeholder={t('voucher.enterVoucher')}
           value={selectedVoucher}
           onChangeText={setSelectedVoucher}
-          className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-50"
+          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-50"
           placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
         />
       </View>
@@ -824,11 +826,13 @@ function VoucherListDrawer() {
             size="small"
             color={isDark ? '#9ca3af' : '#6b7280'}
           />
-          <Text className="text-sm text-gray-500 dark:text-gray-400 mt-3">
+          <Text className="mt-3 text-sm text-gray-500 dark:text-gray-400">
             {t('voucher.loading') || 'Đang tải...'}
           </Text>
         </View>
-      ) : localVoucherList.length > 0 || (voucherList?.result?.items?.length ?? 0) > 0 || (publicVoucherList?.result?.items?.length ?? 0) > 0 ? (
+      ) : localVoucherList.length > 0 ||
+        (voucherList?.result?.items?.length ?? 0) > 0 ||
+        (publicVoucherList?.result?.items?.length ?? 0) > 0 ? (
         <BottomSheetFlatList
           data={
             localVoucherList.length > 0
@@ -861,7 +865,7 @@ function VoucherListDrawer() {
             />
           )}
           ListEmptyComponent={
-            <View className="px-4 py-8 items-center">
+            <View className="items-center px-4 py-8">
               <Text className="text-sm text-gray-500 dark:text-gray-400">
                 {t('voucher.noVoucher')}
               </Text>
@@ -870,7 +874,7 @@ function VoucherListDrawer() {
           ListFooterComponent={
             <>
               {sortedVouchers.invalidVouchers.length > 0 && (
-                <View className="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+                <View className="border-t border-gray-200 px-4 py-2 dark:border-gray-700">
                   <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {t('voucher.invalidVoucher')}
                   </Text>
@@ -881,7 +885,7 @@ function VoucherListDrawer() {
                   <TouchableOpacity
                     onPress={handleLoadMore}
                     disabled={isLoadingMore}
-                    className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700"
+                    className="rounded-md border border-gray-300 bg-white px-4 py-2 active:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:active:bg-gray-700"
                   >
                     {isLoadingMore ? (
                       <ActivityIndicator
@@ -889,7 +893,7 @@ function VoucherListDrawer() {
                         color={isDark ? '#9ca3af' : '#6b7280'}
                       />
                     ) : (
-                      <Text className="text-sm text-center text-gray-900 dark:text-gray-50">
+                      <Text className="text-center text-sm text-gray-900 dark:text-gray-50">
                         {t('voucher.loadMore') || 'Tải thêm'}
                       </Text>
                     )}
@@ -905,19 +909,19 @@ function VoucherListDrawer() {
             size="small"
             color={isDark ? '#9ca3af' : '#6b7280'}
           />
-          <Text className="text-sm text-gray-500 dark:text-gray-400 mt-3">
+          <Text className="mt-3 text-sm text-gray-500 dark:text-gray-400">
             {t('voucher.loading') || 'Đang tải...'}
           </Text>
         </View>
       )}
 
       {/* Footer */}
-      <View className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+      <View className="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
         <TouchableOpacity
           onPress={handleCompleteSelection}
-          className="px-4 py-3 rounded-md bg-primary active:bg-primary/90"
+          className="rounded-md bg-primary px-4 py-3 active:bg-primary/90"
         >
-          <Text className="text-sm font-semibold text-center text-white">
+          <Text className="text-center text-sm font-semibold text-white">
             {t('voucher.complete')}
           </Text>
         </TouchableOpacity>
@@ -928,18 +932,11 @@ function VoucherListDrawer() {
 
 // Expose static method to open drawer
 VoucherListDrawer.open = () => {
-  // eslint-disable-next-line no-console
-  console.log('[VoucherListDrawer.open] Called, sheetRef:', !!sheetRef, 'openCallback:', !!openCallback, 'isMounted:', isComponentMounted)
-  
   if (openCallback) {
-    // eslint-disable-next-line no-console
-    console.log('[VoucherListDrawer.open] Using openCallback')
     openCallback()
   } else if (sheetRef) {
     // Fallback: try direct open
     try {
-      // eslint-disable-next-line no-console
-      console.log('[VoucherListDrawer.open] Direct snapToIndex(0)')
       sheetRef.snapToIndex(0)
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -947,28 +944,31 @@ VoucherListDrawer.open = () => {
     }
   } else {
     // eslint-disable-next-line no-console
-    console.warn('[VoucherListDrawer.open] Both sheetRef and openCallback are null, retrying with multiple attempts...')
-    
+    console.warn(
+      '[VoucherListDrawer.open] Both sheetRef and openCallback are null, retrying with multiple attempts...',
+    )
+
     // Try multiple times with increasing delays
     const attempts = [100, 200, 300, 500, 1000]
     attempts.forEach((delay, index) => {
       setTimeout(() => {
         if (openCallback) {
-          // eslint-disable-next-line no-console
-          console.log(`[VoucherListDrawer.open] Retry ${index + 1} (${delay}ms): Using openCallback`)
           openCallback()
         } else if (sheetRef) {
           try {
-            // eslint-disable-next-line no-console
-            console.log(`[VoucherListDrawer.open] Retry ${index + 1} (${delay}ms): Direct snapToIndex(0)`)
             sheetRef.snapToIndex(0)
           } catch (error) {
             // eslint-disable-next-line no-console
-            console.error(`[VoucherListDrawer.open] Retry ${index + 1} error:`, error)
+            console.error(
+              `[VoucherListDrawer.open] Retry ${index + 1} error:`,
+              error,
+            )
           }
         } else if (index === attempts.length - 1) {
           // eslint-disable-next-line no-console
-          console.error('[VoucherListDrawer.open] All retry attempts failed. Component may not be mounted.')
+          console.error(
+            '[VoucherListDrawer.open] All retry attempts failed. Component may not be mounted.',
+          )
         }
       }, delay)
     })
@@ -976,4 +976,3 @@ VoucherListDrawer.open = () => {
 }
 
 export default VoucherListDrawer
-

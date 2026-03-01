@@ -3,12 +3,14 @@ import { ArrowLeft, ShoppingBag, ShoppingCart } from 'lucide-react-native'
 import moment from 'moment'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { Image, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
+import { ScreenContainer } from '@/components/layout'
 
 import { Images } from '@/assets/images'
 import NonPropQuantitySelector from '@/components/button/non-prop-quantity-selector'
 import { ProductImageCarousel, SliderRelatedProducts } from '@/components/menu'
+import { MenuItemSkeletonShell } from '@/components/skeletons/menu-item-skeleton-shell'
 import { Badge, Button, Skeleton } from '@/components/ui'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
@@ -16,39 +18,6 @@ import { useRunAfterTransition, useSpecificMenuItem } from '@/hooks'
 import { useOrderFlowStore, useUserStore } from '@/stores'
 import { IOrderItem, IProductVariant } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
-
-function MenuItemSkeletonShell() {
-  return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-        <Skeleton className="w-8 h-8 rounded-full mr-3" />
-        <Skeleton className="h-5 w-48 rounded-md" />
-      </View>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="px-4 py-4 gap-6">
-          <Skeleton className="w-full h-56 rounded-2xl" />
-          <View className="gap-3">
-            <Skeleton className="h-5 w-3/4 rounded-md" />
-            <Skeleton className="h-4 w-1/2 rounded-md" />
-            <Skeleton className="h-4 w-1/3 rounded-md" />
-          </View>
-          <View className="flex-row items-center justify-between gap-4 mt-4">
-            <Skeleton className="h-10 w-28 rounded-full" />
-            <Skeleton className="h-11 flex-1 rounded-full" />
-          </View>
-          <View className="mt-6 gap-3">
-            <Skeleton className="h-4 w-32 rounded-md" />
-            <View className="flex-row gap-3">
-              <Skeleton className="h-28 w-28 rounded-xl" />
-              <Skeleton className="h-28 w-28 rounded-xl" />
-              <Skeleton className="h-28 w-28 rounded-xl" />
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  )
-}
 
 function MenuItemDetailContent() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
@@ -80,6 +49,13 @@ function MenuItemDetailContent() {
 
   const productDetail = product?.result
 
+
+  // Defer SliderRelatedProducts until after transition visually finishes (~400ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setShowRelatedProducts(true), 400)
+    return () => clearTimeout(timer)
+  }, [])
+
   // Calculate initial variant (lowest price) using useMemo
   const initialVariant = useMemo(() => {
     if (productDetail?.product.variants && productDetail.product.variants.length > 0) {
@@ -97,6 +73,7 @@ function MenuItemDetailContent() {
   const [quantity, setQuantity] = useState<number>(1)
   const [selectedVariant, setSelectedVariant] = useState<IProductVariant | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [showRelatedProducts, setShowRelatedProducts] = useState(false)
 
   // Update state when productDetail loads (only once)
   useEffect(() => {
@@ -132,14 +109,14 @@ function MenuItemDetailContent() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+      <ScreenContainer edges={['top']} className="flex-1 bg-white dark:bg-gray-900">
         {/* Header skeleton */}
         <View className="flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <Skeleton className="w-8 h-8 rounded-full mr-3" />
           <Skeleton className="h-5 w-48 rounded-md" />
         </View>
 
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <GestureScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <View className="px-4 py-4 gap-6">
             {/* Image skeleton */}
             <Skeleton className="w-full h-56 rounded-2xl" />
@@ -167,21 +144,21 @@ function MenuItemDetailContent() {
               </View>
             </View>
           </View>
-        </ScrollView>
-      </SafeAreaView>
+        </GestureScrollView>
+      </ScreenContainer>
     )
   }
 
   if (!productDetail) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+      <ScreenContainer edges={['top']} className="flex-1 bg-white dark:bg-gray-900">
         <View className="flex-1 justify-center items-center px-4">
           <Text className="text-2xl font-bold mb-4">Không tìm thấy món</Text>
           <Button onPress={() => navigateNative.back()}>
             <Text>Quay lại</Text>
           </Button>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     )
   }
 
@@ -316,7 +293,7 @@ function MenuItemDetailContent() {
   const isDisabled = !size || quantity <= 0 || isOutOfStock
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+    <ScreenContainer edges={['top']} className="flex-1 bg-white dark:bg-gray-900">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <TouchableOpacity onPress={() => navigateNative.back()} className="p-2">
@@ -346,7 +323,7 @@ function MenuItemDetailContent() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <GestureScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Product Images */}
         <View className="px-4 pt-4">
           <View className="w-full mb-2" style={{ aspectRatio: 1 }}>
@@ -500,8 +477,8 @@ function MenuItemDetailContent() {
           </View>
         </View>
 
-        {/* Related Products */}
-        {productDetail.product.catalog?.slug && (
+        {/* Related Products — deferred 400ms to avoid layout during transition */}
+        {productDetail.product.catalog?.slug && showRelatedProducts && (
           <View className="pb-6">
             <SliderRelatedProducts
               currentProduct={slug || ''}
@@ -509,7 +486,7 @@ function MenuItemDetailContent() {
             />
           </View>
         )}
-      </ScrollView>
+      </GestureScrollView>
 
       {/* Fixed Bottom Buttons */}
       <View className="px-4 py-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
@@ -543,13 +520,15 @@ function MenuItemDetailContent() {
           </Button>
         </View>
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
 export default function MenuItemDetailPage() {
   const [ready, setReady] = useState(false)
-  useRunAfterTransition(() => setReady(true), [])
+  // androidDelayMs: -20 — pre-emptive fire ~20ms trước transitionEnd
+  // Content xuất hiện ngay khi slide sắp xong. Test jank trên low-end.
+  useRunAfterTransition(() => setReady(true), [], { androidDelayMs: -20 })
   if (!ready) return <MenuItemSkeletonShell />
   return <MenuItemDetailContent />
 }

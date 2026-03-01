@@ -9,7 +9,8 @@ import {
 } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
 import { QuantitySelector } from '@/components/button'
@@ -52,7 +53,7 @@ import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 
 function CartSkeletonShell() {
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
         <Skeleton className="w-8 h-8 rounded-full mr-3" />
         <View className="flex-1 items-center">
@@ -78,7 +79,7 @@ function CartSkeletonShell() {
         <Skeleton className="h-12 w-32 rounded-md mb-2" />
         <Skeleton className="h-11 w-full rounded-full" />
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 
@@ -198,10 +199,11 @@ function ClientCartPage() {
 
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? '#D68910' : '#F7A737' // hsl(35 70% 53%) vs hsl(35 93% 55%)
+  const insets = useSafeAreaInsets()
 
   if (_.isEmpty(currentCartItems?.orderItems)) {
     return (
-      <SafeAreaView className="flex-1" edges={['top']}>
+      <ScreenContainer edges={['top']} className="flex-1">
         {/* Header */}
         <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
           {/* Back button */}
@@ -244,12 +246,12 @@ function ClientCartPage() {
             </TouchableOpacity>
           </View>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       {/* Header */}
       <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
         {/* Back button */}
@@ -626,15 +628,11 @@ function ClientCartPage() {
       </View>
 
       {/* Bottom action bar - Fixed at bottom */}
-      <SafeAreaView edges={['bottom']} className="border-t border-gray-100 bg-white shadow-lg">
-        <View
-          style={{
-            paddingBottom: 30,
-            paddingTop: 12,
-            paddingHorizontal: 16,
-          }}
-        >
-          <View className="flex-row items-center justify-between gap-4">
+      <View
+        className="border-t border-gray-100 bg-white shadow-lg"
+        style={{ paddingBottom: 30 + insets.bottom, paddingTop: 12, paddingHorizontal: 16 }}
+      >
+        <View className="flex-row items-center justify-between gap-4">
             {/* Total price */}
             <View className="flex-1">
               <Text className="text-xs text-gray-600 mb-1">
@@ -660,15 +658,14 @@ function ClientCartPage() {
               )}
             </View>
           </View>
-        </View>
-      </SafeAreaView>
+      </View>
 
       {/* TableSelectSheet - Render at the end to ensure it's on top layer */}
       <TableSelectSheet branchSlug={calculatedBranchSlug} />
       
       {/* VoucherListDrawer - Render at the end to ensure it's on top layer */}
       <VoucherListDrawer />
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

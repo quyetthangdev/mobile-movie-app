@@ -3,7 +3,7 @@ import { ArrowLeft, ShoppingCartIcon } from 'lucide-react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { TAB_ROUTES } from '@/constants'
 import { useOrderBySlug, useRunAfterTransition } from '@/hooks'
@@ -132,9 +132,9 @@ export default function UpdateOrderScreen() {
   // Màn hết hạn
   if (isExpired) {
     return (
-      <SafeAreaView
-        className="flex-1 bg-gray-50 dark:bg-gray-900"
+      <ScreenContainer
         edges={['top']}
+        className="flex-1 bg-gray-50 dark:bg-gray-900"
       >
         <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
           <TouchableOpacity onPress={handleBack} className="mr-3 p-1">
@@ -166,15 +166,15 @@ export default function UpdateOrderScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     )
   }
 
   // Content chính - Phase 3+ sẽ thêm cart, menu, etc.
   return (
-    <SafeAreaView
-      className="flex-1 bg-gray-50 dark:bg-gray-900"
+    <ScreenContainer
       edges={['top']}
+      className="flex-1 bg-gray-50 dark:bg-gray-900"
     >
       {/* Header */}
       <View className="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
@@ -249,6 +249,6 @@ export default function UpdateOrderScreen() {
           <UpdateOrderMenus branchSlug={branchSlug} />
         </ScrollView>
       )}
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }

@@ -1,15 +1,15 @@
 /**
  * Gắn router vào Navigation Engine khi app mount.
- * Đặt trong layout có access useRouter.
+ * useLayoutEffect: set router sớm hơn useEffect → giảm race routerRef null lúc init.
  */
 import { useRouter } from 'expo-router'
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 import { setNavigationRouter } from './navigation-engine'
 
 export function NavigationEngineProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setNavigationRouter(router as Parameters<typeof setNavigationRouter>[0])
     return () => setNavigationRouter(null)
   }, [router])

@@ -3,7 +3,7 @@ import { ArrowRight, Mail, Phone } from 'lucide-react-native'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { ROUTE, VerificationMethod } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
@@ -30,7 +30,7 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="flex-1 px-6 pt-8">
           <Text className="text-gray-900 dark:text-white text-3xl font-bold mb-2">
@@ -95,7 +95,7 @@ export default function ForgotPasswordScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

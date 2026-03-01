@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 import { z } from 'zod'
 
 import { useProfile, useRegister } from '@/hooks'
@@ -151,7 +151,7 @@ export default function RegisterScreen() {
   const isLoading = isPending || isSubmitting
 
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
         <Text className="text-gray-900 dark:text-white text-3xl font-bold mb-2">
           Đăng ký
@@ -350,7 +350,7 @@ export default function RegisterScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

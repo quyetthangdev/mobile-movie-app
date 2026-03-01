@@ -1,14 +1,14 @@
 import React from 'react'
 import { Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 const onboarding = () => {
   return (
-    <SafeAreaView className="flex-1" edges={['top']}>
+    <ScreenContainer edges={['top']} className="flex-1">
       <View className="flex-1">
         <Text>onboarding</Text>
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }
 

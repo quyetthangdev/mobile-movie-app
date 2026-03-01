@@ -9,7 +9,7 @@ import {
   View,
   useColorScheme,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScreenContainer } from '@/components/layout'
 
 import { useLoyaltyPointTransactionColumns } from '@/app/profile/loyalty-point-columns'
 import { LoyaltyPointDetailHistoryDialog } from '@/app/profile/loyalty-point-detail-dialog'
@@ -86,9 +86,9 @@ export default function LoyaltyPointScreen() {
   const isLoading = loadingTotal || loadingHistory
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-gray-50 dark:bg-gray-900"
+    <ScreenContainer
       edges={['top']}
+      className="flex-1 bg-gray-50 dark:bg-gray-900"
     >
       {/* Header */}
       <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
@@ -244,6 +244,6 @@ export default function LoyaltyPointScreen() {
         history={selectedHistory}
         onCloseSheet={() => setSelectedHistory(null)}
       />
-    </SafeAreaView>
+    </ScreenContainer>
   )
 }

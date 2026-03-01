@@ -12,10 +12,10 @@ import {
   IVoucher,
   OrderTypeEnum,
 } from '@/types'
-import { showToast } from '@/utils'
+import { requestClearStoresExcept } from '@/lib/store-sync'
+import { showToast } from '@/utils/toast'
 import { setupAutoClearCart } from '@/utils/cart'
 import { createSafeStorage } from '@/utils/storage'
-import { usePaymentMethodStore } from './payment-method.store'
 
 export const useCartItemStore = create<ICartItemStore>()(
   persist(
@@ -27,17 +27,7 @@ export const useCartItemStore = create<ICartItemStore>()(
       getCartItems: () => get().cartItems,
 
       addCustomerInfo: (owner: IUserInfo) => {
-        // Clear other stores when adding customer info to cart to ensure only cart store has data
-        const { clearStore: clearPaymentStore } =
-          usePaymentMethodStore.getState()
-        clearPaymentStore()
-
-        // Import update order store dynamically to avoid circular dependency
-        import('./update-order.store').then(({ useUpdateOrderStore }) => {
-          const { clearStore: clearUpdateOrderStore } =
-            useUpdateOrderStore.getState()
-          clearUpdateOrderStore()
-        })
+        requestClearStoresExcept('cart')
 
         const { cartItems } = get()
         if (cartItems) {
@@ -94,17 +84,7 @@ export const useCartItemStore = create<ICartItemStore>()(
       },
 
       addCartItem: (item: ICartItem) => {
-        // Clear other stores when adding to cart to ensure only cart store has data
-        const { clearStore: clearPaymentStore } =
-          usePaymentMethodStore.getState()
-        clearPaymentStore()
-
-        // Import update order store dynamically to avoid circular dependency
-        import('./update-order.store').then(({ useUpdateOrderStore }) => {
-          const { clearStore: clearUpdateOrderStore } =
-            useUpdateOrderStore.getState()
-          clearUpdateOrderStore()
-        })
+        requestClearStoresExcept('cart')
 
         // Kiểm tra hydration với timeout fallback
         if (!get().isHydrated) {
@@ -244,17 +224,7 @@ export const useCartItemStore = create<ICartItemStore>()(
       },
 
       addTable: (table: ITable) => {
-        // Clear other stores when adding table to cart to ensure only cart store has data
-        const { clearStore: clearPaymentStore } =
-          usePaymentMethodStore.getState()
-        clearPaymentStore()
-
-        // Import update order store dynamically to avoid circular dependency
-        import('./update-order.store').then(({ useUpdateOrderStore }) => {
-          const { clearStore: clearUpdateOrderStore } =
-            useUpdateOrderStore.getState()
-          clearUpdateOrderStore()
-        })
+        requestClearStoresExcept('cart')
 
         const { cartItems } = get()
         const timestamp = moment().valueOf()
@@ -545,11 +515,6 @@ export const useCartItemStore = create<ICartItemStore>()(
       },
 
       clearCart: () => {
-        // Don't clear payment store to avoid circular dependency
-        // Payment store should manage its own lifecycle
-        // const { clearStore: clearPaymentStore } = usePaymentMethodStore.getState()
-        // clearPaymentStore()
-
         set({
           cartItems: null,
           lastModified: null,

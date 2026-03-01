@@ -12,11 +12,6 @@ export const isPhase4LazyDebug = () => LAZY_DEBUG
 export const usePhase4MountLog = (tabName: string) => {
   useEffect(() => {
     if (!LAZY_DEBUG) return
-    // eslint-disable-next-line no-console
-    console.log(`[Phase4Diag] Tab mounted: ${tabName}`)
-    return () => {
-      // eslint-disable-next-line no-console
-      console.log(`[Phase4Diag] Tab unmounted: ${tabName}`)
-    }
+    return () => {}
   }, [tabName])
 }

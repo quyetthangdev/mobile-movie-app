@@ -1,0 +1,27 @@
+diff --git a/node_modules/expo/android/build.gradle b/node_modules/expo/android/build.gradle
+index 69c72d8..9553350 100644
+--- a/node_modules/expo/android/build.gradle
++++ b/node_modules/expo/android/build.gradle
+@@ -61,6 +61,10 @@ android {
+   }
+ 
+   buildTypes {
++    // Đảm bảo release component tồn tại cho expo-module-gradle-plugin (SoftwareComponent 'release' not found)
++    release {
++      consumerProguardFiles("proguard-rules.pro")
++    }
+     create("debugOptimized") {
+       initWith(buildTypes.release)
+       matchingFallbacks += ["release"]
+diff --git a/node_modules/expo/scripts/autolinking.gradle b/node_modules/expo/scripts/autolinking.gradle
+index 929b7f0..5585664 100644
+--- a/node_modules/expo/scripts/autolinking.gradle
++++ b/node_modules/expo/scripts/autolinking.gradle
+@@ -1,5 +1,6 @@
+ // Resolve `expo` > `expo-modules-autolinking` dependency chain
+-def autolinkingPath = ["node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })"]
++def nodeExecutable = System.getenv("NODE_BINARY") ?: System.getProperty("NODE_BINARY") ?: "node"
++def autolinkingPath = [nodeExecutable, "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })"]
+ apply from: new File(
+   providers.exec {
+     workingDir(rootDir)

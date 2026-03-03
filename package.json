@@ -18,7 +18,8 @@
     "check": "npm run typecheck && npm run lint",
     "check-circular": "madge --circular --ts-config tsconfig.json --extensions ts,tsx app stores utils api hooks lib providers",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "qa:transition-perf": "bash scripts/qa-transition-perf.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -73,7 +74,7 @@
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0",
+    "react-native-screens": "^4.24.0",
     "react-native-svg": "15.12.1",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",

@@ -11,6 +11,28 @@ interface IClientMenuProps {
   isLoading: boolean
 }
 
+const ITEM_MARGIN_BOTTOM = 16
+
+const MenuItemRow = React.memo(function MenuItemRow({
+  item,
+  itemWidth,
+}: {
+  item: IMenuItem
+  itemWidth: number
+}) {
+  const style = React.useMemo(
+    () => ({ width: itemWidth, marginBottom: ITEM_MARGIN_BOTTOM }),
+    [itemWidth],
+  )
+  return (
+    <View style={style}>
+      <ClientMenuItem item={item} />
+    </View>
+  )
+})
+
+const EMPTY_SEPARATOR = () => null
+
 /**
  * ClientMenus Component
  * 
@@ -60,13 +82,21 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
       ? screenWidth - padding 
       : (screenWidth - padding - (columns - 1) * gapValue) / columns
 
-    // Group items by catalog (same logic as web)
-    const grouped = catalogs?.result?.map((catalog) => ({
-      catalog,
-      items: menuItems?.filter(
-        (item) => item.product.catalog.slug === catalog.slug,
-      ) || [],
-    })) || []
+    // Group items by catalog — single pass O(n) thay vì O(catalogs × items)
+    const groupsBySlug: Record<string, IMenuItem[]> = {}
+    if (menuItems) {
+      for (const item of menuItems) {
+        const slug = item.product?.catalog?.slug
+        if (slug) {
+          (groupsBySlug[slug] ??= []).push(item)
+        }
+      }
+    }
+    const grouped =
+      catalogs?.result?.map((catalog) => ({
+        catalog,
+        items: groupsBySlug[catalog.slug] ?? [],
+      })) ?? []
 
     // Sort groups by number of items (descending) - same as web
     grouped.sort((a, b) => b.items.length - a.items.length)
@@ -80,15 +110,26 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
     }
   }, [catalogs?.result, menuItems])
 
-  // Memoize renderItem to avoid re-rendering items that are not needed
-  const renderItem = useCallback(({ item }: { item: IMenuItem }) => (
-    <View style={{ width: itemWidth, marginBottom: 16 }}>
-      <ClientMenuItem item={item} />
-    </View>
-  ), [itemWidth])
+  const renderItem = useCallback(
+    ({ item }: { item: IMenuItem }) => <MenuItemRow item={item} itemWidth={itemWidth} />,
+    [itemWidth],
+  )
 
-  // Memoize keyExtractor
-  const keyExtractor = useCallback((item: IMenuItem) => item.slug, [])
+  const keyExtractor = useCallback((item: IMenuItem) => item.slug ?? `item-${item.product?.slug ?? 'unknown'}`, [])
+
+  const columnWrapperStyle = useMemo(
+    () => (!isMobile ? { gap } : undefined),
+    [isMobile, gap],
+  )
+
+  const getItemLayout = useCallback(
+    (_: ArrayLike<IMenuItem> | null | undefined, index: number) => ({
+      length: itemWidth + ITEM_MARGIN_BOTTOM,
+      offset: (itemWidth + ITEM_MARGIN_BOTTOM) * Math.floor(index / numColumns),
+      index,
+    }),
+    [itemWidth, numColumns],
+  )
 
   if (isLoading || isLoadingCatalog) {
     return (
@@ -123,26 +164,21 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
                 {group.catalog.name}
               </Text>
 
-              {/* Menu Items Grid - using FlatList with numColumns */}
+              {/* Menu Items Grid - FlatList với tối ưu VirtualizedList "slow to update" */}
               <FlatList
                 data={group.items}
                 renderItem={renderItem}
                 keyExtractor={keyExtractor}
                 numColumns={numColumns}
                 scrollEnabled={false}
-                columnWrapperStyle={!isMobile ? { gap } : undefined}
-                ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
-                // Performance optimizations for POS/Kiosk
+                columnWrapperStyle={columnWrapperStyle}
+                ItemSeparatorComponent={EMPTY_SEPARATOR}
                 removeClippedSubviews={true}
-                initialNumToRender={8}
-                maxToRenderPerBatch={8}
-                windowSize={5}
+                initialNumToRender={3}
+                maxToRenderPerBatch={2}
+                windowSize={3}
                 updateCellsBatchingPeriod={50}
-                getItemLayout={isMobile ? undefined : (_, index) => ({
-                  length: itemWidth + 16, // itemWidth + marginBottom
-                  offset: (itemWidth + 16) * Math.floor(index / numColumns),
-                  index,
-                })}
+                getItemLayout={isMobile ? undefined : getItemLayout}
               />
             </View>
           )

@@ -8,7 +8,7 @@ import {
   ShoppingCartIcon,
 } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { Image, ScrollView, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { Image, Pressable, ScrollView, Text, useColorScheme, View } from 'react-native'
 import { ScreenContainer } from '@/components/layout'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -31,6 +31,7 @@ import VoucherListDrawer from '@/components/sheet/voucher-list-drawer'
 import { Badge, Skeleton } from '@/components/ui'
 import {
   APPLICABILITY_RULE,
+  OrderFlowStep,
   publicFileURL,
   ROUTE,
   VOUCHER_TYPE,
@@ -47,7 +48,8 @@ import {
   useCalculateDeliveryFee,
 } from '@/utils'
 import { useRunAfterTransition } from '@/hooks'
-import { navigateNative, useGpuWarmup } from '@/lib/navigation'
+import { HIT_SLOP_ICON, navigateNative, useGpuWarmup } from '@/lib/navigation'
+import { NavigatePressable } from '@/components/navigation'
 import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 // import { MapAddressSelector } from './components'
 
@@ -96,8 +98,10 @@ function ClientCartPage() {
     [branchSlug, userBranchSlug]
   )
   
-  // Optimize store selectors - subscribe to concrete values instead of getter functions
-  const currentCartItems = useOrderFlowStore((state) => state.getCartItems())
+  // Optimize store selectors - subscribe to orderingData directly (tránh gọi getCartItems mỗi render)
+  const currentCartItems = useOrderFlowStore((state) =>
+    state.currentStep === OrderFlowStep.ORDERING ? state.orderingData : null,
+  )
   const removeVoucher = useOrderFlowStore((state) => state.removeVoucher)
   const addOrderingProductVariant = useOrderFlowStore((state) => state.addOrderingProductVariant)
   const addNote = useOrderFlowStore((state) => state.addNote)
@@ -207,9 +211,13 @@ function ClientCartPage() {
         {/* Header */}
         <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
           {/* Back button */}
-          <TouchableOpacity onPress={() => navigateNative.back()} className="mr-3">
+          <NavigatePressable
+            onPress={() => navigateNative.back()}
+            hitSlop={HIT_SLOP_ICON}
+            className="mr-3 active:opacity-70"
+          >
             <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
-          </TouchableOpacity>
+          </NavigatePressable>
         </View>
 
         <View className="flex-1 items-center justify-center px-4">
@@ -228,9 +236,9 @@ function ClientCartPage() {
                 {t('order.noOrders', 'Chưa có sản phẩm nào trong giỏ hàng')}
               </Text>
             </View>
-            <TouchableOpacity
+            <NavigatePressable
               onPress={() => navigateNative.replace(ROUTE.CLIENT_MENU)}
-              className="mt-2 px-6 py-3 rounded-lg items-center justify-center"
+              className="mt-2 px-6 py-3 rounded-lg items-center justify-center active:opacity-90"
               style={{
                 backgroundColor: primaryColor,
                 shadowColor: primaryColor,
@@ -243,7 +251,7 @@ function ClientCartPage() {
               <Text className="text-white font-semibold text-base">
                 {t('order.backToMenu', 'Xem thực đơn')}
               </Text>
-            </TouchableOpacity>
+            </NavigatePressable>
           </View>
         </View>
       </ScreenContainer>
@@ -255,9 +263,13 @@ function ClientCartPage() {
       {/* Header */}
       <View className="bg-transparent px-5 py-3 flex-row items-center z-10">
         {/* Back button */}
-        <TouchableOpacity onPress={() => navigateNative.back()} className="absolute left-5 z-10">
+        <NavigatePressable
+          onPress={() => navigateNative.back()}
+          hitSlop={HIT_SLOP_ICON}
+          className="absolute left-5 z-10 active:opacity-70"
+        >
           <ArrowLeft size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
-        </TouchableOpacity>
+        </NavigatePressable>
         {/* Logo centered */}
         <View className="flex-1 items-center">
           <Image
@@ -541,15 +553,17 @@ function ClientCartPage() {
               </Text>
             </Badge>
           ) : (
-            <TouchableOpacity
+            <Pressable
               onPress={() => VoucherListDrawer.open()}
+              hitSlop={HIT_SLOP_ICON}
               className="flex-row items-center justify-between rounded-lg bg-primary/10 px-4 py-3 active:bg-primary/20"
+              {...({ unstable_pressDelay: 0 } as object)}
             >
               <Text className="text-sm font-semibold text-primary">
                 { t('order.useVoucher', 'Sử dụng voucher') }
               </Text>
               <ChevronRight size={16} color={primaryColor} />
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
 

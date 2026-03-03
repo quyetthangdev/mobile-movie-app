@@ -1,5 +1,8 @@
-import _ from 'lodash'
 import moment from 'moment'
+
+function sumBy<T>(arr: T[], fn: (item: T) => number): number {
+  return arr.reduce((sum, item) => sum + fn(item), 0)
+}
 
 import { APPLICABILITY_RULE, VOUCHER_TYPE } from '@/constants'
 import { useCartItemStore } from '@/stores'
@@ -193,8 +196,6 @@ export function calculateCartItemDisplay(
 
   const inVoucherList = (item: IOrderItem) =>
     voucher?.voucherProducts?.some((vp) => vp.product?.slug === item.slug)
-
-  // const eligibleItems = voucher ? orderItems.filter(inVoucherList) : []
 
   return orderItems.map((item) => {
     const original = item.originalPrice ?? 0
@@ -391,18 +392,6 @@ export function calculateOrderItemDisplay(
           voucherDiscount: 0,
         }
       }
-      // if (!isEligible) {
-      //   return {
-      //     ...item,
-      //     name,
-      //     productSlug,
-      //     originalPrice: original,
-      //     finalPrice,
-      //     priceAfterPromotion,
-      //     promotionDiscount,
-      //     voucherDiscount,
-      //   }
-      // }
 
       if (
         (type === VOUCHER_TYPE.FIXED_VALUE ||
@@ -429,12 +418,7 @@ export function calculateOrderItemDisplay(
             ? Math.round(original * (1 - (voucher?.value || 0)))
             : Math.min(original, voucher?.value || 0)
         voucherDiscount = original - newPrice
-        // const voucherPrice =
-        //   (voucher?.value || 0) <= 1
-        //     ? Math.round(original * (1 - (voucher?.value || 0)))
-        //     : Math.min(original, voucher?.value || 0)
         finalPrice = newPrice
-        // voucherDiscount = priceAfterPromotion - voucherPrice
         promotionDiscount = 0
       }
 
@@ -529,14 +513,14 @@ export function calculateCartTotals(
   const allowedProductSlugs =
     voucher?.voucherProducts?.map((vp) => vp.product?.slug) || []
 
-  // Tổng giá gốc chưa giảm
-  const subTotalBeforeDiscount = _.sumBy(
+  // Tổng giá gốc chưa giảm (native reduce thay lodash — giảm Long Task)
+  const subTotalBeforeDiscount = sumBy(
     displayItems,
     (item) => (item.originalPrice || 0) * (item.quantity || 0),
   )
 
   // Tổng giảm từ promotion (bỏ nếu item thuộc SAME_PRICE_PRODUCT + hợp lệ)
-  const promotionDiscount = _.sumBy(displayItems, (item) => {
+  const promotionDiscount = sumBy(displayItems, (item) => {
     const shouldExcludePromotion =
       // SAME_PRICE → luôn loại nếu item hợp lệ
       (voucher?.type === VOUCHER_TYPE.SAME_PRICE_PRODUCT ||
@@ -568,7 +552,7 @@ export function calculateCartTotals(
 
     if (type === VOUCHER_TYPE.SAME_PRICE_PRODUCT) {
       // Cộng đúng voucherDiscount từng món hợp lệ
-      voucherDiscount = _.sumBy(displayItems, (item) => {
+      voucherDiscount = sumBy(displayItems, (item) => {
         if (allowedProductSlugs.includes(item.slug)) {
           return (item.voucherDiscount || 0) * (item.quantity || 0)
         }
@@ -583,7 +567,7 @@ export function calculateCartTotals(
         )
       } else {
         // Cộng từng món đã tính sẵn voucherDiscount
-        voucherDiscount = _.sumBy(displayItems, (item) => {
+        voucherDiscount = sumBy(displayItems, (item) => {
           return (item.voucherDiscount || 0) * (item.quantity || 0)
         })
       }
@@ -594,7 +578,7 @@ export function calculateCartTotals(
         voucherDiscount = Math.min(voucher.value || 0, totalAfterPromo)
       } else {
         // Cộng từng món đã tính sẵn voucherDiscount
-        voucherDiscount = _.sumBy(displayItems, (item) => {
+        voucherDiscount = sumBy(displayItems, (item) => {
           return (item.voucherDiscount || 0) * (item.quantity || 0)
         })
       }

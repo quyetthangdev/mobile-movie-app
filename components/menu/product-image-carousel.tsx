@@ -1,12 +1,23 @@
+import { Image } from 'expo-image'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { FlatList, Image, NativeScrollEvent, NativeSyntheticEvent, Pressable, View } from 'react-native'
+import {
+  FlatList,
+  InteractionManager,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  Pressable,
+  View,
+} from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
 
+import { Images } from '@/assets/images'
 import { publicFileURL } from '@/constants'
+import { HIT_SLOP_ICON } from '@/lib/navigation/constants'
 
 interface ProductImageCarouselProps {
   images: (string | null)[]
@@ -27,10 +38,10 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
   const validImages = images.filter((img) => img !== null && img !== undefined)
 
   // Pagination dot component with scale animation (transform, not width)
-  const PaginationDot = React.memo(function PaginationDot({ 
+  const PaginationDot = React.memo(function PaginationDot({
     isActive,
     onPress,
-  }: { 
+  }: {
     isActive: boolean
     onPress: () => void
   }) {
@@ -50,7 +61,11 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
     })
 
     return (
-      <Pressable onPress={onPress}>
+      <Pressable
+        onPress={onPress}
+        hitSlop={HIT_SLOP_ICON}
+        {...({ unstable_pressDelay: 0 } as object)}
+      >
         <Animated.View
           style={animatedStyle}
           className={`h-2 w-2 rounded-full ${
@@ -69,23 +84,33 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
     onImageClick?.(image)
   }, [onImageClick])
 
-  // Auto-scroll effect
+  const handleDotPress = useCallback(
+    (index: number) => {
+      handleImagePress(validImages[index], index)
+    },
+    [handleImagePress, validImages],
+  )
+
+  // Auto-scroll effect — defer sau transition (tránh stutter khi mount)
   useEffect(() => {
     if (!autoScroll || validImages.length <= 1) return
 
-    const scrollToNext = () => {
-      const nextIndex = (current + 1) % validImages.length
-      setCurrent(nextIndex)
-      setSelectedIndex(nextIndex)
-      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true })
-      onImageClick?.(validImages[nextIndex] || null)
-    }
-
-    autoScrollTimerRef.current = setInterval(scrollToNext, 3000)
+    const task = InteractionManager.runAfterInteractions(() => {
+      const scrollToNext = () => {
+        const nextIndex = (current + 1) % validImages.length
+        setCurrent(nextIndex)
+        setSelectedIndex(nextIndex)
+        flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true })
+        onImageClick?.(validImages[nextIndex] || null)
+      }
+      autoScrollTimerRef.current = setInterval(scrollToNext, 3000)
+    })
 
     return () => {
+      task.cancel()
       if (autoScrollTimerRef.current) {
         clearInterval(autoScrollTimerRef.current)
+        autoScrollTimerRef.current = null
       }
     }
   }, [autoScroll, current, validImages.length, onImageClick, validImages])
@@ -121,17 +146,22 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
     return (
       <Pressable
         onPress={() => handleImagePress(item, index)}
-        className={`mr-2 rounded-lg overflow-hidden border-2 ${
+        hitSlop={HIT_SLOP_ICON}
+        className={`mr-2 rounded-lg overflow-hidden border-2 active:opacity-90 ${
           selectedIndex === index
             ? 'border-red-600 dark:border-primary'
             : 'border-gray-300 dark:border-gray-600'
         }`}
         style={{ width: 60, height: 60 }}
+        {...({ unstable_pressDelay: 0 } as object)}
       >
         <Image
           source={{ uri: imageUrl }}
+          placeholder={Images.Food.ProductImage as unknown as number}
+          placeholderContentFit="cover"
           className="w-full h-full"
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
         />
       </Pressable>
     )
@@ -142,13 +172,17 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
   }
 
   return (
-    <View className="flex-col items-center gap-2 px-2 w-full">
+    <View
+      className="flex-col items-center gap-2 px-2 w-full"
+      {...(Platform.OS === 'android' && { renderToHardwareTextureAndroid: true })}
+    >
       <FlatList
         ref={flatListRef}
         data={validImages}
         horizontal
-        initialNumToRender={1}
-        maxToRenderPerBatch={1}
+        initialNumToRender={5}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item, index) => `image-${index}`}
         renderItem={renderItem}
@@ -173,7 +207,7 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
             <PaginationDot
               key={index}
               isActive={current === index}
-              onPress={() => handleImagePress(validImages[index], index)}
+              onPress={() => handleDotPress(index)}
             />
           ))}
         </View>

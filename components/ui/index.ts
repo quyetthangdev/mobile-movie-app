@@ -12,6 +12,7 @@ export {
     DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger
 } from './dropdown'
 export { Input } from './input'
+export { OptimizedPressable } from './optimized-pressable'
 export { Label } from './label'
 export { RadioGroup, RadioGroupItem } from './radio'
 export { ScrollArea } from './scroll-area'

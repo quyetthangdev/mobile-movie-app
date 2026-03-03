@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ImageSourcePropType } from 'react-native'
-import { Dimensions, Image, TouchableOpacity, View } from 'react-native'
+import { Dimensions, Image, InteractionManager, Pressable, View } from 'react-native'
+
+import { HIT_SLOP_ICON } from '@/lib/navigation'
 
 import { Images } from '@/assets/images'
 import {
@@ -37,14 +39,16 @@ export default function ProductImageCarousel({
   useEffect(() => {
     if (!api || !autoScroll) return
 
-    const intervalId = setInterval(() => {
-      if (api) {
-        api.scrollNext()
-      }
-    }, 3000) // Auto-scroll every 3 seconds
+    let intervalId: ReturnType<typeof setInterval> | null = null
+    const task = InteractionManager.runAfterInteractions(() => {
+      intervalId = setInterval(() => {
+        if (api) api.scrollNext()
+      }, 3000)
+    })
 
     return () => {
-      clearInterval(intervalId)
+      task.cancel()
+      if (intervalId) clearInterval(intervalId)
     }
   }, [api, autoScroll])
 
@@ -77,9 +81,11 @@ export default function ProductImageCarousel({
           {images.map((image, index) => (
             <CarouselItem key={index} className="px-1">
               <View className="flex w-full py-1">
-                <TouchableOpacity
+                <Pressable
                   onPress={() => handleImageClick(image, index)}
-                  activeOpacity={0.8}
+                  hitSlop={HIT_SLOP_ICON}
+                  className="active:opacity-80"
+                  {...({ unstable_pressDelay: 0 } as object)}
                 >
                   <Card
                     className={`relative w-full overflow-hidden ${
@@ -97,7 +103,7 @@ export default function ProductImageCarousel({
                       resizeMode="cover"
                     />
                   </Card>
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </CarouselItem>
           ))}
@@ -106,12 +112,14 @@ export default function ProductImageCarousel({
       {images.length > 1 && (
         <View className="mt-4 flex-row gap-2">
           {images.map((image, index) => (
-            <TouchableOpacity
+            <Pressable
               key={index}
               onPress={() => handleImageClick(image, index)}
-              className={`h-2 rounded-full ${
+              hitSlop={HIT_SLOP_ICON}
+              className={`h-2 rounded-full active:opacity-80 ${
                 current === index ? 'w-4 bg-primary' : 'w-2 bg-gray-300'
               }`}
+              {...({ unstable_pressDelay: 0 } as object)}
             />
           ))}
         </View>

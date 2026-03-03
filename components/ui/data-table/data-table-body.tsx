@@ -57,9 +57,9 @@ export function DataTableBody<T>({ columns, emptyComponent }: DataTableBodyProps
       keyExtractor={keyExtractor}
       ListHeaderComponent={null}
       removeClippedSubviews
-      maxToRenderPerBatch={20}
-      windowSize={11}
-      initialNumToRender={15}
+      maxToRenderPerBatch={2}
+      windowSize={3}
+      initialNumToRender={5}
       style={{ flex: 1 }}
       contentContainerStyle={rows.length === 0 ? { flex: 1 } : undefined}
       ListEmptyComponent={listEmptyComponent}

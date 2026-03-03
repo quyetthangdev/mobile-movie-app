@@ -1,8 +1,10 @@
 /**
- * Transition Lock — Telegram pattern.
- * Tối ưu hóa: Đồng bộ hóa lock với vòng đời animation.
+ * Transition Lock — Prefetch lock (isTransitionLocked).
+ * Navigation lock: navigation-lock.ts (isNavigationLocked).
  */
-const FALLBACK_LOCK_MS = 600 // Tăng thời gian fallback để an toàn
+import { TRANSITION_DURATION_MS } from './constants'
+
+const FALLBACK_LOCK_MS = 600
 
 let lockUntil = 0
 let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -16,20 +18,14 @@ const clearTimeoutIfAny = () => {
 
 export const isTransitionLocked = () => Date.now() < lockUntil
 
-export const acquireTransitionLock = (durationMs = FALLBACK_LOCK_MS) => {
+export const acquireTransitionLock = (durationMs = TRANSITION_DURATION_MS) => {
   clearTimeoutIfAny()
-
-  // Khóa dựa trên thời gian tối đa + buffer
-  lockUntil = Date.now() + Math.min(durationMs + 200, FALLBACK_LOCK_MS)
-
-  // Fallback timer an toàn: tự mở khóa nếu có lỗi xảy ra
-  timeoutId = setTimeout(
-    () => {
-      lockUntil = 0
-      timeoutId = null
-    },
-    Math.min(durationMs + 200, FALLBACK_LOCK_MS),
-  )
+  const lockMs = Math.min(durationMs + 200, FALLBACK_LOCK_MS)
+  lockUntil = Date.now() + lockMs
+  timeoutId = setTimeout(() => {
+    lockUntil = 0
+    timeoutId = null
+  }, lockMs)
 }
 
 export const releaseTransitionLock = () => {

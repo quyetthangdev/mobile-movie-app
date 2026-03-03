@@ -3,13 +3,15 @@ import moment from 'moment'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ImageSourcePropType } from 'react-native'
-import { Image, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Pressable, Text, View } from 'react-native'
 
 import { Images } from '@/assets/images'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
+import { HIT_SLOP_SMALL } from '@/lib/navigation/constants'
 import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
 import { useGhostMount } from '@/lib/navigation'
 import { useIsMobile, usePressInPrefetchMenuItem } from '@/hooks'
+import { useShallow } from 'zustand/react/shallow'
 import { useOrderFlowStore, useUserStore } from '@/stores'
 import { IMenuItem, IOrderItem, IProduct } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
@@ -35,17 +37,29 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
   const prefetchMenuItem = usePressInPrefetchMenuItem()
   const { preload } = useGhostMount()
   const isMobile = useIsMobile()
-  const { userInfo } = useUserStore()
+  const userSlug = useUserStore((s) => s.userInfo?.slug)
 
-  // Using Order Flow Store
+  // useShallow: chỉ re-render khi isHydrated/currentStep/orderingOwner thay đổi.
+  // orderingData thay đổi (quantity) nhưng owner giữ nguyên → không re-render 50 items.
   const {
-    currentStep,
     isHydrated,
-    orderingData,
+    currentStep,
+    hasOrderingData,
+    orderingOwner,
     initializeOrdering,
     addOrderingItem,
     setCurrentStep,
-  } = useOrderFlowStore()
+  } = useOrderFlowStore(
+    useShallow((s) => ({
+      isHydrated: s.isHydrated,
+      currentStep: s.currentStep,
+      hasOrderingData: s.orderingData !== null,
+      orderingOwner: s.orderingData?.owner ?? '',
+      initializeOrdering: s.initializeOrdering,
+      addOrderingItem: s.addOrderingItem,
+      setCurrentStep: s.setCurrentStep,
+    })),
+  )
 
   const getPriceRange = (variants: IProduct['variants']) => {
     if (!variants || variants.length === 0) return null
@@ -59,45 +73,31 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
     }
   }
 
-  // Ensure we are in ORDERING phase when component mounts
   useEffect(() => {
-    if (isHydrated) {
-      // Switch to ORDERING phase if we are not in it
-      if (currentStep !== OrderFlowStep.ORDERING) {
-        setCurrentStep(OrderFlowStep.ORDERING)
-      }
-
-      // Initialize ordering data if it doesn't exist
-      if (!orderingData) {
+    if (!isHydrated) return
+    const run = () => {
+      if (currentStep !== OrderFlowStep.ORDERING) setCurrentStep(OrderFlowStep.ORDERING)
+      if (!hasOrderingData) {
         initializeOrdering()
         return
       }
-
-      // Only re-initialize if user is logged in but orderingData doesn't have an owner
-      if (userInfo?.slug && !orderingData.owner?.trim()) {
-        initializeOrdering()
-      }
+      if (userSlug && !orderingOwner.trim()) initializeOrdering()
     }
-  }, [isHydrated, currentStep, orderingData, userInfo?.slug, setCurrentStep, initializeOrdering])
+    const id = setTimeout(run, 0)
+    return () => clearTimeout(id)
+  }, [isHydrated, currentStep, hasOrderingData, orderingOwner, userSlug, setCurrentStep, initializeOrdering])
 
   const handleAddToCart = () => {
     if (!item?.product?.variants || item?.product?.variants.length === 0 || !isHydrated) {
       return
     }
 
-    // Step 2: Ensure ORDERING phase
-    if (currentStep !== OrderFlowStep.ORDERING) {
-      setCurrentStep(OrderFlowStep.ORDERING)
-    }
-
-    // Initialize ordering data if it doesn't exist
-    if (!orderingData) {
+    if (currentStep !== OrderFlowStep.ORDERING) setCurrentStep(OrderFlowStep.ORDERING)
+    if (!hasOrderingData) {
       initializeOrdering()
       return
     }
-
-    // Only re-initialize if user is logged in but orderingData doesn't have an owner
-    if (userInfo?.slug && !orderingData.owner?.trim()) {
+    if (userSlug && !orderingOwner.trim()) {
       initializeOrdering()
     }
 
@@ -128,10 +128,8 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
       // Step 5: Success feedback with tamagui toast
       const message = tToast('toast.addSuccess', 'Đã thêm vào giỏ hàng')
       showToast(message, 'Thông báo')
-    } catch (error) {
-      // Step 7: Error handling
-      // eslint-disable-next-line no-console
-      console.error('❌ Error adding item to cart:', error)
+    } catch {
+      // Silent fail — không block UI, toast đã xử lý feedback
     }
   }
 
@@ -153,7 +151,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
         }}
         onPressIn={() => {
           prefetchMenuItem(item.slug)
-          preload('menu-item', { slug: item.slug })
+          setTimeout(() => preload('menu-item', { slug: item.slug }), 0)
         }}
         className={`flex-shrink-0 justify-center items-center ${
           isMobile ? 'w-32 h-32 p-2' : 'w-full aspect-square p-0'
@@ -250,12 +248,14 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
             {/* Button */}
             <View>
               {hasStock ? (
-                <TouchableOpacity
+                <Pressable
                   onPress={handleAddToCart}
-                  className="w-8 h-8 rounded-full bg-primary items-center justify-center z-50"
+                  hitSlop={HIT_SLOP_SMALL}
+                  className="w-8 h-8 rounded-full bg-primary items-center justify-center z-50 active:opacity-80"
+                  {...({ unstable_pressDelay: 0 } as object)}
                 >
                   <Plus size={20} color="#ffffff" />
-                </TouchableOpacity>
+                </Pressable>
               ) : (
                 <View className="px-4 py-1 rounded-full bg-primary">
                   <Text className="text-xs font-semibold text-white">
@@ -301,12 +301,13 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
       {!isMobile && (
         <View className="flex justify-end items-end p-2 sm:w-full">
           {hasStock ? (
-            <TouchableOpacity
+            <Pressable
               onPress={handleAddToCart}
-              className="w-full px-3 py-2 rounded-full bg-primary items-center justify-center"
+              className="w-full px-3 py-2 rounded-full bg-primary items-center justify-center active:opacity-80"
+              {...({ unstable_pressDelay: 0 } as object)}
             >
               <Plus size={20} color="#ffffff" />
-            </TouchableOpacity>
+            </Pressable>
           ) : (
             <View className="w-full px-3 py-2 rounded-full bg-red-500">
               <Text className="text-xs font-semibold text-white text-center">

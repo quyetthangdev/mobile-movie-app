@@ -7,9 +7,8 @@ import { ScreenContainer } from '@/components/layout'
 
 import { TAB_ROUTES } from '@/constants'
 import { useOrderBySlug, useRunAfterTransition } from '@/hooks'
-import { useGpuWarmup } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
-import { navigateNative } from '@/lib/navigation'
+import { useGpuWarmup, navigateNative } from '@/lib/navigation'
 import { useBranchStore, useOrderFlowStore, useUserStore } from '@/stores'
 import { OrderStatus, OrderTypeEnum } from '@/types'
 
@@ -35,7 +34,9 @@ export default function UpdateOrderScreen() {
     allowFetch ? slug : null,
   )
   const order = orderResponse?.result
-  const { initializeUpdating, clearUpdatingData, updatingData } = useOrderFlowStore()
+  const initializeUpdating = useOrderFlowStore((s) => s.initializeUpdating)
+  const clearUpdatingData = useOrderFlowStore((s) => s.clearUpdatingData)
+  const updatingData = useOrderFlowStore((s) => s.updatingData)
   const orderType =
     (updatingData?.updateDraft?.type as OrderTypeEnum) ??
     (order?.type as OrderTypeEnum) ??
@@ -63,13 +64,17 @@ export default function UpdateOrderScreen() {
       order.slug && order.orderItems && order.orderItems.length > 0
 
     if (isValidOrder && !isDataLoaded) {
-      try {
-        initializeUpdating(order)
-        queueMicrotask(() => setIsDataLoaded(true))
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('❌ Update Order: Failed to initialize:', error)
+      const run = () => {
+        try {
+          initializeUpdating(order)
+          queueMicrotask(() => setIsDataLoaded(true))
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('❌ Update Order: Failed to initialize:', error)
+        }
       }
+      // Defer sang frame tiếp theo → tránh block transition
+      requestAnimationFrame(() => requestAnimationFrame(run))
     }
   }, [order, slug, allowFetch, isDataLoaded, initializeUpdating])
 

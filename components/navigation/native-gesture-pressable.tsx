@@ -1,11 +1,14 @@
 /**
  * Task 1 — Zero-Latency Interaction (Touch-to-Pixel Rule).
  *
- * Thay thế Pressable bằng react-native-gesture-handler.
- * - State.BEGAN (onBegin): Khởi tạo pressScale SharedValue.
- * - State.END (onStart): Gọi navigation ngay với setImmediate, KHÔNG đợi onPress React.
+ * Dùng Gesture.Tap() thay vì onPress — toàn bộ logic chạy native/UI thread.
+ * - onBegin (worklet): pressScale animation — không cross bridge.
+ * - onStart (worklet): Check isLockedShared.value TRÊN UI THREAD trước runOnJS.
  *
- * Đảm bảo motion start <16ms từ tap.
+ * Lock gate chạy 100% trong worklet: if (isLockedShared.value === 1) return
+ * → Không gọi runOnJS khi đang transition → giảm JS queue pressure, tránh drop frame.
+ *
+ * @see docs/NAVIGATION_UI_THREAD_ARCHITECTURE.md
  */
 import React, { useCallback, useMemo } from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
@@ -19,7 +22,8 @@ import Animated, {
 } from 'react-native-reanimated'
 
 import type { HrefLike } from '@/lib/navigation'
-import { navigateNativeImmediate } from '@/lib/navigation'
+import { executeNavFromGesture } from '@/lib/navigation'
+import { isLockedShared } from '@/lib/navigation/navigation-lock-shared'
 
 const PRESS_SCALE = 0.97
 const SPRING_CONFIG = { damping: 15, stiffness: 400 }
@@ -67,19 +71,15 @@ export const NativeGesturePressable = React.forwardRef<
 
   const triggerAction = useCallback(() => {
     if (navigation) {
-      if (navigation.type === 'push') {
-        navigateNativeImmediate.push(navigation.href)
-      } else if (navigation.type === 'replace') {
-        navigateNativeImmediate.replace(navigation.href)
-      } else {
-        navigateNativeImmediate.back()
-      }
+      executeNavFromGesture(
+        navigation.type,
+        navigation.type === 'back' ? undefined : navigation.href,
+      )
     }
-    if (onPress) {
-      // Sử dụng setImmediate để đảm bảo tác vụ chạy sau khi frame hiện tại kết thúc
-      setImmediate(onPress)
-    }
-  }, [navigation, onPress])
+    if (onPress) setImmediate(onPress)
+    // onPressIn chạy deferred — tránh block frame khi finger down, nav chạy trước
+    if (onPressIn) setImmediate(onPressIn)
+  }, [navigation, onPress, onPressIn])
 
   const tapGesture = useMemo(() => {
     const gesture = Gesture.Tap()
@@ -94,13 +94,15 @@ export const NativeGesturePressable = React.forwardRef<
       .onBegin(() => {
         'worklet'
         pressScale.value = withSpring(PRESS_SCALE, SPRING_CONFIG)
-        if (onPressIn) {
-          runOnJS(onPressIn)()
-        }
+        // Không gọi onPressIn ở đây — tránh runOnJS block frame khi finger down.
+        // onPressIn chạy deferred trong triggerAction (sau nav).
       })
       .onStart(() => {
         'worklet'
         pressScale.value = withSpring(1, SPRING_CONFIG)
+        // Worklet-only gate: đọc SharedValue trên UI thread, không cross bridge.
+        // Chỉ runOnJS khi unlocked → navigation instant, không block.
+        if (isLockedShared.value === 1) return
         runOnJS(triggerAction)()
       })
       .onFinalize(() => {
@@ -112,7 +114,7 @@ export const NativeGesturePressable = React.forwardRef<
       })
 
     return gesture
-  }, [disabled, onPressIn, onPressOut, triggerAction])
+  }, [disabled, onPressOut, triggerAction, pressScale])
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],

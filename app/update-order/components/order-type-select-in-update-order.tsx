@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Text, TouchableOpacity, View, useColorScheme } from 'react-native'
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui'
-import { useOrderTypeOptionsForUpdate } from '../hooks/use-order-type-options-for-update'
+import { useOrderTypeOptionsForUpdateOrder } from '@/hooks/use-order-type-options-for-update-order'
 import { cn } from '@/lib/utils'
 
 interface OrderTypeSelectInUpdateOrderProps {
@@ -15,7 +15,7 @@ export default function OrderTypeSelectInUpdateOrder({
 }: OrderTypeSelectInUpdateOrderProps) {
   const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
-  const { orderTypes, selectedType, handleChange } = useOrderTypeOptionsForUpdate()
+  const { orderTypes, selectedType, handleChange } = useOrderTypeOptionsForUpdateOrder()
 
   const displayLabel = selectedType?.label ?? typeOrder ?? t('menu.selectOrderType', 'Chọn loại đơn')
 

@@ -74,6 +74,9 @@ export function useIncomingScreenStyle(isClosing: boolean) {
   })
 }
 
+/** Parallax factor: background dịch 30% theo hướng slide (Telegram feel) */
+const PARALLAX_FACTOR = 0.3
+
 /**
  * useAnimatedStyle cho background screen: scale 0.97 -> 1
  */
@@ -90,6 +93,33 @@ export function useBackgroundScaleStyle(isClosing: boolean) {
         : [PARALLAX_BG_SCALE_START, PARALLAX_BG_SCALE_END],
     )
     return { transform: [{ scale }] }
+  })
+}
+
+/**
+ * useAnimatedStyle cho background screen: scale + translateX (parallax 0.3).
+ * Màn phía sau scale nhỏ + dịch trái khi màn mới trượt vào — Telegram feel.
+ */
+export function useBackgroundParallaxStyle(isClosing: boolean) {
+  const { progress, screenWidth } = useParallaxDriver()
+  return useAnimatedStyle(() => {
+    'worklet'
+    const p = progress.value
+    const scale = interpolate(
+      p,
+      [0, 1],
+      isClosing
+        ? [PARALLAX_BG_SCALE_END, PARALLAX_BG_SCALE_START]
+        : [PARALLAX_BG_SCALE_START, PARALLAX_BG_SCALE_END],
+    )
+    const translateX = interpolate(
+      p,
+      [0, 1],
+      isClosing
+        ? [0, -screenWidth * PARALLAX_FACTOR]
+        : [-screenWidth * PARALLAX_FACTOR, 0],
+    )
+    return { transform: [{ translateX }, { scale }] }
   })
 }
 

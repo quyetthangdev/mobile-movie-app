@@ -21,7 +21,7 @@ interface UpdateOrderMenusProps {
 export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) {
   const { t } = useTranslation('menu')
   const { data: catalogs, isPending: isLoadingCatalog } = useCatalog()
-  const { updatingData } = useOrderFlowStore()
+  const hasUpdatingData = useOrderFlowStore((s) => s.updatingData !== null)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
 
   const menuRequest = useMemo(
@@ -96,7 +96,7 @@ export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) 
 
   const keyExtractor = useCallback((item: IMenuItem) => item.slug, [])
 
-  if (!updatingData) return null
+  if (!hasUpdatingData) return null
 
   if (!branchSlug) {
     return (
@@ -157,6 +157,9 @@ export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) 
               scrollEnabled={false}
               columnWrapperStyle={{ gap }}
               key={`flat-${group.catalog.slug}`}
+              initialNumToRender={5}
+              maxToRenderPerBatch={2}
+              windowSize={3}
             />
           </View>
         )

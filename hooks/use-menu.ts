@@ -23,9 +23,10 @@ export const useSpecificMenu = (
     })
   }
 
-  export const useSpecificMenuItem = (slug: string) => {
+  export const useSpecificMenuItem = (slug: string, enabled = true) => {
     return useQuery({
       queryKey: ['specific-menu-item', slug],
       queryFn: async () => getSpecificMenuItem(slug),
+      enabled: !!slug && enabled,
     })
   }

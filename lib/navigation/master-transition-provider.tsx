@@ -1,23 +1,19 @@
 /**
- * Task 2 — Unified Physics-Based Transition Clock (Master Progress).
+ * Task 2 — Transition Progress đồng bộ với react-native-screens.
  *
- * Progress KHÔNG chạy bằng withTiming (tuyến tính).
- * Physics: withSpring — Cân bằng tới hạn (Critically Damped).
- * Velocity Injection: Sẽ được bổ sung khi có thể lấy velocity từ gesture.
- *
- * SharedValues chạy trên UI thread — Steel Curtain (Task 4) sẽ dùng isTransitioning.
+ * Progress KHÔNG dùng withSpring độc lập — lái theo tiến độ thực từ native stack.
+ * TransitionProgressSyncer (trong screen) sync Animated.Value → SharedValue.
+ * Parallax interpolate dựa trên progress này → giảm jank.
  */
 import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react'
 import { InteractionManager } from 'react-native'
-import { runOnJS, runOnUI } from 'react-native-reanimated'
+import { runOnUI } from 'react-native-reanimated'
 import type { SharedValue } from 'react-native-reanimated'
-import { useSharedValue, withSpring } from 'react-native-reanimated'
+import { useSharedValue } from 'react-native-reanimated'
 
-import {
-  REANIMATED_PARALLAX_SPRING,
-} from './interactive-transition'
 import { useGhostMount } from './ghost-mount-provider'
 import { setTransitionQueueing } from './transition-task-queue'
+import { cancelScheduledUnlockTimers, unlockNavigation } from './navigation-lock'
 import { ParallaxDriverProvider } from '@/lib/transitions/reanimated-parallax-driver'
 
 export type MasterTransitionContextValue = {
@@ -36,15 +32,11 @@ const MasterTransitionContext = createContext<MasterTransitionContextValue | nul
   null,
 )
 
-const SPRING_CONFIG = REANIMATED_PARALLAX_SPRING
-
 export function MasterTransitionProvider({ children }: { children: React.ReactNode }) {
   const transitionProgress = useSharedValue(0)
   const isTransitioning = useSharedValue(false)
   const { clearPreload } = useGhostMount()
   const interactionHandleRef = useRef<ReturnType<typeof InteractionManager.createInteractionHandle> | null>(null)
-
-  const onPhysicsSettled = useCallback(() => {}, [])
 
   const onTransitionStart = useCallback(
     (e: { data: { closing: boolean } }) => {
@@ -59,22 +51,11 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
       runOnUI(() => {
         'worklet'
         isTransitioning.value = true
-        const start = closing ? 1 : 0
-        const target = closing ? 0 : 1
-        transitionProgress.value = start
-        transitionProgress.value = withSpring(
-          target,
-          SPRING_CONFIG,
-          (finished) => {
-            'worklet'
-            if (finished) {
-              runOnJS(onPhysicsSettled)()
-            }
-          },
-        )
+        // Giá trị ban đầu — TransitionProgressSyncer sẽ sync theo native progress
+        transitionProgress.value = closing ? 1 : 0
       })()
     },
-    [isTransitioning, transitionProgress, onPhysicsSettled],
+    [isTransitioning, transitionProgress],
   )
 
   const onTransitionEnd = useCallback(
@@ -83,6 +64,8 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
         InteractionManager.clearInteractionHandle(interactionHandleRef.current)
         interactionHandleRef.current = null
       }
+      cancelScheduledUnlockTimers()
+      unlockNavigation()
       const closing = e.data.closing
       runOnUI(() => {
         'worklet'

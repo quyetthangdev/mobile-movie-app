@@ -10,7 +10,9 @@ import { NativeGesturePressable } from './native-gesture-pressable'
 type Props = { primaryColor: string }
 
 const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor }: Props) {
-  const cartItemCount = useOrderFlowStore((state) => state.getCartItemCount())
+  const cartItemCount = useOrderFlowStore(
+    (s) => s.orderingData?.orderItems?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0,
+  )
 
   return (
     <NativeGesturePressable

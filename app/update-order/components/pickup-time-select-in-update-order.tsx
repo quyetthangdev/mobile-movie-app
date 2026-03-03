@@ -2,13 +2,13 @@ import { useTranslation } from 'react-i18next'
 
 import { Select } from '@/components/ui'
 import { cn } from '@/lib/utils'
-import { usePickupTimeForUpdate } from '../hooks/use-pickup-time-for-update'
+import { usePickupTimeForUpdateOrder } from '@/hooks/use-pickup-time-for-update-order'
 
 const PICKUP_TIME_OPTIONS = [0, 5, 10, 15, 30, 45, 60] as const
 
 export default function PickupTimeSelectInUpdateOrder() {
   const { t } = useTranslation('menu')
-  const { shouldRender, selectedValue, handleChange } = usePickupTimeForUpdate()
+  const { shouldRender, selectedValue, handleChange } = usePickupTimeForUpdateOrder()
 
   if (!shouldRender) return null
 

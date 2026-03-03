@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import { Tabs, usePathname } from 'expo-router'
-import React, { useCallback, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { View, useColorScheme } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -8,8 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FloatingCartButton, TabBarPill } from '@/components/navigation'
 import { TAB_ROUTES, tabsScreenOptions } from '@/constants'
 import { usePredictivePrefetch } from '@/hooks'
-import { useAuthStore, useUserStore } from '@/stores'
 import { getThemeColor, hexToRgba } from '@/lib/utils'
+import { useAuthStore, useUserStore } from '@/stores'
 
 const BAR_HEIGHT = 48
 const BAR_PADDING = 8
@@ -23,7 +23,9 @@ const TabsLayout = React.memo(function TabsLayout() {
   const insets = useSafeAreaInsets()
 
   const isCartPage =
-    pathname === '/cart' || pathname === TAB_ROUTES.CART || pathname?.includes('/cart')
+    pathname === '/cart' ||
+    pathname === TAB_ROUTES.CART ||
+    pathname?.includes('/cart')
 
   const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
   const userInfo = useUserStore((state) => state.userInfo)
@@ -32,23 +34,34 @@ const TabsLayout = React.memo(function TabsLayout() {
     pathname?.startsWith('/forgot-password') ||
     pathname?.includes('/verify-email') ||
     pathname?.includes('/verify-phone-number') ||
-    ((pathname === '/profile' || pathname?.includes('/(tabs)/profile')) && (needsUserInfo || !userInfo))
+    ((pathname === '/profile' || pathname?.includes('/(tabs)/profile')) &&
+      (needsUserInfo || !userInfo))
   const shouldHideBottomBar = isCartPage || isAuthOrVerifyScreen
 
   const colors = useMemo(() => getThemeColor(isDark), [isDark])
   const tabState = useMemo(
     () => ({
-      isMenuActive: pathname === '/menu' || pathname === TAB_ROUTES.MENU || pathname?.startsWith('/menu'),
+      isMenuActive:
+        pathname === '/menu' ||
+        pathname === TAB_ROUTES.MENU ||
+        pathname?.startsWith('/menu'),
       isGiftCardActive:
-        pathname === '/gift-card' || pathname === TAB_ROUTES.GIFT_CARD || pathname?.includes('/gift-card'),
+        pathname === '/gift-card' ||
+        pathname === TAB_ROUTES.GIFT_CARD ||
+        pathname?.includes('/gift-card'),
       isProfileActive:
-        pathname === '/profile' || pathname === TAB_ROUTES.PROFILE || pathname?.startsWith('/profile'),
+        pathname === '/profile' ||
+        pathname === TAB_ROUTES.PROFILE ||
+        pathname?.startsWith('/profile'),
       isHomeActive: false,
     }),
     [pathname],
   )
   const isHomeActive = useMemo(
-    () => !tabState.isMenuActive && !tabState.isGiftCardActive && !tabState.isProfileActive,
+    () =>
+      !tabState.isMenuActive &&
+      !tabState.isGiftCardActive &&
+      !tabState.isProfileActive,
     [tabState],
   )
   const resolvedTabState = useMemo(
@@ -142,23 +155,43 @@ const TabsLayout = React.memo(function TabsLayout() {
       >
         <Tabs.Screen
           name="home"
-          options={{ title: t('tabs.home', 'Trang chủ'), headerTitle: t('tabs.home', 'Trang chủ'), tabBarButton: () => null }}
+          options={{
+            title: t('tabs.home', 'Trang chủ'),
+            headerTitle: t('tabs.home', 'Trang chủ'),
+            tabBarButton: () => null,
+          }}
         />
         <Tabs.Screen
           name="menu"
-          options={{ title: t('tabs.menu', 'Thực đơn'), headerTitle: t('tabs.menu', 'Thực đơn'), tabBarButton: () => null }}
+          options={{
+            title: t('tabs.menu', 'Thực đơn'),
+            headerTitle: t('tabs.menu', 'Thực đơn'),
+            tabBarButton: () => null,
+          }}
         />
         <Tabs.Screen
           name="cart"
-          options={{ title: t('tabs.cart', 'Giỏ hàng'), headerTitle: t('tabs.cart', 'Giỏ hàng'), tabBarButton: () => null }}
+          options={{
+            title: t('tabs.cart', 'Giỏ hàng'),
+            headerTitle: t('tabs.cart', 'Giỏ hàng'),
+            tabBarButton: () => null,
+          }}
         />
         <Tabs.Screen
           name="gift-card"
-          options={{ title: t('tabs.giftCard', 'Thẻ quà tặng'), headerTitle: t('tabs.giftCard', 'Thẻ quà tặng'), tabBarButton: () => null }}
+          options={{
+            title: t('tabs.giftCard', 'Thẻ quà tặng'),
+            headerTitle: t('tabs.giftCard', 'Thẻ quà tặng'),
+            tabBarButton: () => null,
+          }}
         />
         <Tabs.Screen
           name="profile"
-          options={{ title: t('tabs.profile', 'Tài khoản'), headerTitle: t('tabs.profile', 'Tài khoản'), tabBarButton: () => null }}
+          options={{
+            title: t('tabs.profile', 'Tài khoản'),
+            headerTitle: t('tabs.profile', 'Tài khoản'),
+            tabBarButton: () => null,
+          }}
         />
       </Tabs>
 
@@ -182,7 +215,11 @@ const TabsLayout = React.memo(function TabsLayout() {
         >
           <TabBarPill
             t={t}
-            colors={{ primary: colors.primary, mutedForeground: colors.mutedForeground, background: colors.background }}
+            colors={{
+              primary: colors.primary,
+              mutedForeground: colors.mutedForeground,
+              background: colors.background,
+            }}
             tabState={resolvedTabState}
             tabRoutes={tabRoutes}
           />

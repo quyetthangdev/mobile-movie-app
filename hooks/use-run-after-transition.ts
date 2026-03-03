@@ -1,7 +1,7 @@
 import { type DependencyList, useEffect, useRef } from 'react'
 import { InteractionManager, Platform } from 'react-native'
 
-const ESTIMATED_TRANSITION_MS = 300
+import { TRANSITION_DURATION_MS } from '@/lib/navigation'
 
 export type UseRunAfterTransitionOptions = {
   /**
@@ -38,7 +38,7 @@ export function useRunAfterTransition(
     let timeoutId: ReturnType<typeof setTimeout> | null = null
 
     if (Platform.OS === 'android' && androidDelay < 0) {
-      const fireAtMs = Math.max(0, ESTIMATED_TRANSITION_MS + androidDelay)
+      const fireAtMs = Math.max(0, TRANSITION_DURATION_MS + androidDelay)
       timeoutId = setTimeout(() => {
         if (!cancelled.current) callback()
         timeoutId = null

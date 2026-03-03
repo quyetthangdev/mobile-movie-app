@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { ImageSourcePropType } from 'react-native'
-import { Dimensions, FlatList, Image, View } from 'react-native'
+import { Dimensions, FlatList, Image, InteractionManager, View } from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -56,16 +56,22 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
     }
   }, [screenWidth, carouselImages.length, activeIndexState])
 
-  // Auto-scroll functionality
+  // Auto-scroll — defer sau transition (tránh stutter khi mount)
   useEffect(() => {
     if (carouselImages.length <= 1) return
 
-    const interval = setInterval(() => {
-      const next = activeIndexState + 1 >= carouselImages.length ? 0 : activeIndexState + 1
-      flatListRef.current?.scrollToIndex({ index: next, animated: true })
-    }, 3000)
+    let intervalId: ReturnType<typeof setInterval> | null = null
+    const task = InteractionManager.runAfterInteractions(() => {
+      intervalId = setInterval(() => {
+        const next = activeIndexState + 1 >= carouselImages.length ? 0 : activeIndexState + 1
+        flatListRef.current?.scrollToIndex({ index: next, animated: true })
+      }, 3000)
+    })
 
-    return () => clearInterval(interval)
+    return () => {
+      task.cancel()
+      if (intervalId) clearInterval(intervalId)
+    }
   }, [carouselImages.length, activeIndexState])
 
   const renderItem = useCallback(({ item }: { item: ImageSourcePropType }) => {
@@ -137,6 +143,9 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
         keyExtractor={(_, index) => index.toString()}
         horizontal
         pagingEnabled
+        initialNumToRender={5}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScrollEnd}
         getItemLayout={(data, index) => ({

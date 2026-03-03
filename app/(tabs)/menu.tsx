@@ -82,7 +82,8 @@ function ClientMenuContent() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated())
   const setLogout = useAuthStore((state) => state.setLogout)
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
-  const { menuFilter, setMenuFilter } = useMenuFilterStore()
+  const menuFilter = useMenuFilterStore((s) => s.menuFilter)
+  const setMenuFilter = useMenuFilterStore((s) => s.setMenuFilter)
   const branch = useBranchStore((state) => state.branch) // Only subscribe branch
   const branchSlug = useBranchStore((state) => state.branch?.slug) // Only subscribe slug
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)

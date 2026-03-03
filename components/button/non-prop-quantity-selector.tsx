@@ -1,6 +1,8 @@
 import { Minus, Plus } from 'lucide-react-native'
 import React from 'react'
-import { Text, TouchableOpacity, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
+
+import { HIT_SLOP_SMALL } from '@/lib/navigation/constants'
 
 
 interface NonPropQuantitySelectorProps {
@@ -42,34 +44,38 @@ export default function NonPropQuantitySelector({
 
   return (
     <View className="flex-row items-center gap-2">
-      <TouchableOpacity
+      <Pressable
         onPress={handleDecrement}
         disabled={disabled || quantity <= 1}
-        className={`p-2 rounded-full border ${
+        hitSlop={HIT_SLOP_SMALL}
+        className={`p-2 rounded-full border active:opacity-80 ${
           disabled || quantity <= 1
             ? 'border-gray-300 dark:border-gray-700 opacity-50'
             : 'border-gray-500 dark:border-gray-400'
         }`}
+        {...({ unstable_pressDelay: 0 } as object)}
       >
         <Minus size={16} color={disabled || quantity <= 1 ? '#9ca3af' : '#374151'} />
-      </TouchableOpacity>
+      </Pressable>
       <Text className="w-8 text-center text-base font-semibold text-gray-900 dark:text-white">
         {quantity}
       </Text>
-      <TouchableOpacity
+      <Pressable
         onPress={handleIncrement}
         disabled={
           disabled ||
           (isLimit && currentQuantity !== undefined && quantity >= currentQuantity) ||
           (maxQuantity !== undefined && quantity >= maxQuantity)
         }
-        className={`p-2 rounded-full border ${
+        hitSlop={HIT_SLOP_SMALL}
+        className={`p-2 rounded-full border active:opacity-80 ${
           disabled ||
           (isLimit && currentQuantity !== undefined && quantity >= currentQuantity) ||
           (maxQuantity !== undefined && quantity >= maxQuantity)
             ? 'border-gray-300 dark:border-gray-700 opacity-50'
             : 'border-gray-500 dark:border-gray-400'
         }`}
+        {...({ unstable_pressDelay: 0 } as object)}
       >
         <Plus size={16} color={
           disabled ||
@@ -78,7 +84,7 @@ export default function NonPropQuantitySelector({
             ? '#9ca3af'
             : '#374151'
         } />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   )
 }

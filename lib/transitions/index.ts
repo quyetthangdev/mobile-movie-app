@@ -5,6 +5,7 @@ export {
   useParallaxDriverOptional,
   useIncomingScreenStyle,
   useBackgroundScaleStyle,
+  useBackgroundParallaxStyle,
   useShadowOpacityStyle,
   type ParallaxDriverContextValue,
 } from './reanimated-parallax-driver'

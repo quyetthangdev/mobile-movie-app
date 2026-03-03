@@ -51,7 +51,8 @@ export default function UpdateOrderContentNative({
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
   const insets = useSafeAreaInsets()
 
-  const { updatingData, removeDraftVoucher } = useOrderFlowStore()
+  const updatingData = useOrderFlowStore((s) => s.updatingData)
+  const removeDraftVoucher = useOrderFlowStore((s) => s.removeDraftVoucher)
   const voucher = updatingData?.updateDraft?.voucher || null
   const voucherSlug = voucher?.slug
   const voucherMaxItems = voucher?.maxItems || 0

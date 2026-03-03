@@ -899,9 +899,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         const { updatingData } = get()
         if (!updatingData) return
 
-        // Check if there are changes compared to original
-        const hasChanges =
-          JSON.stringify(draft) !== JSON.stringify(updatingData.updateDraft)
+        // Reference equality O(1) thay vì JSON.stringify O(n)
+        const hasChanges = draft !== updatingData.updateDraft
 
         set({
           updatingData: {
@@ -926,15 +925,12 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           orderItems: updatedItems,
         }
 
-        const hasChanges =
-          JSON.stringify(updatedDraft) !==
-          JSON.stringify(updatingData.updateDraft)
-
+        // Đang modify → hasChanges luôn true, không cần JSON.stringify
         set({
           updatingData: {
             ...updatingData,
             updateDraft: updatedDraft,
-            hasChanges,
+            hasChanges: true,
           },
           lastModified: moment().valueOf(),
         })

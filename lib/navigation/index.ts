@@ -1,11 +1,20 @@
 export {
+  HIT_SLOP_ICON,
+  HIT_SLOP_SMALL,
+  TRANSITION_DURATION_MS,
+  TRANSITION_SAFE_DELAY_ANDROID,
+  TRANSITION_SAFE_DELAY_IOS,
+} from './constants'
+export {
+  executeNavFromGesture,
   navigateNative,
   navigateNativeImmediate,
+  navigateSafely,
   setNavigationRouter,
   type HrefLike,
 } from './navigation-engine'
 export {
-  navigateSafely,
+  cancelScheduledUnlockTimers,
   isNavigationLocked,
   lockNavigation,
   unlockNavigation,
@@ -17,6 +26,7 @@ export {
   useGhostMount,
   type GhostRouteKey,
 } from './ghost-mount-provider'
+export { TransitionProgressSyncer } from './transition-progress-sync'
 export {
   MasterTransitionProvider,
   useMasterTransition,

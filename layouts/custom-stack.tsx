@@ -22,6 +22,7 @@ import {
   type NativeStackNavigationOptions,
 } from '@react-navigation/native-stack'
 import { withLayoutContext } from 'expo-router'
+import { Platform } from 'react-native'
 
 const { Navigator } = createNativeStackNavigator()
 
@@ -32,13 +33,22 @@ export const CustomStack = withLayoutContext<
   NativeStackNavigationEventMap
 >(Navigator)
 
-/** Screen options for Native Stack — Telegram-level performance */
 export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
+  /** Animation: slide_from_right (Shopee/Telegram style) — đồng bộ với Parallax translateX. */
   animation: 'slide_from_right',
+  /** Vuốt trở về phản hồi ngay theo đầu ngón tay */
   gestureEnabled: true,
   fullScreenGestureEnabled: true,
+  animationMatchesGesture: true,
+  /** Replace dùng push animation thay vì pop — nhất quán với Telegram */
+  animationTypeForReplace: 'push',
+  presentation: 'card',
+  /** Android: header translucent (edge-to-edge) */
+  ...(Platform.OS === 'android' && { headerTranslucent: true }),
   contentStyle: { backgroundColor: '#ffffff' },
-  /** freezeOnBlur: màn background bị freeze → giảm re-render (enableFreeze từ react-native-screens) */
+  /** Tắt shadow khi gesture — tránh drop frame trên máy yếu */
+  fullScreenGestureShadowEnabled: false,
+  /** freezeOnBlur: màn background bị freeze → giảm re-render */
   freezeOnBlur: true,
 }

@@ -4,6 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ImageSourcePropType } from 'react-native'
 import { Image, Pressable, Text, TouchableOpacity, View } from 'react-native'
+import { useShallow } from 'zustand/react/shallow'
 
 import { Images } from '@/assets/images'
 import { publicFileURL } from '@/constants'
@@ -17,14 +18,20 @@ interface ClientMenuItemForUpdateOrderProps {
 
 /**
  * Menu item cho Update Order - thêm món vào draft (addDraftItem).
- * Không switch OrderFlowStep, không init ordering.
+ * useShallow: chỉ re-render khi hasUpdatingData thay đổi (null → data).
+ * Khi add item, updatingData thay đổi nhưng hasUpdatingData giữ true → không re-render 50 items.
  */
-export default function ClientMenuItemForUpdateOrder({
+const ClientMenuItemForUpdateOrder = React.memo(function ClientMenuItemForUpdateOrder({
   item,
 }: ClientMenuItemForUpdateOrderProps) {
   const { t } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
-  const { addDraftItem, updatingData } = useOrderFlowStore()
+  const { addDraftItem, hasUpdatingData } = useOrderFlowStore(
+    useShallow((s) => ({
+      addDraftItem: s.addDraftItem,
+      hasUpdatingData: s.updatingData !== null,
+    })),
+  )
 
   const getPriceRange = (variants: IProduct['variants']) => {
     if (!variants || variants.length === 0) return null
@@ -35,7 +42,7 @@ export default function ClientMenuItemForUpdateOrder({
   }
 
   const handleAddToDraft = () => {
-    if (!updatingData || !item?.product?.variants?.length) return
+    if (!hasUpdatingData || !item?.product?.variants?.length) return
 
     const orderItem: IOrderItem = {
       id: `item_${moment().valueOf()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -159,4 +166,6 @@ export default function ClientMenuItemForUpdateOrder({
       </View>
     </View>
   )
-}
+})
+
+export default ClientMenuItemForUpdateOrder

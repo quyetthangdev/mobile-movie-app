@@ -1,71 +1,123 @@
 /**
- * Navigation Engine — JS-Independent.
- * Đã tối ưu hóa: Dùng dispatchImmediate để đảm bảo <16ms latency.
- * Sửa lỗi lost tap: Thêm cơ chế retry khi router chưa sẵn sàng.
+ * Navigation Engine — Telegram-level instant response.
+ *
+ * REFACTORED: Animation starts in same frame as tap.
+ * - Sync push when router ready (no setImmediate)
+ * - Transition lock: drop second tap during transition
+ * - Retry limit: max 20 frames when router null
+ *
+ * Flow: Tap → runOnJS → (lock check) → push DIRECTLY → Native Stack animation
+ * Target: Tap → first visual motion < 8ms
  */
 import type { Href } from 'expo-router'
 import {
   getNavigationRouter,
+  isNavigationLocked,
+  lockNavigation,
+  scheduleUnlock,
   setNavigationRouter,
+  unlockNavigation,
   type HrefLike as LockHrefLike,
   type RouterLike as LockRouterLike,
 } from './navigation-lock'
+import { TRANSITION_DURATION_MS } from './constants'
 import { acquireTransitionLock } from './transition-lock'
 
 export type HrefLike = Href | string
 
-const STACK_ANIMATION_MS = 320
-const TAB_ANIMATION_MS = 320
+const MAX_RETRY_FRAMES = 20
 
 export type RouterLike = LockRouterLike
 
 export { setNavigationRouter }
 
-/**
- * Task 1 — Zero-Latency: setImmediate.
- * Đẩy navigation vào cuối microtask hiện tại → <16ms từ tap.
- */
-const dispatchImmediate = (fn: () => void, durationMs: number) => {
-  setImmediate(() => {
-    acquireTransitionLock(durationMs)
-    fn()
-  })
-}
-
 const getRouter = () => getNavigationRouter()
 
 /**
- * Thực hiện lệnh push/replace với cơ chế Retry nếu router chưa sẵn sàng
+ * Push/replace/back — SYNC khi router sẵn sàng.
+ * Không setImmediate: gọi push trực tiếp để animation bắt đầu ngay.
  */
-const executeWithRetry = (
+export const executeNavFromGesture = (
   type: 'push' | 'replace' | 'back',
   href?: HrefLike,
-  duration = STACK_ANIMATION_MS,
+) => {
+  executeNav(type, href, TRANSITION_DURATION_MS)
+}
+
+const executeNav = (
+  type: 'push' | 'replace' | 'back',
+  href?: HrefLike,
+  duration = TRANSITION_DURATION_MS,
 ) => {
   const r = getRouter()
-  if (!r) {
-    // Nếu router chưa sẵn sàng, thử lại ở frame tiếp theo
-    requestAnimationFrame(() => executeWithRetry(type, href, duration))
+  if (r) {
+    lockNavigation()
+    try {
+      acquireTransitionLock(duration)
+      if (type === 'push' && href) r.push(href as LockHrefLike)
+      else if (type === 'replace' && href) r.replace(href as LockHrefLike)
+      else if (type === 'back') r.back()
+    } finally {
+      scheduleUnlock()
+    }
     return
   }
 
-  dispatchImmediate(() => {
-    if (type === 'push') r.push(href as LockHrefLike)
-    else if (type === 'replace') r.replace(href as LockHrefLike)
-    else if (type === 'back') r.back()
-  }, duration)
+  // Router null: retry với limit
+  let frame = 0
+  const retry = () => {
+    const router = getRouter()
+    if (router) {
+      lockNavigation()
+      try {
+        acquireTransitionLock(duration)
+        if (type === 'push' && href) router.push(href as LockHrefLike)
+        else if (type === 'replace' && href) router.replace(href as LockHrefLike)
+        else if (type === 'back') router.back()
+      } catch (err) {
+        unlockNavigation()
+        throw err
+      } finally {
+        scheduleUnlock()
+      }
+      return
+    }
+    frame++
+    if (frame >= MAX_RETRY_FRAMES) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.warn('[NavigationEngine] routerRef null after', MAX_RETRY_FRAMES, 'retries')
+      }
+      unlockNavigation()
+      return
+    }
+    requestAnimationFrame(retry)
+  }
+  requestAnimationFrame(retry)
 }
 
 /**
- * navigateNative giờ đây đã tối ưu latency và có retry.
- * Dùng cho cả NativeGesturePressable và pressable thông thường.
+ * navigateNative — Instant transition.
+ * - Drop tap nếu đang transitioning (tránh double-push)
+ * - Push sync khi router ready
+ * - Unlock: MasterTransitionProvider gọi unlockNavigation trong transitionEnd
  */
 export const navigateNative = {
-  push: (href: HrefLike) => executeWithRetry('push', href, STACK_ANIMATION_MS),
-  replace: (href: HrefLike) =>
-    executeWithRetry('replace', href, TAB_ANIMATION_MS),
-  back: () => executeWithRetry('back', undefined, STACK_ANIMATION_MS),
+  push: (href: HrefLike) => {
+    if (isNavigationLocked()) return
+    executeNav('push', href, TRANSITION_DURATION_MS)
+  },
+  replace: (href: HrefLike) => {
+    if (isNavigationLocked()) return
+    executeNav('replace', href, TRANSITION_DURATION_MS)
+  },
+  back: () => {
+    if (isNavigationLocked()) return
+    executeNav('back', undefined, TRANSITION_DURATION_MS)
+  },
 }
 
-// Giữ lại alias để tương thích code cũ
 export const navigateNativeImmediate = navigateNative
+
+/** Alias — single entry point. Same as navigateNative. */
+export const navigateSafely = navigateNative

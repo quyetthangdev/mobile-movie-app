@@ -78,6 +78,7 @@ export const Button = React.forwardRef<
         className,
       )}
       {...rest}
+      {...({ unstable_pressDelay: 0 } as React.ComponentProps<typeof Pressable>)}
     >
       {loading ? (
         <ActivityIndicator 

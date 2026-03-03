@@ -36,6 +36,7 @@ import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useTranslation } from 'react-i18next'
 
+/** Skeleton khớp layout Profile thật: avatar rounded-3xl p-6, SettingsSection + SettingsItem. */
 function ProfileSkeletonShell() {
   return (
     <ScreenContainer edges={['top']} className="flex-1">
@@ -44,25 +45,39 @@ function ProfileSkeletonShell() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
-        <View className="min-h-full bg-gray-200 px-4 pt-6 dark:bg-gray-950">
-          <View className="mb-6 flex-row items-center rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-            <Skeleton className="mr-3 h-16 w-16 rounded-full" />
-            <View className="flex-1 gap-2">
-              <Skeleton className="h-5 w-32 rounded-md" />
-              <Skeleton className="h-4 w-48 rounded-md" />
-            </View>
+        <View className="min-h-full bg-gray-60 px-4 pt-6 dark:bg-gray-950">
+          {/* Avatar card - khớp rounded-3xl p-6 items-center */}
+          <View className="mb-6 items-center rounded-3xl p-6">
+            <Skeleton className="h-20 w-20 rounded-full" />
+            <View className="mt-4 h-7" />
+            <Skeleton className="mt-1 h-4 w-40 rounded-md" />
           </View>
-          <View className="gap-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <View
-                key={i}
-                className="flex-row items-center rounded-lg border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
-              >
-                <Skeleton className="mr-3 h-10 w-10 rounded-full" />
-                <Skeleton className="h-4 flex-1 rounded-md" />
+
+          {/* Settings sections - khớp SettingsSection (mb-8, rounded-2xl) + SettingsItem (min-h-[44px] px-4 py-3, icon h-10 w-10) */}
+          {[
+            { header: true, items: 1 },
+            { header: true, items: 1 },
+            { header: true, items: 3 },
+            { header: true, items: 2 },
+            { header: true, items: 2 },
+          ].map((section, si) => (
+            <View key={si} className="mb-8">
+              <View className="px-4 py-2">
+                <Skeleton className="h-3 w-24 rounded-md" />
               </View>
-            ))}
-          </View>
+              <View className="overflow-hidden rounded-2xl bg-white dark:bg-gray-800">
+                {Array.from({ length: section.items }).map((_, i) => (
+                  <View
+                    key={i}
+                    className="min-h-[44px] flex-row items-center px-4 py-3"
+                  >
+                    <Skeleton className="mr-3 h-10 w-10 rounded-full" />
+                    <Skeleton className="h-4 flex-1 rounded-md" />
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -415,7 +430,7 @@ function ProfileScreen() {
   useGpuWarmup()
   usePhase4MountLog('profile')
   const [ready, setReady] = useState(false)
-  useRunAfterTransition(() => setReady(true), [])
+  useRunAfterTransition(() => setReady(true), [], { androidDelayMs: 150 })
   if (!ready) return <ProfileSkeletonShell />
   return <Profile />
 }

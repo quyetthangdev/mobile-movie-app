@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, useColorScheme, View } from 'react-native'
 import { Dropdown } from 'react-native-element-dropdown'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useCatalog } from '@/hooks'
 import { useMenuFilterStore } from '@/stores'
@@ -13,7 +14,12 @@ interface CatalogOption {
 
 export default function ClientCatalogSelect() {
   const { t } = useTranslation('menu')
-  const { menuFilter, setMenuFilter } = useMenuFilterStore()
+  const { catalog, setMenuFilter } = useMenuFilterStore(
+    useShallow((s) => ({
+      catalog: s.menuFilter.catalog,
+      setMenuFilter: s.setMenuFilter,
+    })),
+  )
   const { data: catalogData, isPending: isLoadingCatalog } = useCatalog()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
@@ -34,7 +40,7 @@ export default function ClientCatalogSelect() {
   }, [catalogData, t])
 
   // Get selected value
-  const selectedValue = menuFilter.catalog || null
+  const selectedValue = catalog || null
 
   // Handle selection change
   const handleChange = (item: CatalogOption) => {

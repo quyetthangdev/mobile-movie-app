@@ -7,6 +7,7 @@ import {
   View,
   useColorScheme,
 } from 'react-native'
+import { useShallow } from 'zustand/react/shallow'
 
 import { Drawer } from '@/components/ui'
 import { FILTER_VALUE } from '@/constants'
@@ -17,8 +18,14 @@ import DualRangeSlider from './dual-range-slider'
 
 export default function PriceRangeFilter() {
   const { t } = useTranslation(['menu'])
-  const { branch } = useBranchStore()
-  const { menuFilter, setMenuFilter } = useMenuFilterStore()
+  const branch = useBranchStore((s) => s.branch)
+  const { minPrice, maxPrice, setMenuFilter } = useMenuFilterStore(
+    useShallow((s) => ({
+      minPrice: s.menuFilter.minPrice,
+      maxPrice: s.menuFilter.maxPrice,
+      setMenuFilter: s.setMenuFilter,
+    })),
+  )
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   // Primary color from CSS variables
@@ -29,8 +36,8 @@ export default function PriceRangeFilter() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   
   // Calculate formatted values
-  const minPriceFormatted = formatCurrencyWithSymbol(menuFilter.minPrice, false)
-  const maxPriceFormatted = formatCurrencyWithSymbol(menuFilter.maxPrice, false)
+  const minPriceFormatted = formatCurrencyWithSymbol(minPrice ?? FILTER_VALUE.MIN_PRICE, false)
+  const maxPriceFormatted = formatCurrencyWithSymbol(maxPrice ?? FILTER_VALUE.MAX_PRICE, false)
   
   const [minPriceInput, setMinPriceInput] = useState<string>(() => minPriceFormatted)
   const [maxPriceInput, setMaxPriceInput] = useState<string>(() => maxPriceFormatted)
@@ -43,7 +50,7 @@ export default function PriceRangeFilter() {
   ]
 
   const isPresetActive = (min: number, max: number) => {
-    return menuFilter.minPrice === min && menuFilter.maxPrice === max
+    return (minPrice ?? FILTER_VALUE.MIN_PRICE) === min && (maxPrice ?? FILTER_VALUE.MAX_PRICE) === max
   }
 
   const handleMinPriceInputChange = (text: string) => {
@@ -162,7 +169,7 @@ export default function PriceRangeFilter() {
                 min={FILTER_VALUE.MIN_PRICE}
                 max={FILTER_VALUE.MAX_PRICE}
                 step={1000}
-                value={[menuFilter.minPrice, menuFilter.maxPrice]}
+                value={[minPrice ?? FILTER_VALUE.MIN_PRICE, maxPrice ?? FILTER_VALUE.MAX_PRICE]}
                 onValueChange={handleSliderChange}
                 formatValue={(value: number) => formatCurrency(value)}
                 hideMinMaxLabels={true}

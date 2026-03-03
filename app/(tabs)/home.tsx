@@ -274,7 +274,7 @@ function HomeScreen() {
   useGpuWarmup()
   usePhase4MountLog('home')
   const [ready, setReady] = useState(false)
-  useRunAfterTransition(() => setReady(true), [])
+  useRunAfterTransition(() => setReady(true), [], { androidDelayMs: 150 })
   if (!ready) return <HomeSkeletonShell />
   return <HomeContent />
 }

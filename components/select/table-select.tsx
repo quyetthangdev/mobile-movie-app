@@ -13,13 +13,13 @@ export default function TableSelect() {
   const { t } = useTranslation('table')
   const isDark = useColorScheme() === 'dark'
 
-  const { getCartItems } = useOrderFlowStore()
+  const getCartItems = useOrderFlowStore((s) => s.getCartItems)
   const cartItems = getCartItems()
   const cartType = cartItems?.type
   const selectedTableId = cartItems?.table
 
-  const { branch } = useBranchStore()
-  const { userInfo } = useUserStore()
+  const branch = useBranchStore((s) => s.branch)
+  const userInfo = useUserStore((s) => s.userInfo)
 
   const branchSlug = useMemo(
     () => branch?.slug || userInfo?.branch?.slug || '',

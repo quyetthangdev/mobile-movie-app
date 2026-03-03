@@ -1,6 +1,7 @@
+import { FlashList } from '@shopify/flash-list'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dimensions, FlatList, Text, View } from 'react-native'
+import { Dimensions, Text, View } from 'react-native'
 
 import { useCatalog } from '@/hooks'
 import { IMenuItem, ISpecificMenu } from '@/types'
@@ -16,13 +17,19 @@ const ITEM_MARGIN_BOTTOM = 16
 const MenuItemRow = React.memo(function MenuItemRow({
   item,
   itemWidth,
+  marginRight,
 }: {
   item: IMenuItem
   itemWidth: number
+  marginRight?: number
 }) {
   const style = React.useMemo(
-    () => ({ width: itemWidth, marginBottom: ITEM_MARGIN_BOTTOM }),
-    [itemWidth],
+    () => ({
+      width: itemWidth,
+      marginBottom: ITEM_MARGIN_BOTTOM,
+      ...(marginRight !== undefined && { marginRight }),
+    }),
+    [itemWidth, marginRight],
   )
   return (
     <View style={style}>
@@ -111,25 +118,19 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
   }, [catalogs?.result, menuItems])
 
   const renderItem = useCallback(
-    ({ item }: { item: IMenuItem }) => <MenuItemRow item={item} itemWidth={itemWidth} />,
-    [itemWidth],
+    ({ item, index }: { item: IMenuItem; index: number }) => (
+      <MenuItemRow
+        item={item}
+        itemWidth={itemWidth}
+        marginRight={
+          !isMobile && index % numColumns !== numColumns - 1 ? gap : undefined
+        }
+      />
+    ),
+    [itemWidth, isMobile, numColumns, gap],
   )
 
   const keyExtractor = useCallback((item: IMenuItem) => item.slug ?? `item-${item.product?.slug ?? 'unknown'}`, [])
-
-  const columnWrapperStyle = useMemo(
-    () => (!isMobile ? { gap } : undefined),
-    [isMobile, gap],
-  )
-
-  const getItemLayout = useCallback(
-    (_: ArrayLike<IMenuItem> | null | undefined, index: number) => ({
-      length: itemWidth + ITEM_MARGIN_BOTTOM,
-      offset: (itemWidth + ITEM_MARGIN_BOTTOM) * Math.floor(index / numColumns),
-      index,
-    }),
-    [itemWidth, numColumns],
-  )
 
   if (isLoading || isLoadingCatalog) {
     return (
@@ -164,21 +165,14 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
                 {group.catalog.name}
               </Text>
 
-              {/* Menu Items Grid - FlatList với tối ưu VirtualizedList "slow to update" */}
-              <FlatList
+              {/* Menu Items Grid - FlashList thay FlatList cho hiệu năng tốt hơn */}
+              <FlashList
                 data={group.items}
                 renderItem={renderItem}
                 keyExtractor={keyExtractor}
                 numColumns={numColumns}
                 scrollEnabled={false}
-                columnWrapperStyle={columnWrapperStyle}
                 ItemSeparatorComponent={EMPTY_SEPARATOR}
-                removeClippedSubviews={true}
-                initialNumToRender={3}
-                maxToRenderPerBatch={2}
-                windowSize={3}
-                updateCellsBatchingPeriod={50}
-                getItemLayout={isMobile ? undefined : getItemLayout}
               />
             </View>
           )

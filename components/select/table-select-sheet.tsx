@@ -39,7 +39,8 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
   const { data, isLoading } = useTables(branchSlug)
   const tables = data?.result || []
 
-  const { getCartItems, addTable } = useOrderFlowStore()
+  const getCartItems = useOrderFlowStore((s) => s.getCartItems)
+  const addTable = useOrderFlowStore((s) => s.addTable)
   const cartItems = getCartItems()
   const selectedTableId = cartItems?.table
 
@@ -64,6 +65,21 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
       />
     ),
     []
+  )
+
+  const renderItem = useCallback(
+    ({ item }: { item: ITable }) => (
+      <TableRow
+        table={item}
+        isSelected={selectedTableId === item.slug}
+        statusLabel={statusLabelMap[item.status] || item.status}
+        onPress={() => {
+          addTable(item)
+          bottomSheetRef.current?.close()
+        }}
+      />
+    ),
+    [addTable, selectedTableId, statusLabelMap],
   )
 
   return (
@@ -110,20 +126,7 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
               </Text>
             </View>
           }
-          renderItem={({ item }: { item: ITable }) => (
-            <TableRow
-              table={item}
-              isSelected={selectedTableId === item.slug}
-              statusLabel={statusLabelMap[item.status] || item.status}
-              onPress={() => {
-                addTable(item)
-                const currentRef = bottomSheetRef.current
-                if (currentRef) {
-                  currentRef.close()
-                }
-              }}
-            />
-          )}
+          renderItem={renderItem}
         />
       ) : (
         <View className="flex-1 items-center justify-center py-12">

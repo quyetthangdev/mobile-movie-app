@@ -171,13 +171,17 @@ export default function SliderRelatedProducts({
   const { data: publicSpecificMenu, isPending: isPendingPublicSpecificMenu } =
     usePublicSpecificMenu(filters, !hasUser && hasBranch)
 
-  const relatedProductsData = hasUser
-    ? relatedProducts?.result.menuItems.filter(
-        (item) => item.slug !== currentProduct,
-      )
-    : publicSpecificMenu?.result.menuItems.filter(
-        (item) => item.slug !== currentProduct,
-      )
+  const relatedProductsData = useMemo(() => {
+    const items = hasUser
+      ? relatedProducts?.result.menuItems
+      : publicSpecificMenu?.result.menuItems
+    return items?.filter((item) => item.slug !== currentProduct) ?? []
+  }, [
+    hasUser,
+    relatedProducts?.result.menuItems,
+    publicSpecificMenu?.result.menuItems,
+    currentProduct,
+  ])
 
   const isLoading = hasUser ? isPending : isPendingPublicSpecificMenu
 
@@ -213,18 +217,21 @@ export default function SliderRelatedProducts({
     [itemWidth, itemSpacing, handleItemPress, handlePressIn],
   )
 
-  const renderSkeleton = () => (
-    <View
-      className="min-h-[200px] w-full flex-col rounded-xl bg-gray-100 p-2 dark:bg-gray-800"
-      style={{ width: itemWidth, marginRight: itemSpacing }}
-    >
+  const renderSkeleton = useCallback(
+    () => (
       <View
-        className="mb-2 w-full rounded-md bg-gray-200 dark:bg-gray-700"
-        style={{ height: 112 }}
-      />
-      <View className="mb-2 h-4 rounded bg-gray-200 dark:bg-gray-700" />
-      <View className="h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
-    </View>
+        className="min-h-[200px] w-full flex-col rounded-xl bg-gray-100 p-2 dark:bg-gray-800"
+        style={{ width: itemWidth, marginRight: itemSpacing }}
+      >
+        <View
+          className="mb-2 w-full rounded-md bg-gray-200 dark:bg-gray-700"
+          style={{ height: 112 }}
+        />
+        <View className="mb-2 h-4 rounded bg-gray-200 dark:bg-gray-700" />
+        <View className="h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
+      </View>
+    ),
+    [itemWidth, itemSpacing],
   )
 
   if (!relatedProductsData || relatedProductsData.length === 0) {
@@ -237,7 +244,7 @@ export default function SliderRelatedProducts({
           <FlatList
             data={[...Array(6).keys()]}
             horizontal
-            initialNumToRender={5}
+            initialNumToRender={2}
             maxToRenderPerBatch={2}
             windowSize={3}
             showsHorizontalScrollIndicator={false}
@@ -264,7 +271,7 @@ export default function SliderRelatedProducts({
       <FlatList
         data={relatedProductsData}
         horizontal
-        initialNumToRender={5}
+        initialNumToRender={2}
         maxToRenderPerBatch={2}
         windowSize={3}
         showsHorizontalScrollIndicator={false}

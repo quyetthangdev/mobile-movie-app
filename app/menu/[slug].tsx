@@ -32,7 +32,8 @@ import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
 import { useSpecificMenuItem } from '@/hooks'
 import { HIT_SLOP_ICON, navigateNative } from '@/lib/navigation'
 import { NavigatePressable } from '@/components/navigation'
-import { useOrderFlowStore, useUserStore } from '@/stores'
+import { useOrderFlowMenuItemDetail } from '@/stores/selectors'
+import { useUserStore } from '@/stores'
 import { IOrderItem, IProductVariant } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
 
@@ -44,24 +45,18 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
   const { t } = useTranslation('product')
   const { t: tMenu } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
-  const { userInfo } = useUserStore()
+  const userInfo = useUserStore((s) => s.userInfo)
   const isDark = useColorScheme() === 'dark'
 
-  const isHydrated = useOrderFlowStore((s) => s.isHydrated)
-  const currentStep = useOrderFlowStore((s) => s.currentStep)
-  const orderingData = useOrderFlowStore((s) => s.orderingData)
-  const initializeOrdering = useOrderFlowStore((s) => s.initializeOrdering)
-  const setCurrentStep = useOrderFlowStore((s) => s.setCurrentStep)
-  const addOrderingItem = useOrderFlowStore((s) => s.addOrderingItem)
-
-  const cartItemCount = useOrderFlowStore((s) =>
-    s.currentStep === OrderFlowStep.ORDERING
-      ? (s.orderingData?.orderItems?.reduce(
-          (t, i) => t + (i.quantity || 0),
-          0,
-        ) ?? 0)
-      : 0,
-  )
+  const {
+    isHydrated,
+    currentStep,
+    orderingData,
+    initializeOrdering,
+    setCurrentStep,
+    addOrderingItem,
+    cartItemCount,
+  } = useOrderFlowMenuItemDetail()
 
   const { width: screenWidth } = useWindowDimensions()
   const { data: product, isLoading } = useSpecificMenuItem(slug || '')
@@ -79,6 +74,8 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
   // Staged Rendering: phần động (Image, Carousel, RelatedProducts) load sau animation (~300ms).
   // Phần tĩnh (Header, product info) render ngay — không block JS thread khi slide vào.
   const [heavyContentReady, setHeavyContentReady] = useState(false)
+  const [carouselReady, setCarouselReady] = useState(false)
+  const [sliderReady, setSliderReady] = useState(false)
   const skeletonOpacity = useSharedValue(1)
   const contentOpacity = useSharedValue(0)
 
@@ -92,6 +89,26 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [])
+
+  // Defer ProductImageCarousel 1 frame (rAF) — tách mount khỏi content spike, giảm stutter
+  useEffect(() => {
+    if (!heavyContentReady) return
+    const id = requestAnimationFrame(() => setCarouselReady(true))
+    return () => cancelAnimationFrame(id)
+  }, [heavyContentReady])
+
+  // Defer SliderRelatedProducts 2 frame (double rAF) — tách xa ProductImageCarousel, giảm spike
+  useEffect(() => {
+    if (!heavyContentReady) return
+    const ids = { second: -1 }
+    const id1 = requestAnimationFrame(() => {
+      ids.second = requestAnimationFrame(() => setSliderReady(true))
+    })
+    return () => {
+      cancelAnimationFrame(id1)
+      if (ids.second >= 0) cancelAnimationFrame(ids.second)
+    }
+  }, [heavyContentReady])
 
   // Task 5.3: Fade out skeleton, fade in content khi heavyContentReady
   useEffect(() => {
@@ -589,7 +606,7 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
               </Animated.View>
             )}
           </View>
-          {heavyContentReady && (productDetail?.product?.images?.length ?? 0) > 0 ? (
+          {heavyContentReady && carouselReady && (productDetail?.product?.images?.length ?? 0) > 0 ? (
             <Animated.View
               style={contentOpacityStyle}
               {...(Platform.OS === 'android' && { renderToHardwareTextureAndroid: true })}
@@ -748,7 +765,7 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
             {...(Platform.OS === 'android' && { renderToHardwareTextureAndroid: true })}
           >
             {/* Content — fade in (chỉ mount khi heavyContentReady) */}
-            {heavyContentReady && (
+            {heavyContentReady && sliderReady && (
               <Animated.View style={contentOpacityStyle}>
                 <SliderRelatedProducts
                   currentProduct={slug || ''}

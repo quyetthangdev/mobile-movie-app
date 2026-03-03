@@ -12,7 +12,7 @@ export default function DeleteAllCartDialog() {
   const { t } = useTranslation('menu')
   const { t: tCommon } = useTranslation('common')
   const [isOpen, setIsOpen] = useState(false)
-  const { clearAllData } = useOrderFlowStore()
+  const clearAllData = useOrderFlowStore((s) => s.clearAllData)
 
   const handleDelete = () => {
     setIsOpen(false)

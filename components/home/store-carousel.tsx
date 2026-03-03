@@ -4,8 +4,10 @@ import { Dimensions, FlatList, Image, InteractionManager, View } from 'react-nat
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated'
+
+import { DOT_SCALE_ACTIVE, SPRING_CONFIGS } from '@/constants'
 
 import { Images } from '@/assets/images'
 
@@ -89,24 +91,22 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
   }, [screenWidth])
 
   // Pagination dot component with scale animation (transform, not width)
-  const PaginationDot = React.memo(function PaginationDot({  
-    isActive 
-  }: { 
+  const PaginationDot = React.memo(function PaginationDot({
+    isActive,
+  }: {
     index: number
-    isActive: boolean 
+    isActive: boolean
   }) {
-    const scale = useSharedValue(isActive ? 3 : 1)
-    
+    const scale = useSharedValue(isActive ? DOT_SCALE_ACTIVE : 1)
+
     useEffect(() => {
-      scale.value = withTiming(isActive ? 3 : 1, {
-        duration: 200,
-      })
+      scale.value = withSpring(isActive ? DOT_SCALE_ACTIVE : 1, SPRING_CONFIGS.dot)
     }, [isActive, scale])
 
     const animatedStyle = useAnimatedStyle(() => {
       'worklet'
       return {
-        transform: [{ scaleX: scale.value }],
+        transform: [{ scale: scale.value }],
       }
     })
 

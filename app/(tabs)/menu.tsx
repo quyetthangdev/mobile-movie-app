@@ -19,21 +19,21 @@ import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '
 import { IMenuFilter, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
 
-/** Shell cực nhẹ: không store, không query. Chỉ dùng cho frame đầu khi chuyển tab → commit <16ms. */
+/** Shell khớp ClientMenuItem mobile: flex-row, image w-32 h-32, rounded-xl border. */
 function MenuListSkeleton() {
   return (
-    <View>
+    <View className="gap-4">
       {[1, 2, 3, 4, 5, 6].map((key) => (
         <View
           key={key}
-          className="rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 flex-row"
-          style={{ marginBottom: key < 6 ? 16 : 0, gap: 12 }}
+          className="flex-row rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 overflow-hidden min-h-[2rem]"
         >
-          <Skeleton className="w-20 h-20 rounded-md" />
-          <View className="flex-1" style={{ gap: 8 }}>
-            <Skeleton className="h-4 rounded-md" style={{ width: '80%' }} />
+          <View className="flex-shrink-0 w-32 h-32 p-2 justify-center items-center">
+            <Skeleton className="h-full w-full rounded-xl" />
+          </View>
+          <View className="flex-1 px-2 py-3" style={{ gap: 8 }}>
+            <Skeleton className="h-5 rounded-md" style={{ width: '80%' }} />
             <Skeleton className="h-3 rounded-md" style={{ width: '50%' }} />
-            <Skeleton className="h-3 rounded-md" style={{ width: '35%' }} />
           </View>
         </View>
       ))}
@@ -56,19 +56,22 @@ function MenuSkeletonShell() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
       >
-        <View style={{ marginBottom: 20 }}>
-          <View className="items-center py-2" style={{ marginBottom: 8 }}>
-            <Skeleton className="h-4 rounded-md" style={{ width: '72%' }} />
+        <View className="px-4 py-4 flex-col gap-5">
+          {/* Filter block - khớp branch info + ProductNameSearch + Catalog + Price */}
+          <View className="flex-col gap-2">
+            <View className="flex-row items-center justify-center gap-1 py-2">
+              <Skeleton className="h-4 rounded-md" style={{ width: '72%' }} />
+            </View>
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <View className="flex-row gap-2">
+              <Skeleton className="h-10 flex-1 rounded-lg" />
+              <Skeleton className="h-10 w-12 rounded-lg" />
+            </View>
           </View>
-          <Skeleton className="h-10 w-full rounded-lg" style={{ marginBottom: 8 }} />
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Skeleton className="h-10 flex-1 rounded-lg" />
-            <Skeleton className="h-10 w-12 rounded-lg" />
-          </View>
+          <MenuListSkeleton />
         </View>
-        <MenuListSkeleton />
       </ScrollView>
     </ScreenContainer>
   )
@@ -91,6 +94,13 @@ function ClientMenuContent() {
   // Fetch sau khi transition tab xong → trang chuyển ngay (skeleton), không khựng
   const [allowFetch, setAllowFetch] = useState(false)
   useRunAfterTransition(() => setAllowFetch(true), [])
+
+  // Defer filter mount 50ms → giảm jitter khi tab vừa chuyển (Phase 6 Task 5)
+  const [showFilters, setShowFilters] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setShowFilters(true), 50)
+    return () => clearTimeout(id)
+  }, [])
 
   // Memoize expensive calculation
   const mapMenuFilterToRequest = useCallback((
@@ -257,15 +267,23 @@ function ClientMenuContent() {
                   </Text>
                 </View>
 
-                {/* Product name search */}
-                <ProductNameSearch />
+                {/* Product name search - defer 50ms để giảm mount cost */}
+                {showFilters ? (
+                  <ProductNameSearch />
+                ) : (
+                  <View className="h-[50px] w-full rounded-xl bg-gray-100 dark:bg-gray-800" />
+                )}
 
                 {/* Catalog and Price filter - Same row */}
                 <View className="flex-row gap-2">
                   <View className="flex-1">
                     <ClientCatalogSelect />
                   </View>
-                  <PriceRangeFilter />
+                  {showFilters ? (
+                    <PriceRangeFilter />
+                  ) : (
+                    <View className="h-[50px] w-[50px] rounded-xl bg-gray-100 dark:bg-gray-800" />
+                  )}
                 </View>
 
                 {/* Price range display with clear button */}
@@ -319,7 +337,7 @@ function MenuScreen() {
   useGpuWarmup()
   usePhase4MountLog('menu')
   const [ready, setReady] = useState(false)
-  useRunAfterTransition(() => setReady(true), [])
+  useRunAfterTransition(() => setReady(true), [], { androidDelayMs: 150 })
   if (!ready) return <MenuSkeletonShell />
   return <ClientMenuContent />
 }

@@ -28,7 +28,8 @@ export default function ConfirmUpdateOrderDialog({
   const { t: tToast } = useTranslation('toast')
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { updatingData, clearUpdatingData } = useOrderFlowStore()
+  const updatingData = useOrderFlowStore((s) => s.updatingData)
+  const clearUpdatingData = useOrderFlowStore((s) => s.clearUpdatingData)
   const { mutate: updateOrderType, isPending } = useUpdateOrderType()
 
   const draft = updatingData?.updateDraft

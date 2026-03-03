@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { Images } from '@/assets/images'
 import { publicFileURL } from '@/constants'
+import { scheduleStoreUpdate } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 import { IMenuItem, IOrderItem, IProduct } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
@@ -64,7 +65,7 @@ const ClientMenuItemForUpdateOrder = React.memo(function ClientMenuItemForUpdate
     }
 
     try {
-      addDraftItem(orderItem)
+      scheduleStoreUpdate(() => addDraftItem(orderItem))
       showToast(tToast('toast.addSuccess', 'Đã thêm vào đơn hàng'))
     } catch (error) {
       // eslint-disable-next-line no-console

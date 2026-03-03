@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { SPRING_CONFIGS } from '@/constants/motion'
 import * as SystemUI from 'expo-system-ui'
 import { Check, ChevronRight } from 'lucide-react-native'
 import React, { ComponentProps, useEffect, useRef } from 'react'
@@ -12,10 +13,10 @@ import {
   View,
 } from 'react-native'
 import Animated, {
-  Easing,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated'
 
 interface TriggerLayout {
@@ -27,6 +28,7 @@ interface TriggerLayout {
 
 interface DropdownContextType {
   onOpenChange: (open: boolean) => void
+  onExitComplete?: () => void
   open: boolean
   triggerLayout: TriggerLayout | null
   setTriggerLayout: (layout: TriggerLayout | null) => void
@@ -148,9 +150,20 @@ function Dropdown({
 }: DropdownProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
   const [triggerLayout, setTriggerLayout] = React.useState<TriggerLayout | null>(null)
+  const [isMounted, setIsMounted] = React.useState(false)
 
   const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen
   const onOpenChange = controlledOnOpenChange || setUncontrolledOpen
+
+  // Giữ Modal hiển thị trong khi chạy exit animation
+  useEffect(() => {
+    if (open) {
+      const id = setTimeout(() => setIsMounted(true), 0)
+      return () => clearTimeout(id)
+    }
+  }, [open])
+
+  const handleExitComplete = () => setIsMounted(false)
 
   // Separate trigger and content from children
   const childrenArray = React.Children.toArray(children)
@@ -164,30 +177,29 @@ function Dropdown({
   // Keep navigation bar color white when Modal opens/closes
   useEffect(() => {
     if (open) {
-      // Set navigation bar to white when Modal opens
-      // Use requestAnimationFrame to ensure it runs after Modal renders
       requestAnimationFrame(() => {
-        SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {
-          // Ignore errors if API is not available
-        })
+        SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {})
       })
     } else {
-      // Also set when closing to prevent reset to app background
       requestAnimationFrame(() => {
-        SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {
-          // Ignore errors if API is not available
-        })
+        SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {})
       })
     }
   }, [open])
 
   return (
-    <DropdownContext.Provider value={{ onOpenChange, open, triggerLayout, setTriggerLayout }}>
-      {/* Render trigger outside Modal */}
+    <DropdownContext.Provider
+      value={{
+        onOpenChange,
+        onExitComplete: handleExitComplete,
+        open,
+        triggerLayout,
+        setTriggerLayout,
+      }}
+    >
       {trigger}
-      {/* Render content inside Modal */}
       <Modal
-        visible={open}
+        visible={isMounted}
         transparent
         animationType="none"
         onRequestClose={() => onOpenChange(false)}
@@ -305,6 +317,8 @@ function DropdownTrigger({
   )
 }
 
+const SPRING = SPRING_CONFIGS.popover
+
 // Content - the dropdown container
 function DropdownContent({
   children,
@@ -318,58 +332,54 @@ function DropdownContent({
   const contentRef = useRef<View>(null)
   const [contentLayout, setContentLayout] = React.useState<{ width: number; height: number } | null>(null)
   
-  // Shared values for UI thread animations (react-native-reanimated)
   const scale = useSharedValue(0.95)
   const opacity = useSharedValue(0)
   const slideX = useSharedValue(0)
   const slideY = useSharedValue(0)
 
-  // Measure content size when layout changes
   const handleContentLayout = (event: { nativeEvent: { layout: { width: number; height: number } } }) => {
     const { width, height } = event.nativeEvent.layout
     setContentLayout({ width, height })
   }
 
   useEffect(() => {
-    if (!context?.open) {
-      // Reset to initial state when closed (UI thread)
-      scale.value = 0.95
-      opacity.value = 0
-      slideX.value = 0
-      slideY.value = 0
-      return
-    }
-
-    // Animate in (open) - shadcn style animations
-    // Set initial slide values based on side (slide-in-from)
     const slideInitialValues = {
-      top: { x: 0, y: -8 },      // slide-in-from-bottom-2
-      bottom: { x: 0, y: 8 },   // slide-in-from-top-2
-      left: { x: -8, y: 0 },    // slide-in-from-right-2
-      right: { x: 8, y: 0 },     // slide-in-from-left-2
+      top: { x: 0, y: -8 },
+      bottom: { x: 0, y: 8 },
+      left: { x: -8, y: 0 },
+      right: { x: 8, y: 0 },
     }
     const initial = slideInitialValues[side]
-    slideX.value = initial.x
-    slideY.value = initial.y
 
-    // Animate in with fade-in, zoom-in, and slide-in (UI thread)
-    // Optimized for POS: quick and clear (150ms) - faster than before
-    scale.value = withTiming(1, {
-      duration: 150,
-      easing: Easing.out(Easing.ease),
-    })
-    opacity.value = withTiming(1, {
-      duration: 150,
-      easing: Easing.out(Easing.ease),
-    })
-    slideX.value = withTiming(0, {
-      duration: 150,
-      easing: Easing.out(Easing.ease),
-    })
-    slideY.value = withTiming(0, {
-      duration: 150,
-      easing: Easing.out(Easing.ease),
-    })
+    if (context?.open) {
+      scale.value = 0.95
+      opacity.value = 0
+      slideX.value = initial.x
+      slideY.value = initial.y
+
+      const timeoutId = setTimeout(() => {
+        scale.value = withSpring(1, SPRING)
+        opacity.value = withSpring(1, SPRING)
+        slideX.value = withSpring(0, SPRING)
+        slideY.value = withSpring(0, SPRING)
+      }, 16)
+
+      return () => clearTimeout(timeoutId)
+    }
+
+    // Đóng: dứt khoát nhưng không khựng
+    scale.value = withSpring(0.95, SPRING)
+    opacity.value = withSpring(0, SPRING)
+    slideX.value = withSpring(initial.x, SPRING)
+    slideY.value = withSpring(
+      initial.y,
+      SPRING,
+      (finished) => {
+        if (finished && context?.onExitComplete) {
+          runOnJS(context.onExitComplete)()
+        }
+      },
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context?.open, side])
 

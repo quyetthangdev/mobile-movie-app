@@ -1,3 +1,4 @@
+import { FlashList } from '@shopify/flash-list'
 import _ from 'lodash'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 // import Joyride from 'react-joyride';
@@ -8,7 +9,7 @@ import {
   ShoppingCartIcon,
 } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { Image, Pressable, ScrollView, Text, useColorScheme, View } from 'react-native'
+import { Image, Pressable, Text, useColorScheme, View } from 'react-native'
 import { ScreenContainer } from '@/components/layout'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -37,6 +38,7 @@ import {
   VOUCHER_TYPE,
 } from '@/constants'
 import { useBranchStore, useOrderFlowStore, useUserStore } from '@/stores'
+import type { IOrderingData } from '@/stores/order-flow.store'
 import { OrderTypeEnum } from '@/types'
 import {
   calculateCartItemDisplay,
@@ -45,13 +47,138 @@ import {
   parseKm,
   showErrorToast,
   showErrorToastMessage,
-  useCalculateDeliveryFee,
 } from '@/utils'
-import { useRunAfterTransition } from '@/hooks'
+import { useCalculateDeliveryFee, useRunAfterTransition } from '@/hooks'
 import { HIT_SLOP_ICON, navigateNative, useGpuWarmup } from '@/lib/navigation'
 import { NavigatePressable } from '@/components/navigation'
 import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 // import { MapAddressSelector } from './components'
+
+const CartItemRow = React.memo(function CartItemRow({
+  item,
+  displayItems,
+  currentCartItems,
+  primaryColor,
+  onChangeVariant,
+  onUpdateQuantity,
+  onAddNote,
+}: {
+  item: import('@/types').IOrderItem
+  displayItems: import('@/types').IDisplayCartItem[]
+  currentCartItems: IOrderingData | null
+  primaryColor: string
+  onChangeVariant: (id: string) => void
+  onUpdateQuantity: (id: string, quantity: number) => void
+  onAddNote: (id: string, text: string) => void
+}) {
+  const displayItem = displayItems.find((di) => di.slug === item.slug)
+  const original = item.originalPrice || 0
+  const priceAfterPromotion = displayItem?.priceAfterPromotion || 0
+  const finalPrice = displayItem?.finalPrice || 0
+
+  const isSamePriceVoucher =
+    currentCartItems?.voucher?.type === VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
+    currentCartItems?.voucher?.voucherProducts?.some(
+      (vp) => vp.product?.slug === item.slug,
+    )
+
+  const isAtLeastOneVoucher =
+    currentCartItems?.voucher?.applicabilityRule ===
+      APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
+    currentCartItems?.voucher?.voucherProducts?.some(
+      (vp) => vp.product?.slug === item.slug,
+    )
+
+  const hasVoucherDiscount = (displayItem?.voucherDiscount ?? 0) > 0
+  const hasPromotionDiscount = (displayItem?.promotionDiscount ?? 0) > 0
+
+  const displayPrice = isSamePriceVoucher
+    ? finalPrice
+    : isAtLeastOneVoucher && hasVoucherDiscount
+      ? original - (displayItem?.voucherDiscount || 0)
+      : hasPromotionDiscount
+        ? priceAfterPromotion
+        : original
+
+  const shouldShowLineThrough =
+    (isSamePriceVoucher || hasPromotionDiscount || hasVoucherDiscount) &&
+    original > displayPrice
+
+  const note = isSamePriceVoucher
+    ? '(**)'
+    : hasPromotionDiscount
+      ? '(*)'
+      : ''
+
+  return (
+    <View className="mb-4 rounded-lg border border-gray-100 bg-white p-3">
+      <View className="flex-row gap-3">
+        <View className="h-28 w-28 overflow-hidden rounded-lg bg-gray-100">
+          {item?.image ? (
+            <Image
+              source={{ uri: publicFileURL + '/' + item?.image }}
+              className="h-full w-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <Image
+              source={Images.Food.ProductImage as unknown as number}
+              className="h-full w-full"
+              resizeMode="cover"
+            />
+          )}
+        </View>
+        <View className="flex-1 flex-col">
+          <View className="flex-row items-center justify-between">
+            <Text
+              className="flex-1 pr-2 text-md font-bold text-gray-900"
+              numberOfLines={2}
+            >
+              {item.name}
+            </Text>
+            <DeleteCartItemDialog cartItem={item} />
+          </View>
+          <ProductVariantDropdown
+            variant={item.allVariants}
+            onChange={onChangeVariant}
+          />
+          <View className="mt-1 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1">
+              {shouldShowLineThrough && original !== finalPrice && (
+                <Text className="text-xs text-gray-400 line-through">
+                  {formatCurrency(original)}
+                </Text>
+              )}
+              <Text
+                className="text-lg font-bold"
+                style={{ color: primaryColor }}
+              >
+                {formatCurrency(displayPrice)}
+              </Text>
+              {note ? (
+                <Text className="text-xs text-gray-500">{note}</Text>
+              ) : null}
+            </View>
+            <View className="w-24 flex-row items-center gap-1">
+              <QuantitySelector
+                value={item.quantity}
+                onChange={(newQuantity) =>
+                  onUpdateQuantity(item.id!, newQuantity)
+                }
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+      <View className="mt-3">
+        <CartNoteInput
+          value={item.note || ''}
+          onChange={(text) => onAddNote(item.id, text)}
+        />
+      </View>
+    </View>
+  )
+})
 
 function CartSkeletonShell() {
   return (
@@ -138,10 +265,244 @@ function ClientCartPage() {
     calculatedBranchSlug,
   )
 
+  const isDark = useColorScheme() === 'dark'
+  const primaryColor = isDark ? '#D68910' : '#F7A737' // hsl(35 70% 53%) vs hsl(35 93% 55%)
+
   // Memoize callbacks
   const handleChangeVariant = useCallback((id: string) => {
     addOrderingProductVariant(id)
   }, [addOrderingProductVariant])
+
+  const renderCartItem = useCallback(
+    ({ item }: { item: import('@/types').IOrderItem }) => (
+      <CartItemRow
+        item={item}
+        displayItems={displayItems}
+        currentCartItems={currentCartItems}
+        primaryColor={primaryColor}
+        onChangeVariant={handleChangeVariant}
+        onUpdateQuantity={updateOrderingItemQuantity}
+        onAddNote={addNote}
+      />
+    ),
+    [
+      displayItems,
+      currentCartItems,
+      primaryColor,
+      handleChangeVariant,
+      updateOrderingItemQuantity,
+      addNote,
+    ],
+  )
+
+  const renderCartHeader = useCallback(
+    () => (
+      <View className="px-4 py-4">
+        <View className="mb-4 flex-row items-center gap-2 rounded-lg bg-gray-100 p-3">
+          <CircleAlert size={16} color="#ef4444" />
+          <Text className="flex-1 text-xs text-red-600">
+            {t('order.selectTableNote')}
+          </Text>
+        </View>
+        <View className="mb-4 flex-col gap-2">
+          <OrderTypeSelect />
+          {currentCartItems?.type !== OrderTypeEnum.DELIVERY && (
+            <View className="flex-row items-center gap-2">
+              <View className="flex-1">
+                {currentCartItems?.type === OrderTypeEnum.TAKE_OUT ? (
+                  <PickupTimeSelect />
+                ) : (
+                  <TableSelect />
+                )}
+              </View>
+              <DeleteAllCartDialog />
+            </View>
+          )}
+          {currentCartItems?.type === OrderTypeEnum.DELIVERY && (
+            <View className="flex-row justify-end">
+              <DeleteAllCartDialog />
+            </View>
+          )}
+        </View>
+        {currentCartItems?.type === OrderTypeEnum.DELIVERY && (
+          <View className="mb-4">{/* <MapAddressSelector /> */}</View>
+        )}
+      </View>
+    ),
+    [t, currentCartItems?.type],
+  )
+
+  const renderCartFooter = useCallback(
+    () => (
+      <View className="px-4 pb-4">
+        <View className="mb-4">
+          <Text className="mb-2 text-md font-bold text-gray-900">
+            {t('order.orderNote')}
+          </Text>
+          <OrderNoteInput
+            value={currentCartItems?.description || ''}
+            onChange={(text) => addOrderNote(text)}
+          />
+        </View>
+        <View className="mb-3 rounded-lg bg-gray-100 p-3">
+          <Text className="mb-2 text-xs font-bold text-gray-900">
+            {t('order.voucher')}
+          </Text>
+          <View className="flex-col gap-1">
+            <View className="flex-row items-center gap-1">
+              <Text className="text-xs font-bold text-gray-900">*</Text>
+              <Text className="text-xs text-gray-700">
+                {t('order.promotionDiscount')}
+              </Text>
+            </View>
+            <View className="flex-row items-center gap-1">
+              <Text className="text-xs font-bold text-gray-900">**</Text>
+              <Text className="text-xs text-gray-700">
+                {t('order.itemLevelVoucher')}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View className="mb-4">
+          <Text className="mb-2 text-xs text-gray-600">
+            {t('order.voucher')}
+          </Text>
+          {currentCartItems?.voucher ? (
+            <Badge
+              variant="outline"
+              className="self-start px-2 py-1 text-xs"
+              style={{
+                borderColor: primaryColor,
+                borderWidth: 1,
+              }}
+            >
+              <Text style={{ color: primaryColor }}>
+                {(() => {
+                  const v = currentCartItems?.voucher
+                  if (!v) return null
+                  const { type, value, applicabilityRule: rule } = v
+                  const discountValueText =
+                    type === VOUCHER_TYPE.PERCENT_ORDER
+                      ? tVoucher('voucher.percentDiscount', { value })
+                      : type === VOUCHER_TYPE.FIXED_VALUE
+                        ? tVoucher('voucher.fixedDiscount', {
+                            value: formatCurrency(value),
+                          })
+                        : type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
+                          ? tVoucher('voucher.samePriceProduct', {
+                              value: formatCurrency(value),
+                            })
+                          : ''
+                  const ruleText =
+                    rule === APPLICABILITY_RULE.ALL_REQUIRED
+                      ? tVoucher(
+                          type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
+                            ? 'voucher.requireAllSamePrice'
+                            : type === VOUCHER_TYPE.PERCENT_ORDER
+                              ? 'voucher.requireAllPercent'
+                              : 'voucher.requireAllFixed',
+                        )
+                      : rule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED
+                        ? tVoucher(
+                            type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
+                              ? 'voucher.requireAtLeastOneSamePrice'
+                              : type === VOUCHER_TYPE.PERCENT_ORDER
+                                ? 'voucher.requireAtLeastOnePercent'
+                                : 'voucher.requireAtLeastOneFixed',
+                          )
+                        : ''
+                  return `${discountValueText} ${ruleText}`
+                })()}
+              </Text>
+            </Badge>
+          ) : (
+            <Pressable
+              onPress={() => VoucherListDrawer.open()}
+              hitSlop={HIT_SLOP_ICON}
+              className="flex-row items-center justify-between rounded-lg bg-primary/10 px-4 py-3 active:bg-primary/20"
+              {...({ unstable_pressDelay: 0 } as object)}
+            >
+              <Text className="text-sm font-semibold text-primary">
+                {t('order.useVoucher', 'Sử dụng voucher')}
+              </Text>
+              <ChevronRight size={16} color={primaryColor} />
+            </Pressable>
+          )}
+        </View>
+        <View className="mb-4 rounded-lg border border-gray-100 bg-white p-4">
+          <View className="flex-col gap-2">
+            <View className="flex-row justify-between">
+              <Text className="text-sm text-gray-700">
+                {t('order.subtotalBeforeDiscount')}
+              </Text>
+              <Text className="text-sm text-gray-900">
+                {formatCurrency(cartTotals.subTotalBeforeDiscount)}
+              </Text>
+            </View>
+            {cartTotals.promotionDiscount > 0 && (
+              <View className="flex-row justify-between">
+                <Text className="text-sm italic text-gray-600">
+                  {t('order.promotionDiscount')}
+                </Text>
+                <Text className="text-sm italic text-gray-600">
+                  -{formatCurrency(cartTotals.promotionDiscount)}
+                </Text>
+              </View>
+            )}
+            {cartTotals.voucherDiscount > 0 && (
+              <View className="flex-col gap-1">
+                <View className="flex-row justify-between">
+                  <Text className="text-sm italic text-green-600">
+                    {t('order.voucherDiscount')}
+                  </Text>
+                  <Text className="text-sm italic text-green-600">
+                    -{formatCurrency(cartTotals.voucherDiscount)}
+                  </Text>
+                </View>
+                <Text className="text-xs italic text-gray-500">
+                  ({t('order.partialAppliedNote')})
+                </Text>
+              </View>
+            )}
+            {currentCartItems?.type === OrderTypeEnum.DELIVERY && (
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-gray-700">
+                  {t('order.deliveryFee')}
+                </Text>
+                <Text className="text-sm text-gray-900">
+                  {formatCurrency(deliveryFee.deliveryFee)}
+                </Text>
+              </View>
+            )}
+            <View className="mt-2 flex-row items-center justify-between border-t border-gray-100 pt-2">
+              <Text className="text-base font-semibold text-gray-900">
+                {t('order.totalPayment')}
+              </Text>
+              <Text
+                className="text-2xl font-bold"
+                style={{ color: primaryColor }}
+              >
+                {formatCurrency(
+                  cartTotals.finalTotal + deliveryFee.deliveryFee,
+                )}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    ),
+    [
+      t,
+      tVoucher,
+      currentCartItems?.description,
+      currentCartItems?.voucher,
+      currentCartItems?.type,
+      primaryColor,
+      cartTotals,
+      deliveryFee.deliveryFee,
+      addOrderNote,
+    ],
+  )
 
   // Check voucher validity for SAME_PRICE_PRODUCT
   useEffect(() => {
@@ -201,8 +562,6 @@ function ClientCartPage() {
     }
   }, [voucherSlug, voucherMaxItems, cartItemQuantity, removeVoucher])
 
-  const isDark = useColorScheme() === 'dark'
-  const primaryColor = isDark ? '#D68910' : '#F7A737' // hsl(35 70% 53%) vs hsl(35 93% 55%)
   const insets = useSafeAreaInsets()
 
   if (_.isEmpty(currentCartItems?.orderItems)) {
@@ -281,364 +640,18 @@ function ClientCartPage() {
       </View>
 
       {/* Content */}
-      <View className="flex-1">
-        <ScrollView
-          className="flex-1 bg-gray-50"
+      <View className="flex-1 bg-gray-50">
+        <FlashList
+          data={currentCartItems?.orderItems ?? []}
+          keyExtractor={(item) =>
+            `${item.id}-${currentCartItems?.voucher?.slug || 'no-voucher'}`
+          }
+          renderItem={renderCartItem}
+          ListHeaderComponent={renderCartHeader}
+          ListFooterComponent={renderCartFooter}
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
-        >
-      <View className="px-4 py-4">
-        {/* Warning message */}
-        <View className="mb-4 flex-row items-center gap-2 rounded-lg bg-gray-100 p-3">
-          <CircleAlert size={16} color="#ef4444" />
-          <Text className="flex-1 text-xs text-red-600">
-            {t('order.selectTableNote')}
-          </Text>
-        </View>
-
-        {/* Order type and table selection */}
-        <View className="mb-4 flex-col gap-2">
-          <OrderTypeSelect />
-          {currentCartItems?.type !== OrderTypeEnum.DELIVERY && (
-            <View className="flex-row items-center gap-2">
-              <View className="flex-1">
-                {currentCartItems?.type === OrderTypeEnum.TAKE_OUT ? (
-                  <PickupTimeSelect />
-                ) : (
-                  <TableSelect />
-                )}
-              </View>
-              <DeleteAllCartDialog />
-            </View>
-          )}
-          {currentCartItems?.type === OrderTypeEnum.DELIVERY && (
-            <View className="flex-row justify-end">
-              <DeleteAllCartDialog />
-            </View>
-          )}
-        </View>
-
-        {currentCartItems?.type === OrderTypeEnum.DELIVERY && (
-          <View className="mb-4">{/* <MapAddressSelector /> */}</View>
-        )}
-
-        {/* Cart items */}
-        <View className="mb-4 flex-col gap-2">
-          {currentCartItems?.orderItems.map((item) => (
-            <View
-              key={`${item.id}-${currentCartItems?.voucher?.slug || 'no-voucher'}`}
-              className="rounded-lg border border-gray-100 bg-white p-3"
-            >
-              {/* Item header with image and name */}
-              <View className="flex-row gap-3">
-                {/* Product image */}
-                <View className="h-28 w-28 overflow-hidden rounded-lg bg-gray-100">
-                  {item?.image ? (
-                    <Image
-                      source={{ uri: publicFileURL + '/' + item?.image }}
-                      className="h-full w-full"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <Image
-                      source={Images.Food.ProductImage as unknown as number}
-                      className="h-full w-full"
-                      resizeMode="cover"
-                    />
-                  )}
-                </View>
-
-                {/* Product info */}
-                <View className="flex-1 flex-col">
-                  {/* Name and delete icon */}
-                  <View className="flex-row items-center justify-between">
-                    <Text
-                      className="flex-1 pr-2 text-md font-bold text-gray-900"
-                      numberOfLines={2}
-                    >
-                      {item.name}
-                    </Text>
-                    <DeleteCartItemDialog cartItem={item} />
-                  </View>
-
-                  {/* Variant select */}
-                  <ProductVariantDropdown
-                    variant={item.allVariants}
-                    onChange={handleChangeVariant}
-                  />
-
-                  {/* Price and quantity */}
-                  <View className="flex-row mt-1 items-center justify-between">
-                    <View className="flex-row items-center gap-1">
-                      {(() => {
-                        const displayItem = displayItems.find(
-                          (di) => di.slug === item.slug,
-                        )
-                        const original = item.originalPrice || 0
-                        const priceAfterPromotion =
-                          displayItem?.priceAfterPromotion || 0
-                        const finalPrice = displayItem?.finalPrice || 0
-
-                        const isSamePriceVoucher =
-                          currentCartItems?.voucher?.type ===
-                            VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
-                          currentCartItems?.voucher?.voucherProducts?.some(
-                            (vp) => vp.product?.slug === item.slug,
-                          )
-
-                        const isAtLeastOneVoucher =
-                          currentCartItems?.voucher?.applicabilityRule ===
-                            APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
-                          currentCartItems?.voucher?.voucherProducts?.some(
-                            (vp) => vp.product?.slug === item.slug,
-                          )
-
-                        const hasVoucherDiscount =
-                          (displayItem?.voucherDiscount ?? 0) > 0
-                        const hasPromotionDiscount =
-                          (displayItem?.promotionDiscount ?? 0) > 0
-
-                        const displayPrice = isSamePriceVoucher
-                          ? finalPrice
-                          : isAtLeastOneVoucher && hasVoucherDiscount
-                            ? original - (displayItem?.voucherDiscount || 0)
-                            : hasPromotionDiscount
-                              ? priceAfterPromotion
-                              : original
-
-                        const shouldShowLineThrough =
-                          (isSamePriceVoucher ||
-                            hasPromotionDiscount ||
-                            hasVoucherDiscount) &&
-                          original > displayPrice
-
-                        const note = isSamePriceVoucher
-                          ? '(**)'
-                          : hasPromotionDiscount
-                            ? '(*)'
-                            : ''
-
-                        return (
-                          <>
-                            {shouldShowLineThrough &&
-                              original !== finalPrice && (
-                                <Text className="text-xs text-gray-400 line-through">
-                                  {formatCurrency(original)}
-                                </Text>
-                              )}
-                            <Text 
-                              className="text-lg font-bold"
-                              style={{ color: primaryColor }}
-                            >
-                              {formatCurrency(displayPrice)}
-                            </Text>
-                            {note && (
-                              <Text className="text-xs text-gray-500">
-                                {note}
-                              </Text>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </View>
-                    <View className="w-24 flex-row items-center gap-1">
-                      <QuantitySelector
-                        value={item.quantity}
-                        onChange={(newQuantity) =>
-                          updateOrderingItemQuantity(item.id!, newQuantity)
-                        }
-                      />
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              {/* Item note */}
-              <View className="mt-3">
-                <CartNoteInput
-                  value={item.note || ''}
-                  onChange={(text) => addNote(item.id, text)}
-                />
-              </View>
-            </View>
-          ))}
-        </View>
-        {/* Order note */}
-        <View className="mb-4">
-          <Text className="mb-2 text-md font-bold text-gray-900">
-            {t('order.orderNote')}
-          </Text>
-          <OrderNoteInput
-            value={currentCartItems?.description || ''}
-            onChange={(text) => addOrderNote(text)}
-          />
-        </View>
-
-        {/* Discount explanation box */}
-        <View className="mb-3 rounded-lg bg-gray-100 p-3">
-          <Text className="mb-2 text-xs font-bold text-gray-900">
-            {t('order.voucher')}
-          </Text>
-          <View className="flex-col gap-1">
-            <View className="flex-row items-center gap-1">
-              <Text className="text-xs font-bold text-gray-900">*</Text>
-              <Text className="text-xs text-gray-700">
-                {t('order.promotionDiscount')}
-              </Text>
-            </View>
-            <View className="flex-row items-center gap-1">
-              <Text className="text-xs font-bold text-gray-900">**</Text>
-              <Text className="text-xs text-gray-700">
-                {t('order.itemLevelVoucher')}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Voucher section */}
-        <View className="mb-4">
-          <Text className="mb-2 text-xs text-gray-600">
-            {t('order.voucher')}
-          </Text>
-          {currentCartItems?.voucher ? (
-            <Badge
-              variant="outline"
-              className="self-start px-2 py-1 text-xs"
-              style={{
-                borderColor: primaryColor,
-                borderWidth: 1,
-              }}
-            >
-              <Text style={{ color: primaryColor }}>
-                {(() => {
-                  const voucher = currentCartItems?.voucher
-                  if (!voucher) return null
-
-                  const { type, value, applicabilityRule: rule } = voucher
-
-                  const discountValueText =
-                    type === VOUCHER_TYPE.PERCENT_ORDER
-                      ? tVoucher('voucher.percentDiscount', { value })
-                      : type === VOUCHER_TYPE.FIXED_VALUE
-                        ? tVoucher('voucher.fixedDiscount', {
-                            value: formatCurrency(value),
-                          })
-                        : type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                          ? tVoucher('voucher.samePriceProduct', {
-                              value: formatCurrency(value),
-                            })
-                          : ''
-
-                  const ruleText =
-                    rule === APPLICABILITY_RULE.ALL_REQUIRED
-                      ? tVoucher(
-                          type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                            ? 'voucher.requireAllSamePrice'
-                            : type === VOUCHER_TYPE.PERCENT_ORDER
-                              ? 'voucher.requireAllPercent'
-                              : 'voucher.requireAllFixed',
-                        )
-                      : rule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED
-                        ? tVoucher(
-                            type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                              ? 'voucher.requireAtLeastOneSamePrice'
-                              : type === VOUCHER_TYPE.PERCENT_ORDER
-                                ? 'voucher.requireAtLeastOnePercent'
-                                : 'voucher.requireAtLeastOneFixed',
-                          )
-                        : ''
-
-                  return `${discountValueText} ${ruleText}`
-                })()}
-              </Text>
-            </Badge>
-          ) : (
-            <Pressable
-              onPress={() => VoucherListDrawer.open()}
-              hitSlop={HIT_SLOP_ICON}
-              className="flex-row items-center justify-between rounded-lg bg-primary/10 px-4 py-3 active:bg-primary/20"
-              {...({ unstable_pressDelay: 0 } as object)}
-            >
-              <Text className="text-sm font-semibold text-primary">
-                { t('order.useVoucher', 'Sử dụng voucher') }
-              </Text>
-              <ChevronRight size={16} color={primaryColor} />
-            </Pressable>
-          )}
-        </View>
-
-        {/* Order summary */}
-        <View className="mb-4 rounded-lg border border-gray-100 bg-white p-4">
-          <View className="flex-col gap-2">
-            {/* Tổng giá gốc */}
-            <View className="flex-row justify-between">
-              <Text className="text-sm text-gray-700">
-                {t('order.subtotalBeforeDiscount')}
-              </Text>
-              <Text className="text-sm text-gray-900">
-                {formatCurrency(cartTotals.subTotalBeforeDiscount)}
-              </Text>
-            </View>
-
-            {/* Giảm giá khuyến mãi */}
-            {cartTotals.promotionDiscount > 0 && (
-              <View className="flex-row justify-between">
-                <Text className="text-sm italic text-gray-600">
-                  {t('order.promotionDiscount')}
-                </Text>
-                <Text className="text-sm italic text-gray-600">
-                  -{formatCurrency(cartTotals.promotionDiscount)}
-                </Text>
-              </View>
-            )}
-
-            {/* Tổng giảm giá voucher */}
-            {cartTotals.voucherDiscount > 0 && (
-              <View className="flex-col gap-1">
-                <View className="flex-row justify-between">
-                  <Text className="text-sm italic text-green-600">
-                    {t('order.voucherDiscount')}
-                  </Text>
-                  <Text className="text-sm italic text-green-600">
-                    -{formatCurrency(cartTotals.voucherDiscount)}
-                  </Text>
-                </View>
-                <Text className="text-xs italic text-gray-500">
-                  ({t('order.partialAppliedNote')})
-                </Text>
-              </View>
-            )}
-
-            {/* Delivery fee */}
-            {currentCartItems?.type === OrderTypeEnum.DELIVERY && (
-              <View className="flex-row justify-between">
-                <Text className="text-sm text-gray-700">
-                  {t('order.deliveryFee')}
-                </Text>
-                <Text className="text-sm text-gray-900">
-                  {formatCurrency(deliveryFee.deliveryFee)}
-                </Text>
-              </View>
-            )}
-
-            {/* Total */}
-            <View className="mt-2 flex-row items-center justify-between border-t border-gray-100 pt-2">
-              <Text className="text-base font-semibold text-gray-900">
-                {t('order.totalPayment')}
-              </Text>
-              <Text 
-                className="text-2xl font-bold"
-                style={{ color: primaryColor }}
-              >
-                {formatCurrency(
-                  cartTotals.finalTotal + deliveryFee.deliveryFee,
-                )}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-      </ScrollView>
+        />
       </View>
 
       {/* Bottom action bar - Fixed at bottom */}
@@ -687,7 +700,7 @@ function CartScreen() {
   useGpuWarmup()
   usePhase4MountLog('cart')
   const [ready, setReady] = useState(false)
-  useRunAfterTransition(() => setReady(true), [])
+  useRunAfterTransition(() => setReady(true), [], { androidDelayMs: 150 })
   if (!ready) return <CartSkeletonShell />
   return <ClientCartPage />
 }

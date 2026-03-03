@@ -1,1 +1,1 @@
-export { default as InvoiceTemplate } from './invoice-template';
+export { InvoiceTemplate } from '@/components/profile'

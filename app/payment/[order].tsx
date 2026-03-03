@@ -7,7 +7,7 @@ import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 import { ScreenContainer } from '@/components/layout'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { InvoiceTemplate } from '@/app/profile/components'
+import { InvoiceTemplate } from '@/components/profile'
 import { Images } from '@/assets/images'
 import PaymentMethodRadioGroup from '@/components/radio/payment-method-radio-group'
 import { Badge, Button, Skeleton } from '@/components/ui'
@@ -53,7 +53,7 @@ function PaymentPageContent() {
   const { data: orderResponse, isPending, refetch: refetchOrder } = useOrderBySlug(orderSlug)
   const order = orderResponse?.result
   const { mutate: exportInvoice, isPending: isExportingInvoice } = useExportPublicOrderInvoice()
-  const { userInfo } = useUserStore()
+  const userInfo = useUserStore((s) => s.userInfo)
   const isLoggedIn = !!userInfo
   
   // Use authenticated payment hook if logged in, otherwise use public hook

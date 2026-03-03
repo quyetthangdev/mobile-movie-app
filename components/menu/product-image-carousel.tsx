@@ -12,8 +12,10 @@ import {
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated'
+
+import { DOT_SCALE_ACTIVE, SPRING_CONFIGS } from '@/constants'
 
 import { Images } from '@/assets/images'
 import { publicFileURL } from '@/constants'
@@ -31,8 +33,15 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [current, setCurrent] = useState(0)
   const [autoScroll, setAutoScroll] = useState(true)
+  const [dotsReady, setDotsReady] = useState(false)
   const flatListRef = useRef<FlatList<string | null>>(null)
   const autoScrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Defer PaginationDot 1 frame — giảm Reanimated work trong frame đầu mount
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setDotsReady(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   // Filter out null images and ensure at least one image
   const validImages = images.filter((img) => img !== null && img !== undefined)
@@ -45,18 +54,16 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
     isActive: boolean
     onPress: () => void
   }) {
-    const scale = useSharedValue(isActive ? 2 : 1)
-    
+    const scale = useSharedValue(isActive ? DOT_SCALE_ACTIVE : 1)
+
     useEffect(() => {
-      scale.value = withTiming(isActive ? 2 : 1, {
-        duration: 200,
-      })
+      scale.value = withSpring(isActive ? DOT_SCALE_ACTIVE : 1, SPRING_CONFIGS.dot)
     }, [isActive, scale])
 
     const animatedStyle = useAnimatedStyle(() => {
       'worklet'
       return {
-        transform: [{ scaleX: scale.value }],
+        transform: [{ scale: scale.value }],
       }
     })
 
@@ -180,7 +187,7 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
         ref={flatListRef}
         data={validImages}
         horizontal
-        initialNumToRender={5}
+        initialNumToRender={1}
         maxToRenderPerBatch={2}
         windowSize={3}
         showsHorizontalScrollIndicator={false}
@@ -201,7 +208,7 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
           index,
         })}
       />
-      {validImages.length > 1 && (
+      {validImages.length > 1 && dotsReady && (
         <View className="flex-row gap-2 mt-2">
           {validImages.map((_, index) => (
             <PaginationDot

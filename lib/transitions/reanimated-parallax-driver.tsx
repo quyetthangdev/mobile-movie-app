@@ -11,6 +11,7 @@ import { useWindowDimensions } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 import { interpolate, useAnimatedStyle } from 'react-native-reanimated'
 
+import { MOTION } from '@/constants'
 import {
   PARALLAX_BG_SCALE_END,
   PARALLAX_BG_SCALE_START,
@@ -74,9 +75,6 @@ export function useIncomingScreenStyle(isClosing: boolean) {
   })
 }
 
-/** Parallax factor: background dịch 30% theo hướng slide (Telegram feel) */
-const PARALLAX_FACTOR = 0.3
-
 /**
  * useAnimatedStyle cho background screen: scale 0.97 -> 1
  */
@@ -116,8 +114,8 @@ export function useBackgroundParallaxStyle(isClosing: boolean) {
       p,
       [0, 1],
       isClosing
-        ? [0, -screenWidth * PARALLAX_FACTOR]
-        : [-screenWidth * PARALLAX_FACTOR, 0],
+        ? [0, -screenWidth * MOTION.parallaxFactor]
+        : [-screenWidth * MOTION.parallaxFactor, 0],
     )
     return { transform: [{ translateX }, { scale }] }
   })

@@ -39,11 +39,9 @@ function VerifyPhoneNumberContent() {
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
   const queryClient = useQueryClient()
-  const {
-    userInfo,
-    phoneNumberVerificationStatus,
-    setPhoneNumberVerificationStatus,
-  } = useUserStore()
+  const userInfo = useUserStore((s) => s.userInfo)
+  const phoneNumberVerificationStatus = useUserStore((s) => s.phoneNumberVerificationStatus)
+  const setPhoneNumberVerificationStatus = useUserStore((s) => s.setPhoneNumberVerificationStatus)
 
   const [otpValue, setOtpValue] = useState('')
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)

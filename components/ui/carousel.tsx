@@ -143,6 +143,13 @@ function Carousel({
     canScrollPrev,
   }
 
+  const renderItem = useCallback(
+    ({ item }: { item: React.ReactNode }) => (
+      <View className="w-full">{item}</View>
+    ),
+    [],
+  )
+
   if (orientation === 'horizontal') {
     return (
       <CarouselContext.Provider value={contextValue}>
@@ -150,7 +157,7 @@ function Carousel({
           <FlatList
             ref={flatListRef}
             data={childrenArray}
-            renderItem={({ item }) => <View className="w-full">{item}</View>}
+            renderItem={renderItem}
             keyExtractor={(_, index) => `carousel-item-${index}`}
             horizontal
             pagingEnabled

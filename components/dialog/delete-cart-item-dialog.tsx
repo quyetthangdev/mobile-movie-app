@@ -5,7 +5,8 @@ import { Text, useColorScheme, View } from 'react-native'
 
 import { Button, Dialog, Label } from '@/components/ui'
 import { colors, VOUCHER_TYPE } from '@/constants'
-import { useOrderFlowStore } from '@/stores'
+import { scheduleStoreUpdate } from '@/lib/navigation'
+import { useOrderFlowDeleteCartItem } from '@/stores/selectors'
 import { IOrderItem } from '@/types'
 import { showErrorToast } from '@/utils'
 
@@ -22,7 +23,7 @@ export default function DeleteCartItemDialog({
   const { t: tCommon } = useTranslation('common')
   const isDark = useColorScheme() === 'dark'
   const [isOpen, setIsOpen] = useState(false)
-  const { removeOrderingItem, getCartItems, removeVoucher } = useOrderFlowStore()
+  const { removeOrderingItem, getCartItems, removeVoucher } = useOrderFlowDeleteCartItem()
 
   const handleDelete = (cartItemId: string) => {
     const cartItems = getCartItems()
@@ -30,12 +31,12 @@ export default function DeleteCartItemDialog({
       const { orderItems } = cartItems
 
       if (orderItems.length === 1) {
-        removeVoucher()
+        scheduleStoreUpdate(removeVoucher)
       }
     }
 
     setIsOpen(false)
-    removeOrderingItem(cartItemId)
+    scheduleStoreUpdate(() => removeOrderingItem(cartItemId))
   }
 
   // use useEffect to check if subtotal is less than minOrderValue of voucher
@@ -55,7 +56,7 @@ export default function DeleteCartItemDialog({
       const shouldCheckMinOrderValue = voucher?.type !== VOUCHER_TYPE.SAME_PRICE_PRODUCT
 
       if (shouldCheckMinOrderValue && subtotalBeforeVoucher < (voucher?.minOrderValue || 0)) {
-        removeVoucher()
+        scheduleStoreUpdate(removeVoucher)
         showErrorToast(1004)
         setTimeout(() => {
           setIsOpen(false)

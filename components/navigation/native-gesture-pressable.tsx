@@ -10,6 +10,7 @@
  *
  * @see docs/NAVIGATION_UI_THREAD_ARCHITECTURE.md
  */
+import * as Haptics from 'expo-haptics'
 import React, { useCallback, useMemo } from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
 import { View } from 'react-native'
@@ -21,12 +22,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 
+import { MOTION, SPRING_CONFIGS } from '@/constants'
 import type { HrefLike } from '@/lib/navigation'
 import { executeNavFromGesture } from '@/lib/navigation'
 import { isLockedShared } from '@/lib/navigation/navigation-lock-shared'
-
-const PRESS_SCALE = 0.97
-const SPRING_CONFIG = { damping: 15, stiffness: 400 }
 
 export type NativeGesturePressableProps = {
   children: React.ReactNode
@@ -69,6 +68,10 @@ export const NativeGesturePressable = React.forwardRef<
 ) {
   const pressScale = useSharedValue(1)
 
+  const triggerHaptic = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+  }, [])
+
   const triggerAction = useCallback(() => {
     if (navigation) {
       executeNavFromGesture(
@@ -77,7 +80,6 @@ export const NativeGesturePressable = React.forwardRef<
       )
     }
     if (onPress) setImmediate(onPress)
-    // onPressIn chạy deferred — tránh block frame khi finger down, nav chạy trước
     if (onPressIn) setImmediate(onPressIn)
   }, [navigation, onPress, onPressIn])
 
@@ -93,13 +95,13 @@ export const NativeGesturePressable = React.forwardRef<
       // Gesture.Native() không gắn view → không dùng. Xem docs/GESTURE_TAP_VS_BACK_CONFLICT.md
       .onBegin(() => {
         'worklet'
-        pressScale.value = withSpring(PRESS_SCALE, SPRING_CONFIG)
-        // Không gọi onPressIn ở đây — tránh runOnJS block frame khi finger down.
-        // onPressIn chạy deferred trong triggerAction (sau nav).
+        // Scale ngay lập tức (<16ms) — chạy trên UI thread, không qua bridge
+        pressScale.value = withSpring(MOTION.pressScale, SPRING_CONFIGS.press)
+        runOnJS(triggerHaptic)()
       })
       .onStart(() => {
         'worklet'
-        pressScale.value = withSpring(1, SPRING_CONFIG)
+        pressScale.value = withSpring(1, SPRING_CONFIGS.press)
         // Worklet-only gate: đọc SharedValue trên UI thread, không cross bridge.
         // Chỉ runOnJS khi unlocked → navigation instant, không block.
         if (isLockedShared.value === 1) return
@@ -107,14 +109,14 @@ export const NativeGesturePressable = React.forwardRef<
       })
       .onFinalize(() => {
         'worklet'
-        pressScale.value = withSpring(1, SPRING_CONFIG)
+        pressScale.value = withSpring(1, SPRING_CONFIGS.press)
         if (onPressOut) {
           runOnJS(onPressOut)()
         }
       })
 
     return gesture
-  }, [disabled, onPressOut, triggerAction, pressScale])
+  }, [disabled, onPressOut, triggerAction, triggerHaptic, pressScale])
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],

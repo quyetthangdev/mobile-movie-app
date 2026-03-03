@@ -3,16 +3,14 @@ import React from 'react'
 import { Text, View } from 'react-native'
 
 import { TAB_ROUTES } from '@/constants'
-import { useOrderFlowStore } from '@/stores'
+import { useOrderFlowCartItemCount } from '@/stores/selectors'
 
 import { NativeGesturePressable } from './native-gesture-pressable'
 
 type Props = { primaryColor: string }
 
 const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor }: Props) {
-  const cartItemCount = useOrderFlowStore(
-    (s) => s.orderingData?.orderItems?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0,
-  )
+  const cartItemCount = useOrderFlowCartItemCount()
 
   return (
     <NativeGesturePressable

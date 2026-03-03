@@ -20,7 +20,8 @@ export interface UsePickupTimeResult {
 
 export function usePickupTime(defaultValue?: number, onPickupTimeSelect?: (minutes: number) => void): UsePickupTimeResult {
   const { t } = useTranslation('menu')
-  const { getCartItems, addPickupTime } = useOrderFlowStore()
+  const getCartItems = useOrderFlowStore((s) => s.getCartItems)
+  const addPickupTime = useOrderFlowStore((s) => s.addPickupTime)
   const [userSelectedTime, setUserSelectedTime] = useState<string | undefined>()
 
   const cartItems = getCartItems()

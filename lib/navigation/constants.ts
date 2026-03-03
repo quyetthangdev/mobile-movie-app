@@ -1,8 +1,7 @@
-import { Platform } from 'react-native'
+import { MOTION } from '@/constants'
 
-/** Transition duration theo platform — Telegram feel: Android 220ms, iOS 250ms */
-export const TRANSITION_DURATION_MS =
-  Platform.OS === 'ios' ? 250 : 220
+/** Transition duration — đồng bộ với custom-stack, patch Android, navigation-lock */
+export const TRANSITION_DURATION_MS = MOTION.transitionDurationMs
 
 /** Buffer after transition before content mount — tránh tail collision với FPS monitor */
 export const TRANSITION_SAFE_DELAY_ANDROID = 150

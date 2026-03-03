@@ -1,6 +1,7 @@
+import { FlashList } from '@shopify/flash-list'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dimensions, FlatList, Text, View } from 'react-native'
+import { Dimensions, Text, View } from 'react-native'
 
 import { useCatalog } from '@/hooks'
 import { useAuthStore, useOrderFlowStore } from '@/stores'
@@ -86,12 +87,18 @@ export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) 
   }, [catalogs?.result, menuItems])
 
   const renderItem = useCallback(
-    ({ item }: { item: IMenuItem }) => (
-      <View style={{ width: itemWidth, marginBottom: 16 }}>
+    ({ item, index }: { item: IMenuItem; index: number }) => (
+      <View
+        style={{
+          width: itemWidth,
+          marginBottom: 16,
+          ...(index % numColumns !== numColumns - 1 && { marginRight: gap }),
+        }}
+      >
         <ClientMenuItemForUpdateOrder item={item} />
       </View>
     ),
-    [itemWidth],
+    [itemWidth, numColumns, gap],
   )
 
   const keyExtractor = useCallback((item: IMenuItem) => item.slug, [])
@@ -149,17 +156,13 @@ export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) 
             <Text className="mb-4 text-lg font-bold uppercase text-primary">
               {group.catalog.name}
             </Text>
-            <FlatList
+            <FlashList
               data={group.items}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
               numColumns={numColumns}
               scrollEnabled={false}
-              columnWrapperStyle={{ gap }}
-              key={`flat-${group.catalog.slug}`}
-              initialNumToRender={5}
-              maxToRenderPerBatch={2}
-              windowSize={3}
+              key={`flash-${group.catalog.slug}`}
             />
           </View>
         )

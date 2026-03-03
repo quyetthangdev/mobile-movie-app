@@ -8,7 +8,8 @@ import {
   useValidateVoucher,
   useVouchersForOrder,
 } from '@/hooks'
-import { useOrderFlowStore, useUserStore } from '@/stores'
+import { useUserStore } from '@/stores'
+import { useOrderFlowVoucherDrawer } from '@/stores/selectors'
 import {
   IGetAllVoucherRequest,
   IValidateVoucherRequest,
@@ -53,9 +54,8 @@ let isComponentMounted = false
 function VoucherListDrawer() {
   const { t } = useTranslation(['voucher'])
   const { t: tToast } = useTranslation('toast')
-  const { userInfo } = useUserStore()
-  const { getCartItems, addVoucher, removeVoucher, isHydrated } =
-    useOrderFlowStore()
+  const userInfo = useUserStore((s) => s.userInfo)
+  const { getCartItems, addVoucher, removeVoucher, isHydrated } = useOrderFlowVoucherDrawer()
   const isRemovingVoucherRef = useRef(false)
   const { mutate: validateVoucher } = useValidateVoucher()
   const { mutate: validatePublicVoucher } = useValidatePublicVoucher()
@@ -771,6 +771,31 @@ function VoucherListDrawer() {
     return { validVouchers, invalidVouchers }
   }, [localVoucherList, isVoucherValid])
 
+  const renderItem = useCallback(
+    ({ item }: { item: IVoucher }) => (
+      <VoucherRow
+        voucher={item}
+        isSelected={tempSelectedVoucher === item.slug}
+        isValid={isVoucherValid(item)}
+        errorMessage={getVoucherErrorMessage(item)}
+        onSelect={() => {
+          if (isVoucherValid(item) && item.remainingUsage > 0) {
+            setTempSelectedVoucher(
+              tempSelectedVoucher === item.slug ? '' : item.slug,
+            )
+          }
+        }}
+        cartTotals={cartTotals}
+      />
+    ),
+    [
+      tempSelectedVoucher,
+      isVoucherValid,
+      getVoucherErrorMessage,
+      cartTotals,
+    ],
+  )
+
   // Always render BottomSheet to ensure ref is set, even if not hydrated yet
   return (
     <BottomSheet
@@ -848,22 +873,7 @@ function VoucherListDrawer() {
           maxToRenderPerBatch={10}
           updateCellsBatchingPeriod={50}
           removeClippedSubviews={true}
-          renderItem={({ item }: { item: IVoucher }) => (
-            <VoucherRow
-              voucher={item}
-              isSelected={tempSelectedVoucher === item.slug}
-              isValid={isVoucherValid(item)}
-              errorMessage={getVoucherErrorMessage(item)}
-              onSelect={() => {
-                if (isVoucherValid(item) && item.remainingUsage > 0) {
-                  setTempSelectedVoucher(
-                    tempSelectedVoucher === item.slug ? '' : item.slug,
-                  )
-                }
-              }}
-              cartTotals={cartTotals}
-            />
-          )}
+          renderItem={renderItem}
           ListEmptyComponent={
             <View className="items-center px-4 py-8">
               <Text className="text-sm text-gray-500 dark:text-gray-400">

@@ -5,6 +5,7 @@ import { Text, useColorScheme, View } from 'react-native'
 
 import { Button } from '@/components/ui'
 import { colors } from '@/constants'
+import { scheduleStoreUpdate } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 import { IOrderItem } from '@/types'
 
@@ -23,13 +24,16 @@ export default function RemoveOrderItemInUpdateOrderDialog({
   const { t: tCommon } = useTranslation('common')
   const isDark = useColorScheme() === 'dark'
   const [isOpen, setIsOpen] = useState(false)
-  const { removeDraftItem, removeDraftVoucher } = useOrderFlowStore()
+  const removeDraftItem = useOrderFlowStore((s) => s.removeDraftItem)
+  const removeDraftVoucher = useOrderFlowStore((s) => s.removeDraftVoucher)
 
   const handleDelete = () => {
-    if (totalOrderItems <= 1) {
-      removeDraftVoucher()
-    }
-    removeDraftItem(orderItem.id!)
+    scheduleStoreUpdate(() => {
+      if (totalOrderItems <= 1) {
+        removeDraftVoucher()
+      }
+      removeDraftItem(orderItem.id!)
+    })
     setIsOpen(false)
   }
 

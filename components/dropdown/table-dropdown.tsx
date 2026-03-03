@@ -26,9 +26,10 @@ export default function TableDropdown({
   onTableSelect,
 }: ITableDropdownProps) {
   const { t } = useTranslation('table')
-  const { getCartItems, addTable } = useOrderFlowStore()
-  const { branch } = useBranchStore()
-  const { userInfo } = useUserStore()
+  const getCartItems = useOrderFlowStore((s) => s.getCartItems)
+  const addTable = useOrderFlowStore((s) => s.addTable)
+  const branch = useBranchStore((s) => s.branch)
+  const userInfo = useUserStore((s) => s.userInfo)
   const { data: tables } = useTables(
     branch?.slug || userInfo?.branch?.slug || '',
   )

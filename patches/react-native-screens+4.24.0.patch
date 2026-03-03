@@ -1,0 +1,102 @@
+diff --git a/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_in_from_left.xml b/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_in_from_left.xml
+index 939110f..f1d78b7 100644
+--- a/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_in_from_left.xml
++++ b/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_in_from_left.xml
+@@ -1,5 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <translate xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:duration="@android:integer/config_mediumAnimTime"
++    android:duration="250"
++    android:interpolator="@android:interpolator/accelerate_decelerate"
+     android:fromXDelta="-100%"
+     android:toXDelta="0%" />
+diff --git a/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_in_from_right.xml b/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_in_from_right.xml
+index 428eb9b..296282a 100644
+--- a/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_in_from_right.xml
++++ b/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_in_from_right.xml
+@@ -1,5 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <translate xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:duration="@android:integer/config_mediumAnimTime"
++    android:duration="250"
++    android:interpolator="@android:interpolator/accelerate_decelerate"
+     android:fromXDelta="100%"
+     android:toXDelta="0%" />
+diff --git a/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_out_to_left.xml b/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_out_to_left.xml
+index 400a202..f5ea8c5 100644
+--- a/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_out_to_left.xml
++++ b/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_out_to_left.xml
+@@ -1,5 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <translate xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:duration="@android:integer/config_mediumAnimTime"
++    android:duration="250"
++    android:interpolator="@android:interpolator/accelerate_decelerate"
+     android:fromXDelta="0%"
+     android:toXDelta="-100%"/>
+diff --git a/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_out_to_right.xml b/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_out_to_right.xml
+index a00332b..855728a 100644
+--- a/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_out_to_right.xml
++++ b/node_modules/react-native-screens/android/src/main/res/base/anim/rns_slide_out_to_right.xml
+@@ -1,5 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <translate xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:duration="@android:integer/config_mediumAnimTime"
++    android:duration="250"
++    android:interpolator="@android:interpolator/accelerate_decelerate"
+     android:fromXDelta="0%"
+     android:toXDelta="100%"/>
+diff --git a/node_modules/react-native-screens/ios/RNSScreenStackAnimator.mm b/node_modules/react-native-screens/ios/RNSScreenStackAnimator.mm
+index 2d27a87..857f893 100644
+--- a/node_modules/react-native-screens/ios/RNSScreenStackAnimator.mm
++++ b/node_modules/react-native-screens/ios/RNSScreenStackAnimator.mm
+@@ -27,6 +27,13 @@
+ // and it looks the most similar to the value used by Apple
+ static constexpr float RNSShadowViewMaxAlpha = 0.1;
+ 
++// Cubic bezier curve for slide transitions ? t? nhi?n nh? Telegram (ease-in-out tinh ch?nh)
++// (0.25, 0.1, 0.25, 1) ? ch?m ð?u, nhanh gi?a, ch?m cu?i m??t
++static UICubicTimingParameters *RNSSlideTimingParameters(void) {
++  return [[UICubicTimingParameters alloc] initWithControlPoint1:CGPointMake(0.25, 0.1)
++                                                controlPoint2:CGPointMake(0.25, 1)];
++}
++
+ @implementation RNSScreenStackAnimator {
+   UINavigationControllerOperation _operation;
+   NSTimeInterval _transitionDuration;
+@@ -155,7 +162,7 @@ - (void)animateSimplePushWithShadowEnabled:(BOOL)shadowEnabled
+ 
+     UIViewPropertyAnimator *animator =
+         [[UIViewPropertyAnimator alloc] initWithDuration:[self transitionDuration:transitionContext]
+-                                        timingParameters:[RNSScreenStackAnimator defaultSpringTimingParametersApprox]];
++                                       timingParameters:RNSSlideTimingParameters()];
+ 
+     [animator addAnimations:^{
+       fromViewController.view.transform = leftTransform;
+@@ -203,7 +210,7 @@ - (void)animateSimplePushWithShadowEnabled:(BOOL)shadowEnabled
+     if (!transitionContext.isInteractive) {
+       UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc]
+           initWithDuration:[self transitionDuration:transitionContext]
+-          timingParameters:[RNSScreenStackAnimator defaultSpringTimingParametersApprox]];
++         timingParameters:RNSSlideTimingParameters()];
+ 
+       [animator addAnimations:animationBlock];
+       [animator addCompletion:completionBlock];
+@@ -245,7 +252,7 @@ - (void)animateSlideFromLeftWithTransitionContext:(id<UIViewControllerContextTra
+ 
+     UIViewPropertyAnimator *animator =
+         [[UIViewPropertyAnimator alloc] initWithDuration:[self transitionDuration:transitionContext]
+-                                        timingParameters:[RNSScreenStackAnimator defaultSpringTimingParametersApprox]];
++                                       timingParameters:RNSSlideTimingParameters()];
+ 
+     [animator addAnimations:^{
+       fromViewController.view.transform = leftTransform;
+@@ -275,7 +282,7 @@ - (void)animateSlideFromLeftWithTransitionContext:(id<UIViewControllerContextTra
+     if (!transitionContext.isInteractive) {
+       UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc]
+           initWithDuration:[self transitionDuration:transitionContext]
+-          timingParameters:[RNSScreenStackAnimator defaultSpringTimingParametersApprox]];
++         timingParameters:RNSSlideTimingParameters()];
+ 
+       [animator addAnimations:animationBlock];
+       [animator addCompletion:completionBlock];

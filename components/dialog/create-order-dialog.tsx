@@ -13,11 +13,12 @@ import {
 } from '@/components/ui'
 
 import { colors, PHONE_NUMBER_REGEX, Role, ROUTE } from '@/constants'
-import { useCreateOrder, useCreateOrderWithoutLogin } from '@/hooks'
+import { useCalculateDeliveryFee, useCreateOrder, useCreateOrderWithoutLogin } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
-import { IOrderingData, useBranchStore, useOrderFlowStore, useUpdateOrderStore, useUserStore } from '@/stores'
+import { IOrderingData, useBranchStore, useUpdateOrderStore, useUserStore } from '@/stores'
+import { useOrderFlowCreateOrder } from '@/stores/selectors'
 import { ICreateOrderRequest, OrderTypeEnum } from '@/types'
-import { calculateCartItemDisplay, calculateCartTotals, formatCurrency, parseKm, showErrorToast, showToast, useCalculateDeliveryFee } from '@/utils'
+import { calculateCartItemDisplay, calculateCartTotals, formatCurrency, parseKm, showErrorToast, showToast } from '@/utils'
 
 interface IPlaceOrderDialogProps {
   onSuccess?: () => void
@@ -30,13 +31,14 @@ export default function PlaceOrderDialog({ disabled, onSuccessfulOrder, onSucces
   const { t } = useTranslation(['menu'])
   const { t: tCommon } = useTranslation('common')
   const { t: tToast } = useTranslation('toast')
-  const { orderingData, transitionToPayment } = useOrderFlowStore()
-  const { clearStore: clearUpdateOrderStore } = useUpdateOrderStore()
+  const { orderingData, transitionToPayment } = useOrderFlowCreateOrder()
+  const clearUpdateOrderStore = useUpdateOrderStore((s) => s.clearStore)
   const { mutate: createOrder, isPending } = useCreateOrder()
   const { mutate: createOrderWithoutLogin, isPending: isPendingWithoutLogin } = useCreateOrderWithoutLogin()
   const [isOpen, setIsOpen] = useState(false)
-  const { getUserInfo, userInfo } = useUserStore()
-  const { branch } = useBranchStore()
+  const userInfo = useUserStore((s) => s.userInfo)
+  const getUserInfo = useUserStore((s) => s.getUserInfo)
+  const branch = useBranchStore((s) => s.branch)
 
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light

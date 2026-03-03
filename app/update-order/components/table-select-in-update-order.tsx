@@ -21,9 +21,9 @@ export default function TableSelectInUpdateOrder({
 }: TableSelectInUpdateOrderProps) {
   const { t } = useTranslation('table')
   const isDark = useColorScheme() === 'dark'
-  const { branch } = useBranchStore()
-  const { userInfo } = useUserStore()
-  const { updatingData } = useOrderFlowStore()
+  const branch = useBranchStore((s) => s.branch)
+  const userInfo = useUserStore((s) => s.userInfo)
+  const updatingData = useOrderFlowStore((s) => s.updatingData)
 
   const branchSlug = branch?.slug || userInfo?.branch?.slug || ''
   const selectedTableId = updatingData?.updateDraft?.table ?? tableOrder?.slug ?? null

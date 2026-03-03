@@ -27,7 +27,7 @@ export default function PaymentMethodRadioGroup({
 }: PaymentMethodRadioGroupProps) {
   const { t } = useTranslation('menu')
   const { t: tProfile } = useTranslation('profile')
-  const { userInfo } = useUserStore()
+  const userInfo = useUserStore((s) => s.userInfo)
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 

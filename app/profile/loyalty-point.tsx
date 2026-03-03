@@ -42,7 +42,7 @@ const TYPE_OPTIONS = [
 
 export default function LoyaltyPointScreen() {
   const { t } = useTranslation(['profile', 'common'])
-  const { userInfo } = useUserStore()
+  const userInfo = useUserStore((s) => s.userInfo)
   const slug = userInfo?.slug ?? ''
   const isDark = useColorScheme() === 'dark'
   const iconColor = isDark ? '#9ca3af' : '#6b7280'

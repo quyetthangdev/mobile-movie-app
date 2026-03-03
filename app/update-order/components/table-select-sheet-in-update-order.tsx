@@ -19,9 +19,10 @@ function TableSelectSheetInUpdateOrder() {
   const { t } = useTranslation('table')
   const isDark = useColorScheme() === 'dark'
   const bottomSheetRef = useRef<BottomSheet>(null)
-  const { branch } = useBranchStore()
-  const { userInfo } = useUserStore()
-  const { updatingData, setDraftTable } = useOrderFlowStore()
+  const branch = useBranchStore((s) => s.branch)
+  const userInfo = useUserStore((s) => s.userInfo)
+  const updatingData = useOrderFlowStore((s) => s.updatingData)
+  const setDraftTable = useOrderFlowStore((s) => s.setDraftTable)
 
   const branchSlug = branch?.slug || userInfo?.branch?.slug || ''
   const selectedTableId = updatingData?.updateDraft?.table ?? null
@@ -59,10 +60,20 @@ function TableSelectSheetInUpdateOrder() {
     [],
   )
 
-  const handleSelect = (table: ITable) => {
-    setDraftTable(table)
-    bottomSheetRef.current?.close()
-  }
+  const renderItem = useCallback(
+    ({ item }: { item: ITable }) => (
+      <TableRow
+        table={item}
+        isSelected={selectedTableId === item.slug}
+        statusLabel={statusLabelMap[item.status] || item.status}
+        onPress={() => {
+          setDraftTable(item)
+          bottomSheetRef.current?.close()
+        }}
+      />
+    ),
+    [setDraftTable, selectedTableId, statusLabelMap],
+  )
 
   return (
     <BottomSheet
@@ -91,14 +102,7 @@ function TableSelectSheetInUpdateOrder() {
         <BottomSheetFlatList
           data={tables}
           keyExtractor={(item: ITable) => item.slug}
-          renderItem={({ item }: { item: ITable }) => (
-            <TableRow
-              table={item}
-              isSelected={selectedTableId === item.slug}
-              statusLabel={statusLabelMap[item.status] || item.status}
-              onPress={() => handleSelect(item)}
-            />
-          )}
+          renderItem={renderItem}
         />
       ) : (
         <View className="flex-1 items-center justify-center py-12">

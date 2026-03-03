@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 
 import { CartNoteInput } from '@/components/input'
+import { scheduleStoreUpdate } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 import { IOrderItem } from '@/types'
 
@@ -11,11 +12,11 @@ interface OrderItemNoteInUpdateOrderInputProps {
 export default function OrderItemNoteInUpdateOrderInput({
   orderItem,
 }: OrderItemNoteInUpdateOrderInputProps) {
-  const { addDraftNote } = useOrderFlowStore()
+  const addDraftNote = useOrderFlowStore((s) => s.addDraftNote)
 
   const handleChange = useCallback(
     (text: string) => {
-      addDraftNote(orderItem.id!, text)
+      scheduleStoreUpdate(() => addDraftNote(orderItem.id!, text))
     },
     [orderItem.id, addDraftNote],
   )

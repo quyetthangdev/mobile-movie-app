@@ -23,7 +23,8 @@ import { useBranchStore } from '@/stores'
 export default function SelectOrderTypeDropdown() {
   const { t } = useTranslation('branch')
   const { data: branchRes } = useBranch()
-  const { branch, setBranch } = useBranchStore()
+  const branch = useBranchStore((s) => s.branch)
+  const setBranch = useBranchStore((s) => s.setBranch)
   const isDark = useColorScheme() === 'dark'
   
   // Get branch from URL params

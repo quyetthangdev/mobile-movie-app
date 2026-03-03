@@ -4,6 +4,7 @@
  */
 import { initStoreSync } from './store-sync'
 import { useCartItemStore } from '@/stores/cart.store'
+import { useOrderFlowStore } from '@/stores/order-flow.store'
 import { usePaymentMethodStore } from '@/stores/payment-method.store'
 import { useUpdateOrderStore } from '@/stores/update-order.store'
 
@@ -11,4 +12,5 @@ initStoreSync({
   cart: () => useCartItemStore.getState().clearCart(),
   payment: () => usePaymentMethodStore.getState().clearStore(),
   'update-order': () => useUpdateOrderStore.getState().clearStore(),
+  'order-flow': () => useOrderFlowStore.getState().clearOrderingData(),
 })

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { SPRING_CONFIGS } from '@/constants/motion'
 import { X } from 'lucide-react-native'
 import React, { ReactNode, useEffect } from 'react'
 import {
@@ -10,11 +11,10 @@ import {
   useColorScheme,
 } from 'react-native'
 import Animated, {
-  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated'
 
 /* -------------------------------------------------------------------------- */
@@ -34,6 +34,7 @@ interface BaseProps {
 
 interface DialogContentProps extends BaseProps {
   onClose?: () => void
+  onExitComplete?: () => void
   open?: boolean
 }
 
@@ -54,17 +55,20 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
     }
   }, [open])
 
-  const handleClosed = () => {
-    // Gọi callback external và unmount Modal sau khi animation kết thúc
+  const handleRequestClose = () => {
     onOpenChange(false)
+  }
+
+  const handleExitComplete = () => {
     setIsMounted(false)
   }
 
-  // Truyền open + onClose xuống Content để điều khiển animation
+  // Truyền open + onClose + onExitComplete xuống Content để điều khiển animation
   const childrenWithProps = React.Children.map(children, (child) => {
     if (React.isValidElement(child) && child.type === DialogContent) {
       return React.cloneElement(child, {
-        onClose: handleClosed,
+        onClose: handleRequestClose,
+        onExitComplete: handleExitComplete,
         open,
       } as Parameters<typeof React.cloneElement>[1])
     }
@@ -76,7 +80,7 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
       visible={isMounted}
       transparent
       animationType="none"
-      onRequestClose={handleClosed}
+      onRequestClose={handleRequestClose}
     >
       {childrenWithProps}
     </Modal>
@@ -87,18 +91,17 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
 /*                                   Content                                  */
 /* -------------------------------------------------------------------------- */
 
-function DialogContent({ children, className, onClose, open = true }: DialogContentProps) {
+const SPRING = SPRING_CONFIGS.modal
+
+function DialogContent({ children, className, onClose, onExitComplete, open = true }: DialogContentProps) {
   // Shared values for UI thread animations
-  // Shadcn style: zoom-in-95 (scale from 0.95 to 1)
+  // Apple style: scale 0.95 -> 1, opacity 0 -> 1 đồng thời
   const scale = useSharedValue(0.95)
   const opacity = useSharedValue(0)
-  // Shadcn style: slide-in-from-top-[48%] (translateY from ~-2% to 0)
   const translateY = useSharedValue(-8)
   const backdropOpacity = useSharedValue(0)
 
   useEffect(() => {
-    const duration = 220
-
     if (open) {
       // Reset về trạng thái bắt đầu trước khi animate in
       scale.value = 0.95
@@ -107,49 +110,25 @@ function DialogContent({ children, className, onClose, open = true }: DialogCont
       backdropOpacity.value = 0
 
       const timeoutId = setTimeout(() => {
-        backdropOpacity.value = withTiming(1, {
-          duration,
-          easing: Easing.out(Easing.cubic),
-        })
-        opacity.value = withTiming(1, {
-          duration,
-          easing: Easing.out(Easing.cubic),
-        })
-        scale.value = withTiming(1, {
-          duration,
-          easing: Easing.out(Easing.cubic),
-        })
-        translateY.value = withTiming(0, {
-          duration,
-          easing: Easing.out(Easing.cubic),
-        })
+        backdropOpacity.value = withSpring(1, SPRING)
+        opacity.value = withSpring(1, SPRING)
+        scale.value = withSpring(1, SPRING)
+        translateY.value = withSpring(0, SPRING)
       }, 16) // one frame delay để tránh giật khung đầu
 
       return () => clearTimeout(timeoutId)
     }
 
-    // Khi open chuyển từ true -> false (đóng từ bên ngoài) thì animate out
-    backdropOpacity.value = withTiming(0, {
-      duration,
-      easing: Easing.in(Easing.cubic),
-    })
-    opacity.value = withTiming(0, {
-      duration,
-      easing: Easing.in(Easing.cubic),
-    })
-    scale.value = withTiming(0.95, {
-      duration,
-      easing: Easing.in(Easing.cubic),
-    })
-    translateY.value = withTiming(
+    // Đóng: dứt khoát nhưng không khựng — dùng spring
+    backdropOpacity.value = withSpring(0, SPRING)
+    opacity.value = withSpring(0, SPRING)
+    scale.value = withSpring(0.95, SPRING)
+    translateY.value = withSpring(
       -8,
-      {
-        duration,
-        easing: Easing.in(Easing.cubic),
-      },
+      SPRING,
       (finished) => {
-        if (finished && onClose) {
-          runOnJS(onClose)()
+        if (finished && onExitComplete) {
+          runOnJS(onExitComplete)()
         }
       },
     )

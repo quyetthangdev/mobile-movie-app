@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 
 import { OrderNoteInput } from '@/components/input'
+import { scheduleStoreUpdate } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 import { IOrderToUpdate } from '@/types'
 
@@ -11,13 +12,13 @@ interface OrderNoteInUpdateOrderInputProps {
 export default function OrderNoteInUpdateOrderInput({
   order,
 }: OrderNoteInUpdateOrderInputProps) {
-  const { setDraftDescription } = useOrderFlowStore()
+  const setDraftDescription = useOrderFlowStore((s) => s.setDraftDescription)
 
   const value = order?.description || ''
 
   const handleChange = useCallback(
     (text: string) => {
-      setDraftDescription(text)
+      scheduleStoreUpdate(() => setDraftDescription(text))
     },
     [setDraftDescription],
   )

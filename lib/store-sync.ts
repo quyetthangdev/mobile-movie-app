@@ -1,8 +1,8 @@
 /**
- * Mediator pattern — phá vỡ circular dependency giữa cart, payment-method, update-order.
+ * Mediator pattern — phá vỡ circular dependency giữa cart, payment-method, update-order, order-flow.
  * Stores gọi requestClearStoresExcept() thay vì import trực tiếp nhau.
  */
-export type StoreName = 'cart' | 'payment' | 'update-order'
+export type StoreName = 'cart' | 'payment' | 'update-order' | 'order-flow'
 
 type ClearCallbacks = {
   [K in StoreName]?: () => void
@@ -22,7 +22,7 @@ export function initStoreSync(handlers: ClearCallbacks): void {
  * VD: cart gọi requestClearStoresExcept('cart') → clear payment + update-order.
  */
 export function requestClearStoresExcept(exclude: StoreName): void {
-  const toClear = (['cart', 'payment', 'update-order'] as const).filter(
+  const toClear = (['cart', 'payment', 'update-order', 'order-flow'] as const).filter(
     (name) => name !== exclude,
   )
   for (const name of toClear) {

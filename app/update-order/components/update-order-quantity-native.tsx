@@ -1,4 +1,5 @@
 import { IOrderItem } from '@/types'
+import { scheduleStoreUpdate } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 import { QuantitySelector } from '@/components/button'
 
@@ -9,10 +10,10 @@ interface UpdateOrderQuantityNativeProps {
 export default function UpdateOrderQuantityNative({
   orderItem,
 }: UpdateOrderQuantityNativeProps) {
-  const { updateDraftItemQuantity } = useOrderFlowStore()
+  const updateDraftItemQuantity = useOrderFlowStore((s) => s.updateDraftItemQuantity)
 
   const handleChange = (newQuantity: number) => {
-    updateDraftItemQuantity(orderItem.id!, newQuantity)
+    scheduleStoreUpdate(() => updateDraftItemQuantity(orderItem.id!, newQuantity))
   }
 
   return (

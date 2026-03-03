@@ -13,7 +13,8 @@ export interface OrderTypeOption {
 
 export function useOrderTypeOptions() {
   const { t } = useTranslation('menu')
-  const { setOrderingType, getCartItems } = useOrderFlowStore()
+  const setOrderingType = useOrderFlowStore((s) => s.setOrderingType)
+  const getCartItems = useOrderFlowStore((s) => s.getCartItems)
   const { data: featuresSystemFlagsResponse } = useGetSystemFeatureFlagsByGroup(
     SystemLockFeatureGroup.ORDER,
   )

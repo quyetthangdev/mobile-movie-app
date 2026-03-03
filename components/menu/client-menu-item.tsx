@@ -3,12 +3,13 @@ import moment from 'moment'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ImageSourcePropType } from 'react-native'
-import { Image, Pressable, Text, View } from 'react-native'
+import { Image, Text, View } from 'react-native'
 
 import { Images } from '@/assets/images'
 import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
 import { HIT_SLOP_SMALL } from '@/lib/navigation/constants'
-import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
+import { scheduleStoreUpdate } from '@/lib/navigation'
+import { NativeGesturePressable, PressableWithFeedback } from '@/components/navigation'
 import { useGhostMount } from '@/lib/navigation'
 import { useIsMobile, usePressInPrefetchMenuItem } from '@/hooks'
 import { useShallow } from 'zustand/react/shallow'
@@ -122,8 +123,8 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
     }
 
     try {
-      // Step 4: Add to ordering data
-      addOrderingItem(orderItem)
+      // Step 4: Add to ordering data — defer nếu đang transition để tránh drop FPS
+      scheduleStoreUpdate(() => addOrderingItem(orderItem))
 
       // Step 5: Success feedback with tamagui toast
       const message = tToast('toast.addSuccess', 'Đã thêm vào giỏ hàng')
@@ -248,14 +249,13 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
             {/* Button */}
             <View>
               {hasStock ? (
-                <Pressable
+                <PressableWithFeedback
                   onPress={handleAddToCart}
                   hitSlop={HIT_SLOP_SMALL}
-                  className="w-8 h-8 rounded-full bg-primary items-center justify-center z-50 active:opacity-80"
-                  {...({ unstable_pressDelay: 0 } as object)}
+                  className="w-8 h-8 rounded-full bg-primary items-center justify-center z-50"
                 >
                   <Plus size={20} color="#ffffff" />
-                </Pressable>
+                </PressableWithFeedback>
               ) : (
                 <View className="px-4 py-1 rounded-full bg-primary">
                   <Text className="text-xs font-semibold text-white">
@@ -301,13 +301,12 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
       {!isMobile && (
         <View className="flex justify-end items-end p-2 sm:w-full">
           {hasStock ? (
-            <Pressable
+            <PressableWithFeedback
               onPress={handleAddToCart}
-              className="w-full px-3 py-2 rounded-full bg-primary items-center justify-center active:opacity-80"
-              {...({ unstable_pressDelay: 0 } as object)}
+              className="w-full px-3 py-2 rounded-full bg-primary items-center justify-center"
             >
               <Plus size={20} color="#ffffff" />
-            </Pressable>
+            </PressableWithFeedback>
           ) : (
             <View className="w-full px-3 py-2 rounded-full bg-red-500">
               <Text className="text-xs font-semibold text-white text-center">

@@ -370,12 +370,13 @@
 - **File:** `lib/navigation/constants.ts`
 - **Thay đổi:** TRANSITION_DURATION_MS lấy từ MOTION
 
-### T-405 | Reanimated Android config (optional)
+### T-405 | Reanimated sync UI props (optional) ✅
 - **Phase:** P4
 - **Effort:** ~10m
-- **File:** `app.json` hoặc `babel.config.js`
-- **Thay đổi:** Thêm enableSynchronousUIUpdates nếu Reanimated hỗ trợ
-- **Verify:** Build Android, test trên thiết bị thật
+- **File:** `package.json`
+- **Thay đổi:** Thêm `reanimated.staticFeatureFlags`: `ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS`, `IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS` (Reanimated 4.x)
+- **Lưu ý:** Không hoạt động với Expo Go — cần development build. Dùng Pressable từ react-native-gesture-handler.
+- **Verify:** Build Android/iOS, test trên thiết bị thật
 
 ---
 

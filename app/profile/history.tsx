@@ -1,18 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { FlashList } from '@shopify/flash-list'
 import { ArrowLeft, Package, RefreshCw } from 'lucide-react-native'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   Image,
   type ImageSourcePropType,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
   useColorScheme,
   View,
 } from 'react-native'
-import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 import { ScreenContainer } from '@/components/layout'
 
 import { getOrderBySlug } from '@/api'
@@ -47,8 +48,9 @@ function OrderHistoryPage() {
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
-  const { userInfo, getUserInfo } = useUserStore()
-  const { setOrderItems } = useUpdateOrderStore()
+  const userInfo = useUserStore((s) => s.userInfo)
+  const getUserInfo = useUserStore((s) => s.getUserInfo)
+  const setOrderItems = useUpdateOrderStore((s) => s.setOrderItems)
   const [status, setStatus] = useState<OrderStatus>(OrderStatus.ALL)
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -459,6 +461,56 @@ function OrderHistoryPage() {
     ],
   )
 
+  const keyExtractor = useCallback((item: IOrder) => item.slug ?? '', [])
+
+  const ListFooterComponent = useMemo(() => {
+    if (totalPages <= 1) return null
+    return (
+      <View className="mt-4 flex-row items-center justify-center gap-4">
+        <TouchableOpacity
+          onPress={() => setPage(page - 1)}
+          disabled={!hasPrevious}
+          className={`rounded-md px-4 py-2 ${hasPrevious ? 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800' : 'bg-gray-100 opacity-50 dark:bg-gray-800'}`}
+        >
+          <Text
+            className={`text-sm font-medium ${hasPrevious ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400'}`}
+          >
+            {t('order.previous', 'Trước')}
+          </Text>
+        </TouchableOpacity>
+        <Text className="text-sm text-gray-600 dark:text-gray-400">
+          {currentPage} / {totalPages}
+        </Text>
+        <TouchableOpacity
+          onPress={() => setPage(page + 1)}
+          disabled={!hasNext}
+          className={`rounded-md px-4 py-2 ${hasNext ? 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800' : 'bg-gray-100 opacity-50 dark:bg-gray-800'}`}
+        >
+          <Text
+            className={`text-sm font-medium ${hasNext ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400'}`}
+          >
+            {t('order.next', 'Sau')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }, [totalPages, hasPrevious, hasNext, page, currentPage, t])
+
+  const ListEmptyComponent = useMemo(
+    () => (
+      <View className="flex-1 items-center justify-center px-4 py-16">
+        <Package size={64} color={isDark ? '#9ca3af' : '#6b7280'} />
+        <Text className="mt-4 text-lg font-semibold text-gray-900 dark:text-gray-50">
+          {t('order.noOrders', 'Chưa có đơn hàng')}
+        </Text>
+        <Text className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+          {t('order.noOrdersDescription', 'Bạn chưa có đơn hàng nào')}
+        </Text>
+      </View>
+    ),
+    [isDark, t],
+  )
+
   const showSkeleton = !allowFetch || (isPending && page === 1)
   if (showSkeleton) {
     return (
@@ -594,65 +646,24 @@ function OrderHistoryPage() {
           </ScrollView>
         </View>
 
-        {/* Order List - GestureScrollView tránh conflict Stack swipe-back */}
+        {/* Order List - FlashList (ScrollView mặc định để pull-to-refresh hoạt động) */}
         <View style={{ flex: 1 }}>
-          {orders.length > 0 ? (
-            <GestureScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-              showsVerticalScrollIndicator={true}
-            >
-            {orders.map((orderItem) => (
-              <View key={orderItem.slug}>
-                {renderOrderItem({ item: orderItem })}
-              </View>
-            ))}
-            {totalPages > 1 ? (
-              <View className="mt-4 flex-row items-center justify-center gap-4">
-                <TouchableOpacity
-                  onPress={() => setPage(page - 1)}
-                  disabled={!hasPrevious}
-                  className={`rounded-md px-4 py-2 ${hasPrevious ? 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800' : 'bg-gray-100 opacity-50 dark:bg-gray-800'}`}
-                >
-                  <Text
-                    className={`text-sm font-medium ${hasPrevious ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400'}`}
-                  >
-                    {t('order.previous', 'Trước')}
-                  </Text>
-                </TouchableOpacity>
-                <Text className="text-sm text-gray-600 dark:text-gray-400">
-                  {currentPage} / {totalPages}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setPage(page + 1)}
-                  disabled={!hasNext}
-                  className={`rounded-md px-4 py-2 ${hasNext ? 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800' : 'bg-gray-100 opacity-50 dark:bg-gray-800'}`}
-                >
-                  <Text
-                    className={`text-sm font-medium ${hasNext ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400'}`}
-                  >
-                    {t('order.next', 'Sau')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-            </GestureScrollView>
-          ) : (
-            <GestureScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 16 }}
-            >
-              <View className="items-center justify-center px-4">
-                <Package size={64} color={isDark ? '#9ca3af' : '#6b7280'} />
-                <Text className="mt-4 text-lg font-semibold text-gray-900 dark:text-gray-50">
-                  {t('order.noOrders', 'Chưa có đơn hàng')}
-                </Text>
-                <Text className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-                  {t('order.noOrdersDescription', 'Bạn chưa có đơn hàng nào')}
-                </Text>
-              </View>
-            </GestureScrollView>
-          )}
+          <FlashList
+            data={orders}
+            renderItem={renderOrderItem}
+            keyExtractor={keyExtractor}
+            ListFooterComponent={ListFooterComponent}
+            ListEmptyComponent={ListEmptyComponent}
+            contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefetching}
+                onRefresh={handleRefresh}
+                tintColor={primaryColor}
+                colors={[primaryColor]}
+              />
+            }
+          />
         </View>
       </ScreenContainer>
     </View>

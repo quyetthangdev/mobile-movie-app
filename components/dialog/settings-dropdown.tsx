@@ -25,8 +25,10 @@ import { useThemeStore, useUserStore } from '@/stores'
  */
 export default function SettingsDropdown() {
   const { t, i18n: i18nInstance } = useTranslation('setting')
-  const { theme, setTheme } = useThemeStore()
-  const { userInfo, setUserInfo } = useUserStore()
+  const theme = useThemeStore((s) => s.theme)
+  const setTheme = useThemeStore((s) => s.setTheme)
+  const userInfo = useUserStore((s) => s.userInfo)
+  const setUserInfo = useUserStore((s) => s.setUserInfo)
   const isDark = useColorScheme() === 'dark'
 
   // Update language when userInfo changes

@@ -41,14 +41,12 @@ function VerifyEmailSkeleton() {
 
 function VerifyEmailContent() {
   const queryClient = useQueryClient()
-  const { token } = useAuthStore()
+  const token = useAuthStore((s) => s.token)
   const { t } = useTranslation('profile')
-  const {
-    userInfo,
-    emailVerificationStatus,
-    setEmailVerificationStatus,
-    setUserInfo,
-  } = useUserStore()
+  const userInfo = useUserStore((s) => s.userInfo)
+  const emailVerificationStatus = useUserStore((s) => s.emailVerificationStatus)
+  const setEmailVerificationStatus = useUserStore((s) => s.setEmailVerificationStatus)
+  const setUserInfo = useUserStore((s) => s.setUserInfo)
 
   const [otp, setOtp] = useState('')
   const [otpCountdown, setOtpCountdown] = useState(EMAIL_OTP_COUNTDOWN_SECONDS)

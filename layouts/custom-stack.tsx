@@ -24,6 +24,8 @@ import {
 import { withLayoutContext } from 'expo-router'
 import { Platform } from 'react-native'
 
+import { TRANSITION_DURATION_MS } from '@/lib/navigation'
+
 const { Navigator } = createNativeStackNavigator()
 
 export const CustomStack = withLayoutContext<
@@ -37,6 +39,8 @@ export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   /** Animation: slide_from_right (Shopee/Telegram style) — đồng bộ với Parallax translateX. */
   animation: 'slide_from_right',
+  /** iOS: duration có hiệu lực (patch curve). Android: dùng duration từ patch XML. */
+  animationDuration: TRANSITION_DURATION_MS,
   /** Vuốt trở về phản hồi ngay theo đầu ngón tay */
   gestureEnabled: true,
   fullScreenGestureEnabled: true,

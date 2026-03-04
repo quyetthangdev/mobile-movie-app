@@ -1,30 +1,30 @@
 /**
- * Transition Progress Sync — Đồng bộ progress từ react-native-screens sang SharedValue.
+ * Transition Progress Sync — Đồng bộ progress từ Stack sang SharedValue.
  *
- * Thay thế withSpring độc lập: Parallax lái theo tiến độ thực của native stack.
- * Giảm jank do 2 animation chạy lệch pha.
- *
- * Phải render trong screen của Native Stack (useTransitionProgress yêu cầu).
+ * JS Stack: useCardAnimation từ @react-navigation/stack.
+ * Parallax lái theo tiến độ thực → giảm jank do 2 animation chạy lệch pha.
  */
 import { useEffect } from 'react'
-import { useTransitionProgress } from 'react-native-screens'
+import { useCardAnimation } from '@react-navigation/stack'
 import { runOnUI } from 'react-native-reanimated'
 
 import { useMasterTransition } from './master-transition-provider'
 
 export function TransitionProgressSyncer() {
-  const { progress: nativeProgress } = useTransitionProgress()
+  const { current } = useCardAnimation()
   const { transitionProgress } = useMasterTransition()
+  const progress = current?.progress
 
   useEffect(() => {
-    const listener = nativeProgress.addListener(({ value }) => {
+    if (!progress) return
+    const listener = progress.addListener(({ value }: { value: number }) => {
       runOnUI((v: number) => {
         'worklet'
         transitionProgress.value = v
       })(value)
     })
-    return () => nativeProgress.removeListener(listener)
-  }, [nativeProgress, transitionProgress])
+    return () => progress.removeListener(listener)
+  }, [progress, transitionProgress])
 
   return null
 }

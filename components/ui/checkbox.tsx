@@ -1,6 +1,14 @@
 import { cn } from '@/lib/utils'
 import { Check } from 'lucide-react-native'
+import { useEffect } from 'react'
 import { Pressable, useColorScheme } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated'
+
+import { SPRING_CONFIGS } from '@/constants'
 
 interface CheckboxProps {
   checked?: boolean
@@ -16,6 +24,15 @@ function Checkbox({
   className,
 }: CheckboxProps) {
   const isDark = useColorScheme() === 'dark'
+  const iconScale = useSharedValue(checked ? 1 : 0)
+
+  useEffect(() => {
+    iconScale.value = withSpring(checked ? 1 : 0, SPRING_CONFIGS.press)
+  }, [checked, iconScale])
+
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }))
 
   const handlePress = () => {
     if (!disabled && onCheckedChange) {
@@ -44,7 +61,11 @@ function Checkbox({
           : 'transparent',
       }}
     >
-      {checked && <Check size={14} color="#ffffff" />}
+      {checked && (
+        <Animated.View style={iconAnimatedStyle}>
+          <Check size={14} color="#ffffff" />
+        </Animated.View>
+      )}
     </Pressable>
   )
 }

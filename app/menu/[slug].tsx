@@ -1,5 +1,4 @@
-import { ScreenContainer, ScreenParallaxWrapper } from '@/components/layout'
-import { MenuItemSkeletonShell } from '@/components/skeletons'
+import { ScreenContainer } from '@/components/layout'
 import { Image } from 'expo-image'
 import { useLocalSearchParams } from 'expo-router'
 import { ArrowLeft, ShoppingBag, ShoppingCart } from 'lucide-react-native'
@@ -9,8 +8,9 @@ import Animated, {
   runOnUI,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated'
+
 import { useTranslation } from 'react-i18next'
 import {
   InteractionManager,
@@ -25,10 +25,10 @@ import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 
 import { Images } from '@/assets/images'
 import NonPropQuantitySelector from '@/components/button/non-prop-quantity-selector'
-import { ProductImageCarousel, SliderRelatedProducts } from '@/components/menu'
-import { Badge, Button, Skeleton } from '@/components/ui'
+import { FavoriteButton, ProductImageCarousel, SliderRelatedProducts } from '@/components/menu'
+import { Badge, Button } from '@/components/ui'
 import { MENU_ITEM_DETAIL_LAYOUT } from '@/constants/menu-item-detail-layout'
-import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
+import { OrderFlowStep, publicFileURL, ROUTE, SPRING_CONFIGS } from '@/constants'
 import { useSpecificMenuItem } from '@/hooks'
 import { HIT_SLOP_ICON, navigateNative } from '@/lib/navigation'
 import { NavigatePressable } from '@/components/navigation'
@@ -36,9 +36,6 @@ import { useOrderFlowMenuItemDetail } from '@/stores/selectors'
 import { useUserStore } from '@/stores'
 import { IOrderItem, IProductVariant } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
-
-/** Delay sau animation để load Carousel, Image, RelatedProducts — tránh block JS thread khi slide */
-const HEAVY_CONTENT_DELAY_MS = 450
 
 const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
@@ -71,54 +68,42 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
     [screenWidth],
   )
 
-  // Staged Rendering: phần động (Image, Carousel, RelatedProducts) load sau animation (~300ms).
-  // Phần tĩnh (Header, product info) render ngay — không block JS thread khi slide vào.
-  const [heavyContentReady, setHeavyContentReady] = useState(false)
+  // Freeze Content: runAfterInteractions + 50ms nghỉ chiến thuật.
+  // Animation chuyển trang thường lag ở 50–80% — setTimeout(50) đảm bảo JS Thread hoàn toàn rảnh
+  // trước khi mount ProductImageCarousel, SliderRelatedProducts, variants.map.
+  const [contentReady, setContentReady] = useState(false)
   const [carouselReady, setCarouselReady] = useState(false)
   const [sliderReady, setSliderReady] = useState(false)
   const skeletonOpacity = useSharedValue(1)
   const contentOpacity = useSharedValue(0)
 
+  const STRATEGIC_DELAY_MS = 50
+
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let raf1 = -1
+    let raf2 = -1
     const task = InteractionManager.runAfterInteractions(() => {
-      timeoutId = setTimeout(() => setHeavyContentReady(true), HEAVY_CONTENT_DELAY_MS)
+      timeoutId = setTimeout(() => {
+        setContentReady(true)
+        runOnUI(() => {
+          'worklet'
+          skeletonOpacity.value = withSpring(0, SPRING_CONFIGS.modal)
+          contentOpacity.value = withSpring(1, SPRING_CONFIGS.modal)
+        })()
+        raf1 = requestAnimationFrame(() => {
+          setCarouselReady(true)
+          raf2 = requestAnimationFrame(() => setSliderReady(true))
+        })
+      }, STRATEGIC_DELAY_MS)
     })
     return () => {
       task.cancel()
-      if (timeoutId) clearTimeout(timeoutId)
+      if (timeoutId != null) clearTimeout(timeoutId)
+      if (raf1 >= 0) cancelAnimationFrame(raf1)
+      if (raf2 >= 0) cancelAnimationFrame(raf2)
     }
-  }, [])
-
-  // Defer ProductImageCarousel 1 frame (rAF) — tách mount khỏi content spike, giảm stutter
-  useEffect(() => {
-    if (!heavyContentReady) return
-    const id = requestAnimationFrame(() => setCarouselReady(true))
-    return () => cancelAnimationFrame(id)
-  }, [heavyContentReady])
-
-  // Defer SliderRelatedProducts 2 frame (double rAF) — tách xa ProductImageCarousel, giảm spike
-  useEffect(() => {
-    if (!heavyContentReady) return
-    const ids = { second: -1 }
-    const id1 = requestAnimationFrame(() => {
-      ids.second = requestAnimationFrame(() => setSliderReady(true))
-    })
-    return () => {
-      cancelAnimationFrame(id1)
-      if (ids.second >= 0) cancelAnimationFrame(ids.second)
-    }
-  }, [heavyContentReady])
-
-  // Task 5.3: Fade out skeleton, fade in content khi heavyContentReady
-  useEffect(() => {
-    if (!heavyContentReady) return
-    runOnUI(() => {
-      'worklet'
-      skeletonOpacity.value = withTiming(0, { duration: 200 })
-      contentOpacity.value = withTiming(1, { duration: 200 })
-    })()
-  }, [heavyContentReady, skeletonOpacity, contentOpacity])
+  }, [skeletonOpacity, contentOpacity])
 
   const skeletonOpacityStyle = useAnimatedStyle(() => ({
     opacity: skeletonOpacity.value,
@@ -148,6 +133,7 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
   const [selectedVariant, setSelectedVariant] =
     useState<IProductVariant | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [isFavorite, setIsFavorite] = useState(false)
 
   // Update state when productDetail loads (only once)
   useEffect(() => {
@@ -346,155 +332,19 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
     tToast,
   ])
 
-  // Loading: layout khớp MenuItemSkeletonShell — dùng MENU_ITEM_DETAIL_LAYOUT.
+  // Loading: Skeleton đơn giản nhất — Animated.View với backgroundColor.
+  // Tuyệt đối không mount layout phức tạp khi đang trượt trang (JS Stack).
   if (isLoading) {
-    const relatedItemWidth = MENU_ITEM_DETAIL_LAYOUT.relatedProductItemWidth(screenWidth)
     return (
-      <ScreenContainer
-        edges={['top']}
-        className="flex-1 bg-white dark:bg-gray-900"
-      >
-        <View
-          className="flex-row items-center justify-between border-b border-gray-200 dark:border-gray-700"
-          style={{
-            paddingHorizontal: MENU_ITEM_DETAIL_LAYOUT.PADDING_X,
-            paddingVertical: 12,
-          }}
-        >
-          <NavigatePressable
-            onPress={() => navigateNative.back()}
-            hitSlop={HIT_SLOP_ICON}
-            className="p-2 active:opacity-70"
-          >
+      <ScreenContainer edges={['top']} className="flex-1 bg-white dark:bg-gray-900">
+        <View className="flex-row items-center border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+          <NavigatePressable onPress={() => navigateNative.back()} hitSlop={HIT_SLOP_ICON} className="p-2">
             <ArrowLeft size={24} color={isDark ? '#ffffff' : '#000000'} />
           </NavigatePressable>
-          <Skeleton style={{ width: 128, height: 20 }} className="rounded-md" />
-          <View style={{ width: 40, height: 40 }} />
         </View>
-        <GestureScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          <View
-            style={{
-              paddingHorizontal: MENU_ITEM_DETAIL_LAYOUT.PADDING_X,
-              paddingTop: MENU_ITEM_DETAIL_LAYOUT.PADDING_TOP_IMAGES,
-            }}
-          >
-            <View
-              className="overflow-hidden rounded-lg"
-              style={[
-                imageContainerStyle,
-                { marginBottom: MENU_ITEM_DETAIL_LAYOUT.IMAGE_MARGIN_BOTTOM },
-              ]}
-            >
-              <Skeleton className="h-full w-full rounded-lg" />
-            </View>
-          </View>
-          <View
-            style={{
-              paddingHorizontal: MENU_ITEM_DETAIL_LAYOUT.PADDING_X,
-              paddingVertical: MENU_ITEM_DETAIL_LAYOUT.PADDING_Y_INFO,
-            }}
-          >
-            <View style={{ flexDirection: 'column', gap: MENU_ITEM_DETAIL_LAYOUT.GAP_4 } as object}>
-              <View style={{ flexDirection: 'column', gap: 4 } as object}>
-                <Skeleton style={{ width: '75%', height: 32 }} className="rounded-md" />
-                <Skeleton style={{ width: '50%', height: 16 }} className="rounded-md" />
-              </View>
-              <View style={{ flexDirection: 'column', gap: MENU_ITEM_DETAIL_LAYOUT.GAP_2 } as object}>
-                <Skeleton style={{ width: 80, height: 24 }} className="rounded-md" />
-              </View>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: MENU_ITEM_DETAIL_LAYOUT.GAP_6,
-                } as object}
-              >
-                <Skeleton style={{ width: 72, height: 16 }} className="rounded-md" />
-                <View
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    gap: MENU_ITEM_DETAIL_LAYOUT.GAP_2,
-                  } as object}
-                >
-                  <Skeleton style={{ width: 48, height: 32 }} className="rounded-full" />
-                  <Skeleton style={{ width: 48, height: 32 }} className="rounded-full" />
-                  <Skeleton style={{ width: 48, height: 32 }} className="rounded-full" />
-                </View>
-              </View>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: MENU_ITEM_DETAIL_LAYOUT.GAP_6,
-                } as object}
-              >
-                <Skeleton style={{ width: 72, height: 16 }} className="rounded-md" />
-                <View
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: MENU_ITEM_DETAIL_LAYOUT.GAP_2,
-                  } as object}
-                >
-                  <Skeleton style={{ width: 120, height: 44 }} className="rounded-full" />
-                </View>
-              </View>
-            </View>
-          </View>
-          <View
-            style={{
-              gap: MENU_ITEM_DETAIL_LAYOUT.GAP_3,
-              paddingHorizontal: MENU_ITEM_DETAIL_LAYOUT.PADDING_X,
-              paddingBottom: MENU_ITEM_DETAIL_LAYOUT.PADDING_BOTTOM,
-            }}
-          >
-            <Skeleton style={{ width: 128, height: 16 }} className="rounded-md" />
-            <View
-              style={{
-                flexDirection: 'row',
-                gap: MENU_ITEM_DETAIL_LAYOUT.RELATED_ITEM_SPACING,
-              }}
-            >
-              <Skeleton
-                style={{
-                  width: relatedItemWidth,
-                  height: MENU_ITEM_DETAIL_LAYOUT.RELATED_PRODUCT_IMAGE_HEIGHT,
-                }}
-                className="rounded-xl"
-              />
-              <Skeleton
-                style={{
-                  width: relatedItemWidth,
-                  height: MENU_ITEM_DETAIL_LAYOUT.RELATED_PRODUCT_IMAGE_HEIGHT,
-                }}
-                className="rounded-xl"
-              />
-              <Skeleton
-                style={{
-                  width: relatedItemWidth,
-                  height: MENU_ITEM_DETAIL_LAYOUT.RELATED_PRODUCT_IMAGE_HEIGHT,
-                }}
-                className="rounded-xl"
-              />
-            </View>
-          </View>
-        </GestureScrollView>
-        <View className="border-t border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-          <View
-            style={{
-              paddingHorizontal: MENU_ITEM_DETAIL_LAYOUT.PADDING_X,
-              paddingVertical: MENU_ITEM_DETAIL_LAYOUT.PADDING_X,
-              flexDirection: 'row',
-              gap: MENU_ITEM_DETAIL_LAYOUT.GAP_2,
-            }}
-          >
-            <Skeleton style={{ flex: 1, height: 44 }} className="rounded-full" />
-            <Skeleton style={{ flex: 1, height: 44 }} className="rounded-full" />
-          </View>
-        </View>
+        <Animated.View
+          style={{ flex: 1, backgroundColor: isDark ? '#374151' : '#e5e7eb' }}
+        />
       </ScreenContainer>
     )
   }
@@ -530,7 +380,6 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
       edges={['top']}
       className="flex-1 bg-white dark:bg-gray-900"
     >
-      <ScreenParallaxWrapper>
       {/* Header */}
       <View className="flex-row items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         <NavigatePressable
@@ -543,7 +392,14 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
         <Text className="text-lg font-bold text-gray-900 dark:text-white">
           {t('product.detail', 'Chi tiết món')}
         </Text>
-        <NavigatePressable
+        <View className="flex-row items-center gap-2">
+          <FavoriteButton
+            isFavorite={isFavorite}
+            onToggle={() => setIsFavorite((v) => !v)}
+            size={22}
+            className="p-2"
+          />
+          <NavigatePressable
           onPress={() => navigateNative.replace(ROUTE.CLIENT_CART)}
           hitSlop={HIT_SLOP_ICON}
           className="h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 active:opacity-80"
@@ -563,28 +419,39 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
             </View>
           )}
         </NavigatePressable>
+        </View>
       </View>
 
       <GestureScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
       >
-        {/* Product Images — Fade skeleton out, content in khi heavyContentReady */}
+        {/* Product Images — Shared element từ ClientMenuItem, fade skeleton khi contentReady */}
         <View className="px-4 pt-4">
-          <View
+          <Animated.View
+            {...(slug ? ({ sharedTransitionTag: `menu-item-${slug}` } as object) : {})}
             className="mb-2 overflow-hidden rounded-lg"
             style={imageContainerStyle}
             {...(Platform.OS === 'android' && { renderToHardwareTextureAndroid: true })}
           >
-            {/* Skeleton overlay — fade out */}
+            {/* Skeleton overlay — chỉ màu nền, zIndex trên cùng, pointerEvents="none" khi contentReady */}
             <Animated.View
-              style={[{ position: 'absolute', inset: 0 }, skeletonOpacityStyle]}
-              pointerEvents={heavyContentReady ? 'none' : 'auto'}
-            >
-              <Skeleton className="h-full w-full rounded-lg" />
-            </Animated.View>
+              style={[
+                {
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: isDark ? '#374151' : '#e5e7eb',
+                  zIndex: 10,
+                },
+                skeletonOpacityStyle,
+              ]}
+              pointerEvents={contentReady ? 'none' : 'auto'}
+            />
             {/* Content — fade in */}
-            {heavyContentReady && (
+            {contentReady && (
               <Animated.View style={[{ flex: 1 }, contentOpacityStyle]}>
                 <Image
                   source={
@@ -605,8 +472,8 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
                 />
               </Animated.View>
             )}
-          </View>
-          {heavyContentReady && carouselReady && (productDetail?.product?.images?.length ?? 0) > 0 ? (
+          </Animated.View>
+          {contentReady && carouselReady && (productDetail?.product?.images?.length ?? 0) > 0 ? (
             <Animated.View
               style={contentOpacityStyle}
               {...(Platform.OS === 'android' && { renderToHardwareTextureAndroid: true })}
@@ -626,7 +493,8 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
           ) : null}
         </View>
 
-        {/* Product Info */}
+        {/* Product Info — chỉ mount khi contentReady (tránh variants.map nặng khi đang trượt) */}
+        {contentReady ? (
         <View className="px-4 py-6">
           <View className="flex-col gap-4">
             {/* Name and Description */}
@@ -758,14 +626,25 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
             )}
           </View>
         </View>
+        ) : (
+          /* Placeholder đơn giản — giữ khung layout (px-4 py-6) tránh Layout Shift */
+          <View className="px-4 py-6">
+            <View
+              style={{
+                height: 280,
+                backgroundColor: isDark ? '#374151' : '#e5e7eb',
+              }}
+            />
+          </View>
+        )}
 
         {productDetail.product.catalog?.slug ? (
           <View
             className="relative pb-6"
             {...(Platform.OS === 'android' && { renderToHardwareTextureAndroid: true })}
           >
-            {/* Content — fade in (chỉ mount khi heavyContentReady) */}
-            {heavyContentReady && sliderReady && (
+            {/* SliderRelatedProducts — chỉ mount khi sliderReady (sau carouselReady) */}
+            {contentReady && sliderReady && (
               <Animated.View style={contentOpacityStyle}>
                 <SliderRelatedProducts
                   currentProduct={slug || ''}
@@ -773,59 +652,25 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
                 />
               </Animated.View>
             )}
-            {/* Skeleton — in flow khi !heavyContentReady, overlay khi heavyContentReady */}
+            {/* Skeleton — chỉ màu nền, zIndex trên cùng, pointerEvents="none" khi contentReady */}
             <Animated.View
               style={[
-                heavyContentReady && {
+                contentReady && {
                   position: 'absolute' as const,
                   top: 0,
                   left: 0,
                   right: 0,
+                  zIndex: 10,
+                },
+                {
+                  height: 120,
+                  marginHorizontal: 16,
+                  backgroundColor: isDark ? '#374151' : '#e5e7eb',
                 },
                 skeletonOpacityStyle,
               ]}
-              pointerEvents={heavyContentReady ? 'none' : 'auto'}
-            >
-              <View
-                style={{
-                  gap: MENU_ITEM_DETAIL_LAYOUT.GAP_3,
-                  paddingHorizontal: MENU_ITEM_DETAIL_LAYOUT.PADDING_X,
-                }}
-              >
-                <Skeleton
-                  style={{ width: 128, height: 16 }}
-                  className="rounded-md"
-                />
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    gap: MENU_ITEM_DETAIL_LAYOUT.RELATED_ITEM_SPACING,
-                  }}
-                >
-                  <Skeleton
-                    style={{
-                      width: MENU_ITEM_DETAIL_LAYOUT.relatedProductItemWidth(screenWidth),
-                      height: MENU_ITEM_DETAIL_LAYOUT.RELATED_PRODUCT_IMAGE_HEIGHT,
-                    }}
-                    className="rounded-xl"
-                  />
-                  <Skeleton
-                    style={{
-                      width: MENU_ITEM_DETAIL_LAYOUT.relatedProductItemWidth(screenWidth),
-                      height: MENU_ITEM_DETAIL_LAYOUT.RELATED_PRODUCT_IMAGE_HEIGHT,
-                    }}
-                    className="rounded-xl"
-                  />
-                  <Skeleton
-                    style={{
-                      width: MENU_ITEM_DETAIL_LAYOUT.relatedProductItemWidth(screenWidth),
-                      height: MENU_ITEM_DETAIL_LAYOUT.RELATED_PRODUCT_IMAGE_HEIGHT,
-                    }}
-                    className="rounded-xl"
-                  />
-                </View>
-              </View>
-            </Animated.View>
+              pointerEvents={contentReady ? 'none' : 'auto'}
+            />
           </View>
         ) : null}
       </GestureScrollView>
@@ -865,24 +710,37 @@ const MenuItemDetailContent = React.memo(function MenuItemDetailContent() {
           </Button>
         </View>
       </View>
-      </ScreenParallaxWrapper>
     </ScreenContainer>
   )
 })
 
 /**
- * MenuItemDetailPage — Render pipeline tối ưu cho Android.
+ * MenuItemDetailPage — Render pipeline tối ưu cho JS Stack.
  *
- * Lần render đầu: chỉ Skeleton (phần tĩnh) — hiện ngay, không block JS thread.
- * Frame tiếp theo: mount MenuItemDetailContent (fetch data, phần động defer 300ms).
+ * Lần render đầu: Animated.View đơn giản — không layout phức tạp khi đang trượt trang.
+ * Frame tiếp theo: mount MenuItemDetailContent.
  */
 export default function MenuItemDetailPage() {
+  const isDark = useColorScheme() === 'dark'
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true))
     return () => cancelAnimationFrame(id)
   }, [])
 
-  if (!mounted) return <MenuItemSkeletonShell />
+  if (!mounted) {
+    return (
+      <ScreenContainer edges={['top']} className="flex-1 bg-white dark:bg-gray-900">
+        <View className="flex-row items-center border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+          <NavigatePressable onPress={() => navigateNative.back()} hitSlop={HIT_SLOP_ICON} className="p-2">
+            <ArrowLeft size={24} color={isDark ? '#ffffff' : '#000000'} />
+          </NavigatePressable>
+        </View>
+        <Animated.View
+          style={{ flex: 1, backgroundColor: isDark ? '#374151' : '#e5e7eb' }}
+        />
+      </ScreenContainer>
+    )
+  }
   return <MenuItemDetailContent />
 }

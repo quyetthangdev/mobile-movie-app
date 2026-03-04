@@ -1,6 +1,7 @@
 import { ShoppingCart } from 'lucide-react-native'
 import React from 'react'
 import { Text, View } from 'react-native'
+import Animated, { BounceIn, BounceOut } from 'react-native-reanimated'
 
 import { TAB_ROUTES } from '@/constants'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
@@ -47,9 +48,16 @@ const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor
             paddingHorizontal: 5,
           }}
         >
-          <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
-            {cartItemCount > 99 ? '99+' : cartItemCount}
-          </Text>
+          <Animated.View
+            key={cartItemCount}
+            entering={BounceIn.springify().damping(50)}
+            exiting={BounceOut.springify().damping(50)}
+            style={{ alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
+              {cartItemCount > 99 ? '99+' : cartItemCount}
+            </Text>
+          </Animated.View>
         </View>
       )}
     </NativeGesturePressable>

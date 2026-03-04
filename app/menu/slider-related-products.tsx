@@ -2,6 +2,7 @@ import { ChevronRight } from 'lucide-react-native'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dimensions, FlatList, Text, TouchableOpacity, View } from 'react-native'
+import Animated, { FadeInRight } from 'react-native-reanimated'
 
 import { ClientMenuItem } from '@/components/menu/client-menu-item'
 import { ROUTE } from '@/constants'
@@ -84,10 +85,13 @@ export default function SliderRelatedProducts({
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.slug}
-        renderItem={({ item }) => (
-          <View style={{ width: itemWidth, marginRight: itemSpacing }}>
+        renderItem={({ item, index }) => (
+          <Animated.View
+            entering={FadeInRight.delay(index * 100).springify().damping(50)}
+            style={{ width: itemWidth, marginRight: itemSpacing }}
+          >
             <ClientMenuItem item={item} />
-          </View>
+          </Animated.View>
         )}
         contentContainerStyle={{ paddingHorizontal: 16 }}
       />

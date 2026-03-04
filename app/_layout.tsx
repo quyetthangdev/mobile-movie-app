@@ -2,7 +2,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as SystemUI from 'expo-system-ui'
 
-import { StackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { JsStack, jsStackSimpleScreenOptions } from '@/layouts/js-stack'
 import { MasterTransitionProvider } from '@/lib/navigation/master-transition-provider'
 import { useEffect } from 'react'
 import { InteractionManager, Platform } from 'react-native'
@@ -106,7 +106,7 @@ export default function RootLayout() {
                 <NavigationEngineProvider>
                   <MasterTransitionProvider>
                     <AppToastProvider>
-                      <StackWithMasterTransition />
+                      <JsStack screenOptions={jsStackSimpleScreenOptions} />
                     </AppToastProvider>
                   </MasterTransitionProvider>
                 </NavigationEngineProvider>

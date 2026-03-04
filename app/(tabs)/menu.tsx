@@ -12,17 +12,17 @@ import { LogoutDialog, SettingsDropdown, UserAvatarDropdown } from '@/components
 import { ClientCatalogSelect, ClientMenus, PriceRangeFilter, ProductNameSearch } from '@/components/menu'
 import { Skeleton } from '@/components/ui'
 import { FILTER_VALUE, ROUTE } from '@/constants'
-import { usePublicSpecificMenu, useRunAfterTransition, useSpecificMenu } from '@/hooks'
+import { useCatalog, usePublicSpecificMenu, useRunAfterTransition, useSpecificMenu } from '@/hooks'
 import { navigateNative, useGpuWarmup } from '@/lib/navigation'
 import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
 import { IMenuFilter, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
 
-/** Shell khớp ClientMenuItem mobile: flex-row, image w-32 h-32, rounded-xl border. */
+/** Shell khớp ClientMenuItem: flex-row, image w-32 h-32 p-2, content flex-1 px-2 py-3, name + price + add button (w-8 h-8), marginBottom 16. */
 function MenuListSkeleton() {
   return (
-    <View className="gap-4">
+    <View style={{ gap: 16 }}>
       {[1, 2, 3, 4, 5, 6].map((key) => (
         <View
           key={key}
@@ -31,9 +31,12 @@ function MenuListSkeleton() {
           <View className="flex-shrink-0 w-32 h-32 p-2 justify-center items-center">
             <Skeleton className="h-full w-full rounded-xl" />
           </View>
-          <View className="flex-1 px-2 py-3" style={{ gap: 8 }}>
+          <View className="flex-1 px-2 py-3 flex-col justify-between">
             <Skeleton className="h-5 rounded-md" style={{ width: '80%' }} />
-            <Skeleton className="h-3 rounded-md" style={{ width: '50%' }} />
+            <View className="flex-row justify-between items-center mt-2">
+              <Skeleton className="h-4 rounded-md" style={{ width: '40%' }} />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </View>
           </View>
         </View>
       ))}
@@ -59,15 +62,15 @@ function MenuSkeletonShell() {
         contentContainerStyle={{ paddingBottom: 20 }}
       >
         <View className="px-4 py-4 flex-col gap-5">
-          {/* Filter block - khớp branch info + ProductNameSearch + Catalog + Price */}
+          {/* Filter block - khớp branch info (py-2) + ProductNameSearch h-[50px] + Catalog flex-1 + Price w-[50px] h-[50px] */}
           <View className="flex-col gap-2">
             <View className="flex-row items-center justify-center gap-1 py-2">
               <Skeleton className="h-4 rounded-md" style={{ width: '72%' }} />
             </View>
-            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-[50px] w-full rounded-xl" />
             <View className="flex-row gap-2">
-              <Skeleton className="h-10 flex-1 rounded-lg" />
-              <Skeleton className="h-10 w-12 rounded-lg" />
+              <Skeleton className="h-[50px] flex-1 rounded-xl" />
+              <Skeleton className="h-[50px] w-[50px] rounded-xl" />
             </View>
           </View>
           <MenuListSkeleton />
@@ -95,12 +98,6 @@ function ClientMenuContent() {
   const [allowFetch, setAllowFetch] = useState(false)
   useRunAfterTransition(() => setAllowFetch(true), [])
 
-  // Defer filter mount 50ms → giảm jitter khi tab vừa chuyển (Phase 6 Task 5)
-  const [showFilters, setShowFilters] = useState(false)
-  useEffect(() => {
-    const id = setTimeout(() => setShowFilters(true), 50)
-    return () => clearTimeout(id)
-  }, [])
 
   // Memoize expensive calculation
   const mapMenuFilterToRequest = useCallback((
@@ -154,6 +151,8 @@ function ClientMenuContent() {
     hasUser ? refetchSpecificMenu : refetchPublicSpecificMenu,
     [hasUser, refetchSpecificMenu, refetchPublicSpecificMenu]
   )
+
+  const { isPending: isLoadingCatalog } = useCatalog()
 
   const [refreshing, setRefreshing] = React.useState(false)
 
@@ -211,11 +210,27 @@ function ClientMenuContent() {
     navigateNative.push(ROUTE.LOGIN)
   }, [])
 
+  // Chỉ hiện skeleton 1 lần → UI thật. Tránh: skeleton → trắng → header+filter+skeleton → UI.
+  // Đợi cả menu + catalog để ClientMenus không flash skeleton riêng.
+  const showSkeleton = !allowFetch || (hasBranch && (isPending || isLoadingCatalog))
+
+  if (showSkeleton) {
+    return (
+      <>
+        <MenuSkeletonShell />
+        <LogoutDialog
+          isOpen={isLogoutDialogOpen}
+          onOpenChange={setIsLogoutDialogOpen}
+          onLogout={handleLogout}
+        />
+      </>
+    )
+  }
+
   return (
     <ScreenContainer edges={['top']} className="flex-1 pb-12">
       {/* Header */}
       <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
-        {/* Left side: Logo */}
         <View className="flex-row items-center">
           <Image
             source={Images.Brand.Logo as unknown as number}
@@ -223,12 +238,11 @@ function ClientMenuContent() {
             resizeMode="contain"
           />
         </View>
-        {/* Right side: Branch Select, Settings and Avatar with Dropdown */}
         <View className="flex-row items-center gap-3">
           <SelectBranchDropdown />
           <SettingsDropdown />
-          <UserAvatarDropdown 
-            userInfo={userInfo} 
+          <UserAvatarDropdown
+            userInfo={userInfo}
             onLogoutPress={handleLogoutPress}
             onLoginPress={handleLoginPress}
           />
@@ -250,78 +264,58 @@ function ClientMenuContent() {
             />
           }
         >
-        {/* Container */}
-        <View className="px-4 py-4">
-          {/* Main Layout - Column on mobile, Row on larger screens */}
-          <View className="flex-col gap-5">
-            {/* Left - Sidebar/Filters */}
-            <View className="w-full">
-              <View className="flex-col gap-2">
-                {/* Branch info */}
-                <View className="flex-row items-center justify-center gap-1 py-2">
-                  <MapPin size={16} color="#e50914" />
-                  <Text className="text-xs text-gray-600">
-                    {branch
-                      ? `${branch.name} (${branch.address})`
-                      : t('menu.noData', 'Chưa chọn chi nhánh')}
-                  </Text>
-                </View>
-
-                {/* Product name search - defer 50ms để giảm mount cost */}
-                {showFilters ? (
-                  <ProductNameSearch />
-                ) : (
-                  <View className="h-[50px] w-full rounded-xl bg-gray-100 dark:bg-gray-800" />
-                )}
-
-                {/* Catalog and Price filter - Same row */}
-                <View className="flex-row gap-2">
-                  <View className="flex-1">
-                    <ClientCatalogSelect />
+          <View className="px-4 py-4">
+            <View className="flex-col gap-5">
+              {/* Filters */}
+              <View className="w-full">
+                <View className="flex-col gap-2">
+                  <View className="flex-row items-center justify-center gap-1 py-2">
+                    <MapPin size={16} color="#e50914" />
+                    <Text className="text-xs text-gray-600">
+                      {branch
+                        ? `${branch.name} (${branch.address})`
+                        : t('menu.noData', 'Chưa chọn chi nhánh')}
+                    </Text>
                   </View>
-                  {showFilters ? (
+                  <ProductNameSearch />
+                  <View className="flex-row gap-2">
+                    <View className="flex-1">
+                      <ClientCatalogSelect />
+                    </View>
                     <PriceRangeFilter />
-                  ) : (
-                    <View className="h-[50px] w-[50px] rounded-xl bg-gray-100 dark:bg-gray-800" />
+                  </View>
+                  {(menuFilter.minPrice > FILTER_VALUE.MIN_PRICE ||
+                    menuFilter.maxPrice < FILTER_VALUE.MAX_PRICE) && (
+                    <View className="flex-row items-center justify-center gap-2 rounded-xl border border-primary bg-primary/5 px-2 py-2">
+                      <Text className="text-sm text-primary">
+                        {formatCurrency(menuFilter.minPrice)} -{' '}
+                        {formatCurrency(menuFilter.maxPrice)}
+                      </Text>
+                      <TouchableOpacity onPress={handleClear}>
+                        <X size={20} color="#6b7280" />
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
+              </View>
 
-                {/* Price range display with clear button */}
-                {(menuFilter.minPrice > FILTER_VALUE.MIN_PRICE ||
-                  menuFilter.maxPrice < FILTER_VALUE.MAX_PRICE) && (
-                  <View className="flex-row items-center justify-center gap-2 rounded-xl border border-primary bg-primary/5 px-2 py-2">
-                    <Text className="text-sm text-primary">
-                      {formatCurrency(menuFilter.minPrice)} -{' '}
-                      {formatCurrency(menuFilter.maxPrice)}
+              {/* Menu Items */}
+              <View className="w-full">
+                {!hasBranch ? (
+                  <View className="items-center justify-center py-10">
+                    <Text className="text-center text-base text-gray-600 dark:text-gray-400">
+                      Vui lòng chọn chi nhánh để xem menu
                     </Text>
-                    <TouchableOpacity onPress={handleClear}>
-                      <X size={20} color="#6b7280" />
-                    </TouchableOpacity>
                   </View>
+                ) : (
+                  <ClientMenus menu={specificMenu?.result} isLoading={false} />
                 )}
               </View>
             </View>
-
-            {/* Right - Menu Items */}
-            <View className="w-full">
-              {!hasBranch ? (
-                <View className="items-center justify-center py-10">
-                  <Text className="text-center text-base text-gray-600 dark:text-gray-400">
-                    Vui lòng chọn chi nhánh để xem menu
-                  </Text>
-                </View>
-              ) : !allowFetch || isPending ? (
-                <MenuListSkeleton />
-              ) : (
-                <ClientMenus menu={specificMenu?.result} isLoading={false} />
-              )}
-            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
       </View>
 
-      {/* Logout Dialog */}
       <LogoutDialog
         isOpen={isLogoutDialogOpen}
         onOpenChange={setIsLogoutDialogOpen}
@@ -336,9 +330,6 @@ ClientMenuContent.displayName = 'ClientMenuContent'
 function MenuScreen() {
   useGpuWarmup()
   usePhase4MountLog('menu')
-  const [ready, setReady] = useState(false)
-  useRunAfterTransition(() => setReady(true), [], { androidDelayMs: 150 })
-  if (!ready) return <MenuSkeletonShell />
   return <ClientMenuContent />
 }
 

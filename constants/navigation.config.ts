@@ -17,13 +17,13 @@ export type TabRouteKey = keyof typeof TAB_ROUTES
 
 /**
  * Stack: slide_from_right, gesture, freezeOnBlur.
- * Telegram-level: 250ms — đồng bộ với lib/navigation/constants TRANSITION_DURATION_MS.
- * gestureResponseDistance: Native Stack không hỗ trợ (chỉ JS Stack).
+ * Lưu ý: Layout thực tế dùng nativeStackScreenOptions từ layouts/custom-stack.
+ * stackScreenOptions dùng làm reference — Spring 350ms, bezier fallback.
  */
 export const stackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   animation: 'slide_from_right',
-  animationDuration: 250,
+  animationDuration: 350,
   gestureEnabled: true,
   fullScreenGestureEnabled: true,
   animationMatchesGesture: true,
@@ -42,7 +42,7 @@ export const tabsScreenOptions = {
     animation: 'timing' as const,
     config: {
       duration: 250,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Dịu hơn linear, Telegram-style
     },
   },
 }

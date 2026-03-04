@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, ScrollView, Text, View } from 'react-native'
+import Reanimated, { FadeInDown } from 'react-native-reanimated'
 import { ScreenContainer } from '@/components/layout'
 
 import { getBanners } from '@/api/banner'
@@ -23,7 +24,7 @@ import { navigateNative, navigateSafely } from '@/lib/navigation'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useQuery } from '@tanstack/react-query'
 
-/** Shell cực nhẹ cho frame đầu khi chuyển tab Home — 0 store, 0 query. */
+/** Shell khớp Home thật: header, banner h-48, TREND section, highlight menu h-[16rem], news. */
 function HomeSkeletonShell() {
   return (
     <ScreenContainer edges={['top']} className="flex-1">
@@ -36,21 +37,37 @@ function HomeSkeletonShell() {
         </View>
       </View>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-        <View className="px-4 mb-6">
-          <Skeleton className="w-full h-48 rounded-2xl mb-3" />
-          <View className="flex-row justify-center gap-2 mt-2">
-            <Skeleton className="h-2 w-8 rounded-full" />
-            <Skeleton className="h-2 w-4 rounded-full" />
-            <Skeleton className="h-2 w-4 rounded-full" />
+        <View className="mb-6">
+          <View className="px-4">
+            <Skeleton className="w-full h-48 rounded-2xl mb-3" />
+            <View className="flex-row justify-center gap-2 mt-2">
+              <Skeleton className="h-2 w-8 rounded-full" />
+              <Skeleton className="h-2 w-4 rounded-full" />
+              <Skeleton className="h-2 w-4 rounded-full" />
+            </View>
           </View>
         </View>
-        <View className="px-4 mb-6">
-          <Skeleton className="h-4 w-48 rounded-md mb-2" />
-          <Skeleton className="h-3 w-full rounded-md mb-4" />
-          <Skeleton className="h-32 w-full rounded-xl" />
+        <View className="px-4 sm:px-5 mb-6">
+          <View className="flex-row flex-col sm:flex-row gap-4 py-4">
+            <View className="flex-1 sm:flex-[2] gap-2">
+              <Skeleton className="h-9 w-48 rounded-md" />
+              <Skeleton className="h-5 w-full rounded-md" />
+              <Skeleton className="h-5 rounded-md" style={{ width: '75%' }} />
+            </View>
+            <View className="flex-1 sm:flex-[3]">
+              <Skeleton className="h-32 w-full rounded-xl" />
+            </View>
+          </View>
         </View>
-        <View className="px-4">
-          <Skeleton className="h-6 w-40 rounded-md mb-4" />
+        <View className="px-4 sm:px-5 mb-6">
+          <View className="flex-row justify-between items-center mb-4">
+            <Skeleton className="h-6 w-40 rounded-md" />
+            <Skeleton className="h-9 w-24 rounded-md" />
+          </View>
+          <Skeleton className="h-[16rem] w-full rounded-xl" />
+        </View>
+        <View className="px-4 sm:px-5 py-8 mb-6">
+          <Skeleton className="h-6 w-48 rounded-md mb-4 mx-auto" />
           <Skeleton className="h-48 w-full rounded-xl" />
         </View>
       </ScrollView>
@@ -161,7 +178,7 @@ function HomeContent() {
           contentContainerStyle={{ paddingBottom: 20 }}
         >
           {/* Section 1: Hero - Full width Banner */}
-          <View className="mb-6">
+          <Reanimated.View entering={FadeInDown.delay(0).springify().damping(50)} className="mb-6">
             {isBannersPending ? (
               <View className="px-4">
                 <Skeleton className="w-full h-48 rounded-2xl mb-3" />
@@ -176,10 +193,10 @@ function HomeContent() {
             ) : (
               <HomeFallbackBanner />
             )}
-          </View>
+          </Reanimated.View>
 
           {/* Section Info: TREND Coffee description + Store Carousel */}
-          <View className="px-4 sm:px-5 mb-6">
+          <Reanimated.View entering={FadeInDown.delay(80).springify().damping(50)} className="px-4 sm:px-5 mb-6">
             <View className="flex-row flex-col sm:flex-row gap-4 py-4">
               {/* Left: Text Content */}
               <View className="flex-1 sm:flex-[2] justify-center items-center sm:items-start">
@@ -213,10 +230,10 @@ function HomeContent() {
                 </View>
               </View>
             </View>
-          </View>
+          </Reanimated.View>
 
           {/* Section Menu Highlight */}
-          <View className="px-4 sm:px-5">
+          <Reanimated.View entering={FadeInDown.delay(160).springify().damping(50)} className="px-4 sm:px-5">
             <View className="flex-col gap-4">
               <View className="flex-row justify-between items-center">
                 <Text className="text-lg sm:text-2xl font-bold uppercase text-primary">
@@ -234,27 +251,27 @@ function HomeContent() {
                 <HighlightMenuCarousel />
               </View>
             </View>
-          </View>
+          </Reanimated.View>
 
           {/* Section Video YouTube */}
           {youtubeVideoId && (
-            <View className="mb-6">
+            <Reanimated.View entering={FadeInDown.delay(240).springify().damping(50)} className="mb-6">
               <YouTubeVideoSection
                 videoId={youtubeVideoId}
                 title={t('videoSection.title')}
               />
-            </View>
+            </Reanimated.View>
           )}
 
           {/* Section News */}
-          <View className="px-4 sm:px-5 py-8 mb-6">
+          <Reanimated.View entering={FadeInDown.delay(320).springify().damping(50)} className="px-4 sm:px-5 py-8 mb-6">
             <Text className="w-full text-center text-lg sm:text-2xl uppercase font-extrabold text-primary mb-4">
               {t('newsSection.title')}
             </Text>
             <View className="mt-4">
               <NewsCarousel />
             </View>
-          </View>
+          </Reanimated.View>
         </ScrollView>
       </View>
 

@@ -2,13 +2,13 @@ import { AlertCircle, CheckCircle, Info, XCircle } from 'lucide-react-native'
 import React, { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, {
-  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated'
+
+import { SPRING_CONFIGS } from '@/constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ToastData {
@@ -35,28 +35,14 @@ const ToastItem = React.memo(function ToastItem({ toast, onHide }: ToastItemProp
     translateY.value = -100
     opacity.value = 0
 
-    // Animation vào - từ trên xuống (UI thread)
-    // Optimized for POS: smooth and clear (250ms)
-    translateY.value = withSpring(0, {
-      damping: 20,
-      stiffness: 300,
-      mass: 0.5,
-    })
-    opacity.value = withTiming(1, {
-      duration: 250,
-      easing: Easing.out(Easing.ease),
-    })
+    // Animation vào - từ trên xuống, SPRING_CONFIGS.modal cho độ nảy nhẹ khi 'đậu'
+    translateY.value = withSpring(0, SPRING_CONFIGS.modal)
+    opacity.value = withSpring(1, SPRING_CONFIGS.modal)
 
     // Tự động ẩn sau duration
     const timer = setTimeout(() => {
-      translateY.value = withTiming(-100, {
-        duration: 250,
-        easing: Easing.in(Easing.ease),
-      })
-      opacity.value = withTiming(0, {
-        duration: 250,
-        easing: Easing.in(Easing.ease),
-      }, (finished) => {
+      translateY.value = withSpring(-100, SPRING_CONFIGS.modal)
+      opacity.value = withSpring(0, SPRING_CONFIGS.modal, (finished) => {
         // Callback runs after animation completes
         if (finished) {
           runOnJS(onHide)(toast.id)

@@ -1,9 +1,9 @@
-import { CustomStack, nativeStackScreenOptions } from '@/layouts/custom-stack'
+import { JsStack, jsStackSimpleScreenOptions } from '@/layouts/js-stack'
 
 /**
  * Auth stack: login, register, forgot-password, ...
- * Phase 7: velocity-driven gesture, spring close — đồng bộ với profile → history.
+ * JS Stack — cùng spring curve: Start → tăng tốc nhanh → giảm tốc mềm → dừng.
  */
 export default function AuthLayout() {
-  return <CustomStack screenOptions={nativeStackScreenOptions} />
+  return <JsStack screenOptions={jsStackSimpleScreenOptions} />
 }

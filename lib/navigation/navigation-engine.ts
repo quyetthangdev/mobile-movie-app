@@ -5,11 +5,13 @@
  * - Sync push when router ready (no setImmediate)
  * - Transition lock: drop second tap during transition
  * - Retry limit: max 20 frames when router null
+ * - Haptic Impact Light khi bắt đầu navigate → phản hồi xúc giác tức thì
  *
  * Flow: Tap → runOnJS → (lock check) → push DIRECTLY → Native Stack animation
  * Target: Tap → first visual motion < 8ms
  */
 import type { Href } from 'expo-router'
+import * as Haptics from 'expo-haptics'
 import {
   getNavigationRouter,
   isNavigationLocked,
@@ -49,6 +51,8 @@ const executeNav = (
   href?: HrefLike,
   duration = TRANSITION_DURATION_MS,
 ) => {
+  // Haptic: Native Stack (Auth, Profile) — tap feedback; JS Stack (Home/Menu) dùng transitionStart
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
   const r = getRouter()
   if (r) {
     lockNavigation()

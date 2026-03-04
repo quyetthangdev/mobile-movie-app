@@ -1,9 +1,9 @@
-import { CustomStack, nativeStackScreenOptions } from '@/layouts/custom-stack'
+import { JsStack, jsStackSimpleScreenOptions } from '@/layouts/js-stack'
 
 /**
  * Profile stack: các màn profile/info, profile/edit, profile/history, ...
- * Phase 7: velocity-driven gesture, spring close.
+ * JS Stack — cùng spring curve: Start → tăng tốc nhanh → giảm tốc mềm → dừng.
  */
 export default function ProfileLayout() {
-  return <CustomStack screenOptions={nativeStackScreenOptions} />
+  return <JsStack screenOptions={jsStackSimpleScreenOptions} />
 }

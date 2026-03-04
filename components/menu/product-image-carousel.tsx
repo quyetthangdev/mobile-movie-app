@@ -7,19 +7,67 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
+  useColorScheme,
   View,
 } from 'react-native'
 import Animated, {
+  runOnUI,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated'
+import type { SharedValue } from 'react-native-reanimated'
 
 import { DOT_SCALE_ACTIVE, SPRING_CONFIGS } from '@/constants'
 
 import { Images } from '@/assets/images'
 import { publicFileURL } from '@/constants'
 import { HIT_SLOP_ICON } from '@/lib/navigation/constants'
+
+interface PaginationDotProps {
+  index: number
+  selectedIndexShared: SharedValue<number>
+  onPress: () => void
+  activeColor: string
+  inactiveColor: string
+}
+
+const PaginationDot = React.memo(function PaginationDot({
+  index,
+  selectedIndexShared,
+  onPress,
+  activeColor,
+  inactiveColor,
+}: PaginationDotProps) {
+  const scale = useSharedValue(1)
+
+  useAnimatedReaction(
+    () => selectedIndexShared.value === index,
+    (isActive) => {
+      scale.value = withSpring(isActive ? DOT_SCALE_ACTIVE : 1, SPRING_CONFIGS.dot)
+    },
+  )
+
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    const isActive = selectedIndexShared.value === index
+    return {
+      transform: [{ scale: scale.value }],
+      backgroundColor: isActive ? activeColor : inactiveColor,
+    }
+  }, [index, activeColor, inactiveColor])
+
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={HIT_SLOP_ICON}
+      {...({ unstable_pressDelay: 0 } as object)}
+    >
+      <Animated.View style={animatedStyle} className="h-2 w-2 rounded-full" />
+    </Pressable>
+  )
+})
 
 interface ProductImageCarouselProps {
   images: (string | null)[]
@@ -37,6 +85,18 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
   const flatListRef = useRef<FlatList<string | null>>(null)
   const autoScrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const selectedIndexShared = useSharedValue(0)
+  const isDark = useColorScheme() === 'dark'
+  const dotActiveColor = isDark ? '#D68910' : '#dc2626'
+  const dotInactiveColor = isDark ? '#4b5563' : '#d1d5db'
+
+  const updateSelectedIndexShared = useCallback((index: number) => {
+    runOnUI((i: number) => {
+      'worklet'
+      selectedIndexShared.value = i
+    })(index)
+  }, [selectedIndexShared])
+
   // Defer PaginationDot 1 frame — giảm Reanimated work trong frame đầu mount
   useEffect(() => {
     const id = requestAnimationFrame(() => setDotsReady(true))
@@ -46,50 +106,17 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
   // Filter out null images and ensure at least one image
   const validImages = images.filter((img) => img !== null && img !== undefined)
 
-  // Pagination dot component with scale animation (transform, not width)
-  const PaginationDot = React.memo(function PaginationDot({
-    isActive,
-    onPress,
-  }: {
-    isActive: boolean
-    onPress: () => void
-  }) {
-    const scale = useSharedValue(isActive ? DOT_SCALE_ACTIVE : 1)
-
-    useEffect(() => {
-      scale.value = withSpring(isActive ? DOT_SCALE_ACTIVE : 1, SPRING_CONFIGS.dot)
-    }, [isActive, scale])
-
-    const animatedStyle = useAnimatedStyle(() => {
-      'worklet'
-      return {
-        transform: [{ scale: scale.value }],
-      }
-    })
-
-    return (
-      <Pressable
-        onPress={onPress}
-        hitSlop={HIT_SLOP_ICON}
-        {...({ unstable_pressDelay: 0 } as object)}
-      >
-        <Animated.View
-          style={animatedStyle}
-          className={`h-2 w-2 rounded-full ${
-            isActive ? 'bg-red-600 dark:bg-primary' : 'bg-gray-300 dark:bg-gray-600'
-          }`}
-        />
-      </Pressable>
-    )
-  })
-
-  const handleImagePress = useCallback((image: string | null, index: number) => {
-    setAutoScroll(false) // Disable auto-scroll when manually clicking
-    setSelectedIndex(index)
-    setCurrent(index)
-    flatListRef.current?.scrollToIndex({ index, animated: true })
-    onImageClick?.(image)
-  }, [onImageClick])
+  const handleImagePress = useCallback(
+    (image: string | null, index: number) => {
+      updateSelectedIndexShared(index)
+      setAutoScroll(false)
+      setSelectedIndex(index)
+      setCurrent(index)
+      flatListRef.current?.scrollToIndex({ index, animated: true })
+      onImageClick?.(image)
+    },
+    [onImageClick, updateSelectedIndexShared],
+  )
 
   const handleDotPress = useCallback(
     (index: number) => {
@@ -105,6 +132,7 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
     const task = InteractionManager.runAfterInteractions(() => {
       const scrollToNext = () => {
         const nextIndex = (current + 1) % validImages.length
+        updateSelectedIndexShared(nextIndex)
         setCurrent(nextIndex)
         setSelectedIndex(nextIndex)
         flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true })
@@ -120,7 +148,7 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
         autoScrollTimerRef.current = null
       }
     }
-  }, [autoScroll, current, validImages.length, onImageClick, validImages])
+  }, [autoScroll, current, validImages.length, onImageClick, validImages, updateSelectedIndexShared])
 
   // Re-enable auto-scroll after 5 seconds of inactivity
   useEffect(() => {
@@ -140,11 +168,12 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
       const itemWidth = 80 // width + margin (60 + 8*2)
       const index = Math.round(contentOffsetX / itemWidth)
       if (index >= 0 && index < validImages.length) {
+        updateSelectedIndexShared(index)
         setCurrent(index)
         setSelectedIndex(index)
       }
     },
-    [validImages.length],
+    [validImages.length, updateSelectedIndexShared],
   )
 
   // Render item callback - must be defined before early return
@@ -213,8 +242,11 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
           {validImages.map((_, index) => (
             <PaginationDot
               key={index}
-              isActive={current === index}
+              index={index}
+              selectedIndexShared={selectedIndexShared}
               onPress={() => handleDotPress(index)}
+              activeColor={dotActiveColor}
+              inactiveColor={dotInactiveColor}
             />
           ))}
         </View>

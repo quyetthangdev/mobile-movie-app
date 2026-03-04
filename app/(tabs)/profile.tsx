@@ -20,6 +20,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import Reanimated, { FadeInDown } from 'react-native-reanimated'
 import { ScreenContainer } from '@/components/layout'
 
 import { LoginForm } from '@/components/auth'
@@ -36,14 +37,16 @@ import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useTranslation } from 'react-i18next'
 
-/** Skeleton khớp layout Profile thật: avatar rounded-3xl p-6, SettingsSection + SettingsItem. */
+const PROFILE_HEADER_HEIGHT = 80
+
+/** Skeleton khớp layout Profile thật: paddingTop HEADER_HEIGHT, avatar rounded-3xl p-6, SettingsSection [1,1,3,3,1]. */
 function ProfileSkeletonShell() {
   return (
     <ScreenContainer edges={['top']} className="flex-1">
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingTop: PROFILE_HEADER_HEIGHT, paddingBottom: 100 }}
       >
         <View className="min-h-full bg-gray-60 px-4 pt-6 dark:bg-gray-950">
           {/* Avatar card - khớp rounded-3xl p-6 items-center */}
@@ -53,18 +56,20 @@ function ProfileSkeletonShell() {
             <Skeleton className="mt-1 h-4 w-40 rounded-md" />
           </View>
 
-          {/* Settings sections - khớp SettingsSection (mb-8, rounded-2xl) + SettingsItem (min-h-[44px] px-4 py-3, icon h-10 w-10) */}
+          {/* Settings sections - khớp thật: generalInfo(1), orderHistory(1), financial(3), security(3), logout(1, no header) */}
           {[
             { header: true, items: 1 },
             { header: true, items: 1 },
             { header: true, items: 3 },
-            { header: true, items: 2 },
-            { header: true, items: 2 },
+            { header: true, items: 3 },
+            { header: false, items: 1 },
           ].map((section, si) => (
             <View key={si} className="mb-8">
-              <View className="px-4 py-2">
-                <Skeleton className="h-3 w-24 rounded-md" />
-              </View>
+              {section.header && (
+                <View className="px-4 py-2">
+                  <Skeleton className="h-3 w-24 rounded-md" />
+                </View>
+              )}
               <View className="overflow-hidden rounded-2xl bg-white dark:bg-gray-800">
                 {Array.from({ length: section.items }).map((_, i) => (
                   <View
@@ -302,107 +307,112 @@ function Profile() {
             </View>
           </View>
 
-          {/* Settings Sections */}
+          {/* Settings Sections — staggered FadeInDown */}
           <View className="px-4">
-            {/* Thông tin chung */}
-            <SettingsSection header={t('profile.generalInfo.title')}>
-              <SettingsItem
-                icon={User}
-                title={t('profile.generalInfo.title')}
-                iconBackgroundColor={isDark ? '#1d4ed8' : '#60a5fa'}
-                onPress={handleNavigateToInfo}
-              />
-            </SettingsSection>
+            <Reanimated.View entering={FadeInDown.delay(0).duration(250)}>
+              <SettingsSection header={t('profile.generalInfo.title')}>
+                <SettingsItem
+                  icon={User}
+                  title={t('profile.generalInfo.title')}
+                  iconBackgroundColor={isDark ? '#1d4ed8' : '#60a5fa'}
+                  onPress={handleNavigateToInfo}
+                />
+              </SettingsSection>
+            </Reanimated.View>
 
-            {/* Đơn hàng & Dịch vụ */}
-            <SettingsSection header={t('profile.orderHistory.title')}>
-              <SettingsItem
-                icon={Package}
-                title={t('profile.orderHistory.title')}
-                iconBackgroundColor={isDark ? '#7c2d12' : '#fb923c'}
-                onPress={handleNavigateToHistory}
-              />
-            </SettingsSection>
+            <Reanimated.View entering={FadeInDown.delay(60).duration(250)}>
+              <SettingsSection header={t('profile.orderHistory.title')}>
+                <SettingsItem
+                  icon={Package}
+                  title={t('profile.orderHistory.title')}
+                  iconBackgroundColor={isDark ? '#7c2d12' : '#fb923c'}
+                  onPress={handleNavigateToHistory}
+                />
+              </SettingsSection>
+            </Reanimated.View>
 
-            {/* Tài chính */}
-            <SettingsSection header={t('profile.financial.title')}>
-              <SettingsItem
-                icon={Gift}
-                title={t('profile.giftCard.title')}
-                iconBackgroundColor={isDark ? '#7e22ce' : '#c4b5fd'}
-                value={
-                  userInfo.balance?.points
-                    ? `${userInfo.balance.points} ${t('profile.points')}`
-                    : undefined
-                }
-                onPress={handleNavigateToGiftCard}
-              />
-              <SettingsItem
-                icon={Award}
-                title={t('profile.loyaltyPoint.title')}
-                iconBackgroundColor={isDark ? '#047857' : '#4ade80'}
-                value={
-                  userInfo.balance?.points
-                    ? `${userInfo.balance.points} ${t('profile.points')}`
-                    : undefined
-                }
-                onPress={handleNavigateToLoyaltyPoint}
-              />
-              <SettingsItem
-                icon={Wallet}
-                title={t('profile.coin.title')}
-                iconBackgroundColor={isDark ? '#b45309' : '#facc15'}
-                onPress={handleNavigateToCoin}
-              />
-            </SettingsSection>
+            <Reanimated.View entering={FadeInDown.delay(120).duration(250)}>
+              <SettingsSection header={t('profile.financial.title')}>
+                <SettingsItem
+                  icon={Gift}
+                  title={t('profile.giftCard.title')}
+                  iconBackgroundColor={isDark ? '#7e22ce' : '#c4b5fd'}
+                  value={
+                    userInfo.balance?.points
+                      ? `${userInfo.balance.points} ${t('profile.points')}`
+                      : undefined
+                  }
+                  onPress={handleNavigateToGiftCard}
+                />
+                <SettingsItem
+                  icon={Award}
+                  title={t('profile.loyaltyPoint.title')}
+                  iconBackgroundColor={isDark ? '#047857' : '#4ade80'}
+                  value={
+                    userInfo.balance?.points
+                      ? `${userInfo.balance.points} ${t('profile.points')}`
+                      : undefined
+                  }
+                  onPress={handleNavigateToLoyaltyPoint}
+                />
+                <SettingsItem
+                  icon={Wallet}
+                  title={t('profile.coin.title')}
+                  iconBackgroundColor={isDark ? '#b45309' : '#facc15'}
+                  onPress={handleNavigateToCoin}
+                />
+              </SettingsSection>
+            </Reanimated.View>
 
-            {/* Bảo mật */}
-            <SettingsSection header={t('profile.security.title')}>
-              <SettingsItem
-                icon={Mail}
-                title={t('profile.verifyEmail.title')}
-                iconBackgroundColor={isDark ? '#0369a1' : '#38bdf8'}
-                subtitle={
-                  userInfo.isVerifiedEmail
-                    ? t('profile.verified')
-                    : t('profile.notVerified')
-                }
-                subtitleColor={
-                  userInfo.isVerifiedEmail ? successColor : undefined
-                }
-                onPress={handleNavigateToVerifyEmail}
-              />
-              <SettingsItem
-                icon={Phone}
-                title={t('profile.verifyPhone.title')}
-                iconBackgroundColor={isDark ? '#16a34a' : '#22c55e'}
-                subtitle={
-                  userInfo.isVerifiedPhonenumber
-                    ? t('profile.verified')
-                    : t('profile.notVerified')
-                }
-                subtitleColor={
-                  userInfo.isVerifiedPhonenumber ? successColor : undefined
-                }
-                onPress={handleNavigateToVerifyPhone}
-              />
-              <SettingsItem
-                icon={KeyRound}
-                title={t('profile.changePassword.title')}
-                iconBackgroundColor={isDark ? '#854d0e' : '#eab308'}
-                onPress={handleNavigateToChangePassword}
-              />
-            </SettingsSection>
+            <Reanimated.View entering={FadeInDown.delay(180).duration(250)}>
+              <SettingsSection header={t('profile.security.title')}>
+                <SettingsItem
+                  icon={Mail}
+                  title={t('profile.verifyEmail.title')}
+                  iconBackgroundColor={isDark ? '#0369a1' : '#38bdf8'}
+                  subtitle={
+                    userInfo.isVerifiedEmail
+                      ? t('profile.verified')
+                      : t('profile.notVerified')
+                  }
+                  subtitleColor={
+                    userInfo.isVerifiedEmail ? successColor : undefined
+                  }
+                  onPress={handleNavigateToVerifyEmail}
+                />
+                <SettingsItem
+                  icon={Phone}
+                  title={t('profile.verifyPhone.title')}
+                  iconBackgroundColor={isDark ? '#16a34a' : '#22c55e'}
+                  subtitle={
+                    userInfo.isVerifiedPhonenumber
+                      ? t('profile.verified')
+                      : t('profile.notVerified')
+                  }
+                  subtitleColor={
+                    userInfo.isVerifiedPhonenumber ? successColor : undefined
+                  }
+                  onPress={handleNavigateToVerifyPhone}
+                />
+                <SettingsItem
+                  icon={KeyRound}
+                  title={t('profile.changePassword.title')}
+                  iconBackgroundColor={isDark ? '#854d0e' : '#eab308'}
+                  onPress={handleNavigateToChangePassword}
+                />
+              </SettingsSection>
+            </Reanimated.View>
 
-            {/* Đăng xuất */}
-            <SettingsSection>
-              <SettingsItem
-                icon={LogOut}
-                title={t('profile.logout.title')}
-                onPress={handleLogoutPress}
-                destructive
-              />
-            </SettingsSection>
+            <Reanimated.View entering={FadeInDown.delay(240).duration(250)}>
+              <SettingsSection>
+                <SettingsItem
+                  icon={LogOut}
+                  title={t('profile.logout.title')}
+                  onPress={handleLogoutPress}
+                  destructive
+                />
+              </SettingsSection>
+            </Reanimated.View>
           </View>
         </View>
       </Animated.ScrollView>

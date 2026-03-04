@@ -7,6 +7,7 @@
  */
 import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react'
 import { InteractionManager } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { runOnUI } from 'react-native-reanimated'
 import type { SharedValue } from 'react-native-reanimated'
 import { useSharedValue } from 'react-native-reanimated'
@@ -40,6 +41,8 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
 
   const onTransitionStart = useCallback(
     (e: { data: { closing: boolean } }) => {
+      // Haptic Sync: kích hoạt ngay khi slide bắt đầu — đồng bộ cảm giác lý tính (push + swipe-back)
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
       // Clear stale handle from previous transition (edge case: rapid nav)
       if (interactionHandleRef.current != null) {
         InteractionManager.clearInteractionHandle(interactionHandleRef.current)

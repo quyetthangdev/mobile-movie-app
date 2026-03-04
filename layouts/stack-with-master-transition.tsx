@@ -1,10 +1,10 @@
 /**
- * CustomStack (Native Stack) với MasterTransitionProvider listeners.
- * screenListeners là prop của Navigator, không nằm trong screenOptions.
+ * JsStack (JS Stack) với MasterTransitionProvider listeners.
+ * Dùng @react-navigation/stack để tùy chỉnh sâu: Parallax, Spring, Shadow, Overlay.
  */
 import { useMemo } from 'react'
 
-import { CustomStack, nativeStackScreenOptions } from '@/layouts/custom-stack'
+import { JsStack, jsStackScreenOptions } from '@/layouts/js-stack'
 import {
   startTransitionFPSMonitor,
   stopTransitionFPSMonitor,
@@ -35,8 +35,8 @@ export function StackWithMasterTransition() {
   }, [screenListeners])
 
   return (
-    <CustomStack
-      screenOptions={nativeStackScreenOptions}
+    <JsStack
+      screenOptions={jsStackScreenOptions}
       screenListeners={mergedListeners}
     />
   )

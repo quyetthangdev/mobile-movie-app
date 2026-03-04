@@ -1,9 +1,9 @@
-import { CustomStack, nativeStackScreenOptions } from '@/layouts/custom-stack'
+import { StackWithMasterTransition } from '@/layouts/stack-with-master-transition'
 
 /**
  * Home stack: tin tức /home/news/[slug], ...
- * Phase 7: velocity-driven gesture, spring close — đồng bộ với profile → history.
+ * JS Stack (Telegram-style): Parallax, Spring, Shadow, Overlay.
  */
 export default function HomeLayout() {
-  return <CustomStack screenOptions={nativeStackScreenOptions} />
+  return <StackWithMasterTransition />
 }

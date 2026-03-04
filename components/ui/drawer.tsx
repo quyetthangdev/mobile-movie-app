@@ -9,12 +9,12 @@ import {
   View,
 } from 'react-native'
 import Animated, {
-  Easing,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated'
+
+import { SPRING_CONFIGS } from '@/constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface DrawerContextType {
@@ -192,15 +192,8 @@ function DrawerContent({
       if (context?.open) {
         // Small delay to ensure component is fully mounted and rendered
         const timeoutId = setTimeout(() => {
-          slideValue.value = withSpring(0, {
-            damping: 20,
-            stiffness: 300,
-            mass: 0.5,
-          })
-          fadeValue.value = withTiming(1, {
-            duration: 250,
-            easing: Easing.out(Easing.ease),
-          })
+          slideValue.value = withSpring(0, SPRING_CONFIGS.modal)
+          fadeValue.value = withSpring(1, SPRING_CONFIGS.modal)
         }, 16) // One frame delay
         return () => clearTimeout(timeoutId)
       }
@@ -209,27 +202,11 @@ function DrawerContent({
 
     // Handle state changes after initial mount
     if (context?.open) {
-      // Animate to open state (0) - Optimized for POS: quick and clear
-      slideValue.value = withSpring(0, {
-        damping: 20,
-        stiffness: 300,
-        mass: 0.5,
-      })
-      fadeValue.value = withTiming(1, {
-        duration: 250,
-        easing: Easing.out(Easing.ease),
-      })
+      slideValue.value = withSpring(0, SPRING_CONFIGS.modal)
+      fadeValue.value = withSpring(1, SPRING_CONFIGS.modal)
     } else {
-      // Animate to closed state (1) - Quick close for POS
-      slideValue.value = withSpring(1, {
-        damping: 20,
-        stiffness: 300,
-        mass: 0.5,
-      })
-      fadeValue.value = withTiming(0, {
-        duration: 200,
-        easing: Easing.in(Easing.ease),
-      })
+      slideValue.value = withSpring(1, SPRING_CONFIGS.modal)
+      fadeValue.value = withSpring(0, SPRING_CONFIGS.modal)
     }
   }, [context?.open, slideValue, fadeValue])
 

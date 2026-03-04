@@ -1,7 +1,8 @@
+import { PressableWithFeedback } from '@/components/navigation'
 import { cn } from '@/utils/cn'
 import { cva, type VariantProps } from 'class-variance-authority'
 import * as React from 'react'
-import { ActivityIndicator, Pressable, Text } from 'react-native'
+import { ActivityIndicator, Text } from 'react-native'
 
 const buttonVariants = cva(
   'flex-row items-center justify-center rounded-full',
@@ -55,67 +56,74 @@ const textVariants = cva('font-medium', {
 
 export interface ButtonProps
   extends
-    React.ComponentPropsWithoutRef<typeof Pressable>,
+    Omit<
+      React.ComponentPropsWithoutRef<typeof PressableWithFeedback>,
+      'children' | 'disabled'
+    >,
     VariantProps<typeof buttonVariants> {
   loading?: boolean
+  disabled?: boolean
+  children?: React.ReactNode
 }
 
 export const Button = React.forwardRef<
-  React.ElementRef<typeof Pressable>,
+  React.ElementRef<typeof PressableWithFeedback>,
   ButtonProps
 >((props, ref) => {
-  const { className, variant, size, loading, disabled, children, ...rest } =
+  const { className, variant, size, loading, disabled, children, onPress, ...rest } =
     props
 
   const isDisabled = disabled || loading
 
+  const content = loading ? (
+    <ActivityIndicator
+      color={
+        variant === 'secondary' ? '#000' :
+        variant === 'ghost' ? '#111827' :
+        '#fff'
+      }
+    />
+  ) : typeof children === 'function' ? (
+    (children as (props: { pressed: boolean }) => React.ReactNode)({
+      pressed: false,
+    })
+  ) : Array.isArray(children) ? (
+    <>
+      {children.map((child: React.ReactNode, index: number) => {
+        if (React.isValidElement(child)) {
+          return <React.Fragment key={index}>{child}</React.Fragment>
+        }
+        if (typeof child === 'string' || typeof child === 'number') {
+          return (
+            <Text key={index} className={cn(textVariants({ variant, size }))}>
+              {child}
+            </Text>
+          )
+        }
+        return null
+      })}
+    </>
+  ) : React.isValidElement(children) ? (
+    children
+  ) : (
+    <Text className={cn(textVariants({ variant, size }))}>
+      {children}
+    </Text>
+  )
+
   return (
-    <Pressable
+    <PressableWithFeedback
       ref={ref}
       disabled={isDisabled}
+      onPress={onPress}
       className={cn(
         buttonVariants({ variant, size, disabled: isDisabled }),
         className,
       )}
       {...rest}
-      {...({ unstable_pressDelay: 0 } as React.ComponentProps<typeof Pressable>)}
     >
-      {loading ? (
-        <ActivityIndicator 
-          color={
-            variant === 'secondary' ? '#000' : 
-            variant === 'ghost' ? '#111827' : 
-            '#fff'
-          } 
-        />
-      ) : typeof children === 'function' ? (
-        (children as (props: { pressed: boolean }) => React.ReactNode)({
-          pressed: false,
-        })
-      ) : Array.isArray(children) ? (
-        <>
-          {children.map((child: React.ReactNode, index: number) => {
-            if (React.isValidElement(child)) {
-              return <React.Fragment key={index}>{child}</React.Fragment>
-            }
-            if (typeof child === 'string' || typeof child === 'number') {
-              return (
-                <Text key={index} className={cn(textVariants({ variant, size }))}>
-                  {child}
-                </Text>
-              )
-            }
-            return null
-          })}
-        </>
-      ) : React.isValidElement(children) ? (
-        children
-      ) : (
-        <Text className={cn(textVariants({ variant, size }))}>
-          {children}
-        </Text>
-      )}
-    </Pressable>
+      {content}
+    </PressableWithFeedback>
   )
 })
 

@@ -5,35 +5,35 @@
  * @see docs/NATURAL_INTERACTION_ANALYSIS.md
  */
 export const SPRING_CONFIGS = {
-  /** Button — phản hồi nhanh, ít nảy */
+  /** Button — phản hồi nhanh, rất ít nảy */
   press: {
-    damping: 18,
+    damping: 24,
     stiffness: 350,
     mass: 0.5,
     overshootClamping: true,
   } as const,
 
-  /** Sheet/Dialog — nảy nhỏ, trả về nhanh */
+  /** Sheet/Dialog — ít nảy, trả về nhanh */
   modal: {
-    damping: 24,
+    damping: 30,
     stiffness: 380,
     mass: 0.6,
-    overshootClamping: false,
+    overshootClamping: true,
     restDisplacementThreshold: 0.01,
     restSpeedThreshold: 0.01,
   } as const,
 
-  /** Pagination — mượt, scale nhẹ */
+  /** Pagination — mượt, ít nảy */
   dot: {
-    damping: 22,
+    damping: 28,
     stiffness: 400,
     mass: 0.3,
     overshootClamping: true,
   } as const,
 
-  /** Dropdown — nhanh, không gắt */
+  /** Dropdown — nhanh, ít nảy */
   popover: {
-    damping: 26,
+    damping: 32,
     stiffness: 420,
     mass: 0.4,
     overshootClamping: true,
@@ -72,6 +72,34 @@ export const MOTION = {
     mass: 0.9,
     overshootClamping: false,
     energyThreshold: 1e-6,
+  } as const,
+
+  /** Stack transition — Telegram style: stiffness 300, damping 30 (Native Stack dùng animationDuration) */
+  stackTransition: {
+    stiffness: 300,
+    damping: 30,
+    /** Thời gian tương đương spring (~350ms) — Native Stack chỉ hỗ trợ duration */
+    durationMs: 350,
+  } as const,
+
+  // Dành cho Native Stack (CustomStack)
+  nativeStack: {
+    stiffness: 300,
+    damping: 30,
+    durationMs: 300,
+  },
+  /**
+   * JS Stack (Home, Menu, Root, Auth, Profile, Payment, UpdateOrder)
+   * Curve Telegram: Start → tăng tốc nhanh → giảm tốc mềm → dừng (không tuyến tính).
+   * Dùng timing + bezier thay spring để curve rõ rệt, không bị cảm giác tuyến tính.
+   */
+  jsStack: {
+    /** Duration cho timing animation */
+    durationMs: 300,
+    /** Bezier (0, 0, 0.2, 1) = Material decelerate: nhanh đầu, chậm mềm cuối */
+    easingBezier: [0, 0, 0.2, 1] as const,
+    parallaxFactor: -0.25, // Tỷ lệ trượt trang cũ (dịu mắt hơn -0.3)
+    overlayOpacity: 0.2, // Độ đậm lớp phủ tối trên trang cũ
   } as const,
 
   /** Alias cho SPRING_CONFIGS — backward compatibility */

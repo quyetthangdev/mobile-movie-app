@@ -10,6 +10,7 @@ import {
 } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { Image, Pressable, Text, useColorScheme, View } from 'react-native'
+import Reanimated, { FadeInDown } from 'react-native-reanimated'
 import { ScreenContainer } from '@/components/layout'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -180,6 +181,7 @@ const CartItemRow = React.memo(function CartItemRow({
   )
 })
 
+/** Skeleton khớp Cart thật: header (back+logo), OrderTypeSelect, cart items (image w-28 h-28 + content + note), totals card, bottom bar. */
 function CartSkeletonShell() {
   return (
     <ScreenContainer edges={['top']} className="flex-1">
@@ -193,20 +195,40 @@ function CartSkeletonShell() {
         <Skeleton className="h-12 w-full rounded-lg mb-4" />
         <Skeleton className="h-12 w-full rounded-lg mb-4" />
         {[1, 2, 3].map((i) => (
-          <View key={i} className="flex-row gap-3 mb-4 p-3 rounded-lg bg-white border border-gray-100">
-            <Skeleton className="w-28 h-28 rounded-lg" />
-            <View className="flex-1 gap-2">
-              <Skeleton className="h-4 rounded-md" style={{ width: '80%' }} />
-              <Skeleton className="h-4 rounded-md" style={{ width: '50%' }} />
-              <Skeleton className="h-8 w-24 rounded-md mt-2" />
+          <View key={i} className="mb-4 rounded-lg border border-gray-100 bg-white p-3">
+            <View className="flex-row gap-3">
+              <Skeleton className="w-28 h-28 rounded-lg" />
+              <View className="flex-1 flex-col gap-2">
+                <Skeleton className="h-4 rounded-md" style={{ width: '80%' }} />
+                <Skeleton className="h-8 rounded-md" style={{ width: '60%' }} />
+                <View className="flex-row justify-between items-center mt-1">
+                  <Skeleton className="h-4 rounded-md" style={{ width: '40%' }} />
+                  <Skeleton className="h-8 w-24 rounded-md" />
+                </View>
+              </View>
             </View>
+            <Skeleton className="h-8 w-full rounded-md mt-3" />
           </View>
         ))}
-        <Skeleton className="h-24 w-full rounded-lg" />
+        <View className="mb-4 rounded-lg border border-gray-100 bg-white p-4">
+          <View className="flex-col gap-2">
+            <View className="flex-row justify-between">
+              <Skeleton className="h-4 w-24 rounded-md" />
+              <Skeleton className="h-4 w-20 rounded-md" />
+            </View>
+            <View className="flex-row justify-between pt-2 border-t border-gray-100 mt-2">
+              <Skeleton className="h-5 w-28 rounded-md" />
+              <Skeleton className="h-6 w-24 rounded-md" />
+            </View>
+          </View>
+        </View>
       </View>
-      <View className="border-t border-gray-100 bg-white px-4 py-4">
-        <Skeleton className="h-12 w-32 rounded-md mb-2" />
-        <Skeleton className="h-11 w-full rounded-full" />
+      <View className="border-t border-gray-100 bg-white px-4 py-4" style={{ paddingBottom: 30 }}>
+        <Skeleton className="h-3 w-24 rounded-md mb-1" />
+        <View className="flex-row justify-between items-center">
+          <Skeleton className="h-8 w-28 rounded-md" />
+          <Skeleton className="h-11 w-36 rounded-full" />
+        </View>
       </View>
     </ScreenContainer>
   )
@@ -274,16 +296,20 @@ function ClientCartPage() {
   }, [addOrderingProductVariant])
 
   const renderCartItem = useCallback(
-    ({ item }: { item: import('@/types').IOrderItem }) => (
-      <CartItemRow
-        item={item}
-        displayItems={displayItems}
-        currentCartItems={currentCartItems}
-        primaryColor={primaryColor}
-        onChangeVariant={handleChangeVariant}
-        onUpdateQuantity={updateOrderingItemQuantity}
-        onAddNote={addNote}
-      />
+    ({ item, index }: { item: import('@/types').IOrderItem; index: number }) => (
+      <Reanimated.View
+        entering={FadeInDown.delay(index * 50).duration(250)}
+      >
+        <CartItemRow
+          item={item}
+          displayItems={displayItems}
+          currentCartItems={currentCartItems}
+          primaryColor={primaryColor}
+          onChangeVariant={handleChangeVariant}
+          onUpdateQuantity={updateOrderingItemQuantity}
+          onAddNote={addNote}
+        />
+      </Reanimated.View>
     ),
     [
       displayItems,
@@ -297,7 +323,10 @@ function ClientCartPage() {
 
   const renderCartHeader = useCallback(
     () => (
-      <View className="px-4 py-4">
+      <Reanimated.View
+        entering={FadeInDown.delay(0).duration(250)}
+        className="px-4 py-4"
+      >
         <View className="mb-4 flex-row items-center gap-2 rounded-lg bg-gray-100 p-3">
           <CircleAlert size={16} color="#ef4444" />
           <Text className="flex-1 text-xs text-red-600">
@@ -327,14 +356,14 @@ function ClientCartPage() {
         {currentCartItems?.type === OrderTypeEnum.DELIVERY && (
           <View className="mb-4">{/* <MapAddressSelector /> */}</View>
         )}
-      </View>
+      </Reanimated.View>
     ),
     [t, currentCartItems?.type],
   )
 
   const renderCartFooter = useCallback(
     () => (
-      <View className="px-4 pb-4">
+      <Reanimated.View entering={FadeInDown.delay(100).duration(250)} className="px-4 pb-4">
         <View className="mb-4">
           <Text className="mb-2 text-md font-bold text-gray-900">
             {t('order.orderNote')}
@@ -489,7 +518,7 @@ function ClientCartPage() {
             </View>
           </View>
         </View>
-      </View>
+      </Reanimated.View>
     ),
     [
       t,

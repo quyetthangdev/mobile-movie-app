@@ -23,6 +23,14 @@ import Animated, {
 } from 'react-native-reanimated'
 
 import { MOTION, SPRING_CONFIGS } from '@/constants'
+
+const triggerHapticLight = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+}
+
+const triggerHapticMedium = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
+}
 import type { HrefLike } from '@/lib/navigation'
 import { executeNavFromGesture } from '@/lib/navigation'
 import { isLockedShared } from '@/lib/navigation/navigation-lock-shared'
@@ -44,6 +52,8 @@ export type NativeGesturePressableProps = {
   disabled?: boolean
   /** className cho NativeWind */
   className?: string
+  /** Haptic: 'light' cho Tab/Navigation, 'medium' cho nút quan trọng (Add to Cart). */
+  hapticStyle?: 'light' | 'medium'
 }
 
 /**
@@ -63,14 +73,13 @@ export const NativeGesturePressable = React.forwardRef<
     onPressOut,
     disabled,
     className,
+    hapticStyle = 'light',
   },
   ref,
 ) {
   const pressScale = useSharedValue(1)
 
-  const triggerHaptic = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
-  }, [])
+  const triggerHaptic = hapticStyle === 'medium' ? triggerHapticMedium : triggerHapticLight
 
   const triggerAction = useCallback(() => {
     if (navigation) {

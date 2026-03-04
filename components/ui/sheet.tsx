@@ -10,12 +10,12 @@ import {
   useColorScheme
 } from 'react-native'
 import Animated, {
-  Easing,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated'
+
+import { SPRING_CONFIGS } from '@/constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface SheetProps {
@@ -118,15 +118,8 @@ function SheetContent({ children, className, onClose, open, direction = 'right' 
       isInitialMount.current = false
       if (open) {
         const timeoutId = setTimeout(() => {
-          slideValue.value = withSpring(0, {
-            damping: 20,
-            stiffness: 300,
-            mass: 0.5,
-          })
-          fadeValue.value = withTiming(1, {
-            duration: 250,
-            easing: Easing.out(Easing.ease),
-          })
+          slideValue.value = withSpring(0, SPRING_CONFIGS.modal)
+          fadeValue.value = withSpring(1, SPRING_CONFIGS.modal)
         }, 16)
         return () => clearTimeout(timeoutId)
       }
@@ -134,25 +127,11 @@ function SheetContent({ children, className, onClose, open, direction = 'right' 
     }
 
     if (open) {
-      slideValue.value = withSpring(0, {
-        damping: 20,
-        stiffness: 300,
-        mass: 0.5,
-      })
-      fadeValue.value = withTiming(1, {
-        duration: 250,
-        easing: Easing.out(Easing.ease),
-      })
+      slideValue.value = withSpring(0, SPRING_CONFIGS.modal)
+      fadeValue.value = withSpring(1, SPRING_CONFIGS.modal)
     } else {
-      slideValue.value = withSpring(1, {
-        damping: 20,
-        stiffness: 300,
-        mass: 0.5,
-      })
-      fadeValue.value = withTiming(0, {
-        duration: 200,
-        easing: Easing.in(Easing.ease),
-      })
+      slideValue.value = withSpring(1, SPRING_CONFIGS.modal)
+      fadeValue.value = withSpring(0, SPRING_CONFIGS.modal)
     }
   }, [open, slideValue, fadeValue])
 

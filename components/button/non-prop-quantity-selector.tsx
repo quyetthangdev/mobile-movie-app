@@ -1,7 +1,8 @@
 import { Minus, Plus } from 'lucide-react-native'
 import React from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 
+import { PressableWithFeedback } from '@/components/navigation'
 import { HIT_SLOP_SMALL } from '@/lib/navigation/constants'
 
 
@@ -42,49 +43,47 @@ export default function NonPropQuantitySelector({
     onChange(newQuantity)
   }
 
+  const isDecrementDisabled = disabled || quantity <= 1
+  const isIncrementDisabled =
+    disabled ||
+    (isLimit && currentQuantity !== undefined && quantity >= currentQuantity) ||
+    (maxQuantity !== undefined && quantity >= maxQuantity)
+
+  const decrementClassName = `p-2 rounded-full border ${
+    isDecrementDisabled
+      ? 'border-gray-300 dark:border-gray-700 opacity-50'
+      : 'border-gray-500 dark:border-gray-400'
+  }`
+  const incrementClassName = `p-2 rounded-full border ${
+    isIncrementDisabled
+      ? 'border-gray-300 dark:border-gray-700 opacity-50'
+      : 'border-gray-500 dark:border-gray-400'
+  }`
+
   return (
     <View className="flex-row items-center gap-2">
-      <Pressable
+      <PressableWithFeedback
         onPress={handleDecrement}
-        disabled={disabled || quantity <= 1}
+        disabled={isDecrementDisabled}
         hitSlop={HIT_SLOP_SMALL}
-        className={`p-2 rounded-full border active:opacity-80 ${
-          disabled || quantity <= 1
-            ? 'border-gray-300 dark:border-gray-700 opacity-50'
-            : 'border-gray-500 dark:border-gray-400'
-        }`}
-        {...({ unstable_pressDelay: 0 } as object)}
+        className={decrementClassName}
       >
-        <Minus size={16} color={disabled || quantity <= 1 ? '#9ca3af' : '#374151'} />
-      </Pressable>
+        <Minus size={16} color={isDecrementDisabled ? '#9ca3af' : '#374151'} />
+      </PressableWithFeedback>
       <Text className="w-8 text-center text-base font-semibold text-gray-900 dark:text-white">
         {quantity}
       </Text>
-      <Pressable
+      <PressableWithFeedback
         onPress={handleIncrement}
-        disabled={
-          disabled ||
-          (isLimit && currentQuantity !== undefined && quantity >= currentQuantity) ||
-          (maxQuantity !== undefined && quantity >= maxQuantity)
-        }
+        disabled={isIncrementDisabled}
         hitSlop={HIT_SLOP_SMALL}
-        className={`p-2 rounded-full border active:opacity-80 ${
-          disabled ||
-          (isLimit && currentQuantity !== undefined && quantity >= currentQuantity) ||
-          (maxQuantity !== undefined && quantity >= maxQuantity)
-            ? 'border-gray-300 dark:border-gray-700 opacity-50'
-            : 'border-gray-500 dark:border-gray-400'
-        }`}
-        {...({ unstable_pressDelay: 0 } as object)}
+        className={incrementClassName}
       >
-        <Plus size={16} color={
-          disabled ||
-          (isLimit && currentQuantity !== undefined && quantity >= currentQuantity) ||
-          (maxQuantity !== undefined && quantity >= maxQuantity)
-            ? '#9ca3af'
-            : '#374151'
-        } />
-      </Pressable>
+        <Plus
+          size={16}
+          color={isIncrementDisabled ? '#9ca3af' : '#374151'}
+        />
+      </PressableWithFeedback>
     </View>
   )
 }

@@ -1,9 +1,12 @@
 import { FlashList } from '@shopify/flash-list'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dimensions, Text, View } from 'react-native'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 
 import { useCatalog } from '@/hooks'
+import { OrderFlowStep } from '@/constants'
+import { useOrderFlowStore, useUserStore } from '@/stores'
 import { IMenuItem, ISpecificMenu } from '@/types'
 import { ClientMenuItem } from './client-menu-item'
 
@@ -16,10 +19,12 @@ const ITEM_MARGIN_BOTTOM = 16
 
 const MenuItemRow = React.memo(function MenuItemRow({
   item,
+  index,
   itemWidth,
   marginRight,
 }: {
   item: IMenuItem
+  index: number
   itemWidth: number
   marginRight?: number
 }) {
@@ -32,9 +37,12 @@ const MenuItemRow = React.memo(function MenuItemRow({
     [itemWidth, marginRight],
   )
   return (
-    <View style={style}>
+    <Animated.View
+      style={style}
+      entering={FadeInDown.delay(index * 50).springify().damping(50)}
+    >
       <ClientMenuItem item={item} />
-    </View>
+    </Animated.View>
   )
 })
 
@@ -77,6 +85,29 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
       return 0
     })
   }, [menu])
+
+  // Init ordering khi menu mount — chạy 1 lần, không cần mỗi ClientMenuItem
+  const hasOrderingData = useOrderFlowStore((s) => !!s.orderingData)
+  const orderingOwner = useOrderFlowStore((s) => s.orderingData?.owner ?? '')
+  const isHydrated = useOrderFlowStore((s) => s.isHydrated)
+  const currentStep = useOrderFlowStore((s) => s.currentStep)
+  const setCurrentStep = useOrderFlowStore((s) => s.setCurrentStep)
+  const initializeOrdering = useOrderFlowStore((s) => s.initializeOrdering)
+  const userSlug = useUserStore((s) => s.userInfo?.slug)
+
+  useEffect(() => {
+    if (!isHydrated) return
+    const run = () => {
+      if (currentStep !== OrderFlowStep.ORDERING) setCurrentStep(OrderFlowStep.ORDERING)
+      if (!hasOrderingData) {
+        initializeOrdering()
+        return
+      }
+      if (userSlug && !orderingOwner.trim()) initializeOrdering()
+    }
+    const id = setTimeout(run, 0)
+    return () => clearTimeout(id)
+  }, [isHydrated, currentStep, hasOrderingData, orderingOwner, userSlug, setCurrentStep, initializeOrdering])
 
   // Memoize grouped items and dimensions to avoid re-calculating
   const { groupedItems, itemWidth, numColumns, isMobile, gap } = useMemo(() => {
@@ -121,6 +152,7 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
     ({ item, index }: { item: IMenuItem; index: number }) => (
       <MenuItemRow
         item={item}
+        index={index}
         itemWidth={itemWidth}
         marginRight={
           !isMobile && index % numColumns !== numColumns - 1 ? gap : undefined

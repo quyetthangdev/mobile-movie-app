@@ -24,7 +24,7 @@ import {
 import { withLayoutContext } from 'expo-router'
 import { Platform } from 'react-native'
 
-import { TRANSITION_DURATION_MS } from '@/lib/navigation'
+import { MOTION } from '@/constants'
 
 const { Navigator } = createNativeStackNavigator()
 
@@ -37,10 +37,10 @@ export const CustomStack = withLayoutContext<
 
 export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
-  /** Animation: slide_from_right (Shopee/Telegram style) — đồng bộ với Parallax translateX. */
+  /** Animation: slide_from_right (Telegram style) */
   animation: 'slide_from_right',
-  /** iOS: duration có hiệu lực (patch curve). Android: dùng duration từ patch XML. */
-  animationDuration: TRANSITION_DURATION_MS,
+  /** Spring-like timing: stiffness 300, damping 30 → ~350ms. Native Stack dùng duration thay animationSpec. */
+  animationDuration: MOTION.stackTransition.durationMs,
   /** Vuốt trở về phản hồi ngay theo đầu ngón tay */
   gestureEnabled: true,
   fullScreenGestureEnabled: true,
@@ -51,8 +51,8 @@ export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   /** Android: header translucent (edge-to-edge) */
   ...(Platform.OS === 'android' && { headerTranslucent: true }),
   contentStyle: { backgroundColor: '#ffffff' },
-  /** Tắt shadow khi gesture — tránh drop frame trên máy yếu */
-  fullScreenGestureShadowEnabled: false,
+  /** Shadow đổ lên màn cũ — tạo chiều sâu, cảm giác tự nhiên như Telegram */
+  fullScreenGestureShadowEnabled: true,
   /** freezeOnBlur: màn background bị freeze → giảm re-render */
   freezeOnBlur: true,
 }

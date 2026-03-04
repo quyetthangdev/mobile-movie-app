@@ -11,12 +11,12 @@ import {
   View,
 } from 'react-native'
 import Animated, {
-  Easing,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated'
+
+import { SPRING_CONFIGS } from '@/constants'
 
 /* ------------------------------------------------------------------ */
 /* Context */
@@ -181,18 +181,10 @@ function SelectContent({
       opacity.value = 0
       return
     }
-    
-    // Animate in (UI thread)
-    // Optimized for POS: quick and clear (200ms)
-    scale.value = withSpring(1, {
-      damping: 20,
-      stiffness: 300,
-      mass: 0.5,
-    })
-    opacity.value = withTiming(1, {
-      duration: 200,
-      easing: Easing.out(Easing.ease),
-    })
+
+    // Animate in (UI thread) — SPRING_CONFIGS.popover
+    scale.value = withSpring(1, SPRING_CONFIGS.popover)
+    opacity.value = withSpring(1, SPRING_CONFIGS.popover)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx?.open])
 

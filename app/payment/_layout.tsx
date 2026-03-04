@@ -1,9 +1,9 @@
-import { CustomStack, nativeStackScreenOptions } from '@/layouts/custom-stack'
+import { JsStack, jsStackSimpleScreenOptions } from '@/layouts/js-stack'
 
 /**
  * Payment stack: màn thanh toán /payment/[order]
- * Phase 7: velocity-driven gesture, spring close — đồng bộ với profile → history.
+ * JS Stack — cùng spring curve: Start → tăng tốc nhanh → giảm tốc mềm → dừng.
  */
 export default function PaymentLayout() {
-  return <CustomStack screenOptions={nativeStackScreenOptions} />
+  return <JsStack screenOptions={jsStackSimpleScreenOptions} />
 }

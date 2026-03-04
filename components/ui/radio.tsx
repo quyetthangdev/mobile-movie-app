@@ -1,6 +1,13 @@
 import { cn } from '@/lib/utils'
-import React, { createContext, useContext } from 'react'
+import React, { createContext, useContext, useEffect } from 'react'
 import { Pressable, View, useColorScheme } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated'
+
+import { SPRING_CONFIGS } from '@/constants'
 
 interface RadioGroupContextType {
   value?: string
@@ -48,6 +55,15 @@ function RadioGroupItem({ value, disabled = false, className, onPress }: RadioGr
   const isDark = colorScheme === 'dark'
 
   const isSelected = context?.value === value
+  const indicatorScale = useSharedValue(isSelected ? 1 : 0)
+
+  useEffect(() => {
+    indicatorScale.value = withSpring(isSelected ? 1 : 0, SPRING_CONFIGS.press)
+  }, [isSelected, indicatorScale])
+
+  const indicatorAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: indicatorScale.value }],
+  }))
 
   const handlePress = () => {
     if (!disabled && context?.onValueChange) {
@@ -77,11 +93,16 @@ function RadioGroupItem({ value, disabled = false, className, onPress }: RadioGr
       }}
     >
       {isSelected && (
-        <View
-          className="h-2 w-2 rounded-full"
-          style={{
-            backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
-          }}
+        <Animated.View
+          style={[
+            indicatorAnimatedStyle,
+            {
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+            },
+          ]}
         />
       )}
     </Pressable>

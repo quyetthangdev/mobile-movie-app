@@ -1,66 +1,56 @@
-import { Plus } from 'lucide-react-native'
-import moment from 'moment'
-import React, { useEffect } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ImageSourcePropType } from 'react-native'
-import { Image, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
+import { Image } from 'expo-image'
+
+import Animated from 'react-native-reanimated'
 
 import { Images } from '@/assets/images'
-import { OrderFlowStep, publicFileURL, ROUTE } from '@/constants'
-import { HIT_SLOP_SMALL } from '@/lib/navigation/constants'
-import { scheduleStoreUpdate } from '@/lib/navigation'
-import { NativeGesturePressable, PressableWithFeedback } from '@/components/navigation'
+import { publicFileURL, ROUTE } from '@/constants'
+import { NativeGesturePressable } from '@/components/navigation'
 import { useGhostMount } from '@/lib/navigation'
 import { useIsMobile, usePressInPrefetchMenuItem } from '@/hooks'
-import { useShallow } from 'zustand/react/shallow'
-import { useOrderFlowStore, useUserStore } from '@/stores'
-import { IMenuItem, IOrderItem, IProduct } from '@/types'
-import { formatCurrency, showToast } from '@/utils'
+import { IMenuItem, IProduct } from '@/types'
+import { formatCurrency } from '@/utils'
+
+import { MenuItemQuantityControl } from './menu-item-quantity-control'
 
 interface IClientMenuItemProps {
   item: IMenuItem
 }
 
+function getMinPrice(variants: IProduct['variants']): number | null {
+  if (!variants?.length) return null
+  return Math.min(...variants.map((v) => v.price))
+}
+
+function clientMenuItemAreEqual(
+  prev: Readonly<IClientMenuItemProps>,
+  next: Readonly<IClientMenuItemProps>,
+): boolean {
+  const a = prev.item
+  const b = next.item
+  return (
+    a.slug === b.slug &&
+    a.product?.slug === b.product?.slug &&
+    a.currentStock === b.currentStock &&
+    a.defaultStock === b.defaultStock &&
+    a.isLocked === b.isLocked &&
+    a.promotion?.value === b.promotion?.value &&
+    getMinPrice(a.product?.variants) === getMinPrice(b.product?.variants)
+  )
+}
+
 /**
- * ClientMenuItem Component
- * 
- * Displays a menu item with image, name, price, and add to cart button.
- * Supports mobile and desktop layouts.
- * 
- * @example
- * ```tsx
- * <ClientMenuItem item={menuItem} onAddToCart={handleAddToCart} />
- * ```
+ * ClientMenuItem — Chỉ chứa hình ảnh, tên, giá (tĩnh).
+ * Không subscribe store. MenuItemQuantityControl xử lý quantity + Add to cart.
  */
 export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClientMenuItemProps) {
   const { t } = useTranslation('menu')
-  const { t: tToast } = useTranslation('toast')
   const prefetchMenuItem = usePressInPrefetchMenuItem()
   const { preload } = useGhostMount()
   const isMobile = useIsMobile()
-  const userSlug = useUserStore((s) => s.userInfo?.slug)
-
-  // useShallow: chỉ re-render khi isHydrated/currentStep/orderingOwner thay đổi.
-  // orderingData thay đổi (quantity) nhưng owner giữ nguyên → không re-render 50 items.
-  const {
-    isHydrated,
-    currentStep,
-    hasOrderingData,
-    orderingOwner,
-    initializeOrdering,
-    addOrderingItem,
-    setCurrentStep,
-  } = useOrderFlowStore(
-    useShallow((s) => ({
-      isHydrated: s.isHydrated,
-      currentStep: s.currentStep,
-      hasOrderingData: s.orderingData !== null,
-      orderingOwner: s.orderingData?.owner ?? '',
-      initializeOrdering: s.initializeOrdering,
-      addOrderingItem: s.addOrderingItem,
-      setCurrentStep: s.setCurrentStep,
-    })),
-  )
 
   const getPriceRange = (variants: IProduct['variants']) => {
     if (!variants || variants.length === 0) return null
@@ -74,68 +64,6 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
     }
   }
 
-  useEffect(() => {
-    if (!isHydrated) return
-    const run = () => {
-      if (currentStep !== OrderFlowStep.ORDERING) setCurrentStep(OrderFlowStep.ORDERING)
-      if (!hasOrderingData) {
-        initializeOrdering()
-        return
-      }
-      if (userSlug && !orderingOwner.trim()) initializeOrdering()
-    }
-    const id = setTimeout(run, 0)
-    return () => clearTimeout(id)
-  }, [isHydrated, currentStep, hasOrderingData, orderingOwner, userSlug, setCurrentStep, initializeOrdering])
-
-  const handleAddToCart = () => {
-    if (!item?.product?.variants || item?.product?.variants.length === 0 || !isHydrated) {
-      return
-    }
-
-    if (currentStep !== OrderFlowStep.ORDERING) setCurrentStep(OrderFlowStep.ORDERING)
-    if (!hasOrderingData) {
-      initializeOrdering()
-      return
-    }
-    if (userSlug && !orderingOwner.trim()) {
-      initializeOrdering()
-    }
-
-    // Step 3: Create order item with proper structure
-    const orderItem: IOrderItem = {
-      id: `item_${moment().valueOf()}_${Math.random().toString(36).substr(2, 9)}`,
-      slug: item?.product?.slug,
-      image: item?.product?.image,
-      name: item?.product?.name,
-      quantity: 1,
-      size: item?.product?.variants[0]?.size?.name,
-      allVariants: item?.product?.variants,
-      variant: item?.product?.variants[0],
-      originalPrice: item?.product?.variants[0]?.price,
-      productSlug: item?.product?.slug,
-      description: item?.product?.description,
-      isLimit: item?.product?.isLimit,
-      isGift: item?.product?.isGift,
-      promotion: item?.promotion ? item?.promotion : null,
-      promotionValue: item?.promotion ? item?.promotion?.value : 0,
-      note: '',
-    }
-
-    try {
-      // Step 4: Add to ordering data — defer nếu đang transition để tránh drop FPS
-      scheduleStoreUpdate(() => addOrderingItem(orderItem))
-
-      // Step 5: Success feedback with tamagui toast
-      const message = tToast('toast.addSuccess', 'Đã thêm vào giỏ hàng')
-      showToast(message, 'Thông báo')
-    } catch {
-      // Silent fail — không block UI, toast đã xử lý feedback
-    }
-  }
-
-
-  // Handle null values for currentStock and defaultStock from API
   const currentStock = item.currentStock ?? 0
   const defaultStock = item.defaultStock ?? 0
   const hasStock = !item.isLocked && (currentStock > 0 || !item.product.isLimit)
@@ -144,7 +72,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
 
   return (
     <View className="flex-row sm:flex-col justify-between bg-white border border-gray-200 dark:border-gray-700 rounded-xl min-h-[2rem] dark:bg-gray-800 overflow-hidden">
-      {/* Image - Square with rounded corners */}
+      {/* Image */}
       <NativeGesturePressable
         navigation={{
           type: 'push',
@@ -152,27 +80,33 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
         }}
         onPressIn={() => {
           prefetchMenuItem(item.slug)
+          // Pre-warm Image Cache: prefetch ngay khi chạm xuống — vài chục ms đủ để decode trước khi Detail mở
+          if (item.product.image) {
+            const urls = new Set<string>([`${publicFileURL}/${item.product.image}`])
+            item.product.images?.forEach((img) => urls.add(`${publicFileURL}/${img}`))
+            Image.prefetch([...urls]).catch(() => {})
+          }
           setTimeout(() => preload('menu-item', { slug: item.slug }), 0)
         }}
         className={`flex-shrink-0 justify-center items-center ${
           isMobile ? 'w-32 h-32 p-2' : 'w-full aspect-square p-0'
         }`}
       >
-        <View
+        <Animated.View
+          {...({ sharedTransitionTag: `menu-item-${item.slug}` } as object)}
           className="relative w-full h-full overflow-hidden bg-gray-100 dark:bg-gray-700 rounded-xl"
           style={{ aspectRatio: 1 }}
         >
           <Image
             source={
-              (item.product.image
+              item.product.image
                 ? { uri: `${publicFileURL}/${item.product.image}` }
-                : Images.Food.ProductImage) as ImageSourcePropType
+                : (Images.Food.ProductImage as ImageSourcePropType)
             }
             className="w-full h-full rounded-xl"
-            resizeMode="contain"
+            contentFit="contain"
             style={{ backgroundColor: 'transparent' }}
           />
-          {/* Stock badge - Desktop only */}
           {item.product.isLimit && !isMobile && (
             <View className="absolute bottom-3 left-3 z-50 px-3 py-1 rounded-full bg-primary">
               <Text className="text-xs text-white">
@@ -180,7 +114,6 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
               </Text>
             </View>
           )}
-          {/* Promotion badge */}
           {hasPromotion && (
             <View className="absolute top-2 right-2 z-50 px-2 py-1 rounded-full bg-primary">
               <Text className="text-xs font-bold text-white">
@@ -188,18 +121,16 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
               </Text>
             </View>
           )}
-        </View>
+        </Animated.View>
       </NativeGesturePressable>
 
       {/* Content */}
       <View className="flex-1 flex-col justify-between px-2 py-3">
-        {/* Mobile: Name and Stock on same row */}
         {isMobile ? (
           <View className="flex-col gap-2 items-start">
             <Text className="flex-1 text-lg font-bold py-1" numberOfLines={1}>
               {item.product.name}
             </Text>
-            {/* Stock */}
             {item.product.isLimit && (
               <View className="px-2 py-1 rounded-full bg-primary">
                 <Text className="text-xs text-white whitespace-nowrap">
@@ -216,10 +147,9 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
           </View>
         )}
 
-        {/* Mobile: Price and Button on same row */}
+        {/* Mobile: Price and Button */}
         {isMobile ? (
           <View className="flex-row justify-between items-center mt-2">
-            {/* Only show price if not out of stock */}
             {hasStock && (
               <View className="flex-1 py-1">
                 {item.product.variants.length > 0 ? (
@@ -230,7 +160,9 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
                       </Text>
                       <Text className="text-sm font-bold text-primary">
                         {priceRange
-                          ? formatCurrency(priceRange.min * (1 - (item.promotion?.value || 0) / 100))
+                          ? formatCurrency(
+                              priceRange.min * (1 - (item.promotion?.value || 0) / 100),
+                            )
                           : formatCurrency(0)}
                       </Text>
                     </View>
@@ -246,30 +178,13 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
                 )}
               </View>
             )}
-            {/* Button */}
             <View>
-              {hasStock ? (
-                <PressableWithFeedback
-                  onPress={handleAddToCart}
-                  hitSlop={HIT_SLOP_SMALL}
-                  className="w-8 h-8 rounded-full bg-primary items-center justify-center z-50"
-                >
-                  <Plus size={20} color="#ffffff" />
-                </PressableWithFeedback>
-              ) : (
-                <View className="px-4 py-1 rounded-full bg-primary">
-                  <Text className="text-xs font-semibold text-white">
-                    {t('menu.outOfStock', 'Hết hàng')}
-                  </Text>
-                </View>
-              )}
+              <MenuItemQuantityControl item={item} hasStock={hasStock} isMobile={true} />
             </View>
           </View>
         ) : (
-          /* Desktop layout */
           item.product.variants.length > 0 ? (
             <View className="flex-col gap-1 py-1">
-              {/* Prices */}
               <View className="flex-col">
                 {hasPromotion ? (
                   <View className="flex-row gap-2 items-center">
@@ -278,7 +193,9 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
                     </Text>
                     <Text className="text-sm font-bold sm:text-lg text-primary">
                       {priceRange
-                        ? formatCurrency(priceRange.min * (1 - (item.promotion?.value || 0) / 100))
+                        ? formatCurrency(
+                            priceRange.min * (1 - (item.promotion?.value || 0) / 100),
+                          )
                         : formatCurrency(0)}
                     </Text>
                   </View>
@@ -297,26 +214,12 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
         )}
       </View>
 
-      {/* Add to Cart / Out of Stock - Desktop only */}
+      {/* Desktop: Add to Cart / Quantity */}
       {!isMobile && (
         <View className="flex justify-end items-end p-2 sm:w-full">
-          {hasStock ? (
-            <PressableWithFeedback
-              onPress={handleAddToCart}
-              className="w-full px-3 py-2 rounded-full bg-primary items-center justify-center"
-            >
-              <Plus size={20} color="#ffffff" />
-            </PressableWithFeedback>
-          ) : (
-            <View className="w-full px-3 py-2 rounded-full bg-red-500">
-              <Text className="text-xs font-semibold text-white text-center">
-                {t('menu.outOfStock', 'Hết hàng')}
-              </Text>
-            </View>
-          )}
+          <MenuItemQuantityControl item={item} hasStock={hasStock} isMobile={false} />
         </View>
       )}
     </View>
   )
-})
-
+}, clientMenuItemAreEqual)

@@ -1,14 +1,18 @@
 import { ChevronRight } from 'lucide-react-native'
 import React from 'react'
-import { Text, TouchableOpacity, View, useColorScheme } from 'react-native'
+import { Text, View, useColorScheme } from 'react-native'
+
+import { NativeGesturePressable, type NativeGesturePressableProps } from '@/components/navigation/native-gesture-pressable'
 
 interface SettingsItemProps {
   icon: React.ComponentType<{ size?: number; color?: string }>
   title: string
   subtitle?: string
-  /** Màu chữ subtitle (vd. verified = success, chưa = xám). Nếu không truyền thì dùng màu mặc định. */
   subtitleColor?: string
   value?: string
+  /** Navigation: push | replace | back — dùng NativeGesturePressable, zero-latency giống Menu */
+  navigation?: NativeGesturePressableProps['navigation']
+  /** Fallback cho non-navigation actions (logout, etc.) */
   onPress?: () => void
   showChevron?: boolean
   destructive?: boolean
@@ -21,6 +25,7 @@ export function SettingsItem({
   subtitle,
   subtitleColor,
   value,
+  navigation,
   onPress,
   showChevron = true,
   destructive = false,
@@ -39,74 +44,66 @@ export function SettingsItem({
         ? '#111827'
         : '#4b5563'
 
-  const rowBackgroundColor = undefined
-
   const iconColor = destructive ? '#dc2626' : '#ffffff'
-
   const textColor = destructive ? '#ef4444' : isDark ? '#ffffff' : '#000000'
 
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      className="bg-white dark:bg-gray-800"
-    >
-      <View
-        className="min-h-[44px] flex-row items-center px-4 py-3"
-        style={rowBackgroundColor ? { backgroundColor: rowBackgroundColor } : undefined}
-      >
-        {/* Icon: vòng tròn màu + icon trắng */}
-        <View className="mr-3 h-10 w-10 items-center justify-center">
-          <View
-            className="h-10 w-10 items-center justify-center rounded-full"
-            style={{
-              backgroundColor: resolvedIconBackground,
-            }}
-          >
-            <Icon size={20} color={iconColor} />
-          </View>
-        </View>
-
-        {/* Content */}
-        <View className="flex-1 flex-row items-center justify-between">
-          <View className="flex-1">
-            <Text className="text-base" style={{ color: textColor }}>
-              {title}
-            </Text>
-            {subtitle && (
-              <Text
-                className="mt-0.5 text-sm"
-                style={{
-                  color: subtitleColor ?? (isDark ? '#9ca3af' : '#6b7280'),
-                }}
-              >
-                {subtitle}
-              </Text>
-            )}
-          </View>
-
-          {/* Value */}
-          {value && (
-            <Text
-              className="mr-2 text-sm"
-              style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
-            >
-              {value}
-            </Text>
-          )}
-
-          {/* Chevron */}
-          {showChevron && (
-        <ChevronRight
-          size={20}
-          color={
-            destructive ? '#dc2626' : isDark ? '#6b7280' : '#9ca3af'
-          }
-        />
-          )}
+  const content = (
+    <View className="min-h-[44px] flex-row items-center px-4 py-3">
+      <View className="mr-3 h-10 w-10 items-center justify-center">
+        <View
+          className="h-10 w-10 items-center justify-center rounded-full"
+          style={{ backgroundColor: resolvedIconBackground }}
+        >
+          <Icon size={20} color={iconColor} />
         </View>
       </View>
-    </TouchableOpacity>
+
+      <View className="flex-1 flex-row items-center justify-between">
+        <View className="flex-1">
+          <Text className="text-base" style={{ color: textColor }}>
+            {title}
+          </Text>
+          {subtitle && (
+            <Text
+              className="mt-0.5 text-sm"
+              style={{
+                color: subtitleColor ?? (isDark ? '#9ca3af' : '#6b7280'),
+              }}
+            >
+              {subtitle}
+            </Text>
+          )}
+        </View>
+
+        {value && (
+          <Text
+            className="mr-2 text-sm"
+            style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
+          >
+            {value}
+          </Text>
+        )}
+
+        {showChevron && (
+          <ChevronRight
+            size={20}
+            color={
+              destructive ? '#dc2626' : isDark ? '#6b7280' : '#9ca3af'
+            }
+          />
+        )}
+      </View>
+    </View>
+  )
+
+  return (
+    <NativeGesturePressable
+      navigation={navigation}
+      onPress={!navigation ? onPress : undefined}
+      className="bg-white dark:bg-gray-800"
+    >
+      {content}
+    </NativeGesturePressable>
   )
 }
 

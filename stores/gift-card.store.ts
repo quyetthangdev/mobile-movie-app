@@ -1,11 +1,11 @@
+import dayjs from 'dayjs'
 import i18next from 'i18next'
-import moment from 'moment'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 import { IGiftCardCartItem } from '@/types'
-import { showToast } from '@/utils/toast'
 import { createSafeStorage } from '@/utils/storage'
+import { showToast } from '@/utils/toast'
 
 interface IGiftCardStore {
   giftCardItem: IGiftCardCartItem | null
@@ -30,7 +30,7 @@ export const useGiftCardStore = create<IGiftCardStore>()(
         if (!get().isHydrated) {
           return
         }
-        const timestamp = moment().valueOf()
+        const timestamp = dayjs().valueOf()
 
         set({
           giftCardItem: item,
@@ -44,7 +44,7 @@ export const useGiftCardStore = create<IGiftCardStore>()(
         if (giftCardItem) {
           set({
             giftCardItem: { ...giftCardItem, quantity },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -80,7 +80,7 @@ export const useGiftCardStore = create<IGiftCardStore>()(
 
             set({
               giftCardItem: { ...serverItem, quantity },
-              lastModified: moment().valueOf(),
+              lastModified: dayjs().valueOf(),
             })
           }
         } else if (serverItem === null && giftCardItem) {

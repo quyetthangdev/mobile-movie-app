@@ -29,8 +29,8 @@ export type PressableWithFeedbackProps = {
   style?: StyleProp<ViewStyle>
   className?: string
   hitSlop?: { top?: number; bottom?: number; left?: number; right?: number }
-  /** Haptic: 'medium' cho nút quan trọng (Add to Cart), 'light' cho nút thường. */
-  hapticStyle?: 'light' | 'medium'
+  /** Haptic: 'none' (default), 'light' cho nút thường, 'medium' cho nút quan trọng. */
+  hapticStyle?: 'none' | 'light' | 'medium'
 }
 
 const triggerHapticLight = () => {
@@ -45,11 +45,11 @@ export const PressableWithFeedback = React.forwardRef<
   View,
   PressableWithFeedbackProps
 >(function PressableWithFeedback(
-  { children, onPress, disabled, style, className, hitSlop, hapticStyle = 'medium' },
+  { children, onPress, disabled, style, className, hitSlop, hapticStyle = 'none' },
   ref,
 ) {
   const pressScale = useSharedValue(1)
-  const triggerHaptic = hapticStyle === 'medium' ? triggerHapticMedium : triggerHapticLight
+  const triggerHaptic = hapticStyle === 'medium' ? triggerHapticMedium : hapticStyle === 'light' ? triggerHapticLight : null
 
   const handlePress = useCallback(() => {
     onPress?.()
@@ -65,7 +65,7 @@ export const PressableWithFeedback = React.forwardRef<
       .onBegin(() => {
         'worklet'
         pressScale.value = withSpring(MOTION.pressScale, SPRING_CONFIGS.press)
-        runOnJS(triggerHaptic)()
+        if (triggerHaptic) runOnJS(triggerHaptic)()
       })
       .onStart(() => {
         'worklet'

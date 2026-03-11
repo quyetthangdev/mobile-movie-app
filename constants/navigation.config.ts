@@ -1,6 +1,5 @@
 /** Native Stack + Tabs. Bootstrap: lib/navigation-setup.ts */
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack'
-import { Easing } from 'react-native'
 
 const LAZY_DEBUG = process.env.EXPO_PUBLIC_PHASE4_LAZY_DEBUG === 'true'
 
@@ -32,17 +31,10 @@ export const stackScreenOptions: NativeStackNavigationOptions = {
   contentStyle: { backgroundColor: '#ffffff' },
 }
 
-/** Bottom Tabs: fade 240ms, freezeOnBlur. lazy: false khi PHASE4_LAZY_DEBUG để debug crash. */
+/** Bottom Tabs: no animation (instant switch), freezeOnBlur. Tránh flash màn cũ. */
 export const tabsScreenOptions = {
   headerShown: false,
   lazy: !LAZY_DEBUG,
   freezeOnBlur: true,
-  animation: 'fade' as const,
-  transitionSpec: {
-    animation: 'timing' as const,
-    config: {
-      duration: 250,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Dịu hơn linear, Telegram-style
-    },
-  },
+  animation: 'none' as const,
 }

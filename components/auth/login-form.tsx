@@ -1,4 +1,5 @@
 import { Eye, EyeOff } from 'lucide-react-native'
+import { useQueryClient } from '@tanstack/react-query'
 import React, { useState } from 'react'
 import {
   ActivityIndicator,
@@ -12,9 +13,11 @@ import { z } from 'zod'
 
 import { useLogin, useProfile } from '@/hooks'
 import { loginSchema } from '@/schemas'
-import { ROUTE } from '@/constants'
+import { BannerPage, QUERYKEY, ROUTE } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
+import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { useAuthStore, useUserStore } from '@/stores'
+import { getLoyaltyPoints } from '@/api/loyalty-point'
 
 interface LoginFormProps {
   onLoginSuccess?: () => void
@@ -22,6 +25,8 @@ interface LoginFormProps {
 
 export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const { t } = useTranslation('auth')
+  const masterTransition = useMasterTransitionOptional()
+  const queryClient = useQueryClient()
   const [phonenumber, setPhonenumber] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -98,14 +103,24 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
             // Step 2: Fetch profile ngay sau khi set token
             const profile = await refetchProfile()
 
-            if (profile.data?.result) {
+            const profileResult = profile.data?.result
+
+            if (profileResult) {
               // Step 3: Set userInfo sau khi có data
-              setUserInfo(profile.data.result)
+              setUserInfo(profileResult)
 
               // Step 4: Set slug từ userInfo
-              useAuthStore.getState().setSlug(profile.data.result.slug)
+              useAuthStore.getState().setSlug(profileResult.slug)
 
-              // Step 5: Callback cho màn hình (điều hướng, v.v.)
+              // Step 5: Prefetch loyalty points để Profile render từ cache 0ms
+              if (profileResult.slug) {
+                await queryClient.prefetchQuery({
+                  queryKey: [QUERYKEY.loyaltyPoints, 'total', { slug: profileResult.slug }],
+                  queryFn: () => getLoyaltyPoints(profileResult.slug),
+                })
+              }
+
+              // Step 6: Callback cho màn hình (điều hướng, v.v.)
               if (onLoginSuccess) {
                 onLoginSuccess()
               }
@@ -231,6 +246,25 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           <Text className="text-red-600 dark:text-primary font-semibold">
             Đăng ký
           </Text>
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        className="items-center mt-4"
+        onPress={() => {
+          const homeCached = !!queryClient.getQueryData(['banners', BannerPage.HOME])
+          const overlayMs = homeCached ? 100 : 250
+          masterTransition?.showLoadingFor(overlayMs)
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              navigateNative.replace('/(tabs)/home')
+            })
+          })
+        }}
+        disabled={isLoading}
+      >
+        <Text className="text-gray-500 dark:text-gray-500 text-sm">
+          {t('login.goBackToHome')}
         </Text>
       </TouchableOpacity>
     </View>

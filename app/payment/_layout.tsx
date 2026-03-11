@@ -1,9 +1,10 @@
-import { JsStack, jsStackSimpleScreenOptions } from '@/layouts/js-stack'
+import { SimpleStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
 
 /**
  * Payment stack: màn thanh toán /payment/[order]
- * JS Stack — cùng spring curve: Start → tăng tốc nhanh → giảm tốc mềm → dừng.
+ * JS Stack — timing ease-out 350ms: nhanh đầu → hãm phanh cuối.
+ * screenListeners → transitionEnd unlock navigation chính xác.
  */
 export default function PaymentLayout() {
-  return <JsStack screenOptions={jsStackSimpleScreenOptions} />
+  return <SimpleStackWithMasterTransition />
 }

@@ -13,7 +13,7 @@ import {
   OrderTypeEnum,
 } from '@/types'
 import { createSafeStorage } from '@/utils/storage'
-import moment from 'moment'
+import dayjs from 'dayjs'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { useUserStore } from './user.store'
@@ -189,11 +189,11 @@ export interface IOrderFlowStore {
 }
 
 const generateOrderId = () => {
-  return `order_${moment().valueOf()}_${Math.random().toString(36).substr(2, 9)}`
+  return `order_${dayjs().valueOf()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
 const generateOrderItemId = () => {
-  return `item_${moment().valueOf()}_${Math.random().toString(36).substr(2, 9)}`
+  return `item_${dayjs().valueOf()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
 // Helper function to convert IOrderDetail to IOrderItem
@@ -235,7 +235,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       // Initial state
       currentStep: OrderFlowStep.ORDERING,
       isHydrated: false,
-      lastModified: moment().valueOf(),
+      lastModified: dayjs().valueOf(),
       orderingData: null,
       paymentData: null,
       updatingData: null,
@@ -244,7 +244,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       setCurrentStep: (step: OrderFlowStep) => {
         set({
           currentStep: step,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -252,7 +252,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       // ORDERING PHASE
       // ===================
       initializeOrdering: () => {
-        const timestamp = moment().valueOf()
+        const timestamp = dayjs().valueOf()
         const newOrderingData: IOrderingData = {
           id: generateOrderId(),
           slug: generateOrderId(),
@@ -292,7 +292,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       setOrderingData: (data: IOrderingData) => {
         set({
           orderingData: data,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -325,7 +325,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             orderingData: newOrderingData,
             paymentData: null,
             updatingData: null,
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
           return
         }
@@ -348,7 +348,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           },
           paymentData: null,
           updatingData: null,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -365,7 +365,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             orderItems: updatedItems,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -382,7 +382,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             orderItems: updatedItems,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -399,7 +399,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             orderItems: updatedItems,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -412,7 +412,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             timeLeftTakeOut: time,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -422,7 +422,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
 
         set({
           orderingData: { ...orderingData, timeLeftTakeOut: undefined },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -439,7 +439,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             orderItems: updatedItems,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -459,7 +459,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ownerRole: customer.role.name,
             approvalBy: customer.slug,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -486,7 +486,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             deliveryDuration: 0,
             deliveryPhone: '',
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -501,7 +501,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             tableName: table.name,
             type: OrderTypeEnum.AT_TABLE,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -519,7 +519,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             deliveryDistance: 0,
             deliveryDuration: 0,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -532,7 +532,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             voucher,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -545,7 +545,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             voucher: null,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -573,7 +573,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
 
           set({
             orderingData: updatedData,
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         } else {
           const updatedData = {
@@ -588,7 +588,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
 
           set({
             orderingData: updatedData,
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -602,7 +602,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             description,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -615,14 +615,14 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             approvalBy,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
       clearOrderingData: () => {
         set({
           orderingData: null,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -638,7 +638,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             deliveryAddress: address,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -652,7 +652,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             deliveryDistance: distance,
             deliveryDuration: duration,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -665,7 +665,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             deliveryPhone: phone,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -680,7 +680,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             deliveryLng: lng,
             deliveryPlaceId: placeId || orderingData.deliveryPlaceId || '',
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -693,7 +693,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...orderingData,
             deliveryPlaceId: placeId,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -711,7 +711,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             deliveryLng: undefined,
             deliveryPlaceId: '',
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -731,7 +731,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           currentStep: OrderFlowStep.PAYMENT,
           paymentData: newPaymentData,
           orderingData: null,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -744,7 +744,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...paymentData,
             ...data,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -758,7 +758,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             paymentMethod: method,
             transactionId,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -780,7 +780,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             qrCode,
             isQrValid,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -798,7 +798,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             paymentAmount: order.payment?.amount || 0,
             paymentSlug: order.payment?.slug || '',
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -811,14 +811,14 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...paymentData,
             paymentSlug: slug,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
       clearPaymentData: () => {
         set({
           paymentData: null,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -891,7 +891,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           currentStep: OrderFlowStep.UPDATING,
           updatingData: newUpdatingData,
           paymentData: null,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -908,7 +908,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: draft,
             hasChanges,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -932,7 +932,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -955,7 +955,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -980,7 +980,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1002,7 +1002,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1015,7 +1015,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             ...updatingData,
             updateDraft: { ...updatingData.updateDraft, timeLeftTakeOut: time },
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1030,7 +1030,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
               timeLeftTakeOut: undefined,
             },
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1053,7 +1053,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1079,7 +1079,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1107,7 +1107,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1129,7 +1129,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1151,7 +1151,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1169,7 +1169,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1188,7 +1188,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1216,7 +1216,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1235,7 +1235,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
       setDraftDeliveryDistanceDuration: (
@@ -1255,7 +1255,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
       setDraftDeliveryCoords: (lat: number, lng: number, placeId?: string) => {
@@ -1273,7 +1273,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
       setDraftDeliveryPlaceId: (placeId: string) => {
@@ -1292,7 +1292,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             },
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
       setDraftDeliveryPhone: (phone: string) => {
@@ -1308,7 +1308,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
       clearDraftDeliveryInfo: () => {
@@ -1327,7 +1327,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1346,7 +1346,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1365,7 +1365,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1384,7 +1384,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: updatedDraft,
             hasChanges: true,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1420,14 +1420,14 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             updateDraft: resetDraft,
             hasChanges: false,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
       clearUpdatingData: () => {
         set({
           updatingData: null,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1459,7 +1459,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           orderingData: null,
           paymentData: null,
           updatingData: null,
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -1536,7 +1536,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
                 paymentMethod: item.paymentMethod || '',
                 payment: item.payment,
               },
-              lastModified: moment().valueOf(),
+              lastModified: dayjs().valueOf(),
             })
           }
         }
@@ -1598,7 +1598,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
               ...orderingData,
               paymentMethod: method as string,
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         } else if (currentStep === OrderFlowStep.PAYMENT && paymentData) {
           get().updatePaymentMethod(method as PaymentMethod, transactionId)
@@ -1621,7 +1621,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
                 orderSlug: slug,
               } as IOrderPayment,
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         } else if (currentStep === OrderFlowStep.PAYMENT && paymentData) {
           set({
@@ -1629,7 +1629,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
               ...paymentData,
               orderSlug: slug,
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },

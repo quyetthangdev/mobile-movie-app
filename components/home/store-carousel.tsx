@@ -143,7 +143,7 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
         keyExtractor={(_, index) => index.toString()}
         horizontal
         pagingEnabled
-        initialNumToRender={5}
+        initialNumToRender={3}
         maxToRenderPerBatch={2}
         windowSize={3}
         showsHorizontalScrollIndicator={false}

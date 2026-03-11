@@ -1,8 +1,8 @@
+import dayjs from 'dayjs'
+import { Timer } from 'lucide-react-native'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import moment from 'moment'
 import { useTranslation } from 'react-i18next'
 import { Text, useColorScheme, View } from 'react-native'
-import { Timer } from 'lucide-react-native'
 
 import { colors } from '@/constants'
 
@@ -34,10 +34,15 @@ export default function OrderCountdownNative({
 
   const { bgColor, textColor, iconColor } = useMemo(() => {
     const primary = isDark ? colors.primary.dark : colors.primary.light
-    const destructive = isDark ? colors.destructive.dark : colors.destructive.light
+    const destructive = isDark
+      ? colors.destructive.dark
+      : colors.destructive.light
     const warning = isDark ? '#f59e0b' : '#f97316' // amber-500 / orange-500
 
-    if (timeRemainingInSec <= CRITICAL_THRESHOLD_SEC && timeRemainingInSec > 0) {
+    if (
+      timeRemainingInSec <= CRITICAL_THRESHOLD_SEC &&
+      timeRemainingInSec > 0
+    ) {
       return { bgColor: destructive, textColor: '#fff', iconColor: '#fff' }
     }
     if (timeRemainingInSec <= WARNING_THRESHOLD_SEC) {
@@ -51,9 +56,9 @@ export default function OrderCountdownNative({
 
     const tick = () => {
       try {
-        const createTime = moment(createdAt)
+        const createTime = dayjs(createdAt)
         if (!createTime.isValid()) return
-        const now = moment()
+        const now = dayjs()
         const timePassed = now.diff(createTime, 'seconds')
         const remainingTime = 900 - timePassed // 15 phút = 900 giây
 
@@ -89,10 +94,7 @@ export default function OrderCountdownNative({
       style={{ backgroundColor: bgColor }}
     >
       <Timer size={16} color={iconColor} />
-      <Text
-        className="text-sm font-semibold"
-        style={{ color: textColor }}
-      >
+      <Text className="text-sm font-semibold" style={{ color: textColor }}>
         {t('paymentMethod.timeRemaining', 'Thời gian còn lại')} {timeStr}
       </Text>
     </View>

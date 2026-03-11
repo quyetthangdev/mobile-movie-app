@@ -16,6 +16,7 @@ export type HrefLike = Href | string
 export type RouterLike = {
   push: (href: HrefLike) => void
   replace: (href: HrefLike) => void
+  navigate: (href: HrefLike) => void
   back: () => void
 }
 

@@ -1,9 +1,10 @@
-import { StackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { NativeStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
 
 /**
  * Menu stack: chi tiết món /menu/[slug], product-rating, ...
- * JS Stack (Telegram-style): Parallax, Spring, Shadow, Overlay.
+ * Native Stack: slide_from_right + spring deceleration (hãm phanh).
+ * Flow: Menu → tap product → router.push → Native Stack push → Product Detail.
  */
 export default function MenuLayout() {
-  return <StackWithMasterTransition />
+  return <NativeStackWithMasterTransition />
 }

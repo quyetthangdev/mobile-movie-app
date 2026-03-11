@@ -14,6 +14,8 @@ export const ROUTE = {
   CLIENT_MENU: '/menu',
   CLIENT_MENU_ITEM: '/menu-item',
   CLIENT_MENU_ITEM_DETAIL: '/menu/[slug]',
+  /** Product detail — ngoài tab tree, push trên Root Stack */
+  CLIENT_PRODUCT_DETAIL: '/product/[id]',
   CLIENT_CART: '/cart',
   CLIENT_CHECKOUT_ORDER: '/checkout-order',
   CLIENT_PAYMENT: '/payment/[order]',

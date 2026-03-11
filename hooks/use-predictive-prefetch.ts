@@ -7,8 +7,8 @@
  * Phase 6 Task 6: Khi user ở Home 2s, prefetch Menu data để chuyển tab mượt hơn.
  */
 import { useQueryClient } from '@tanstack/react-query'
+import dayjs from 'dayjs'
 import { usePathname } from 'expo-router'
-import moment from 'moment'
 import { useEffect, useMemo, useRef } from 'react'
 import { InteractionManager } from 'react-native'
 
@@ -16,7 +16,12 @@ import { getBanners } from '@/api/banner'
 import { getPublicSpecificMenu, getSpecificMenu } from '@/api/menu'
 import { BannerPage, FILTER_VALUE } from '@/constants'
 import { isTransitionLocked } from '@/lib/navigation/transition-lock'
-import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
+import {
+  useAuthStore,
+  useBranchStore,
+  useMenuFilterStore,
+  useUserStore,
+} from '@/stores'
 import type { ISpecificMenuRequest } from '@/types'
 
 const HOME_IDLE_PREFETCH_MS = 2000
@@ -40,7 +45,7 @@ export function usePredictivePrefetch() {
 
   const menuRequest = useMemo<ISpecificMenuRequest>(
     () => ({
-      date: moment().format('YYYY-MM-DD'),
+      date: dayjs().format('YYYY-MM-DD'),
       branch: branchSlug,
       catalog: menuFilter.catalog,
       productName: menuFilter.productName,

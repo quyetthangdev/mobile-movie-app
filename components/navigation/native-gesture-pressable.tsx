@@ -1,16 +1,3 @@
-/**
- * Task 1 — Zero-Latency Interaction (Touch-to-Pixel Rule).
- *
- * Dùng Gesture.Tap() thay vì onPress — toàn bộ logic chạy native/UI thread.
- * - onBegin (worklet): pressScale animation — không cross bridge.
- * - onStart (worklet): Check isLockedShared.value TRÊN UI THREAD trước runOnJS.
- *
- * Lock gate chạy 100% trong worklet: if (isLockedShared.value === 1) return
- * → Không gọi runOnJS khi đang transition → giảm JS queue pressure, tránh drop frame.
- *
- * @see docs/NAVIGATION_UI_THREAD_ARCHITECTURE.md
- */
-import * as Haptics from 'expo-haptics'
 import React, { useCallback, useMemo } from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
 import { View } from 'react-native'
@@ -20,17 +7,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 
 import { MOTION, SPRING_CONFIGS } from '@/constants'
-
-const triggerHapticLight = () => {
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
-}
-
-const triggerHapticMedium = () => {
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
-}
 import type { HrefLike } from '@/lib/navigation'
 import { executeNavFromGesture } from '@/lib/navigation'
 import { isLockedShared } from '@/lib/navigation/navigation-lock-shared'
@@ -38,11 +18,14 @@ import { isLockedShared } from '@/lib/navigation/navigation-lock-shared'
 export type NativeGesturePressableProps = {
   children: React.ReactNode
   style?: StyleProp<ViewStyle>
-  /** Navigation: push | replace | back. Dùng thay onPress cho zero-latency. */
+  /** Navigation: push | replace | navigate | back. Dùng thay onPress cho zero-latency. */
   navigation?:
     | { type: 'push'; href: HrefLike }
     | { type: 'replace'; href: HrefLike }
+    | { type: 'navigate'; href: HrefLike }
     | { type: 'back' }
+  /** Gọi TRƯỚC navigation. Nếu return Promise thì await trước khi navigate — tránh nháy. */
+  beforeNavigate?: () => void | Promise<void>
   /** Fallback: gọi khi có navigation. Nếu chỉ truyền onPress, dùng setImmediate. */
   onPress?: () => void
   /** Gọi ngay khi State.BEGAN (finger down). Dùng cho prefetch. */
@@ -52,8 +35,8 @@ export type NativeGesturePressableProps = {
   disabled?: boolean
   /** className cho NativeWind */
   className?: string
-  /** Haptic: 'light' cho Tab/Navigation, 'medium' cho nút quan trọng (Add to Cart). */
-  hapticStyle?: 'light' | 'medium'
+  /** Haptic: giữ prop cho compat nhưng hiện không sử dụng. */
+  hapticStyle?: 'none' | 'light' | 'medium'
 }
 
 /**
@@ -68,20 +51,33 @@ export const NativeGesturePressable = React.forwardRef<
     children,
     style,
     navigation,
+    beforeNavigate,
     onPress,
     onPressIn,
     onPressOut,
     disabled,
     className,
-    hapticStyle = 'light',
+    hapticStyle: _hapticStyle = 'none', // giữ prop để không break API, nhưng không dùng
   },
   ref,
 ) {
   const pressScale = useSharedValue(1)
 
-  const triggerHaptic = hapticStyle === 'medium' ? triggerHapticMedium : triggerHapticLight
-
   const triggerAction = useCallback(() => {
+    // Sync path: không await — navigation ngay cùng frame với finger up.
+    const result = beforeNavigate?.()
+    if (result instanceof Promise) {
+      result.then(() => {
+        if (navigation) {
+          executeNavFromGesture(
+            navigation.type,
+            navigation.type === 'back' ? undefined : navigation.href,
+          )
+        }
+        if (onPress) setImmediate(onPress)
+      })
+      return
+    }
     if (navigation) {
       executeNavFromGesture(
         navigation.type,
@@ -89,32 +85,30 @@ export const NativeGesturePressable = React.forwardRef<
       )
     }
     if (onPress) setImmediate(onPress)
-    if (onPressIn) setImmediate(onPressIn)
-  }, [navigation, onPress, onPressIn])
+  }, [beforeNavigate, navigation, onPress])
 
   const tapGesture = useMemo(() => {
     const gesture = Gesture.Tap()
       .enabled(!disabled)
       .maxDuration(300)
-      // FIX 1: Tăng khoảng cách cho phép di chuyển nhẹ khi tap
-      .maxDistance(20)
-      // FIX 2: Không cancel khi finger ra ngoài view (tránh false cancel do layout)
-      .shouldCancelWhenOutside(false)
-      // FIX 3: simultaneousWithExternalGesture cần ref từ parent (ScrollView/Stack).
-      // Gesture.Native() không gắn view → không dùng. Xem docs/GESTURE_TAP_VS_BACK_CONFLICT.md
+      // Cho phép di chuyển rất nhỏ khi tap; nếu kéo nhiều hơn thì coi như scroll, không trigger tap.
+      .maxDistance(10)
       .onBegin(() => {
         'worklet'
-        // Scale ngay lập tức (<16ms) — chạy trên UI thread, không qua bridge
-        pressScale.value = withSpring(MOTION.pressScale, SPRING_CONFIGS.press)
-        runOnJS(triggerHaptic)()
+        // Scale ngay lập tức (≈80ms) — chạy trên UI thread, không qua bridge
+        pressScale.value = withTiming(MOTION.pressScale, { duration: 80 })
+        // onPressIn: prefetch ngay khi finger down (trước khi nhả tay)
+        if (onPressIn) runOnJS(onPressIn)()
       })
       .onStart(() => {
         'worklet'
-        pressScale.value = withSpring(1, SPRING_CONFIGS.press)
-        // Worklet-only gate: đọc SharedValue trên UI thread, không cross bridge.
-        // Chỉ runOnJS khi unlocked → navigation instant, không block.
-        if (isLockedShared.value === 1) return
+        // Khi Tap được công nhận (finger up, không bị scroll), mới trigger navigate.
+        if (isLockedShared.value === 1) {
+          pressScale.value = withSpring(1, SPRING_CONFIGS.press)
+          return
+        }
         runOnJS(triggerAction)()
+        pressScale.value = withSpring(1, SPRING_CONFIGS.press)
       })
       .onFinalize(() => {
         'worklet'
@@ -125,7 +119,7 @@ export const NativeGesturePressable = React.forwardRef<
       })
 
     return gesture
-  }, [disabled, onPressOut, triggerAction, triggerHaptic, pressScale])
+  }, [disabled, onPressOut, triggerAction, pressScale, onPressIn])
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],

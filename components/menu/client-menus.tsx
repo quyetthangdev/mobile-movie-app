@@ -1,12 +1,14 @@
 import { FlashList } from '@shopify/flash-list'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dimensions, Text, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
+import { useIsFocused } from '@react-navigation/native'
 
 import { useCatalog } from '@/hooks'
 import { OrderFlowStep } from '@/constants'
-import { useOrderFlowStore, useUserStore } from '@/stores'
+import { useUserStore } from '@/stores'
+import { useOrderFlowMenuItemControl } from '@/stores/selectors'
 import { IMenuItem, ISpecificMenu } from '@/types'
 import { ClientMenuItem } from './client-menu-item'
 
@@ -17,16 +19,21 @@ interface IClientMenuProps {
 
 const ITEM_MARGIN_BOTTOM = 16
 
+const MAX_ANIMATED_ITEMS = 3
+const STAGGER_MS = 80
+
 const MenuItemRow = React.memo(function MenuItemRow({
   item,
   index,
   itemWidth,
   marginRight,
+  skipEntering,
 }: {
   item: IMenuItem
   index: number
   itemWidth: number
   marginRight?: number
+  skipEntering?: boolean
 }) {
   const style = React.useMemo(
     () => ({
@@ -36,11 +43,13 @@ const MenuItemRow = React.memo(function MenuItemRow({
     }),
     [itemWidth, marginRight],
   )
+
+  const entering = skipEntering || index >= MAX_ANIMATED_ITEMS
+    ? undefined
+    : FadeInDown.delay(index * STAGGER_MS).springify().damping(50)
+
   return (
-    <Animated.View
-      style={style}
-      entering={FadeInDown.delay(index * 50).springify().damping(50)}
-    >
+    <Animated.View style={style} entering={entering}>
       <ClientMenuItem item={item} />
     </Animated.View>
   )
@@ -62,6 +71,14 @@ const EMPTY_SEPARATOR = () => null
 export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: IClientMenuProps) {
   const { t } = useTranslation('menu')
   const { t: tCommon } = useTranslation('common')
+  const isFocused = useIsFocused()
+  const hasAnimatedRef = useRef(false)
+  const skipEntering = hasAnimatedRef.current
+  useEffect(() => {
+    if (isFocused && !hasAnimatedRef.current) {
+      hasAnimatedRef.current = true
+    }
+  }, [isFocused])
   const { data: catalogs, isPending: isLoadingCatalog } = useCatalog()
 
   // Memoize sorted menu items to avoid sorting each render
@@ -87,12 +104,14 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
   }, [menu])
 
   // Init ordering khi menu mount — chạy 1 lần, không cần mỗi ClientMenuItem
-  const hasOrderingData = useOrderFlowStore((s) => !!s.orderingData)
-  const orderingOwner = useOrderFlowStore((s) => s.orderingData?.owner ?? '')
-  const isHydrated = useOrderFlowStore((s) => s.isHydrated)
-  const currentStep = useOrderFlowStore((s) => s.currentStep)
-  const setCurrentStep = useOrderFlowStore((s) => s.setCurrentStep)
-  const initializeOrdering = useOrderFlowStore((s) => s.initializeOrdering)
+  const {
+    hasOrderingData,
+    orderingOwner,
+    isHydrated,
+    currentStep,
+    setCurrentStep,
+    initializeOrdering,
+  } = useOrderFlowMenuItemControl()
   const userSlug = useUserStore((s) => s.userInfo?.slug)
 
   useEffect(() => {
@@ -154,12 +173,13 @@ export const ClientMenus = React.memo(function ClientMenus({ menu, isLoading }: 
         item={item}
         index={index}
         itemWidth={itemWidth}
+        skipEntering={skipEntering}
         marginRight={
           !isMobile && index % numColumns !== numColumns - 1 ? gap : undefined
         }
       />
     ),
-    [itemWidth, isMobile, numColumns, gap],
+    [itemWidth, isMobile, numColumns, gap, skipEntering],
   )
 
   const keyExtractor = useCallback((item: IMenuItem) => item.slug ?? `item-${item.product?.slug ?? 'unknown'}`, [])

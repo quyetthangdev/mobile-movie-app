@@ -1,9 +1,10 @@
+import dayjs from 'dayjs'
 import i18next from 'i18next'
-import moment from 'moment'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 import { PaymentMethod, VOUCHER_CUSTOMER_TYPE } from '@/constants'
+import { requestClearStoresExcept } from '@/lib/store-sync'
 import {
   ICartItem,
   IOrder,
@@ -16,7 +17,6 @@ import {
   OrderStatus,
   OrderTypeEnum,
 } from '@/types'
-import { requestClearStoresExcept } from '@/lib/store-sync'
 import { showToast } from '@/utils/toast'
 
 // Generate unique ID for React Native (crypto.randomUUID not available)
@@ -126,7 +126,7 @@ export const useUpdateOrderStore = create<IUpdateOrderStore>()(
         const { orderItems } = get()
         const orderStatus = orderItems ? orderItems.status : OrderStatus.PENDING
         // const orderId = generateUniqueId()
-        const timestamp = moment().valueOf()
+        const timestamp = dayjs().valueOf()
         const newOrderItems: IOrderToUpdate = {
           id: generateOrderId(),
           slug: order.slug,
@@ -285,7 +285,7 @@ export const useUpdateOrderStore = create<IUpdateOrderStore>()(
 
         const { orderItems } = get()
         const orderStatus = orderItems ? orderItems.status : OrderStatus.PENDING
-        const timestamp = moment().valueOf()
+        const timestamp = dayjs().valueOf()
 
         if (!orderItems) {
           set({
@@ -590,7 +590,7 @@ export const useOriginalOrderStore = create<IOriginalOrderStore>()(
           ? originalOrderItems.status
           : OrderStatus.PENDING
         // const orderId = generateUniqueId()
-        const timestamp = moment().valueOf()
+        const timestamp = dayjs().valueOf()
         const newOriginalOrderItems: IOrderToUpdate = {
           id: generateOrderId(),
           slug: order.slug,
@@ -755,7 +755,7 @@ export const useOriginalOrderStore = create<IOriginalOrderStore>()(
         const orderStatus = originalOrderItems
           ? originalOrderItems.status
           : OrderStatus.PENDING
-        const timestamp = moment().valueOf()
+        const timestamp = dayjs().valueOf()
 
         if (!originalOrderItems) {
           set({

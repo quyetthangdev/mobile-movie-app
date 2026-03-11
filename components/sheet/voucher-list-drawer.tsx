@@ -1,3 +1,6 @@
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+
 import { APPLICABILITY_RULE, Role, VOUCHER_TYPE } from '@/constants'
 import {
   usePagination,
@@ -28,7 +31,6 @@ import BottomSheet, {
   BottomSheetFlatList,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet'
-import moment from 'moment'
 import {
   startTransition,
   useCallback,
@@ -52,10 +54,12 @@ let openCallback: (() => void) | null = null
 let isComponentMounted = false
 
 function VoucherListDrawer() {
+  dayjs.extend(utc)
   const { t } = useTranslation(['voucher'])
   const { t: tToast } = useTranslation('toast')
   const userInfo = useUserStore((s) => s.userInfo)
-  const { getCartItems, addVoucher, removeVoucher, isHydrated } = useOrderFlowVoucherDrawer()
+  const { getCartItems, addVoucher, removeVoucher, isHydrated } =
+    useOrderFlowVoucherDrawer()
   const isRemovingVoucherRef = useRef(false)
   const { mutate: validateVoucher } = useValidateVoucher()
   const { mutate: validatePublicVoucher } = useValidatePublicVoucher()
@@ -520,8 +524,8 @@ function VoucherListDrawer() {
             (cartTotals?.subTotalBeforeDiscount || 0) -
               (cartTotals?.promotionDiscount || 0)
       const isActive = voucher.isActive
-      const endDateWithGrace = moment.utc(voucher.endDate).add(30, 'minutes')
-      const isExpired = endDateWithGrace.isBefore(moment())
+      const endDateWithGrace = dayjs.utc(voucher.endDate).add(30, 'minutes')
+      const isExpired = endDateWithGrace.isBefore(dayjs())
       const hasUsage = (voucher.remainingUsage || 0) > 0
       const hasValidProducts = (() => {
         if (!voucher.voucherProducts || voucher.voucherProducts.length === 0) {
@@ -546,13 +550,8 @@ function VoucherListDrawer() {
           voucher.applicabilityRule,
         )
       })()
-      const sevenAmToday = moment().set({
-        hour: 7,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      })
-      const isValidDate = sevenAmToday.isSameOrBefore(moment(voucher.endDate))
+      const sevenAmToday = dayjs().hour(7).minute(0).second(0).millisecond(0)
+      const isValidDate = sevenAmToday.isBefore(dayjs(voucher.endDate))
       const requiresLogin = voucher.isVerificationIdentity === true
       const isUserLoggedIn = !!userInfo?.slug
       const isIdentityValid =
@@ -644,10 +643,10 @@ function VoucherListDrawer() {
           message: t('voucher.needVerifyIdentity'),
         },
         {
-          condition: moment
+          condition: dayjs
             .utc(voucher.endDate)
             .add(30, 'minutes')
-            .isBefore(moment()),
+            .isBefore(dayjs()),
           message: t('voucher.expired'),
         },
         {
@@ -788,12 +787,7 @@ function VoucherListDrawer() {
         cartTotals={cartTotals}
       />
     ),
-    [
-      tempSelectedVoucher,
-      isVoucherValid,
-      getVoucherErrorMessage,
-      cartTotals,
-    ],
+    [tempSelectedVoucher, isVoucherValid, getVoucherErrorMessage, cartTotals],
   )
 
   // Always render BottomSheet to ensure ref is set, even if not hydrated yet

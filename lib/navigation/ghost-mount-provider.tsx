@@ -50,6 +50,7 @@ export function GhostMountProvider({ children }: { children: React.ReactNode }) 
           style={styles.ghost}
           pointerEvents="none"
           collapsable={false}
+          removeClippedSubviews
         >
           <ShellComponent />
         </View>
@@ -61,10 +62,9 @@ export function GhostMountProvider({ children }: { children: React.ReactNode }) 
 const styles = StyleSheet.create({
   ghost: {
     position: 'absolute',
-    left: -9999,
-    top: 0,
-    right: 9999,
-    bottom: 0,
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
     opacity: 0,
     zIndex: -1,
   },

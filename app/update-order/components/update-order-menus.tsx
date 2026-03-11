@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { Dimensions, Text, View } from 'react-native'
 
 import { useCatalog } from '@/hooks'
-import { useAuthStore, useOrderFlowStore } from '@/stores'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks/use-menu'
+import { useAuthStore, useOrderFlowStore } from '@/stores'
 import { IMenuItem } from '@/types'
-import moment from 'moment'
+import dayjs from 'dayjs'
 
 import ClientMenuItemForUpdateOrder from './client-menu-item-for-update-order'
 
@@ -19,7 +19,9 @@ interface UpdateOrderMenusProps {
  * Menu list cho Update Order - thêm món vào draft.
  * Dùng branch từ order, fetch menu theo branch + date hôm nay.
  */
-export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) {
+export default function UpdateOrderMenus({
+  branchSlug,
+}: UpdateOrderMenusProps) {
   const { t } = useTranslation('menu')
   const { data: catalogs, isPending: isLoadingCatalog } = useCatalog()
   const hasUpdatingData = useOrderFlowStore((s) => s.updatingData !== null)
@@ -28,7 +30,7 @@ export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) 
   const menuRequest = useMemo(
     () => ({
       branch: branchSlug,
-      date: moment().format('YYYY-MM-DD'),
+      date: dayjs().format('YYYY-MM-DD'),
     }),
     [branchSlug],
   )
@@ -44,7 +46,9 @@ export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) 
     usePublicSpecificMenu(menuRequest, shouldFetchPublic)
 
   const menuData = isAuthenticated ? authMenuData : publicMenuData
-  const isLoadingMenu = isAuthenticated ? isLoadingAuthMenu : isLoadingPublicMenu
+  const isLoadingMenu = isAuthenticated
+    ? isLoadingAuthMenu
+    : isLoadingPublicMenu
 
   const menuItems = useMemo(() => {
     const items = menuData?.result?.menuItems
@@ -107,9 +111,12 @@ export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) 
 
   if (!branchSlug) {
     return (
-      <View className="items-center justify-center py-12 px-4">
+      <View className="items-center justify-center px-4 py-12">
         <Text className="text-center text-gray-600 dark:text-gray-400">
-          {t('menu.noBranchForMenu', 'Không xác định được chi nhánh để tải thực đơn')}
+          {t(
+            'menu.noBranchForMenu',
+            'Không xác định được chi nhánh để tải thực đơn',
+          )}
         </Text>
       </View>
     )
@@ -149,10 +156,7 @@ export default function UpdateOrderMenus({ branchSlug }: UpdateOrderMenusProps) 
       {groupedItems.map((group, index) => {
         if (group.items.length === 0) return null
         return (
-          <View
-            key={`catalog-${group.catalog.slug || index}`}
-            className="mb-8"
-          >
+          <View key={`catalog-${group.catalog.slug || index}`} className="mb-8">
             <Text className="mb-4 text-lg font-bold uppercase text-primary">
               {group.catalog.name}
             </Text>

@@ -52,7 +52,7 @@ export default function LoyaltyPointScreen() {
   const [selectedHistory, setSelectedHistory] =
     useState<ILoyaltyPointHistory | null>(null)
 
-  const { data: totalData, isLoading: loadingTotal } = useLoyaltyPoints(slug)
+  const { totalPoints, isLoading: loadingTotal } = useLoyaltyPoints(slug)
   const { data: historyData, isLoading: loadingHistory } =
     useLoyaltyPointHistory({
       slug,
@@ -69,7 +69,6 @@ export default function LoyaltyPointScreen() {
           : [typeFilter as LoyaltyPointHistoryType],
     })
 
-  const totalPoints = totalData?.totalPoints ?? 0
   const historyList = historyData?.items ?? []
 
   const columns = useLoyaltyPointTransactionColumns()

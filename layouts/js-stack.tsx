@@ -6,6 +6,9 @@
  *
  * useNativeDriver: true — @react-navigation/stack Card dùng nội bộ.
  * Haptic Sync: MasterTransitionProvider kích hoạt tại transitionStart.
+ *
+ * Lưu ý: fullScreenGestureEnabled chỉ có trên Native Stack. JS Stack dùng
+ * gestureResponseDistance = screenWidth trên iOS để mô phỏng swipe-to-close toàn màn.
  */
 import type { ParamListBase } from '@react-navigation/native'
 import {
@@ -14,13 +17,17 @@ import {
   type StackNavigationOptions,
 } from '@react-navigation/stack'
 import { withLayoutContext } from 'expo-router'
-import { Easing } from 'react-native'
+import { Dimensions, Platform } from 'react-native'
 
-import { MOTION } from '@/constants'
 import {
   forSimpleSlide,
   forTelegramHorizontal,
 } from '@/lib/navigation/telegram-style-interpolator'
+import {
+  OPEN_SPEC,
+  CLOSE_SPEC,
+  GESTURE_RESPONSE_DISTANCE,
+} from '@/lib/navigation/interactive-transition'
 
 const { Navigator } = createStackNavigator()
 
@@ -31,48 +38,55 @@ export const JsStack = withLayoutContext<
   StackNavigationEventMap
 >(Navigator)
 
-/** Timing + Bezier: Start → tăng tốc nhanh → giảm tốc mềm → dừng (Telegram-style, không tuyến tính) */
-const TELEGRAM_TRANSITION_SPEC = {
-  animation: 'timing' as const,
-  config: {
-    duration: MOTION.jsStack.durationMs,
-    easing: Easing.bezier(...MOTION.jsStack.easingBezier),
-  },
-}
-
 export const jsStackScreenOptions: StackNavigationOptions = {
   headerShown: false,
-  /** Parallax, shadow, overlay — từ MOTION.jsStack qua forTelegramHorizontal */
   cardStyleInterpolator: forTelegramHorizontal,
-  /** Timing + Bezier — Telegram-style: nhanh đầu, chậm mềm cuối */
   transitionSpec: {
-    open: TELEGRAM_TRANSITION_SPEC,
-    close: TELEGRAM_TRANSITION_SPEC,
+    open: OPEN_SPEC,
+    close: CLOSE_SPEC,
   },
-  /** Shadow + Overlay */
+
+  /**
+   * Giữ màn hình cũ luôn "sống" ở lớp dưới trong suốt transition.
+   * Cần cho Shared Element fly-back + parallax depth effect.
+   */
+  detachPreviousScreen: false,
+
+  /**
+   * Nền card mặc định — forTelegramHorizontal override bằng '#ffffff' trực tiếp.
+   * SharedElement overlay render ở root (zIndex 9998) nên không cần transparent card.
+   */
+  cardStyle: { backgroundColor: '#ffffff' },
+
   cardShadowEnabled: true,
   cardOverlayEnabled: true,
-  /** Gesture dính tay — JS Stack dùng gestureResponseDistance thay fullScreenGestureEnabled */
   gestureEnabled: true,
   gestureDirection: 'horizontal',
-  gestureResponseDistance: 9999, // Toàn màn hình để vuốt back
-  /** Replace dùng push animation */
+  gestureResponseDistance: GESTURE_RESPONSE_DISTANCE,
   animationTypeForReplace: 'push',
   presentation: 'card',
-  /** freezeOnBlur: giảm re-render màn background */
   freezeOnBlur: true,
-  /** Màu solid — tránh alpha blending cho các lớp nằm dưới (không dùng transparent) */
-  cardStyle: { backgroundColor: '#ffffff' },
-  /**
-   * detachInactiveScreens: mặc định true trong @react-navigation/stack.
-   * Unmount màn không active — giảm memory, tránh tính toán layout cho màn ẩn.
-   */
 }
 
-/** Slide đơn giản — cùng timing curve, không parallax/shadow/overlay. Dùng cho Root, Auth, Profile, Payment, UpdateOrder */
 export const jsStackSimpleScreenOptions: StackNavigationOptions = {
   ...jsStackScreenOptions,
   cardStyleInterpolator: forSimpleSlide,
   cardShadowEnabled: false,
   cardOverlayEnabled: false,
+}
+
+/**
+ * Profile placeholder: forSimpleSlide (chỉ translateX, không parallax/shadow) — giảm CPU/GPU.
+ * Transition: OPEN_SPEC (ease-out cubic) + CLOSE_SPEC (spring) từ interactive-transition.
+ * iOS: gestureResponseDistance = screenWidth để mô phỏng fullScreenGestureEnabled.
+ */
+export const jsStackProfileScreenOptions: StackNavigationOptions = {
+  ...jsStackScreenOptions,
+  cardStyleInterpolator: forSimpleSlide,
+  cardShadowEnabled: false,
+  cardOverlayEnabled: false,
+  gestureResponseDistance:
+    Platform.OS === 'ios'
+      ? Dimensions.get('window').width
+      : GESTURE_RESPONSE_DISTANCE,
 }

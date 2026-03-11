@@ -5,10 +5,13 @@
  * TransitionProgressSyncer (trong screen) sync Animated.Value → SharedValue.
  * Parallax interpolate dựa trên progress này → giảm jank.
  */
-import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react'
-import { InteractionManager } from 'react-native'
-import * as Haptics from 'expo-haptics'
+import { usePathname } from 'expo-router'
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { InteractionManager, View } from 'react-native'
 import { runOnUI } from 'react-native-reanimated'
+import { useQueryClient } from '@tanstack/react-query'
+
+import { GlobalLoadingOverlay } from '@/components/ui/global-loading-overlay'
 import type { SharedValue } from 'react-native-reanimated'
 import { useSharedValue } from 'react-native-reanimated'
 
@@ -16,6 +19,7 @@ import { useGhostMount } from './ghost-mount-provider'
 import { setTransitionQueueing } from './transition-task-queue'
 import { cancelScheduledUnlockTimers, unlockNavigation } from './navigation-lock'
 import { ParallaxDriverProvider } from '@/lib/transitions/reanimated-parallax-driver'
+import { useSharedElementOptional } from '@/lib/shared-element'
 
 export type MasterTransitionContextValue = {
   /** Progress 0→1 (push) hoặc 1→0 (pop). Physics-based, không timing. */
@@ -27,23 +31,53 @@ export type MasterTransitionContextValue = {
     transitionStart: (e: { data: { closing: boolean } }) => void
     transitionEnd: (e: { data: { closing: boolean } }) => void
   }
+  /** Hiện overlay loading trong ms (vd: tab switch). */
+  showLoadingFor: (ms?: number) => void
+  /** Hiện overlay (không timeout), ẩn bằng hideLoadingOverlay. */
+  showLoadingOverlay: () => void
+  /** Ẩn overlay (khi content ready). */
+  hideLoadingOverlay: () => void
 }
 
 const MasterTransitionContext = createContext<MasterTransitionContextValue | null>(
   null,
 )
 
+/** Tạm tắt overlay — bật lại khi cần */
+const OVERLAY_ENABLED = false
+/** Delay sau transitionEnd trước khi ẩn overlay — bù khoảng delay skeleton */
+const OVERLAY_HIDE_DELAY_MS = 180
+/** Mặc định khi gọi showLoadingFor() (vd: tab switch) */
+const TAB_SWITCH_OVERLAY_MS = 400
+
+/** Route pattern → query key để kiểm tra cache. Nếu có cache thì bỏ qua overlay. */
+const ROUTE_CACHE_QUERY_MAP: Array<{ pattern: RegExp; getQueryKey: (param: string) => unknown[] }> = [
+  { pattern: /\/product\/([^/]+)/, getQueryKey: (id) => ['specific-menu-item', id] },
+  { pattern: /\/update-order\/([^/]+)/, getQueryKey: (slug) => ['order', slug] },
+  { pattern: /\/payment\/([^/]+)/, getQueryKey: (orderSlug) => ['order', orderSlug] },
+]
+
 export function MasterTransitionProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const queryClient = useQueryClient()
   const transitionProgress = useSharedValue(0)
   const isTransitioning = useSharedValue(false)
   const { clearPreload } = useGhostMount()
+  const sharedElement = useSharedElementOptional()
   const interactionHandleRef = useRef<ReturnType<typeof InteractionManager.createInteractionHandle> | null>(null)
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
+  const overlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (overlayTimeoutRef.current) {
+        clearTimeout(overlayTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const onTransitionStart = useCallback(
     (e: { data: { closing: boolean } }) => {
-      // Haptic Sync: kích hoạt ngay khi slide bắt đầu — đồng bộ cảm giác lý tính (push + swipe-back)
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
-      // Clear stale handle from previous transition (edge case: rapid nav)
       if (interactionHandleRef.current != null) {
         InteractionManager.clearInteractionHandle(interactionHandleRef.current)
         interactionHandleRef.current = null
@@ -51,14 +85,24 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
       interactionHandleRef.current = InteractionManager.createInteractionHandle()
       setTransitionQueueing(true)
       const closing = e.data.closing
+
+      // Shared Element: reverse overlay animation when swiping back
+      if (closing && sharedElement?.isActive.value) {
+        sharedElement.reverseTransition()
+      }
+
       runOnUI(() => {
         'worklet'
         isTransitioning.value = true
-        // Giá trị ban đầu — TransitionProgressSyncer sẽ sync theo native progress
         transitionProgress.value = closing ? 1 : 0
       })()
+      // Không hiện overlay ở transitionStart — chờ transitionEnd để tránh chồng lên animation trượt.
+      if (overlayTimeoutRef.current) {
+        clearTimeout(overlayTimeoutRef.current)
+        overlayTimeoutRef.current = null
+      }
     },
-    [isTransitioning, transitionProgress],
+    [isTransitioning, transitionProgress, sharedElement],
   )
 
   const onTransitionEnd = useCallback(
@@ -70,6 +114,12 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
       cancelScheduledUnlockTimers()
       unlockNavigation()
       const closing = e.data.closing
+
+      // Shared Element: complete transition when push finishes
+      if (!closing && sharedElement) {
+        sharedElement.completeTransition()
+      }
+
       runOnUI(() => {
         'worklet'
         isTransitioning.value = false
@@ -77,9 +127,74 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
       })()
       setTransitionQueueing(false)
       clearPreload()
+      // Hiện overlay SAU khi transition xong (push) — tránh chồng lên animation trượt.
+      // Bỏ qua overlay nếu đã có cache (product, menu, ...).
+      if (!closing) {
+        const isProfileContext =
+          typeof pathname === 'string' &&
+          (pathname.includes('/profile') || pathname.includes('profile/'))
+        if (isProfileContext) return
+
+        // Bỏ qua overlay nếu route có cache (product, order, payment, ...)
+        if (typeof pathname === 'string') {
+          for (const { pattern, getQueryKey } of ROUTE_CACHE_QUERY_MAP) {
+            const match = pathname.match(pattern)
+            if (match) {
+              const queryKey = getQueryKey(match[1])
+              if (queryClient.getQueryData(queryKey)) return
+              break // Chỉ match 1 pattern
+            }
+          }
+        }
+
+        if (OVERLAY_ENABLED) setShowLoadingOverlay(true)
+      }
+      if (closing) {
+        // Pop: ẩn overlay ngay — overlay từ push trước không cần chờ 180ms
+        if (overlayTimeoutRef.current) {
+          clearTimeout(overlayTimeoutRef.current)
+          overlayTimeoutRef.current = null
+        }
+        setShowLoadingOverlay(false)
+      } else {
+        overlayTimeoutRef.current = setTimeout(() => {
+          setShowLoadingOverlay(false)
+          overlayTimeoutRef.current = null
+        }, OVERLAY_HIDE_DELAY_MS)
+      }
     },
-    [clearPreload, isTransitioning, transitionProgress],
+    [clearPreload, isTransitioning, transitionProgress, sharedElement, pathname, queryClient],
   )
+
+  const showLoadingFor = useCallback((ms = TAB_SWITCH_OVERLAY_MS) => {
+    if (!OVERLAY_ENABLED) return
+    if (overlayTimeoutRef.current) {
+      clearTimeout(overlayTimeoutRef.current)
+      overlayTimeoutRef.current = null
+    }
+    setShowLoadingOverlay(true)
+    overlayTimeoutRef.current = setTimeout(() => {
+      setShowLoadingOverlay(false)
+      overlayTimeoutRef.current = null
+    }, ms)
+  }, [])
+
+  const showLoadingOverlayNoTimeout = useCallback(() => {
+    if (!OVERLAY_ENABLED) return
+    if (overlayTimeoutRef.current) {
+      clearTimeout(overlayTimeoutRef.current)
+      overlayTimeoutRef.current = null
+    }
+    setShowLoadingOverlay(true)
+  }, [])
+
+  const hideLoadingOverlay = useCallback(() => {
+    if (overlayTimeoutRef.current) {
+      clearTimeout(overlayTimeoutRef.current)
+      overlayTimeoutRef.current = null
+    }
+    setShowLoadingOverlay(false)
+  }, [])
 
   const screenListeners = useMemo(
     () => ({
@@ -94,15 +209,21 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
       transitionProgress,
       isTransitioning,
       screenListeners,
+      showLoadingFor,
+      showLoadingOverlay: showLoadingOverlayNoTimeout,
+      hideLoadingOverlay,
     }),
-    [transitionProgress, isTransitioning, screenListeners],
+    [transitionProgress, isTransitioning, screenListeners, showLoadingFor, showLoadingOverlayNoTimeout, hideLoadingOverlay],
   )
 
   return (
     <MasterTransitionContext.Provider value={value}>
-      <ParallaxDriverProvider progress={transitionProgress}>
-        {children}
-      </ParallaxDriverProvider>
+      <View style={{ flex: 1 }}>
+        <ParallaxDriverProvider progress={transitionProgress}>
+          {children}
+        </ParallaxDriverProvider>
+        <GlobalLoadingOverlay visible={showLoadingOverlay} />
+      </View>
     </MasterTransitionContext.Provider>
   )
 }

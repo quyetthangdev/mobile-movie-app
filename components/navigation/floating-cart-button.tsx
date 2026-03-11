@@ -8,14 +8,17 @@ import { useOrderFlowCartItemCount } from '@/stores/selectors'
 
 import { NativeGesturePressable } from './native-gesture-pressable'
 
-type Props = { primaryColor: string }
+type Props = { primaryColor: string; cartHref?: string }
 
-const FloatingCartButton = React.memo(function FloatingCartButton({ primaryColor }: Props) {
+const FloatingCartButton = React.memo(function FloatingCartButton({
+  primaryColor,
+  cartHref = TAB_ROUTES.CART,
+}: Props) {
   const cartItemCount = useOrderFlowCartItemCount()
 
   return (
     <NativeGesturePressable
-      navigation={{ type: 'replace', href: TAB_ROUTES.CART }}
+      navigation={{ type: 'replace', href: cartHref }}
       style={{
         width: 64,
         height: 64,

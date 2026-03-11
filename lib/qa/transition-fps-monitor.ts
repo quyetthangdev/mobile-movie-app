@@ -2,16 +2,19 @@
  * Transition FPS Monitor — __DEV__ only.
  *
  * Đo FPS trong lúc slide animation (Menu List → Menu Item Detail).
- * rAF chạy trên JS thread → avg/max không phản ánh UI FPS thật.
- * min FPS là chỉ số đáng tin khi có jank (JS block → frame time tăng).
+ * rAF chạy trên JS thread → KHÔNG phản ánh UI FPS thật (animation chạy native driver).
+ * min FPS thấp = JS bận, nhưng animation vẫn có thể mượt trên UI thread.
  *
- * Target 45: thiết bị mid-range, màn phức tạp (Zustand, list, carousel).
- * Set DISABLE_TRANSITION_FPS_MONITOR=true để tắt log.
+ * Mặc định TẮT — log gây nhiễu, số liệu không phản ánh UX thực tế.
+ * Bật: (global as any).__ENABLE_TRANSITION_FPS_MONITOR = true
  */
 const TARGET_MIN_FPS = 45
 
 function isDisabled(): boolean {
-  return typeof global !== 'undefined' && !!(global as { __DISABLE_TRANSITION_FPS_MONITOR?: boolean }).__DISABLE_TRANSITION_FPS_MONITOR
+  const g = typeof global !== 'undefined' ? (global as { __ENABLE_TRANSITION_FPS_MONITOR?: boolean; __DISABLE_TRANSITION_FPS_MONITOR?: boolean }) : null
+  if (!g) return true
+  if (g.__DISABLE_TRANSITION_FPS_MONITOR) return true
+  return !g.__ENABLE_TRANSITION_FPS_MONITOR
 }
 const MAX_FPS_CAP = 120 // Bỏ qua outlier (2 rAF gần nhau → fps ảo)
 const MIN_FRAME_TIME_MS = 1000 / MAX_FPS_CAP // ~8.3ms
@@ -100,9 +103,14 @@ export function stopTransitionFPSMonitor(): void {
   )
 }
 
-/** Tắt FPS monitor log (gọi trước app mount, VD trong index.js) */
+/** Tắt FPS monitor (gọi trước app mount) */
 export function disableTransitionFPSMonitor(): void {
   ;(global as { __DISABLE_TRANSITION_FPS_MONITOR?: boolean }).__DISABLE_TRANSITION_FPS_MONITOR = true
+}
+
+/** Bật FPS monitor để profile (mặc định tắt) */
+export function enableTransitionFPSMonitor(): void {
+  ;(global as { __ENABLE_TRANSITION_FPS_MONITOR?: boolean }).__ENABLE_TRANSITION_FPS_MONITOR = true
 }
 
 export function getTransitionFPSResults(): FPSResult[] {

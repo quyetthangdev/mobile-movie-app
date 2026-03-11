@@ -63,7 +63,7 @@ export const useOrderFlowCartItemCount = () =>
         : 0,
   )
 
-/** MenuItemDetailContent — 1 subscription thay vì 7, giảm JS block khi navigate */
+/** MenuItemDetailContent — 1 subscription, không include cartItemCount (dùng CartBadge + useOrderFlowCartItemCount) */
 export const useOrderFlowMenuItemDetail = () =>
   useOrderFlowStore(
     useShallow((s) => ({
@@ -73,9 +73,19 @@ export const useOrderFlowMenuItemDetail = () =>
       initializeOrdering: s.initializeOrdering,
       setCurrentStep: s.setCurrentStep,
       addOrderingItem: s.addOrderingItem,
-      cartItemCount:
-        s.currentStep === OrderFlowStep.ORDERING
-          ? (s.orderingData?.orderItems?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0)
-          : 0,
+    })),
+  )
+
+/** MenuItemQuantityControl — chỉ re-render khi hasOrderingData/orderingOwner/isHydrated/currentStep/userSlug thay đổi, không khi cart items thay đổi */
+export const useOrderFlowMenuItemControl = () =>
+  useOrderFlowStore(
+    useShallow((s) => ({
+      hasOrderingData: !!s.orderingData,
+      orderingOwner: s.orderingData?.owner ?? '',
+      isHydrated: s.isHydrated,
+      currentStep: s.currentStep,
+      initializeOrdering: s.initializeOrdering,
+      setCurrentStep: s.setCurrentStep,
+      addOrderingItem: s.addOrderingItem,
     })),
   )

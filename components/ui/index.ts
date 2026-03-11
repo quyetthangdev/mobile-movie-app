@@ -1,4 +1,5 @@
 export { Badge } from './badge'
+export { GlobalLoadingOverlay } from './global-loading-overlay'
 export { Button } from './button'
 export { Card } from './card'
 export { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, useCarousel } from './carousel'
@@ -19,6 +20,7 @@ export { ScrollArea } from './scroll-area'
 export { Select } from './select'
 export { Sheet } from './sheet'
 export { Skeleton } from './skeleton'
+export { StaticText } from './static-text'
 export {
   Table,
   TableBody,

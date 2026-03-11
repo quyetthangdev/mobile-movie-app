@@ -37,10 +37,16 @@ export const CustomStack = withLayoutContext<
 
 export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
-  /** Animation: slide_from_right (Telegram style) */
-  animation: 'slide_from_right',
-  /** Spring-like timing: stiffness 300, damping 30 → ~350ms. Native Stack dùng duration thay animationSpec. */
-  animationDuration: MOTION.stackTransition.durationMs,
+  /**
+   * Animation: simple_push — 2D slide, không hiệu ứng 3D/card depth.
+   * Vẫn chạy trên native thread, giữ gesture như iOS.
+   */
+  animation: 'simple_push',
+  /**
+   * Spring-like timing: stiffness 300, damping 30.
+   * Native Stack chỉ cho cấu hình duration; dùng MOTION.nativeStack để tạo cảm giác hãm phanh (brake) ~260ms.
+   */
+  animationDuration: MOTION.nativeStack.durationMs,
   /** Vuốt trở về phản hồi ngay theo đầu ngón tay */
   gestureEnabled: true,
   fullScreenGestureEnabled: true,
@@ -55,4 +61,32 @@ export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   fullScreenGestureShadowEnabled: true,
   /** freezeOnBlur: màn background bị freeze → giảm re-render */
   freezeOnBlur: true,
+}
+
+/**
+ * Profile: slide_from_right + animationDuration dài hơn → pha cuối chậm, êm.
+ * fullScreenGestureEnabled: true — vuốt đóng có quán tính hãm phanh đồng bộ.
+ * Header: headerShown: false (màn tự custom header). Bật headerShown: true nếu cần header native.
+ */
+export const profileNativeStackScreenOptions: NativeStackNavigationOptions = {
+  ...nativeStackScreenOptions,
+  animation: 'slide_from_right',
+  /**
+   * Duration vừa phải (~380ms) giống profile placeholder test trước đó:
+   * đủ để cảm nhận hãm phanh nhưng không tạo cảm giác delay.
+   */
+  animationDuration: 380,
+  /**
+   * Giữ gesture toàn màn + animation bám theo ngón tay để cảm giác kéo-thả như Telegram.
+   */
+  fullScreenGestureEnabled: true,
+  animationMatchesGesture: true,
+  /**
+   * Giữ presentation dạng card với shadow (kế thừa từ nativeStackScreenOptions) để tạo chiều sâu khi trượt.
+   */
+  presentation: 'card',
+  /**
+   * Mặc định ẩn header native; header custom trong màn sẽ trượt cùng card nên không bị giật.
+   */
+  headerShown: false,
 }

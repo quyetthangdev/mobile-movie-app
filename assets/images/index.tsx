@@ -21,7 +21,10 @@ export const Images = {
 
   Food: {
     ProductImage: require('./food/ProductImage.png'),
+    /** Ảnh mặc định khi món không có ảnh (alias của ProductImage) */
+    DefaultProductImage: require('./food/ProductImage.png'),
     NewProductIcon: require('./food/new-product-icon.png'),
+    PromotionTag: require('./food/promotion-tag.svg'),
   },
 
   Landing: {
@@ -30,30 +33,30 @@ export const Images = {
   },
 
   News: {
-    Article11: require('./news/news_article_1_1.jpg'),
-    Article12: require('./news/news_article_1_2.jpg'),
-    Article13: require('./news/news_article_1_3.jpg'),
-    Article21: require('./news/news_article_2_1.jpg'),
-    Article22: require('./news/news_article_2_2.jpg'),
-    Article23: require('./news/news_article_2_3.jpg'),
-    Article31: require('./news/news_article_3_1.jpg'),
-    Article32: require('./news/news_article_3_2.jpg'),
-    Article33: require('./news/news_article_3_3.jpg'),
-    Article34: require('./news/news_article_3_4.jpg'),
+    Article11: require('./news/news_article_1_1.webp'),
+    Article12: require('./news/news_article_1_2.webp'),
+    Article13: require('./news/news_article_1_3.webp'),
+    Article21: require('./news/news_article_2_1.webp'),
+    Article22: require('./news/news_article_2_2.webp'),
+    Article23: require('./news/news_article_2_3.webp'),
+    Article31: require('./news/news_article_3_1.webp'),
+    Article32: require('./news/news_article_3_2.webp'),
+    Article33: require('./news/news_article_3_3.webp'),
+    Article34: require('./news/news_article_3_4.webp'),
   },
 
   Highlight: {
-    Menu2: require('./highlight/highlight_menu_2.png'),
-    Menu3: require('./highlight/highlight_menu_3.png'),
-    Menu4: require('./highlight/highlight_menu_4.png'),
-    Menu5: require('./highlight/highlight_menu_5.png'),
+    Menu2: require('./highlight/highlight_menu_2.webp'),
+    Menu3: require('./highlight/highlight_menu_3.webp'),
+    Menu4: require('./highlight/highlight_menu_4.webp'),
+    Menu5: require('./highlight/highlight_menu_5.webp'),
   },
 
   Featured: {
-    Services1: require('./highlight/featured-services-1.png'),
-    Services2: require('./highlight/featured-services-2.png'),
-    Services3: require('./highlight/featured_service_3.jpg'),
-    Services4: require('./highlight/featured_service_4.jpg'),
+    Services1: require('./highlight/featured-services-1.webp'),
+    Services2: require('./highlight/featured-services-2.webp'),
+    Services3: require('./highlight/featured_service_3.webp'),
+    Services4: require('./highlight/featured_service_4.webp'),
   },
 
   Order: {

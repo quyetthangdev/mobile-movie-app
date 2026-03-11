@@ -1,12 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root,
+  body {
+    font-family: 'Be Vietnam Pro', sans-serif;
+  }
+
   :root {
-    --background: 0 0% 100%;
+    --background: 210 16% 96%;
     --foreground: 20 14.3% 4.1%;
 
     --card: 0 0% 100%;
@@ -37,7 +42,7 @@
   }
 
   .dark {
-    --background: 0 0% 9.8%;
+    --background: 220 12% 7%;
     --foreground: 60 9.1% 97.8%;
 
     --card: 0 0% 12.55%;

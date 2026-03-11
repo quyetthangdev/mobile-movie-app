@@ -6,7 +6,7 @@ interface NavigationBarColorModule {
   changeNavigationBarColor: (
     backgroundColor: string,
     light: boolean,
-    animated: boolean
+    animated: boolean,
   ) => Promise<{ success: boolean }>
 }
 
@@ -19,7 +19,7 @@ const isExpoGo = Constants.executionEnvironment === 'storeClient'
 export function useNavigationBarFixed(
   backgroundColor: string = '#FFFFFF',
   light: boolean = true,
-  animated: boolean = true
+  animated: boolean = true,
 ) {
   useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -30,7 +30,9 @@ export function useNavigationBarFixed(
     if (isExpoGo || !NavigationBarColor) {
       if (__DEV__ && isExpoGo) {
         // eslint-disable-next-line no-console
-        console.warn('⚠️ Navigation bar color không hoạt động trên Expo Go. Cần build development build.')
+        console.warn(
+          '⚠️ Navigation bar color không hoạt động trên Expo Go. Cần build development build.',
+        )
       }
       return
     }
@@ -43,16 +45,21 @@ export function useNavigationBarFixed(
       try {
         // Tăng delay để đảm bảo Activity đã được attach
         await new Promise((resolve) => setTimeout(resolve, 500))
-        
+
         // Kiểm tra lại AppState sau delay
         if (AppState.currentState !== 'active') {
           return
         }
-        
-        await NavigationBarColor.changeNavigationBarColor(backgroundColor, light, animated)
+
+        await NavigationBarColor.changeNavigationBarColor(
+          backgroundColor,
+          light,
+          animated,
+        )
       } catch (error) {
         // Chỉ log error nếu không phải lỗi "not attached to Activity"
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
         if (__DEV__ && !errorMessage.includes('not attached to an Activity')) {
           // eslint-disable-next-line no-console
           console.error('Navigation bar error:', error)
@@ -84,7 +91,7 @@ export function useNavigationBarFixed(
 export const setNavigationBarColorFixed = async (
   backgroundColor: string,
   light: boolean = true,
-  animated: boolean = true
+  animated: boolean = true,
 ): Promise<{ success: boolean }> => {
   if (Platform.OS !== 'android') {
     return { success: false }
@@ -102,13 +109,17 @@ export const setNavigationBarColorFixed = async (
 
     // Tăng delay để đảm bảo Activity đã được attach
     await new Promise((resolve) => setTimeout(resolve, 500))
-    
+
     // Kiểm tra lại AppState sau delay
     if (AppState.currentState !== 'active') {
       return { success: false }
     }
-    
-    const result = await NavigationBarColor.changeNavigationBarColor(backgroundColor, light, animated)
+
+    const result = await NavigationBarColor.changeNavigationBarColor(
+      backgroundColor,
+      light,
+      animated,
+    )
     return result ?? { success: true }
   } catch (error) {
     // Chỉ log error nếu không phải lỗi "not attached to Activity"
@@ -120,4 +131,3 @@ export const setNavigationBarColorFixed = async (
     return { success: false }
   }
 }
-

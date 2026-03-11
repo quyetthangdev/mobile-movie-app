@@ -1,9 +1,9 @@
-import { JsStack, jsStackSimpleScreenOptions } from '@/layouts/js-stack'
+import { CustomStack, profileNativeStackScreenOptions } from '@/layouts/custom-stack'
 
 /**
- * Profile stack: các màn profile/info, profile/edit, profile/history, ...
- * JS Stack — cùng spring curve: Start → tăng tốc nhanh → giảm tốc mềm → dừng.
+ * Profile: Native Stack — slide_from_right + hãm phanh chuẩn native.
+ * fullScreenGestureEnabled: true, animationDuration: 420ms (pha cuối chậm).
  */
 export default function ProfileLayout() {
-  return <JsStack screenOptions={jsStackSimpleScreenOptions} />
+  return <CustomStack screenOptions={profileNativeStackScreenOptions} />
 }

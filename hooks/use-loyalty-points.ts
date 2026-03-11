@@ -1,18 +1,27 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
-/** Stub: trả về tổng điểm tích lũy. Khi có API thật, thay queryFn bằng gọi API. */
-export function useLoyaltyPoints(slug: string) {
+import { getLoyaltyPoints } from '@/api/loyalty-point'
+import { QUERYKEY } from '@/constants'
+
+/** Hook: lấy tổng điểm tích luỹ thật cho user (ILoyaltyPoint.totalPoints). */
+export function useLoyaltyPoints(
+  slug: string | undefined,
+  /** Defer fetch: chỉ bật khi screen đã sẵn sàng (useRunAfterTransition). */
+  enabledOverride?: boolean,
+) {
   const query = useQuery({
-    queryKey: ['loyaltyPoints', slug],
+    queryKey: [QUERYKEY.loyaltyPoints, 'total', { slug: slug || '' }],
     queryFn: async () => {
       if (!slug) return { totalPoints: 0 }
-      // TODO: replace with real API, e.g. getLoyaltyPoints(slug)
-      return { totalPoints: 1250 }
+      const response = await getLoyaltyPoints(slug)
+      return response.result
     },
-    enabled: !!slug,
+    enabled: !!slug && (enabledOverride ?? true),
+    placeholderData: keepPreviousData,
   })
+
   return {
-    data: query.data,
+    totalPoints: query.data?.totalPoints ?? 0,
     isLoading: query.isPending,
     refetch: query.refetch,
   }

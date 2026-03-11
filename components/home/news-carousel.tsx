@@ -125,6 +125,9 @@ export default function NewsCarousel({ articles }: NewsCarouselProps) {
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         horizontal
+        initialNumToRender={3}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingRight: horizontalPadding }}
         snapToInterval={itemWidth + itemSpacing * 2} // itemWidth + margins

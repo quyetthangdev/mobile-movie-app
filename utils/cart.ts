@@ -1,4 +1,4 @@
-import moment from 'moment'
+import dayjs from 'dayjs'
 
 function sumBy<T>(arr: T[], fn: (item: T) => number): number {
   return arr.reduce((sum, item) => sum + fn(item), 0)
@@ -60,7 +60,7 @@ export function transformOrderItemToOrderDetail(
 /**
  * Setup auto clear cart based on expiration time
  * Sử dụng AsyncStorage thay vì localStorage để tương thích với React Native
- * 
+ *
  * @returns Promise<void>
  */
 export const setupAutoClearCart = async (): Promise<void> => {
@@ -71,7 +71,7 @@ export const setupAutoClearCart = async (): Promise<void> => {
     try {
       // Check if cart should be cleared
       const expirationTime = await asyncStorage.getItem('cart-expiration-time')
-      if (expirationTime && moment().valueOf() > parseInt(expirationTime)) {
+      if (expirationTime && dayjs().valueOf() > parseInt(expirationTime)) {
         clearCart()
         await asyncStorage.removeItem('cart-expiration-time')
         return
@@ -79,7 +79,7 @@ export const setupAutoClearCart = async (): Promise<void> => {
 
       // Set new expiration time if not exists
       if (!expirationTime) {
-        const tomorrow = moment().add(1, 'day').startOf('day')
+        const tomorrow = dayjs().add(1, 'day').startOf('day')
         await asyncStorage.setItem(
           'cart-expiration-time',
           tomorrow.valueOf().toString(),
@@ -87,7 +87,8 @@ export const setupAutoClearCart = async (): Promise<void> => {
       }
 
       // Set timeout for current session
-      const timeUntilExpiration = parseInt(expirationTime || '0') - moment().valueOf()
+      const timeUntilExpiration =
+        parseInt(expirationTime || '0') - dayjs().valueOf()
       if (timeUntilExpiration > 0) {
         setTimeout(async () => {
           try {

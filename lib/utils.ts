@@ -57,10 +57,10 @@ export function getThemeColor(isDark: boolean): ThemeColors {
     // Dark: hsl(35, 70%, 53%) = #D68910
     primary: isDark ? '#D68910' : '#F7A737',
     
-    // Background color from --background CSS variable
-    // Light: hsl(0, 0%, 100%) = #ffffff
-    // Dark: hsl(0, 0%, 9.8%) = #191919
-    background: isDark ? '#191919' : '#ffffff',
+    // Background color from --background CSS variable (app/global.css)
+    // Light: hsl(210, 16%, 96%) = #f2f4f6
+    // Dark: hsl(220, 12%, 7%) = #111318
+    background: isDark ? '#111318' : '#f2f4f6',
     
     // Foreground color from --foreground CSS variable
     // Light: hsl(20, 14.3%, 4.1%) = #0a0a0a

@@ -10,13 +10,19 @@ import {
 import { ScreenContainer } from '@/components/layout'
 import { z } from 'zod'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { useProfile, useRegister } from '@/hooks'
+import { BannerPage, QUERYKEY } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
+import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { useRegisterSchema } from '@/schemas'
 import { useAuthStore, useUserStore } from '@/stores'
+import { getLoyaltyPoints } from '@/api/loyalty-point'
 
 export default function RegisterScreen() {
   const registerSchema = useRegisterSchema()
+  const masterTransition = useMasterTransitionOptional()
+  const queryClient = useQueryClient()
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -124,12 +130,27 @@ export default function RegisterScreen() {
             setExpireTimeRefreshToken(tokens.expireTimeRefreshToken)
 
             const profile = await refetchProfile()
+            const profileResult = profile.data?.result
 
-            if (profile.data?.result) {
-              setUserInfo(profile.data.result)
-              useAuthStore.getState().setSlug(profile.data.result.slug)
+            if (profileResult) {
+              setUserInfo(profileResult)
+              useAuthStore.getState().setSlug(profileResult.slug)
 
-              navigateNative.replace('/(tabs)/home')
+              if (profileResult.slug) {
+                await queryClient.prefetchQuery({
+                  queryKey: [QUERYKEY.loyaltyPoints, 'total', { slug: profileResult.slug }],
+                  queryFn: () => getLoyaltyPoints(profileResult.slug),
+                })
+              }
+
+              const homeCached = !!queryClient.getQueryData(['banners', BannerPage.HOME])
+              const overlayMs = homeCached ? 100 : 250
+              masterTransition?.showLoadingFor(overlayMs)
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  navigateNative.replace('/(tabs)/home')
+                })
+              })
             } else {
               setLogout()
               throw new Error('Failed to fetch user profile')

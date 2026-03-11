@@ -75,6 +75,7 @@ const TabBarPill = React.memo(function TabBarPill({
         <NativeGesturePressable
           key={label}
           navigation={{ type: 'replace', href }}
+          hapticStyle="light"
           className="flex-1 items-center justify-center py-1"
         >
           <View className="items-center justify-center" style={{ zIndex: 1 }}>

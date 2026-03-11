@@ -1,338 +1,623 @@
+/**
+ * Tab Menu — FlashList + data flattening.
+ */
+import { FlashList } from '@shopify/flash-list'
+import dayjs from 'dayjs'
+import { Image as ExpoImage } from 'expo-image'
 import { MapPin, X } from 'lucide-react-native'
-import moment from 'moment'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, RefreshControl, Text, TouchableOpacity, View } from 'react-native'
-import { ScrollView } from 'react-native-gesture-handler'
-import { ScreenContainer } from '@/components/layout'
+import {
+  Image,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native'
 
 import { Images } from '@/assets/images'
 import { SelectBranchDropdown } from '@/components/branch'
-import { LogoutDialog, SettingsDropdown, UserAvatarDropdown } from '@/components/dialog'
-import { ClientCatalogSelect, ClientMenus, PriceRangeFilter, ProductNameSearch } from '@/components/menu'
+import {
+  ClientCatalogSelect,
+  MenuItemQuantityControl,
+  PriceRangeFilter,
+} from '@/components/menu'
+import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
 import { Skeleton } from '@/components/ui'
-import { FILTER_VALUE, ROUTE } from '@/constants'
-import { useCatalog, usePublicSpecificMenu, useRunAfterTransition, useSpecificMenu } from '@/hooks'
-import { navigateNative, useGpuWarmup } from '@/lib/navigation'
-import { usePhase4MountLog } from '@/lib/phase4-diagnostic'
-import { useAuthStore, useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
-import { IMenuFilter, ISpecificMenuRequest } from '@/types'
+import { FILTER_VALUE, publicFileURL } from '@/constants'
+import {
+  useCatalog,
+  usePublicSpecificMenu,
+  useRunAfterTransition,
+  useSpecificMenu,
+  useTabScrollRestore,
+} from '@/hooks'
+import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
+import { getThemeColor } from '@/lib/utils'
+import {
+  useAuthStore,
+  useBranchStore,
+  useMenuFilterStore,
+  useUserStore,
+} from '@/stores'
+import type { IMenuItem, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
 
-/** Shell khớp ClientMenuItem: flex-row, image w-32 h-32 p-2, content flex-1 px-2 py-3, name + price + add button (w-8 h-8), marginBottom 16. */
-function MenuListSkeleton() {
+/** Mục phẳng: Header (tên catalog) hoặc Row (IMenuItem) */
+type FlatMenuItem =
+  | { type: 'header'; id: string; name: string }
+  | { type: 'row'; id: string; item: IMenuItem }
+
+const MenuListHeader = React.memo(function MenuListHeader({
+  showSkeleton,
+  branch,
+  menuFilter,
+  handleClearPriceFilter,
+  t,
+}: {
+  showSkeleton: boolean
+  branch: { name: string; address: string } | null | undefined
+  primaryColor: string
+  menuFilter: { minPrice: number; maxPrice: number }
+  handleClearPriceFilter: () => void
+  t: (key: string, fallback?: string) => string
+}) {
   return (
-    <View style={{ gap: 16 }}>
-      {[1, 2, 3, 4, 5, 6].map((key) => (
-        <View
-          key={key}
-          className="flex-row rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 overflow-hidden min-h-[2rem]"
-        >
-          <View className="flex-shrink-0 w-32 h-32 p-2 justify-center items-center">
-            <Skeleton className="h-full w-full rounded-xl" />
+    <View style={{ padding: 16, paddingBottom: 0 }}>
+      {/* Logo + Branch dropdown */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+        }}
+      >
+        <Image
+          source={Images.Brand.Logo as unknown as number}
+          style={{ height: 32, width: 112 }}
+          resizeMode="contain"
+        />
+        <SelectBranchDropdown />
+      </View>
+
+      {/* Branch info */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <MapPin size={16} color="#e50914" />
+        <Text style={{ fontSize: 12, color: '#6b7280', marginLeft: 4 }}>
+          {branch
+            ? `${branch.name} (${branch.address})`
+            : t('menu.noData', 'Chưa chọn chi nhánh')}
+        </Text>
+      </View>
+
+      {/* Catalog + Price filter */}
+      <View style={{ marginBottom: 12 }}>
+        {showSkeleton ? (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Skeleton style={{ flex: 1, height: 50, borderRadius: 12 }} />
+            <Skeleton style={{ width: 50, height: 50, borderRadius: 12 }} />
           </View>
-          <View className="flex-1 px-2 py-3 flex-col justify-between">
-            <Skeleton className="h-5 rounded-md" style={{ width: '80%' }} />
-            <View className="flex-row justify-between items-center mt-2">
-              <Skeleton className="h-4 rounded-md" style={{ width: '40%' }} />
-              <Skeleton className="h-8 w-8 rounded-full" />
+        ) : (
+          <>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <ClientCatalogSelect />
+              </View>
+              <PriceRangeFilter />
             </View>
-          </View>
-        </View>
-      ))}
+            {(menuFilter.minPrice > FILTER_VALUE.MIN_PRICE ||
+              menuFilter.maxPrice < FILTER_VALUE.MAX_PRICE) && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  marginTop: 8,
+                  padding: 8,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#e50914',
+                  backgroundColor: 'rgba(229, 9, 20, 0.05)',
+                }}
+              >
+                <Text style={{ fontSize: 14, color: '#e50914' }}>
+                  {formatCurrency(menuFilter.minPrice)} -{' '}
+                  {formatCurrency(menuFilter.maxPrice)}
+                </Text>
+                <TouchableOpacity onPress={handleClearPriceFilter}>
+                  <X size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        )}
+      </View>
     </View>
   )
+})
+
+const headerRowStyles = StyleSheet.create({
+  container: { paddingHorizontal: 16, marginBottom: 10, marginTop: 12 },
+  title: {
+    fontSize: 16,
+    fontWeight: '800',
+    textTransform: 'uppercase' as const,
+  },
+})
+
+const CatalogHeaderRow = React.memo(function CatalogHeaderRow({
+  name,
+  primaryColor,
+}: {
+  name: string
+  primaryColor: string
+}) {
+  return (
+    <View style={headerRowStyles.container}>
+      <Text style={[headerRowStyles.title, { color: primaryColor }]}>
+        {name}
+      </Text>
+    </View>
+  )
+})
+
+function menuItemRowPropsAreEqual(
+  prev: { item: IMenuItem; primaryColor: string },
+  next: { item: IMenuItem; primaryColor: string },
+): boolean {
+  if (prev.primaryColor !== next.primaryColor) return false
+  const a = prev.item
+  const b = next.item
+  const aSlug = a.slug ?? a.product?.slug
+  const bSlug = b.slug ?? b.product?.slug
+  if (aSlug !== bSlug) return false
+  if (a.isLocked !== b.isLocked) return false
+  if ((a.currentStock ?? 0) !== (b.currentStock ?? 0)) return false
+  if (a.product?.name !== b.product?.name) return false
+  const aMin = a.product?.variants?.length
+    ? Math.min(...a.product.variants.map((v) => v.price))
+    : 0
+  const bMin = b.product?.variants?.length
+    ? Math.min(...b.product.variants.map((v) => v.price))
+    : 0
+  return aMin === bMin
 }
 
-/** Shell cực nhẹ: có header + filter + list để giữ layout ổn định khi loading. */
-function MenuSkeletonShell() {
+const menuItemRowStyles = StyleSheet.create({
+  wrapper: { marginBottom: 12, paddingHorizontal: 16 },
+  card: {
+    flexDirection: 'row',
+    padding: 8,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    alignItems: 'stretch',
+  },
+  imageWrap: {
+    width: 92,
+    height: 92,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#f3f4f6',
+  },
+  image: { width: '100%', height: '100%' },
+  content: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'space-between',
+    alignSelf: 'stretch',
+  },
+  productName: { fontSize: 16, fontWeight: '600' },
+  qtyWrap: { alignSelf: 'flex-end', transform: [{ scale: 0.85 }] },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 6,
+  },
+  priceDiscounted: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#f97316', // close to primary
+  },
+  pricePromotionBadge: {
+    backgroundColor: '#dc2626',
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  pricePromotionText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  priceOriginal: {
+    fontSize: 12,
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
+})
+
+const MenuItemRow = React.memo(function MenuItemRow({
+  item,
+  primaryColor,
+}: {
+  item: IMenuItem
+  primaryColor: string
+}) {
+  const minPrice = item.product?.variants?.length
+    ? Math.min(...item.product.variants.map((v) => v.price))
+    : 0
+  const currentStock = item.currentStock ?? 0
+  const hasStock =
+    !item.isLocked && (currentStock > 0 || !item.product?.isLimit)
+
+  const hasPromotion = item.promotion && item.promotion.value > 0
+
+  const imageUrl = React.useMemo(() => {
+    const raw = item.product?.image?.trim()
+    if (!raw) return null
+    if (/^https?:\/\//i.test(raw)) return raw
+    const base = publicFileURL ?? ''
+    if (!base) return null
+    return `${base.replace(/\/$/, '')}/${raw.replace(/^\//, '')}`
+  }, [item.product?.image])
+
+  const slug = item.slug ?? item.product?.slug ?? ''
+
+  const priceStyle = React.useMemo(
+    () => ({ fontSize: 14, color: primaryColor, marginTop: 4 }),
+    [primaryColor],
+  )
+
   return (
-    <ScreenContainer edges={['top']} className="flex-1 pb-12">
-      <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
-        <Skeleton className="h-8 w-28 rounded-md" />
-        <View className="flex-row items-center" style={{ gap: 12 }}>
-          <Skeleton className="h-8 w-24 rounded-full" />
-          <Skeleton className="h-8 w-8 rounded-full" />
-          <Skeleton className="h-8 w-8 rounded-full" />
+    <NativeGesturePressable
+      navigation={{
+        type: 'push',
+        href: {
+          pathname: '/product/[id]',
+          params: { id: slug },
+        },
+      }}
+      hapticStyle="light"
+      style={menuItemRowStyles.wrapper}
+    >
+      <View style={menuItemRowStyles.card}>
+        <View style={menuItemRowStyles.imageWrap}>
+          {imageUrl ? (
+            <ExpoImage
+              source={{ uri: imageUrl }}
+              style={menuItemRowStyles.image}
+              contentFit="cover"
+            />
+          ) : (
+            <Image
+              source={Images.Food.DefaultProductImage as number}
+              resizeMode="cover"
+              style={menuItemRowStyles.image}
+            />
+          )}
+        </View>
+        <View style={menuItemRowStyles.content}>
+          <View>
+            <Text style={menuItemRowStyles.productName} numberOfLines={1}>
+              {item.product?.name}
+            </Text>
+            {hasPromotion && minPrice > 0 ? (
+              <View style={menuItemRowStyles.priceRow}>
+                <Text style={menuItemRowStyles.priceDiscounted}>
+                  {formatCurrency(
+                    minPrice * (1 - (item.promotion?.value || 0) / 100),
+                  )}
+                </Text>
+                <View style={menuItemRowStyles.pricePromotionBadge}>
+                  <Text style={menuItemRowStyles.pricePromotionText}>
+                    -{item.promotion?.value}%
+                  </Text>
+                </View>
+                <Text style={menuItemRowStyles.priceOriginal}>
+                  {formatCurrency(minPrice)}
+                </Text>
+              </View>
+            ) : (
+              <Text style={priceStyle}>{formatCurrency(minPrice)}</Text>
+            )}
+          </View>
+          <View style={menuItemRowStyles.qtyWrap}>
+            <MenuItemQuantityControl
+              item={item}
+              hasStock={hasStock}
+              isMobile={true}
+            />
+          </View>
         </View>
       </View>
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      >
-        <View className="px-4 py-4 flex-col gap-5">
-          {/* Filter block - khớp branch info (py-2) + ProductNameSearch h-[50px] + Catalog flex-1 + Price w-[50px] h-[50px] */}
-          <View className="flex-col gap-2">
-            <View className="flex-row items-center justify-center gap-1 py-2">
-              <Skeleton className="h-4 rounded-md" style={{ width: '72%' }} />
-            </View>
-            <Skeleton className="h-[50px] w-full rounded-xl" />
-            <View className="flex-row gap-2">
-              <Skeleton className="h-[50px] flex-1 rounded-xl" />
-              <Skeleton className="h-[50px] w-[50px] rounded-xl" />
-            </View>
-          </View>
-          <MenuListSkeleton />
-        </View>
-      </ScrollView>
-    </ScreenContainer>
+    </NativeGesturePressable>
   )
-}
+}, menuItemRowPropsAreEqual)
 
-function ClientMenuContent() {
-  const { t } = useTranslation(['menu'])
-  // Optimize Zustand selectors - subscribe the necessary
-  const userInfo = useUserStore((state) => state.userInfo)
-  const userSlug = useUserStore((state) => state.userInfo?.slug) // Only subscribe slug
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated())
-  const setLogout = useAuthStore((state) => state.setLogout)
-  const removeUserInfo = useUserStore((state) => state.removeUserInfo)
+function MenuPlaceholderContent() {
+  const { t } = useTranslation('menu')
+  const isDark = useColorScheme() === 'dark'
+  const { primary: primaryColor, background: themeBackground } =
+    getThemeColor(isDark)
+  const { scrollRef: _scrollRef, onScroll } = useTabScrollRestore('menu')
+  const userSlug = useUserStore((s) => s.userInfo?.slug)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
   const menuFilter = useMenuFilterStore((s) => s.menuFilter)
   const setMenuFilter = useMenuFilterStore((s) => s.setMenuFilter)
-  const branch = useBranchStore((state) => state.branch) // Only subscribe branch
-  const branchSlug = useBranchStore((state) => state.branch?.slug) // Only subscribe slug
-  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
+  const branch = useBranchStore((s) => s.branch)
+  const branchSlug = useBranchStore((s) => s.branch?.slug)
 
-  // Fetch sau khi transition tab xong → trang chuyển ngay (skeleton), không khựng
+  const handleClearPriceFilter = useCallback(() => {
+    setMenuFilter((prev) => ({
+      ...prev,
+      minPrice: FILTER_VALUE.MIN_PRICE,
+      maxPrice: FILTER_VALUE.MAX_PRICE,
+      branch: branchSlug ?? prev.branch,
+    }))
+  }, [setMenuFilter, branchSlug])
+
+  const today = dayjs().format('YYYY-MM-DD')
+
+  const menuRequest = useMemo<ISpecificMenuRequest>(
+    () => ({
+      date: menuFilter?.date ?? today,
+      branch: menuFilter?.branch ?? branchSlug,
+      catalog: menuFilter?.catalog,
+      productName: menuFilter?.productName,
+      minPrice: menuFilter?.minPrice,
+      maxPrice: menuFilter?.maxPrice,
+      slug: menuFilter?.menu,
+    }),
+    [menuFilter, branchSlug, today],
+  )
+
+  // Đảm bảo date của menu luôn sync với ngày hiện tại:
+  // nếu store đang giữ ngày cũ (do persist), reset về today.
+  useEffect(() => {
+    if (menuFilter?.date !== today) {
+      setMenuFilter((prev) => ({
+        ...prev,
+        date: today,
+      }))
+    }
+  }, [menuFilter?.date, setMenuFilter, today])
+
   const [allowFetch, setAllowFetch] = useState(false)
   useRunAfterTransition(() => setAllowFetch(true), [])
 
-
-  // Memoize expensive calculation
-  const mapMenuFilterToRequest = useCallback((
-    filter: IMenuFilter,
-  ): ISpecificMenuRequest => {
-    return {
-      date: filter.date,
-      branch: filter.branch,
-      catalog: filter.catalog,
-      productName: filter.productName,
-      minPrice: filter.minPrice,
-      maxPrice: filter.maxPrice,
-      slug: filter.menu,
-    }
-  }, [])
-
-  // Memoize request object to avoid re-create
-  const menuRequest = useMemo(() => mapMenuFilterToRequest(menuFilter), [menuFilter, mapMenuFilterToRequest])
-
-  // Kiểm tra user đã đăng nhập: cần cả authentication và userInfo
-  // Memoize để tránh re-compute không cần thiết
-  const hasUser = useMemo(() => isAuthenticated && !!userSlug, [isAuthenticated, userSlug])
-  const hasBranch = !!menuFilter.branch
-
-  // Chỉ bật query sau khi transition xong → chuyển tab mượt như Insta/Tele
+  const hasUser = isAuthenticated && !!userSlug
+  const hasBranch = !!menuFilter.branch || !!branchSlug
   const shouldFetchSpecific = allowFetch && hasUser && hasBranch
   const shouldFetchPublic = allowFetch && !hasUser && hasBranch
 
   const {
     data: specificMenuData,
-    isPending: specificMenuPending,
-    refetch: refetchSpecificMenu,
+    isPending: specificPending,
+    refetch: refetchSpecific,
   } = useSpecificMenu(menuRequest, shouldFetchSpecific)
-
   const {
-    data: publicSpecificMenuData,
-    isPending: publicSpecificMenuPending,
-    refetch: refetchPublicSpecificMenu,
+    data: publicMenuData,
+    isPending: publicPending,
+    refetch: refetchPublic,
   } = usePublicSpecificMenu(menuRequest, shouldFetchPublic)
+  const menuData = hasUser ? specificMenuData : publicMenuData
+  const isPending = hasUser ? specificPending : publicPending
+  const { data: catalogData } = useCatalog()
+  const masterTransition = useMasterTransitionOptional()
 
-  // Memoize computed values - chọn data từ hook phù hợp
-  const specificMenu = useMemo(() => 
-    hasUser ? specificMenuData : publicSpecificMenuData,
-    [hasUser, specificMenuData, publicSpecificMenuData]
-  )
-  const isPending = useMemo(() => 
-    hasUser ? specificMenuPending : publicSpecificMenuPending,
-    [hasUser, specificMenuPending, publicSpecificMenuPending]
-  )
-  const refetchMenu = useMemo(() => 
-    hasUser ? refetchSpecificMenu : refetchPublicSpecificMenu,
-    [hasUser, refetchSpecificMenu, refetchPublicSpecificMenu]
-  )
-
-  const { isPending: isLoadingCatalog } = useCatalog()
-
-  const [refreshing, setRefreshing] = React.useState(false)
-
-  const onRefresh = React.useCallback(async () => {
-    setRefreshing(true)
-    try {
-      await refetchMenu()
-    } finally {
-      setRefreshing(false)
+  const groupedByCatalog = useMemo(() => {
+    const items = menuData?.result?.menuItems ?? []
+    const catalogs = catalogData?.result ?? []
+    const groupsBySlug: Record<string, IMenuItem[]> = {}
+    for (const item of items) {
+      const slug = item.product?.catalog?.slug
+      if (slug) (groupsBySlug[slug] ??= []).push(item)
     }
-  }, [refetchMenu])
+    return catalogs
+      .map((catalog) => ({ catalog, items: groupsBySlug[catalog.slug] ?? [] }))
+      .filter((g) => g.items.length > 0)
+      .sort((a, b) => b.items.length - a.items.length)
+  }, [menuData?.result?.menuItems, catalogData?.result])
+
+  /** Data flattening: chuyển groupedByCatalog thành mảng phẳng header + row */
+  const flattenedData = useMemo<FlatMenuItem[]>(() => {
+    const out: FlatMenuItem[] = []
+    for (const g of groupedByCatalog) {
+      out.push({
+        type: 'header',
+        id: `h-${g.catalog.slug}`,
+        name: g.catalog.name,
+      })
+      for (const item of g.items) {
+        out.push({
+          type: 'row',
+          id: item.slug ?? item.product?.slug ?? `row-${out.length}`,
+          item,
+        })
+      }
+    }
+    return out
+  }, [groupedByCatalog])
 
   useEffect(() => {
-    setMenuFilter((prev) => {
-      const next = { ...prev }
-      let changed = false
+    if (!isPending && masterTransition?.hideLoadingOverlay)
+      masterTransition.hideLoadingOverlay()
+  }, [isPending, masterTransition?.hideLoadingOverlay, masterTransition])
 
-      // sync branch
-      if (branchSlug && prev.branch !== branchSlug) {
-        next.branch = branchSlug
-        changed = true
+  // Flow chuẩn: cache hit → content ngay; cache miss → skeleton → useRunAfterTransition → fetch
+  const showSkeleton = hasBranch && !menuData
+
+  const getItemType = useCallback((item: FlatMenuItem) => item.type, [])
+
+  const renderItem = useCallback(
+    ({ item }: { item: FlatMenuItem }) => {
+      if (item.type === 'header') {
+        return <CatalogHeaderRow name={item.name} primaryColor={primaryColor} />
       }
+      return <MenuItemRow item={item.item} primaryColor={primaryColor} />
+    },
+    [primaryColor],
+  )
 
-      // sync date
-      const today = moment().format('YYYY-MM-DD')
-      if (prev.date !== today) {
-        next.date = today
-        changed = true
-      }
+  const keyExtractor = useCallback((item: FlatMenuItem) => item.id, [])
 
-      return changed ? next : prev
-    })
-  }, [branchSlug, setMenuFilter])
+  const listHeaderComponent = useMemo(
+    () => (
+      <MenuListHeader
+        showSkeleton={showSkeleton}
+        branch={branch ?? null}
+        primaryColor={primaryColor}
+        menuFilter={menuFilter}
+        handleClearPriceFilter={handleClearPriceFilter}
+        t={(key, fallback) =>
+          fallback !== undefined
+            ? (t as (k: string, opts?: { defaultValue?: string }) => string)(
+                key,
+                {
+                  defaultValue: fallback,
+                },
+              )
+            : t(key)
+        }
+      />
+    ),
+    [showSkeleton, branch, primaryColor, menuFilter, handleClearPriceFilter, t],
+  )
 
-  // Memoize callbacks
-  const handleClear = useCallback(() => {
-    setMenuFilter((prev) => ({
-      ...prev,
-      minPrice: FILTER_VALUE.MIN_PRICE,
-      maxPrice: FILTER_VALUE.MAX_PRICE,
-      branch: branchSlug,
-    }))
-  }, [setMenuFilter, branchSlug])
+  const listEmptyComponent = useMemo(() => {
+    if (!hasBranch) {
+      return (
+        <View style={{ padding: 24, alignItems: 'center' }}>
+          <Text style={{ textAlign: 'center', color: '#6b7280' }}>
+            Vui lòng chọn chi nhánh để xem menu
+          </Text>
+        </View>
+      )
+    }
+    if (hasBranch && !showSkeleton && flattenedData.length === 0) {
+      return (
+        <View style={{ padding: 24, alignItems: 'center' }}>
+          <Text style={{ textAlign: 'center', color: '#6b7280' }}>
+            {t('menu.noData', 'Không có dữ liệu')}
+          </Text>
+        </View>
+      )
+    }
+    return null
+  }, [hasBranch, showSkeleton, flattenedData.length, t])
+  const [refreshing, setRefreshing] = useState(false)
 
-  const handleLogout = useCallback(() => {
-    setLogout()
-    removeUserInfo()
-  }, [setLogout, removeUserInfo])
+  const handleRefresh = useCallback(() => {
+    if (!hasBranch) return
+    setRefreshing(true)
+    const refetch = hasUser ? refetchSpecific : refetchPublic
+    refetch()
+      .catch(() => {
+        // silent
+      })
+      .finally(() => {
+        setRefreshing(false)
+      })
+  }, [hasBranch, hasUser, refetchSpecific, refetchPublic])
 
-  const handleLogoutPress = useCallback(() => {
-    setIsLogoutDialogOpen(true)
-  }, [])
-
-  const handleLoginPress = useCallback(() => {
-    navigateNative.push(ROUTE.LOGIN)
-  }, [])
-
-  // Chỉ hiện skeleton 1 lần → UI thật. Tránh: skeleton → trắng → header+filter+skeleton → UI.
-  // Đợi cả menu + catalog để ClientMenus không flash skeleton riêng.
-  const showSkeleton = !allowFetch || (hasBranch && (isPending || isLoadingCatalog))
-
-  if (showSkeleton) {
+  if (showSkeleton && hasBranch) {
     return (
-      <>
-        <MenuSkeletonShell />
-        <LogoutDialog
-          isOpen={isLogoutDialogOpen}
-          onOpenChange={setIsLogoutDialogOpen}
-          onLogout={handleLogout}
-        />
-      </>
+      <View style={{ flex: 1, backgroundColor: themeBackground }}>
+        {listHeaderComponent}
+        <View style={{ padding: 16, flex: 1 }}>
+          {[1, 2].map((catIdx) => (
+            <View key={`s-${catIdx}`} style={{ marginBottom: 24 }}>
+              <Skeleton
+                style={{
+                  height: 20,
+                  width: 140,
+                  borderRadius: 4,
+                  marginBottom: 16,
+                }}
+              />
+              {[1, 2, 3].map((i) => (
+                <View
+                  key={`s-${catIdx}-${i}`}
+                  style={{
+                    flexDirection: 'row',
+                    marginBottom: 12,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Skeleton
+                    style={{ width: 92, height: 92, borderRadius: 10 }}
+                  />
+                  <View
+                    style={{
+                      flex: 1,
+                      marginLeft: 12,
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Skeleton
+                      style={{ height: 16, width: '70%', borderRadius: 4 }}
+                    />
+                    <Skeleton
+                      style={{
+                        height: 14,
+                        width: 80,
+                        borderRadius: 4,
+                        marginTop: 8,
+                      }}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      </View>
     )
   }
 
   return (
-    <ScreenContainer edges={['top']} className="flex-1 pb-12">
-      {/* Header */}
-      <View className="bg-transparent px-5 py-3 flex-row items-center justify-between z-10">
-        <View className="flex-row items-center">
-          <Image
-            source={Images.Brand.Logo as unknown as number}
-            className="h-8 w-28"
-            resizeMode="contain"
+    <View style={{ flex: 1, backgroundColor: themeBackground }}>
+      <FlashList
+        data={flattenedData}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        getItemType={getItemType}
+        ListHeaderComponent={listHeaderComponent}
+        ListEmptyComponent={listEmptyComponent}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={primaryColor}
           />
-        </View>
-        <View className="flex-row items-center gap-3">
-          <SelectBranchDropdown />
-          <SettingsDropdown />
-          <UserAvatarDropdown
-            userInfo={userInfo}
-            onLogoutPress={handleLogoutPress}
-            onLoginPress={handleLoginPress}
-          />
-        </View>
-      </View>
-
-      {/* Content */}
-      <View className="flex-1">
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#e50914"
-              colors={['#e50914']}
-            />
-          }
-        >
-          <View className="px-4 py-4">
-            <View className="flex-col gap-5">
-              {/* Filters */}
-              <View className="w-full">
-                <View className="flex-col gap-2">
-                  <View className="flex-row items-center justify-center gap-1 py-2">
-                    <MapPin size={16} color="#e50914" />
-                    <Text className="text-xs text-gray-600">
-                      {branch
-                        ? `${branch.name} (${branch.address})`
-                        : t('menu.noData', 'Chưa chọn chi nhánh')}
-                    </Text>
-                  </View>
-                  <ProductNameSearch />
-                  <View className="flex-row gap-2">
-                    <View className="flex-1">
-                      <ClientCatalogSelect />
-                    </View>
-                    <PriceRangeFilter />
-                  </View>
-                  {(menuFilter.minPrice > FILTER_VALUE.MIN_PRICE ||
-                    menuFilter.maxPrice < FILTER_VALUE.MAX_PRICE) && (
-                    <View className="flex-row items-center justify-center gap-2 rounded-xl border border-primary bg-primary/5 px-2 py-2">
-                      <Text className="text-sm text-primary">
-                        {formatCurrency(menuFilter.minPrice)} -{' '}
-                        {formatCurrency(menuFilter.maxPrice)}
-                      </Text>
-                      <TouchableOpacity onPress={handleClear}>
-                        <X size={20} color="#6b7280" />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              {/* Menu Items */}
-              <View className="w-full">
-                {!hasBranch ? (
-                  <View className="items-center justify-center py-10">
-                    <Text className="text-center text-base text-gray-600 dark:text-gray-400">
-                      Vui lòng chọn chi nhánh để xem menu
-                    </Text>
-                  </View>
-                ) : (
-                  <ClientMenus menu={specificMenu?.result} isLoading={false} />
-                )}
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      </View>
-
-      <LogoutDialog
-        isOpen={isLogoutDialogOpen}
-        onOpenChange={setIsLogoutDialogOpen}
-        onLogout={handleLogout}
+        }
       />
-    </ScreenContainer>
+    </View>
   )
 }
 
-ClientMenuContent.displayName = 'ClientMenuContent'
-
-function MenuScreen() {
-  useGpuWarmup()
-  usePhase4MountLog('menu')
-  return <ClientMenuContent />
+export default function MenuPlaceholder() {
+  const isDark = useColorScheme() === 'dark'
+  const themeBackground = getThemeColor(isDark).background
+  return (
+    <View style={{ flex: 1, backgroundColor: themeBackground }}>
+      <MenuPlaceholderContent />
+    </View>
+  )
 }
-
-MenuScreen.displayName = 'MenuScreen'
-
-export default React.memo(MenuScreen)

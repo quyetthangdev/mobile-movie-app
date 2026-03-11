@@ -1,68 +1,49 @@
 /**
  * Phase 7 — Velocity-Driven Interactive Transition (Telegram Level)
  *
- * Transition coordinator: single source of truth for transition state.
- * - Lock navigation during gesture
- * - Sync gesture progress
- * - Commit/cancel transition
- * - Prevent double navigation
+ * OPEN (push): timing + ease-out-cubic, 350ms.
+ * Telegram dùng CubicBezierInterpolator.EASE_OUT_QUINT cho page transition —
+ * nhanh đầu, giảm tốc rõ rệt cuối ("hãm phanh"). Spring quá nhanh (~250ms)
+ * khiến deceleration phase không đủ dài để mắt cảm nhận.
  *
- * Note: React Navigation Stack's gesture is already progress-driven.
- * This module provides constants and coordination logic.
+ * CLOSE (pop / gesture completion): underdamped spring — velocity-aware.
+ * Spring mềm hơn (~320ms settle) cho deceleration tự nhiên sau khi thả tay.
+ * overshootClamping: false → nhẹ nhàng settle, không cắt cụt.
+ *
+ * React Navigation Stack gesture là progress-driven (1:1 finger mapping).
+ * CLOSE_SPEC chỉ lái animation AFTER finger release.
  */
-
-/** Spring config — Telegram feel: velocity continuation, elastic cancel */
-export const TELEGRAM_SPRING = {
-  damping: 20,
-  stiffness: 220,
-  mass: 0.8,
-  overshootClamping: false,
-  restDisplacementThreshold: 0.01,
-  restSpeedThreshold: 0.01,
-} as const
+import { Easing } from 'react-native'
 
 /**
- * Phase 7.5 — Heavier, smoother spring.
- * Giảm tốc đầu animation, momentum tự nhiên hơn, stop mềm hơn.
+ * Open timing — Ease-out-quint-ish, 380ms.
+ *
+ * Dùng cubic-bezier(0.19, 1, 0.22, 1) (EASE_OUT_EXPO-style) để
+ * kéo dài pha deceleration cuối: 200ms đầu đi nhanh, ~180ms cuối hãm phanh rõ.
  */
-export const TELEGRAM_SPRING_STABLE = {
-  damping: 26,
-  stiffness: 180,
-  mass: 1.1,
-  overshootClamping: true,
-  restDisplacementThreshold: 0.2,
-  restSpeedThreshold: 0.2,
-} as const
+export const OPEN_TIMING = {
+  duration: 400, // Tăng thêm 20ms để pha hãm phanh "ngọt" hơn
+  easing: Easing.bezier(0.21, 1.02, 0.35, 1), // Thêm một chút 'overshoot' cực nhẹ ở đỉnh để tạo độ căng
+}
 
 /**
- * Telegram-Motion Engine — Cân bằng tới hạn (Critically Damped).
- * Physics-based: stiffness 1000, damping 500, mass 3.
- * KHÔNG dùng withTiming — motion phải là sự tiếp nối vật lý của ngón tay.
- * Velocity sẽ được inject từ gesture khi có thể.
+ * Close spring — Underdamped, mềm hơn.
+ *
+ * ζ ≈ 0.82, ω₀ ≈ 12.9 → 95% settle ~280ms, full settle ~350ms.
+ * Mass cao hơn → phản ứng "nặng" hơn với velocity, deceleration rõ hơn.
  */
-export const CRITICAL_DAMPED_SPRING = {
-  stiffness: 1000,
-  damping: 500,
-  mass: 3,
-  overshootClamping: true,
+export const CLOSE_SPRING = {
+  damping: 26, // Tăng damping để triệt tiêu dao động nhanh hơn
+  stiffness: 190, // Tăng stiffness để bám theo tay tốt hơn
+  mass: 0.7, // Giảm mass để nhẹ hơn
+  overshootClamping: true, // Telegram thường không cho nảy (bounce) khi đóng trang
   restDisplacementThreshold: 0.01,
   restSpeedThreshold: 0.01,
-} as const
-
-/** Reanimated config — dùng cho MasterTransitionProvider (UI thread) */
-export const CRITICAL_DAMPED_SPRING_REANIMATED = {
-  stiffness: 1000,
-  damping: 500,
-  mass: 3,
-  overshootClamping: true,
-  restDisplacementThreshold: 0.01,
-  restSpeedThreshold: 0.01,
-} as const
+}
 
 /**
- * Reanimated 3 Parallax — UI thread spring.
- * damping: 18, stiffness: 220, mass: 0.9, overshootClamping: false
- * energyThreshold: tránh shake trước khi settle
+ * Reanimated parallax spring — UI thread.
+ * Slightly underdamped for organic depth feel.
  */
 export const REANIMATED_PARALLAX_SPRING = {
   damping: 18,
@@ -81,24 +62,25 @@ export const VELOCITY_THRESHOLD = 0.3
 /** Velocity impact for gesture: projected = progress + velocityX * factor */
 export const VELOCITY_PROJECTION_FACTOR = 0.00025
 
-/** Parallax: previous screen moves -30 + progress*30 for depth illusion */
+/** Parallax: previous screen moves -30% for depth illusion */
 export const PARALLAX_FACTOR = 0.3
 
 /**
- * Gesture response distance (px from left edge) — swipe-back chỉ active khi touch bắt đầu trong vùng này.
- * Giảm từ 1000 → 50 để tránh conflict: tap trên button bị nhầm là bắt đầu swipe-back.
+ * Gesture response distance — full screen nhưng đủ lớn cho swipe-back.
+ * Nếu conflict với horizontal scroll, giảm về 50.
  * @see docs/GESTURE_TAP_VS_BACK_CONFLICT.md
  */
+/** Khoảng cách từ cạnh trái để kích hoạt swipe-back. Nhỏ hơn = ít nhạy, tránh lỡ back khi cuộn. */
 export const GESTURE_RESPONSE_DISTANCE = 50
 
-/** Transition spec for open (push) — Master Clock: Critically Damped Spring */
+/** Transition spec for open (push) — Timing ease-out-cubic, 350ms */
 export const OPEN_SPEC = {
-  animation: 'spring' as const,
-  config: CRITICAL_DAMPED_SPRING,
+  animation: 'timing' as const,
+  config: OPEN_TIMING,
 }
 
-/** Transition spec for close (pop) — Master Clock: Critically Damped Spring + velocity injection từ gesture */
+/** Transition spec for close (pop) — Underdamped spring, velocity-aware */
 export const CLOSE_SPEC = {
   animation: 'spring' as const,
-  config: CRITICAL_DAMPED_SPRING,
+  config: CLOSE_SPRING,
 }

@@ -8,6 +8,12 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['BeVietnamPro_400Regular', 'sans-serif'],
+        'sans-medium': ['BeVietnamPro_500Medium', 'sans-serif'],
+        'sans-semibold': ['BeVietnamPro_600SemiBold', 'sans-serif'],
+        'sans-bold': ['BeVietnamPro_700Bold', 'sans-serif'],
+      },
       colors: {
         // CSS Variables từ global.css - Light mode
         background: "hsl(var(--background))",

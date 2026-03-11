@@ -73,7 +73,7 @@ const HighlightMenuCarousel = React.memo(function HighlightMenuCarousel({
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         horizontal
-        initialNumToRender={5}
+        initialNumToRender={3}
         maxToRenderPerBatch={2}
         windowSize={3}
         showsHorizontalScrollIndicator={false}

@@ -1,15 +1,11 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ImageSourcePropType } from 'react-native'
-import { Text, View } from 'react-native'
+import { Image as RNImage, Text, View } from 'react-native'
 import { Image } from 'expo-image'
-
-import Animated from 'react-native-reanimated'
 
 import { Images } from '@/assets/images'
 import { publicFileURL, ROUTE } from '@/constants'
 import { NativeGesturePressable } from '@/components/navigation'
-import { useGhostMount } from '@/lib/navigation'
 import { useIsMobile, usePressInPrefetchMenuItem } from '@/hooks'
 import { IMenuItem, IProduct } from '@/types'
 import { formatCurrency } from '@/utils'
@@ -49,9 +45,17 @@ function clientMenuItemAreEqual(
 export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClientMenuItemProps) {
   const { t } = useTranslation('menu')
   const prefetchMenuItem = usePressInPrefetchMenuItem()
-  const { preload } = useGhostMount()
   const isMobile = useIsMobile()
 
+  const imageUrl = useMemo(() => {
+    const path = item.product.image?.trim()
+    if (!path) return null
+    // Nếu backend trả về URL đầy đủ thì dùng trực tiếp
+    if (/^https?:\/\//i.test(path)) return path
+    const base = publicFileURL ?? ''
+    if (!base) return null
+    return `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+  }, [item.product.image])
   const getPriceRange = (variants: IProduct['variants']) => {
     if (!variants || variants.length === 0) return null
     const prices = variants.map((v) => v.price)
@@ -76,37 +80,41 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
       <NativeGesturePressable
         navigation={{
           type: 'push',
-          href: { pathname: ROUTE.CLIENT_MENU_ITEM_DETAIL, params: { slug: item.slug } },
+          href: { pathname: ROUTE.CLIENT_PRODUCT_DETAIL, params: { id: item.slug } },
         }}
         onPressIn={() => {
+          // Prefetch dữ liệu món ăn trước khi chuyển màn
           prefetchMenuItem(item.slug)
-          // Pre-warm Image Cache: prefetch ngay khi chạm xuống — vài chục ms đủ để decode trước khi Detail mở
-          if (item.product.image) {
-            const urls = new Set<string>([`${publicFileURL}/${item.product.image}`])
-            item.product.images?.forEach((img) => urls.add(`${publicFileURL}/${img}`))
+          if (item.product.image && imageUrl) {
+            const urls = new Set<string>([imageUrl])
+            item.product.images?.forEach((img) => {
+              if (publicFileURL) urls.add(`${publicFileURL.replace(/\/$/, '')}/${(img || '').replace(/^\//, '')}`)
+            })
             Image.prefetch([...urls]).catch(() => {})
           }
-          setTimeout(() => preload('menu-item', { slug: item.slug }), 0)
         }}
         className={`flex-shrink-0 justify-center items-center ${
           isMobile ? 'w-32 h-32 p-2' : 'w-full aspect-square p-0'
         }`}
       >
-        <Animated.View
-          {...({ sharedTransitionTag: `menu-item-${item.slug}` } as object)}
-          className="relative w-full h-full overflow-hidden bg-gray-100 dark:bg-gray-700 rounded-xl"
+        <View
+          className="relative w-full h-full overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-700"
           style={{ aspectRatio: 1 }}
         >
-          <Image
-            source={
-              item.product.image
-                ? { uri: `${publicFileURL}/${item.product.image}` }
-                : (Images.Food.ProductImage as ImageSourcePropType)
-            }
-            className="w-full h-full rounded-xl"
-            contentFit="contain"
-            style={{ backgroundColor: 'transparent' }}
-          />
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              style={{ width: '100%', height: '100%', borderRadius: 12 }}
+            />
+          ) : (
+            <RNImage
+              source={Images.Food.DefaultProductImage as number}
+              resizeMode="cover"
+              style={{ width: '100%', height: '100%', borderRadius: 12 }}
+            />
+          )}
           {item.product.isLimit && !isMobile && (
             <View className="absolute bottom-3 left-3 z-50 px-3 py-1 rounded-full bg-primary">
               <Text className="text-xs text-white">
@@ -115,13 +123,13 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
             </View>
           )}
           {hasPromotion && (
-            <View className="absolute top-2 right-2 z-50 px-2 py-1 rounded-full bg-primary">
-              <Text className="text-xs font-bold text-white">
+            <View className="absolute right-2 top-2 z-50 rounded-full bg-red-500 px-2 py-1">
+              <Text className="text-[11px] font-semibold uppercase tracking-wide text-white">
                 -{item.promotion.value}%
               </Text>
             </View>
           )}
-        </Animated.View>
+        </View>
       </NativeGesturePressable>
 
       {/* Content */}

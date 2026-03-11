@@ -1,4 +1,4 @@
-import moment from 'moment'
+import dayjs from 'dayjs'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
@@ -7,7 +7,7 @@ import { IMenuFilter, IMenuFilterStore } from '@/types'
 import { createSafeStorage } from '@/utils/storage'
 
 const defaultMenuFilter: IMenuFilter = {
-  date: moment().format('YYYY-MM-DD'),
+  date: dayjs().format('YYYY-MM-DD'),
   branch: undefined,
   minPrice: FILTER_VALUE.MIN_PRICE,
   maxPrice: FILTER_VALUE.MAX_PRICE,
@@ -33,7 +33,7 @@ export const useMenuFilterStore = create<IMenuFilterStore>()(
       clearMenuFilter: () => {
         set({
           menuFilter: {
-            date: moment().format('YYYY-MM-DD'),
+            date: dayjs().format('YYYY-MM-DD'),
             branch: undefined,
             minPrice: FILTER_VALUE.MIN_PRICE,
             maxPrice: FILTER_VALUE.MAX_PRICE,

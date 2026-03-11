@@ -2,7 +2,7 @@
  * FavoriteButton — Nút Yêu thích (trái tim) với Wobble effect.
  * Khi nhấn: xoay -10° → 10° → 0° tạo hiệu ứng rung rinh sinh động.
  */
-import * as Haptics from 'expo-haptics'
+
 import { Heart } from 'lucide-react-native'
 import React, { useCallback } from 'react'
 import { Pressable, useColorScheme } from 'react-native'
@@ -35,7 +35,6 @@ export const FavoriteButton = React.memo(function FavoriteButton({
   const rotation = useSharedValue(0)
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
     runOnUI(() => {
       'worklet'
       rotation.value = withSequence(

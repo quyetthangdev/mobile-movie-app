@@ -1,17 +1,15 @@
 /**
  * Navigation Engine — Telegram-level instant response.
  *
- * REFACTORED: Animation starts in same frame as tap.
- * - Sync push when router ready (no setImmediate)
- * - Transition lock: drop second tap during transition
- * - Retry limit: max 20 frames when router null
- * - Haptic Impact Light khi bắt đầu navigate → phản hồi xúc giác tức thì
+ * Ưu tiên độ trễ cực thấp từ lúc chạm tới lúc bắt đầu transition.
+ * - Khi router sẵn sàng: gọi push/replace/back ngay (không rAF thêm)
+ * - Khi router null: retry tối đa MAX_RETRY_FRAMES frame (đã dùng rAF trong retry)
+ * - Transition lock: drop tap thứ 2 trong lúc đang transition
  *
- * Flow: Tap → runOnJS → (lock check) → push DIRECTLY → Native Stack animation
- * Target: Tap → first visual motion < 8ms
+ * Flow (gesture):
+ * Tap → runOnJS → executeNav → Native Stack animation (UI thread)
  */
 import type { Href } from 'expo-router'
-import * as Haptics from 'expo-haptics'
 import {
   getNavigationRouter,
   isNavigationLocked,
@@ -40,19 +38,19 @@ const getRouter = () => getNavigationRouter()
  * Không setImmediate: gọi push trực tiếp để animation bắt đầu ngay.
  */
 export const executeNavFromGesture = (
-  type: 'push' | 'replace' | 'back',
+  type: 'push' | 'replace' | 'navigate' | 'back',
   href?: HrefLike,
 ) => {
+  // Instant path: không thêm rAF, để transition bắt đầu càng sớm càng tốt
   executeNav(type, href, TRANSITION_DURATION_MS)
 }
 
 const executeNav = (
-  type: 'push' | 'replace' | 'back',
+  type: 'push' | 'replace' | 'navigate' | 'back',
   href?: HrefLike,
   duration = TRANSITION_DURATION_MS,
 ) => {
-  // Haptic: Native Stack (Auth, Profile) — tap feedback; JS Stack (Home/Menu) dùng transitionStart
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+  
   const r = getRouter()
   if (r) {
     lockNavigation()
@@ -60,6 +58,8 @@ const executeNav = (
       acquireTransitionLock(duration)
       if (type === 'push' && href) r.push(href as LockHrefLike)
       else if (type === 'replace' && href) r.replace(href as LockHrefLike)
+      else if (type === 'navigate' && href && 'navigate' in r) (r as LockRouterLike).navigate(href as LockHrefLike)
+      else if (type === 'navigate' && href) r.replace(href as LockHrefLike)
       else if (type === 'back') r.back()
     } finally {
       scheduleUnlock()
@@ -77,6 +77,8 @@ const executeNav = (
         acquireTransitionLock(duration)
         if (type === 'push' && href) router.push(href as LockHrefLike)
         else if (type === 'replace' && href) router.replace(href as LockHrefLike)
+        else if (type === 'navigate' && href && 'navigate' in router) (router as LockRouterLike).navigate(href as LockHrefLike)
+        else if (type === 'navigate' && href) router.replace(href as LockHrefLike)
         else if (type === 'back') router.back()
       } catch (err) {
         unlockNavigation()
@@ -114,6 +116,10 @@ export const navigateNative = {
   replace: (href: HrefLike) => {
     if (isNavigationLocked()) return
     executeNav('replace', href, TRANSITION_DURATION_MS)
+  },
+  navigate: (href: HrefLike) => {
+    if (isNavigationLocked()) return
+    executeNav('navigate', href, TRANSITION_DURATION_MS)
   },
   back: () => {
     if (isNavigationLocked()) return

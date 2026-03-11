@@ -1,5 +1,5 @@
 import { AxiosRequestConfig } from 'axios'
-import moment from 'moment'
+import dayjs from 'dayjs'
 
 import { useDownloadStore } from '@/stores'
 import {
@@ -199,7 +199,7 @@ export async function getPublicOrderInvoice(order: string): Promise<Blob> {
 export async function exportOrderInvoice(order: string): Promise<Blob> {
   const { setProgress, setFileName, setIsDownloading, reset } =
     useDownloadStore.getState()
-  const currentDate = moment(new Date()).toISOString()
+  const currentDate = dayjs(new Date()).toISOString()
   setFileName(`Invoice-${currentDate}.pdf`)
   setIsDownloading(true)
   try {
@@ -228,7 +228,9 @@ export async function exportOrderInvoice(order: string): Promise<Blob> {
 }
 
 // public order invoice
-export async function exportPublicOrderInvoice(order: string): Promise<ArrayBuffer> {
+export async function exportPublicOrderInvoice(
+  order: string,
+): Promise<ArrayBuffer> {
   const { setProgress, setFileName, setIsDownloading, reset } =
     useDownloadStore.getState()
   const currentDate = new Date().toISOString()
@@ -236,19 +238,23 @@ export async function exportPublicOrderInvoice(order: string): Promise<ArrayBuff
   setIsDownloading(true)
   try {
     // Use 'arraybuffer' instead of 'blob' for React Native compatibility
-    const response = await http.post<ArrayBuffer>(`/invoice/export/public`, { order }, {
-      responseType: 'arraybuffer',
-      headers: {
-        Accept: 'application/pdf',
-      },
-      onDownloadProgress: (progressEvent) => {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / (progressEvent.total ?? 1),
-        )
-        setProgress(percentCompleted)
-      },
-      doNotShowLoading: true,
-    } as AxiosRequestConfig)
+    const response = await http.post<ArrayBuffer>(
+      `/invoice/export/public`,
+      { order },
+      {
+        responseType: 'arraybuffer',
+        headers: {
+          Accept: 'application/pdf',
+        },
+        onDownloadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / (progressEvent.total ?? 1),
+          )
+          setProgress(percentCompleted)
+        },
+        doNotShowLoading: true,
+      } as AxiosRequestConfig,
+    )
 
     // Return ArrayBuffer directly - works better in React Native
     // Don't reset progress here - let downloadAndSavePDF handle it
@@ -376,10 +382,9 @@ export async function getPrinterEvents({
 }: {
   params?: IGetPrinterEventsRequest
 }): Promise<IApiResponse<IPaginationResponse<IPrinterEvent>>> {
-  const response = await http.get<IApiResponse<IPaginationResponse<IPrinterEvent>>>(
-    `/printer/events`,
-    { params },
-  )
+  const response = await http.get<
+    IApiResponse<IPaginationResponse<IPrinterEvent>>
+  >(`/printer/events`, { params })
   return response.data
 }
 // google map

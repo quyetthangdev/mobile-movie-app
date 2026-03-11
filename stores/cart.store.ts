@@ -1,9 +1,10 @@
+import dayjs from 'dayjs'
 import i18next from 'i18next'
-import moment from 'moment'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 import { Role, VOUCHER_CUSTOMER_TYPE } from '@/constants'
+import { requestClearStoresExcept } from '@/lib/store-sync'
 import {
   ICartItem,
   ICartItemStore,
@@ -12,10 +13,9 @@ import {
   IVoucher,
   OrderTypeEnum,
 } from '@/types'
-import { requestClearStoresExcept } from '@/lib/store-sync'
-import { showToast } from '@/utils/toast'
 import { setupAutoClearCart } from '@/utils/cart'
 import { createSafeStorage } from '@/utils/storage'
+import { showToast } from '@/utils/toast'
 
 export const useCartItemStore = create<ICartItemStore>()(
   persist(
@@ -46,7 +46,7 @@ export const useCartItemStore = create<ICartItemStore>()(
               ownerFullName: ownerFullName,
               ownerRole: owner.role.name,
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -68,7 +68,7 @@ export const useCartItemStore = create<ICartItemStore>()(
               // Remove voucher if it requires verification
               voucher: requiresVerification ? null : cartItems.voucher,
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -78,7 +78,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         if (cartItems) {
           set({
             cartItems: { ...cartItems, approvalBy },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -105,7 +105,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         }
 
         // Nếu là force add, bỏ qua check hydration
-        const timestamp = moment().valueOf()
+        const timestamp = dayjs().valueOf()
         const { cartItems } = get()
 
         if (!cartItems) {
@@ -156,8 +156,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         }
         showToast(i18next.t('toast.addSuccess'))
         // Setup auto clear cart với error handling
-        setupAutoClearCart().catch(() => {
-        })
+        setupAutoClearCart().catch(() => {})
       },
 
       addProductVariant: (id: string) => {
@@ -177,7 +176,7 @@ export const useCartItemStore = create<ICartItemStore>()(
               ...cartItems,
               orderItems: updatedOrderItems,
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -194,7 +193,7 @@ export const useCartItemStore = create<ICartItemStore>()(
               ...cartItems,
               orderItems: updatedOrderItems,
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -211,7 +210,7 @@ export const useCartItemStore = create<ICartItemStore>()(
               ...cartItems,
               orderItems: updatedOrderItems,
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -227,7 +226,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         requestClearStoresExcept('cart')
 
         const { cartItems } = get()
-        const timestamp = moment().valueOf()
+        const timestamp = dayjs().valueOf()
 
         if (!cartItems) {
           set({
@@ -263,7 +262,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         if (cartItems) {
           set({
             cartItems: { ...cartItems, table: '', tableName: '' },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -273,7 +272,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         if (cartItems) {
           set({
             cartItems: { ...cartItems, paymentMethod },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -283,7 +282,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         if (cartItems) {
           set({
             cartItems: { ...cartItems, type: orderType },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -303,7 +302,7 @@ export const useCartItemStore = create<ICartItemStore>()(
                 ...cartItems,
                 orderItems: updatedOrderItems,
               },
-              lastModified: moment().valueOf(),
+              lastModified: dayjs().valueOf(),
             })
           }
 
@@ -345,7 +344,7 @@ export const useCartItemStore = create<ICartItemStore>()(
             },
             // orderItems giữ nguyên, không tính toán gì
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
 
@@ -453,7 +452,7 @@ export const useCartItemStore = create<ICartItemStore>()(
             orderItems: updatedOrderItems,
             voucher: null,
           },
-          lastModified: moment().valueOf(),
+          lastModified: dayjs().valueOf(),
         })
       },
       setPaymentMethod: (paymentMethod: string) => {
@@ -461,7 +460,7 @@ export const useCartItemStore = create<ICartItemStore>()(
         if (cartItems) {
           set({
             cartItems: { ...cartItems, paymentMethod },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -477,7 +476,7 @@ export const useCartItemStore = create<ICartItemStore>()(
                 orderSlug,
               },
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -493,7 +492,7 @@ export const useCartItemStore = create<ICartItemStore>()(
                 qrCode,
               },
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },
@@ -509,7 +508,7 @@ export const useCartItemStore = create<ICartItemStore>()(
                 paymentSlug,
               },
             },
-            lastModified: moment().valueOf(),
+            lastModified: dayjs().valueOf(),
           })
         }
       },

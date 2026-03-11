@@ -1,12 +1,12 @@
-import moment from 'moment'
+import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 
 import {
-    AuthRules,
-    NAME_REGEX,
-    PASSWORD_REGEX,
-    PHONE_NUMBER_REGEX,
+  AuthRules,
+  NAME_REGEX,
+  PASSWORD_REGEX,
+  PHONE_NUMBER_REGEX,
 } from '@/constants'
 
 export const loginSchema = z.object({
@@ -33,7 +33,7 @@ export function useRegisterSchema() {
         z
           .string()
           .min(1, t('register.dobRequired'))
-          .refine((val) => moment(val, 'DD/MM/YYYY', true).isValid(), {
+          .refine((val) => dayjs(val, 'DD/MM/YYYY', true).isValid(), {
             message: t('register.dobInvalid'),
           }),
       ),

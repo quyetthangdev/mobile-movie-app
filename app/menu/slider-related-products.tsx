@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react-native'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dimensions, FlatList, Text, TouchableOpacity, View } from 'react-native'
 import Animated, { FadeInRight } from 'react-native-reanimated'
@@ -8,8 +8,12 @@ import { ClientMenuItem } from '@/components/menu/client-menu-item'
 import { ROUTE } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks'
-import { useBranchStore, useMenuFilterStore, useUserStore } from '@/stores'
-import { ISpecificMenuRequest } from '@/types'
+import {
+  useBranchSlug,
+  useMenuFilterForRequest,
+  useUserSlug,
+} from '@/stores/selectors'
+import type { ISpecificMenuRequest } from '@/types'
 
 interface SliderRelatedProductsProps {
   currentProduct: string
@@ -21,47 +25,55 @@ export default function SliderRelatedProducts({
   catalog,
 }: SliderRelatedProductsProps) {
   const { t } = useTranslation('product')
-  const { userInfo } = useUserStore()
-  const { menuFilter } = useMenuFilterStore()
-  const { branch } = useBranchStore()
+  const userSlug = useUserSlug()
+  const menuFilterFields = useMenuFilterForRequest(catalog)
+  const branchSlug = useBranchSlug()
 
-  const mapMenuFilterToRequest = (filter: typeof menuFilter): ISpecificMenuRequest => {
-    return {
-      date: filter.date,
-      branch: filter.branch || branch?.slug,
-      catalog: catalog,
-      productName: filter.productName,
-      minPrice: filter.minPrice,
-      maxPrice: filter.maxPrice,
-      slug: filter.menu,
-    }
+  const menuRequest: ISpecificMenuRequest = {
+    ...menuFilterFields,
+    branch: menuFilterFields.branch || branchSlug,
+    catalog,
   }
 
-  const hasUser = !!userInfo?.slug
-  const hasBranch = !!menuFilter.branch || !!branch?.slug
+  const hasUser = !!userSlug
+  const hasBranch = !!menuFilterFields.branch || !!branchSlug
 
   const { data: specificMenuData } = useSpecificMenu(
-    mapMenuFilterToRequest(menuFilter),
+    menuRequest,
     hasUser && hasBranch
   )
 
   const { data: publicSpecificMenuData } = usePublicSpecificMenu(
-    mapMenuFilterToRequest(menuFilter),
+    menuRequest,
     !hasUser && hasBranch
   )
 
-  const specificMenu = userInfo?.slug ? specificMenuData : publicSpecificMenuData
+  const specificMenu = userSlug ? specificMenuData : publicSpecificMenuData
   const menuItems = specificMenu?.result?.menuItems?.filter(
     (item) => item.slug !== currentProduct && item.product.catalog.slug === catalog
   ) || []
 
-  if (menuItems.length === 0) {
-    return null
-  }
-
   const screenWidth = Dimensions.get('window').width
   const itemWidth = screenWidth < 640 ? 180 : 200
   const itemSpacing = 12
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: (typeof menuItems)[0]; index: number }) => (
+      <Animated.View
+        entering={FadeInRight.delay(index * 100).springify().damping(50)}
+        style={{ width: itemWidth, marginRight: itemSpacing }}
+      >
+        <ClientMenuItem item={item} />
+      </Animated.View>
+    ),
+    [itemWidth, itemSpacing],
+  )
+
+  const keyExtractor = useCallback((item: (typeof menuItems)[0]) => item.slug, [])
+
+  if (menuItems.length === 0) {
+    return null
+  }
 
   return (
     <View className="w-full mt-4">
@@ -84,15 +96,8 @@ export default function SliderRelatedProducts({
         data={menuItems}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.slug}
-        renderItem={({ item, index }) => (
-          <Animated.View
-            entering={FadeInRight.delay(index * 100).springify().damping(50)}
-            style={{ width: itemWidth, marginRight: itemSpacing }}
-          >
-            <ClientMenuItem item={item} />
-          </Animated.View>
-        )}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         contentContainerStyle={{ paddingHorizontal: 16 }}
       />
     </View>

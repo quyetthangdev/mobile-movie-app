@@ -11,14 +11,15 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { Drawer } from '@/components/ui'
 import { FILTER_VALUE } from '@/constants'
-import { useBranchStore, useMenuFilterStore } from '@/stores'
+import { useMenuFilterStore } from '@/stores'
+import { useBranchSlug } from '@/stores/selectors'
 import { formatCurrency, formatCurrencyWithSymbol } from '@/utils'
 import { Filter } from 'lucide-react-native'
 import DualRangeSlider from './dual-range-slider'
 
 export default function PriceRangeFilter() {
   const { t } = useTranslation(['menu'])
-  const branch = useBranchStore((s) => s.branch)
+  const branchSlug = useBranchSlug()
   const { minPrice, maxPrice, setMenuFilter } = useMenuFilterStore(
     useShallow((s) => ({
       minPrice: s.menuFilter.minPrice,
@@ -76,7 +77,7 @@ export default function PriceRangeFilter() {
   }
 
   const handlePresetClick = (min: number, max: number) => {
-    setMenuFilter((prev) => ({ ...prev, minPrice: min, maxPrice: max, branch: branch?.slug }))
+    setMenuFilter((prev) => ({ ...prev, minPrice: min, maxPrice: max, branch: branchSlug }))
     setMinPriceInput(formatCurrencyWithSymbol(min, false))
     setMaxPriceInput(formatCurrencyWithSymbol(max, false))
   }
@@ -86,7 +87,7 @@ export default function PriceRangeFilter() {
       ...prev,
       minPrice: FILTER_VALUE.MIN_PRICE,
       maxPrice: FILTER_VALUE.MAX_PRICE,
-      branch: branch?.slug,
+      branch: branchSlug,
     }))
     setMinPriceInput(formatCurrencyWithSymbol(FILTER_VALUE.MIN_PRICE, false))
     setMaxPriceInput(formatCurrencyWithSymbol(FILTER_VALUE.MAX_PRICE, false))

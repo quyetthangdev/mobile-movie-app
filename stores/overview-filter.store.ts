@@ -1,4 +1,4 @@
-import moment from 'moment'
+import dayjs from 'dayjs'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
@@ -8,8 +8,8 @@ import { createSafeStorage } from '@/utils/storage'
 
 const defaultOverviewFilter: IOverviewFilter = {
   branch: '',
-  startDate: moment().startOf('day').format('YYYY-MM-DD HH:mm:ss'),
-  endDate: moment().format('YYYY-MM-DD HH:mm:ss'),
+  startDate: dayjs().startOf('day').format('YYYY-MM-DD HH:mm:ss'),
+  endDate: dayjs().format('YYYY-MM-DD HH:mm:ss'),
   type: RevenueTypeQuery.HOURLY,
 }
 

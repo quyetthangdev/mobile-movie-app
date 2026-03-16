@@ -1,10 +1,11 @@
 /**
- * AnimatedTabButton — Đã sửa lỗi xung đột Opacity và tối ưu "Hãm phanh"
+ * AnimatedTabButton — Icon + label, active = rounded-full bọc cả hai, đồng tâm radius pill.
  */
 import type { LucideIcon } from 'lucide-react-native'
 import React, { useEffect } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, Text } from 'react-native'
 import Animated, {
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -12,19 +13,18 @@ import Animated, {
 
 import { NativeGesturePressable } from './native-gesture-pressable'
 
-/** Cấu hình Spring chuẩn Telegram: Chặt chẽ, hãm phanh gấp, không nảy */
 const SPRING_CONFIG = {
-  stiffness: 180,
-  damping: 25, // Tăng damping để hãm phanh mịn hơn
-  mass: 0.6,
+  stiffness: 200,
+  damping: 22,
+  mass: 0.5,
   overshootClamping: true,
-  restDisplacementThreshold: 0.01,
-  restSpeedThreshold: 0.01,
 }
 
 type AnimatedTabButtonProps = {
-  label: string
   href: string
+  iconSize?: number
+  itemWidth?: number
+  label?: string
   Icon: LucideIcon
   active: boolean
   primaryColor: string
@@ -34,8 +34,10 @@ type AnimatedTabButtonProps = {
 }
 
 export const AnimatedTabButton = React.memo(function AnimatedTabButton({
-  label,
   href,
+  iconSize = 36,
+  itemWidth = 70,
+  label,
   Icon,
   active,
   primaryColor,
@@ -49,19 +51,12 @@ export const AnimatedTabButton = React.memo(function AnimatedTabButton({
     animValue.value = withSpring(active ? 1 : 0, SPRING_CONFIG)
   }, [active, animValue])
 
-  // Style này xử lý dịch chuyển và biến đổi hình học
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: 0.7 + animValue.value * 0.3, // 0.7 -> 1
-    transform: [
-      { translateY: animValue.value * -10 }, // Giảm nhẹ biên độ để mượt hơn
-      { scale: 1 + animValue.value * 0.15 },
-    ],
-  }))
-
-  const animatedTextStyle = useAnimatedStyle(() => ({
-    color: active ? primaryColor : mutedColor,
-    fontWeight: active ? 'bold' : 'normal',
-    transform: [{ translateY: animValue.value * 4 }],
+  const animatedPillStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      animValue.value,
+      [0, 1],
+      ['rgba(0,0,0,0)', primaryColor],
+    ),
   }))
 
   return (
@@ -72,24 +67,31 @@ export const AnimatedTabButton = React.memo(function AnimatedTabButton({
       hapticStyle="light"
       style={styles.container}
     >
-      <View style={styles.buttonWrapper}>
-        {/* LỚP BỌC 1: Xử lý màu sắc tĩnh (Tránh xung đột với opacity animation) */}
-        <View
-          style={[
-            styles.iconCircle,
-            { backgroundColor: active ? primaryColor : '#f0f0f0' },
-          ]}
-        >
-          {/* LỚP BỌC 2: Xử lý Reanimated (Tách riêng để không bị overwrite) */}
-          <Animated.View style={[styles.innerAnimatedContent, animatedStyle]}>
-            <Icon color={active ? '#fff' : mutedColor} size={20} />
-          </Animated.View>
-        </View>
-
-        <Animated.Text style={[styles.tabText, animatedTextStyle]}>
-          {label}
-        </Animated.Text>
-      </View>
+      <Animated.View
+        style={[
+          styles.activePill,
+          {
+            width: itemWidth,
+            paddingVertical: 6,
+            paddingHorizontal: 10,
+            borderRadius: 9999,
+          },
+          animatedPillStyle,
+        ]}
+      >
+        <Icon color={active ? '#fff' : mutedColor} size={iconSize * 0.55} />
+        {label ? (
+          <Text
+            style={[
+              styles.label,
+              { color: active ? '#fff' : mutedColor, maxWidth: itemWidth - 20 },
+            ]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        ) : null}
+      </Animated.View>
     </NativeGesturePressable>
   )
 })
@@ -100,26 +102,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonWrapper: {
+  activePill: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-    // Đảm bảo không có animation layout trực tiếp ở đây
-  },
-  innerAnimatedContent: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tabText: {
-    fontSize: 11,
+  label: {
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
   },
 })

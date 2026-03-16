@@ -46,3 +46,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Expo modules build output
+modules/*/android/build/
+modules/*/ios/build/

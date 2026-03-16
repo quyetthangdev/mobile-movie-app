@@ -33,7 +33,7 @@ const TAB_ROUTES = {
 
 const BAR_HEIGHT = 64
 const BAR_PADDING = 8
-const FADE_HEIGHT = 80
+const FADE_HEIGHT = 120
 
 export default function TabsLayout() {
   const { t } = useTranslation('tabs')
@@ -43,12 +43,10 @@ export default function TabsLayout() {
   const prevPathnameRef = useRef(pathname)
   const masterTransition = useMasterTransitionOptional()
   const queryClient = useQueryClient()
-  const menuFilter = useMenuFilterStore((s) => s.menuFilter)
-  const branchSlug = useBranchStore((s) => s.branch?.slug)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
-  const userSlug = useUserStore((s) => s.userInfo?.slug)
 
   // useLayoutEffect: overlay chỉ khi Home→Menu và chưa cache (chờ data)
+  // Đọc menuFilter, branchSlug, userSlug qua getState() — giảm subscriptions
   useLayoutEffect(() => {
     const prev = prevPathnameRef.current
     const wasHome =
@@ -61,12 +59,13 @@ export default function TabsLayout() {
 
     if (!masterTransition) return
 
-    // Back từ chi tiết món/order/payment → màn đích thường đã cache, bỏ qua overlay
-    // Match cả /product/123 và product/123 (pathname có thể khác format tùy Expo Router)
     const wasFromDetailScreen = /(?:^|\/)(product|update-order|payment)\//.test(prev ?? '')
     if (wasFromDetailScreen) return
 
     if (isNowMenu) {
+      const menuFilter = useMenuFilterStore.getState().menuFilter
+      const branchSlug = useBranchStore.getState().branch?.slug
+      const userSlug = useUserStore.getState().userInfo?.slug
       const hasUser = isAuthenticated && !!userSlug
       const hasBranch = !!menuFilter.branch || !!branchSlug
       if (hasBranch) {
@@ -83,29 +82,19 @@ export default function TabsLayout() {
           ? ['specific-menu', menuRequest]
           : ['public-specific-menu', menuRequest]
         const cached = queryClient.getQueryData(cacheKey)
-        // Đã có cache (từ home→menu hoặc back từ product→menu) → bỏ qua overlay
         if (cached) return
       }
-      // Chỉ hiện overlay khi Home→Menu và chưa cache (wasFromDetailScreen đã return ở trên)
       if (wasHome && hasBranch) {
         requestAnimationFrame(() => {
           masterTransition.showLoadingOverlay()
         })
       }
     }
-  }, [
-    pathname,
-    masterTransition,
-    queryClient,
-    menuFilter,
-    branchSlug,
-    isAuthenticated,
-    userSlug,
-  ])
+  }, [pathname, masterTransition, queryClient, isAuthenticated])
 
   const isCartPage = pathname?.includes('/cart')
   const isProfileLoginForm = pathname?.includes('/profile') && !isAuthenticated
-  /** Product detail nằm ngoài tab tree (/product/[id]) — không cần hide bar khi ở đây */
+  /** Ẩn bar khi ở form đăng nhập profile hoặc trang giỏ hàng (Cart). */
   const shouldHideBottomBar = isCartPage || isProfileLoginForm
 
   const colors = useMemo(() => getThemeColor(isDark), [isDark])
@@ -140,11 +129,11 @@ export default function TabsLayout() {
     [],
   )
 
-  const { backgroundHeight, fadeHeight } = useMemo(() => {
-    const totalHeight = BAR_HEIGHT + BAR_PADDING + insets.bottom
+  const { totalBottomHeight } = useMemo(() => {
+    const bottomGap = Math.max(8, insets.bottom * 0.5)
+    const bgHeight = BAR_HEIGHT + BAR_PADDING + bottomGap
     return {
-      backgroundHeight: totalHeight - 36,
-      fadeHeight: FADE_HEIGHT,
+      totalBottomHeight: FADE_HEIGHT + bgHeight,
     }
   }, [insets.bottom])
 
@@ -158,38 +147,23 @@ export default function TabsLayout() {
             bottom: 0,
             left: 0,
             right: 0,
-            height: backgroundHeight,
-            backgroundColor: colors.background,
-            zIndex: 5,
-          }}
-        />
-      )}
-
-      {!shouldHideBottomBar && (
-        <View
-          renderToHardwareTextureAndroid
-          style={{
-            position: 'absolute',
-            bottom: backgroundHeight,
-            left: 0,
-            right: 0,
-            height: fadeHeight,
+            height: totalBottomHeight,
             pointerEvents: 'none',
-            zIndex: 6,
+            zIndex: 5,
           }}
         >
           <LinearGradient
             colors={[
               'transparent',
-              hexToRgba('#ffffff', 0.05),
-              hexToRgba('#ffffff', 0.15),
-              hexToRgba('#ffffff', 0.3),
-              hexToRgba('#ffffff', 0.5),
-              hexToRgba('#ffffff', 0.7),
-              hexToRgba('#ffffff', 0.9),
-              '#ffffff',
+              'transparent',
+              hexToRgba(colors.background, 0.03),
+              hexToRgba(colors.background, 0.08),
+              hexToRgba(colors.background, 0.18),
+              hexToRgba(colors.background, 0.35),
+              hexToRgba(colors.background, 0.55),
+              colors.background,
             ]}
-            locations={[0, 0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 1]}
+            locations={[0, 0.15, 0.25, 0.35, 0.45, 0.55, 0.7, 0.85, 1]}
             style={{ flex: 1 }}
           />
         </View>
@@ -266,7 +240,7 @@ export default function TabsLayout() {
             bottom: 0,
             left: 0,
             right: 0,
-            paddingBottom: insets.bottom,
+            paddingBottom: Math.max(8, insets.bottom * 0.5),
             paddingHorizontal: 16,
             paddingTop: 8,
             flexDirection: 'row',
@@ -286,6 +260,10 @@ export default function TabsLayout() {
             tabState={resolvedTabState}
             tabRoutes={tabRoutes}
             onPressInTabSwitch={(href) => {
+              const menuFilter = useMenuFilterStore.getState().menuFilter
+              const branchSlug = useBranchStore.getState().branch?.slug
+              const userSlug = useUserStore.getState().userInfo?.slug
+
               if (href?.includes('/menu')) {
                 const hasUser = isAuthenticated && !!userSlug
                 const hasBranch = !!menuFilter.branch || !!branchSlug
@@ -336,10 +314,7 @@ export default function TabsLayout() {
             }}
             onBeforeTabSwitch={undefined}
           />
-          <FloatingCartButton
-            primaryColor={colors.primary}
-            cartHref={TAB_ROUTES.CART}
-          />
+          <FloatingCartButton primaryColor={colors.primary} />
         </View>
       )}
     </View>

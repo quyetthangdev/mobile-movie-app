@@ -2,29 +2,37 @@ import { LoginForm } from '@/components/auth'
 import { Skeleton } from '@/components/ui'
 import { useLoyaltyPoints, useRunAfterTransition } from '@/hooks'
 import { useAuthStore, useUserStore } from '@/stores'
+import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Dimensions,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native'
-import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import { GestureDetector } from 'react-native-gesture-handler'
 import Animated from 'react-native-reanimated'
 import { useProfileAnimation } from './use-profile-animation'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const ITEM_COLOR_STYLES: Record<string, { backgroundColor: string }> = {
+  '#4CAF50': { backgroundColor: '#4CAF50' },
+  '#2196F3': { backgroundColor: '#2196F3' },
+  '#22c55e': { backgroundColor: '#22c55e' },
+  '#eab308': { backgroundColor: '#eab308' },
+  '#3b82f6': { backgroundColor: '#3b82f6' },
+  '#f97316': { backgroundColor: '#f97316' },
+  '#6366f1': { backgroundColor: '#6366f1' },
+}
 
 const ProfileTest = () => {
   const router = useRouter()
   const { t } = useTranslation('profile')
-  const { animatedStyle, openProfile, closeProfile, translateX } =
-    useProfileAnimation()
+  const handleBack = useCallback(() => router.back(), [router])
+  const { animatedStyle, closeProfile, panGesture } =
+    useProfileAnimation(handleBack)
   const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
   const userInfo = useUserStore((state) => state.userInfo)
   const setLogout = useAuthStore((state) => state.setLogout)
@@ -32,6 +40,12 @@ const ProfileTest = () => {
 
   const [allowFetch, setAllowFetch] = React.useState(false)
   useRunAfterTransition(() => setAllowFetch(true), [])
+
+  useEffect(() => {
+    return () => {
+      Image.clearMemoryCache()
+    }
+  }, [])
 
   const initials = useMemo(() => {
     if (!userInfo) return ''
@@ -73,50 +87,6 @@ const ProfileTest = () => {
     })
   }, [router])
 
-  const applyResistance = (value: number, max: number) => {
-    'worklet'
-
-    if (value < 0) {
-      return value * 0.35
-    }
-
-    if (value > max) {
-      const excess = value - max
-      return max + excess * 0.35
-    }
-
-    return value
-  }
-
-  const panGesture = Gesture.Pan()
-    .activeOffsetX([-10, 10])
-    .failOffsetY([-10, 10])
-
-    .onUpdate((event) => {
-      if (translateX.value === 0 && event.absoluteX > 32) {
-        return
-      }
-
-      const nextX = translateX.value + event.translationX
-
-      const resistedX = applyResistance(nextX, SCREEN_WIDTH)
-
-      translateX.value = Math.min(SCREEN_WIDTH, Math.max(0, resistedX))
-    })
-
-    .onEnd((event) => {
-      const predictedX = translateX.value + event.velocityX * 0.18
-
-      if (predictedX > SCREEN_WIDTH * 0.45) {
-        closeProfile(event.velocityX, () => {
-          router.back()
-        })
-      } else {
-        openProfile()
-      }
-    })
-
-
   const renderItem = (
     icon: string,
     title: string,
@@ -125,7 +95,12 @@ const ProfileTest = () => {
     onPress?: () => void,
   ) => (
     <TouchableOpacity style={styles.itemRow} onPress={onPress}>
-      <View style={[styles.iconContainer, { backgroundColor: color }]}>
+      <View
+        style={[
+          styles.iconContainer,
+          ITEM_COLOR_STYLES[color] ?? { backgroundColor: color },
+        ]}
+      >
         {/* <Icon size={20} color="#fff" /> */}
       </View>
       <View style={styles.itemTextContainer}>
@@ -165,7 +140,16 @@ const ProfileTest = () => {
             {/* Avatar & Name Section – hiển thị dữ liệu tài khoản thật */}
             <View style={styles.headerSection}>
               {userInfo?.image ? (
-                <Image source={{ uri: userInfo.image }} style={styles.avatar} />
+                <Image
+                  source={{
+                    uri: userInfo.image,
+                    width: 200,
+                    height: 200,
+                  }}
+                  style={styles.avatar}
+                  contentFit="cover"
+                  cachePolicy="disk"
+                />
               ) : (
                 <View style={styles.avatarFallback}>
                   <Text style={styles.avatarFallbackText}>

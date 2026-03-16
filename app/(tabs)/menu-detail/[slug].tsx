@@ -1,5 +1,6 @@
 import { Image as ExpoImage } from 'expo-image'
 import { useLocalSearchParams } from 'expo-router'
+import { ChevronLeft, ShoppingCart } from 'lucide-react-native'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,19 +10,19 @@ import {
   View,
   useColorScheme,
 } from 'react-native'
-import { ChevronLeft, ShoppingCart } from 'lucide-react-native'
 
 import { Images } from '@/assets/images'
 import { MenuItemQuantityControl } from '@/components/menu'
+import { CartBadge } from '@/components/navigation/cart-badge'
+import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
 import { Skeleton } from '@/components/ui'
-import { publicFileURL, ROUTE } from '@/constants'
+import { publicFileURL } from '@/constants'
+import { TAB_ROUTES } from '@/constants/navigation.config'
 import { useRunAfterTransition, useSpecificMenuItem } from '@/hooks'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
+import { getThemeColor } from '@/lib/utils'
 import type { IMenuItem } from '@/types'
 import { formatCurrency } from '@/utils'
-import { getThemeColor } from '@/lib/utils'
-import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
-import { CartBadge } from '@/components/navigation/cart-badge'
 
 export default function MenuItemDetailPlaceholder() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
@@ -117,7 +118,7 @@ export default function MenuItemDetailPlaceholder() {
         <NativeGesturePressable
           navigation={{
             type: 'push',
-            href: ROUTE.CLIENT_CART,
+            href: TAB_ROUTES.CART,
           }}
           hapticStyle="light"
         >

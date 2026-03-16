@@ -12,6 +12,7 @@ export const QUERYKEY = {
     specificVoucher: ['specificVoucher'],
     voucherGroups: ['voucherGroups'],
     vouchersForOrder: ['vouchersForOrder'],
+    publicVouchersForOrder: ['publicVouchersForOrder'],
     promotions: ['promotions'],
     banners: ['banners'],
     tables: ['tables'],

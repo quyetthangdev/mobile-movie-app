@@ -11,12 +11,19 @@ export interface OrderTypeOption {
   value: string
 }
 
-export function useOrderTypeOptions() {
+export interface UseOrderTypeOptionsOptions {
+  /** Khi false, không fetch feature flags — defer đến khi cần (B2). Trả về fallback AT_TABLE + TAKE_OUT. */
+  enabled?: boolean
+}
+
+export function useOrderTypeOptions(options?: UseOrderTypeOptionsOptions) {
   const { t } = useTranslation('menu')
   const setOrderingType = useOrderFlowStore((s) => s.setOrderingType)
   const getCartItems = useOrderFlowStore((s) => s.getCartItems)
+  const shouldFetch = options?.enabled !== false
   const { data: featuresSystemFlagsResponse } = useGetSystemFeatureFlagsByGroup(
     SystemLockFeatureGroup.ORDER,
+    { enabled: shouldFetch },
   )
 
   const cartItems = getCartItems()

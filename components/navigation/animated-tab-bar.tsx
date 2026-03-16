@@ -3,7 +3,7 @@
  * Thay thế TabBarPill để test custom animated tab bar.
  */
 import type { TFunction } from 'i18next'
-import { Beaker, Gift, Home, Menu, User } from 'lucide-react-native'
+import { Gift, Home, Menu, User } from 'lucide-react-native'
 import React, { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 
@@ -35,8 +35,8 @@ export const AnimatedTabBar = React.memo(function AnimatedTabBar({
   onBeforeTabSwitch,
   onPressInTabSwitch,
 }: AnimatedTabBarProps) {
-  const items = useMemo(() => {
-    const base = [
+  const items = useMemo(
+    () => [
       {
         Icon: Home,
         active: tabState.isHomeActive,
@@ -61,35 +61,27 @@ export const AnimatedTabBar = React.memo(function AnimatedTabBar({
         href: tabRoutes.profile,
         label: t('tabs.profile', 'Tài khoản'),
       },
-    ]
-
-    if (__DEV__) {
-      base.push({
-        Icon: Beaker,
-        active: false,
-        href: '/menu-hero-test',
-        label: 'Hero',
-      })
-    }
-
-    return base
-  }, [tabState, tabRoutes, t])
+    ],
+    [tabState, tabRoutes, t],
+  )
 
   return (
-    <View style={[styles.tabBar, { backgroundColor: colors.background }]}>
-      {items.map(({ Icon, active, href, label }) => (
-        <AnimatedTabButton
-          key={label}
-          label={label}
-          href={href}
-          Icon={Icon}
-          active={active}
-          primaryColor={colors.primary}
-          mutedColor={colors.mutedForeground}
-          onBeforeTabSwitch={!active && onBeforeTabSwitch ? () => onBeforeTabSwitch(href) : undefined}
-          onPressIn={!active && onPressInTabSwitch ? () => onPressInTabSwitch(href) : undefined}
-        />
-      ))}
+    <View style={[styles.tabBar, { backgroundColor: 'transparent' }]}>
+      <View style={styles.pill}>
+        {items.map(({ Icon, active, href, label }) => (
+          <AnimatedTabButton
+            key={label}
+            label={label}
+            href={href}
+            Icon={Icon}
+            active={active}
+            primaryColor={colors.primary}
+            mutedColor={colors.mutedForeground}
+            onBeforeTabSwitch={!active && onBeforeTabSwitch ? () => onBeforeTabSwitch(href) : undefined}
+            onPressIn={!active && onPressInTabSwitch ? () => onPressInTabSwitch(href) : undefined}
+          />
+        ))}
+      </View>
     </View>
   )
 })
@@ -99,15 +91,21 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-around',
-    borderRadius: 25,
+    borderRadius: 9999,
     paddingVertical: 8,
-    paddingHorizontal: 8,
-    marginHorizontal: 4,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    paddingHorizontal: 12,
+    gap: 4,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
 })

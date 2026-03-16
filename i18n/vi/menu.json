@@ -111,6 +111,17 @@
     "deliveryPhone": "Số điện thoại giao hàng"
   },
   "cart": {
+    "clearCart": "Xoá hết",
+    "clearCartDescription": "Hành động này sẽ xoá tất cả món đã chọn.",
+    "clearCartSuccess": "Đã xoá giỏ hàng",
+    "undo": "Hoàn tác",
+    "clearCartWarning": "Bạn có chắc muốn xoá toàn bộ giỏ hàng không?",
+    "clearCartWarningDescription": "Hành động này sẽ xoá tất cả món đã chọn.",
+    "clearCartWarningDescription2": "Bạn có chắc muốn xoá toàn bộ giỏ hàng không?",
+    "clearCartWarningDescription3": "Hành động này sẽ xoá tất cả món đã chọn.",
+    "clearCartWarningDescription4": "Bạn có chắc muốn xoá toàn bộ giỏ hàng không?",
+    "clearCartWarningDescription5": "Hành động này sẽ xoá tất cả món đã chọn.",
+    "clearCartWarningDescription6": "Bạn có chắc muốn xoá toàn bộ giỏ hàng không?",
     "deliveryAddress": "Địa chỉ giao hàng",
     "locationError": "Lỗi vị trí",
     "restaurantAddressNotAvailable": "Địa chỉ chi nhánh không khả dụng",

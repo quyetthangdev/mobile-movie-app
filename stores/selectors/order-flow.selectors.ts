@@ -33,11 +33,10 @@ export const useOrderFlowCreateOrder = () =>
     })),
   )
 
-/** Selectors cho Voucher List Drawer — 1 subscription thay vì 4 */
+/** Selectors cho Voucher List Drawer — cartItems subscribe riêng qua orderingData */
 export const useOrderFlowVoucherDrawer = () =>
   useOrderFlowStore(
     useShallow((s) => ({
-      getCartItems: s.getCartItems,
       addVoucher: s.addVoucher,
       removeVoucher: s.removeVoucher,
       isHydrated: s.isHydrated,
@@ -54,13 +53,12 @@ export const useOrderFlowDeleteCartItem = () =>
     })),
   )
 
-/** Cart item count — 1 subscription, chỉ re-render khi tổng quantity thay đổi */
+/** Cart item count — chỉ re-render khi count thay đổi (Zustand dùng Object.is mặc định cho primitive) */
 export const useOrderFlowCartItemCount = () =>
-  useOrderFlowStore(
-    (s) =>
-      s.currentStep === OrderFlowStep.ORDERING
-        ? (s.orderingData?.orderItems?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0)
-        : 0,
+  useOrderFlowStore((s) =>
+    s.currentStep === OrderFlowStep.ORDERING
+      ? (s.orderingData?.orderItems?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0)
+      : 0,
   )
 
 /** MenuItemDetailContent — 1 subscription, không include cartItemCount (dùng CartBadge + useOrderFlowCartItemCount) */

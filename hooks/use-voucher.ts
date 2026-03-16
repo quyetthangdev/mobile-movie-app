@@ -1,48 +1,48 @@
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 
 import {
-  applyVoucher,
-  createMultipleVoucher,
-  createVoucher,
-  createVoucherForUserGroup,
-  createVoucherGroup,
-  deleteVoucher,
-  deleteVoucherForUserGroup,
-  deleteVoucherPaymentMethod,
-  getPublicVouchersForOrder,
-  getSpecificPublicVoucher,
-  getSpecificVoucher,
-  getVoucherGroups,
-  getVouchers,
-  getVouchersForOrder,
-  removeAppliedVoucher,
-  updateVoucher,
-  updateVoucherGroup,
-  updateVoucherGroupApplyTime,
-  updateVoucherPaymentMethod,
-  validatePublicVoucher,
-  validatePublicVoucherPaymentMethod,
-  validateVoucher,
-  validateVoucherPaymentMethod,
+    applyVoucher,
+    createMultipleVoucher,
+    createVoucher,
+    createVoucherForUserGroup,
+    createVoucherGroup,
+    deleteVoucher,
+    deleteVoucherForUserGroup,
+    deleteVoucherPaymentMethod,
+    getPublicVouchersForOrder,
+    getSpecificPublicVoucher,
+    getSpecificVoucher,
+    getVoucherGroups,
+    getVouchers,
+    getVouchersForOrder,
+    removeAppliedVoucher,
+    updateVoucher,
+    updateVoucherGroup,
+    updateVoucherGroupApplyTime,
+    updateVoucherPaymentMethod,
+    validatePublicVoucher,
+    validatePublicVoucherPaymentMethod,
+    validateVoucher,
+    validateVoucherPaymentMethod,
 } from '@/api'
 import { QUERYKEY } from '@/constants'
 import {
-  IApplyVoucherRequest,
-  ICreateMultipleVoucherRequest,
-  ICreateVoucherForUserGroupRequest,
-  ICreateVoucherGroupRequest,
-  ICreateVoucherRequest,
-  IDeleteVoucherForUserGroupRequest,
-  IGetAllVoucherGroupRequest,
-  IGetAllVoucherRequest,
-  IGetSpecificVoucherRequest,
-  IRemoveAppliedVoucherRequest,
-  IUpdateVoucherGroupApplyTimeRequest,
-  IUpdateVoucherGroupRequest,
-  IUpdateVoucherPaymentMethodParamToRequest,
-  IUpdateVoucherRequest,
-  IValidateVoucherPaymentMethodRequest,
-  IValidateVoucherRequest,
+    IApplyVoucherRequest,
+    ICreateMultipleVoucherRequest,
+    ICreateVoucherForUserGroupRequest,
+    ICreateVoucherGroupRequest,
+    ICreateVoucherRequest,
+    IDeleteVoucherForUserGroupRequest,
+    IGetAllVoucherGroupRequest,
+    IGetAllVoucherRequest,
+    IGetSpecificVoucherRequest,
+    IRemoveAppliedVoucherRequest,
+    IUpdateVoucherGroupApplyTimeRequest,
+    IUpdateVoucherGroupRequest,
+    IUpdateVoucherPaymentMethodParamToRequest,
+    IUpdateVoucherRequest,
+    IValidateVoucherPaymentMethodRequest,
+    IValidateVoucherRequest,
 } from '@/types'
 
 export const useVoucherGroups = (params?: IGetAllVoucherGroupRequest) => {
@@ -97,7 +97,7 @@ export const usePublicVouchersForOrder = (
   enabled?: boolean,
 ) => {
   return useQuery({
-    queryKey: [QUERYKEY.vouchers, params], // 💡 Include params để tự động refetch khi params thay đổi
+    queryKey: [QUERYKEY.publicVouchersForOrder, params], // Keep public order vouchers cache isolated
     queryFn: () => getPublicVouchersForOrder(params),
     placeholderData: keepPreviousData,
     enabled: !!params && !!enabled,
@@ -117,11 +117,18 @@ export const useSpecificVoucher = (
   })
 }
 
-export const useSpecificPublicVoucher = (data: IGetSpecificVoucherRequest) => {
+export const useSpecificPublicVoucher = (
+  data: IGetSpecificVoucherRequest,
+  enabled?: boolean,
+) => {
+  const isEnabled =
+    enabled !== undefined
+      ? enabled && Boolean(data?.code || data?.slug)
+      : Boolean(data?.code || data?.slug)
   return useQuery({
     queryKey: [QUERYKEY.vouchers, data],
     queryFn: () => getSpecificPublicVoucher(data),
-    enabled: !!data.code,
+    enabled: isEnabled,
   })
 }
 

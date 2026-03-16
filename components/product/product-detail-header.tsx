@@ -1,22 +1,121 @@
 import { CartBadge, NavigatePressable } from '@/components/navigation'
-import { ROUTE } from '@/constants'
-import { HIT_SLOP_ICON, navigateNative } from '@/lib/navigation'
+import { TAB_ROUTES } from '@/constants/navigation.config'
+import {
+  HIT_SLOP_ICON,
+  navigateNative,
+  setFromProductDetail,
+} from '@/lib/navigation'
 import { ChevronLeft, Heart, ShoppingCart } from 'lucide-react-native'
 import React from 'react'
-import { Pressable, StyleSheet, View } from 'react-native'
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated'
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 interface ProductDetailHeaderProps {
   isDark: boolean
   title: string
   isFavorite: boolean
   onToggleFavorite: () => void
   headerFade: SharedValue<number>
+  onNavigateToCart?: () => void
 }
+
+/** Header đơn giản khi blur — không dùng Reanimated, giảm cost unmount khi transition sang Cart */
+export function ProductDetailHeaderSimple({
+  isDark,
+  title,
+  isFavorite,
+  onToggleFavorite,
+  onNavigateToCart,
+}: Pick<
+  ProductDetailHeaderProps,
+  'isDark' | 'title' | 'isFavorite' | 'onToggleFavorite' | 'onNavigateToCart'
+>) {
+  const insets = useSafeAreaInsets()
+  const bg = isDark ? 'rgb(31,41,55)' : 'rgb(255,255,255)'
+  const textColor = isDark ? '#f9fafb' : '#111827'
+  const heartColor = isFavorite ? '#ef4444' : '#6b7280'
+
+  return (
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFillObject}>
+      <View
+        pointerEvents="auto"
+        className="flex-row items-center justify-between p-4"
+        style={{
+          paddingBottom: 4,
+          paddingTop: insets.top + 4,
+        }}
+      >
+        <View className="flex-row items-center gap-2">
+          <NavigatePressable
+            onPress={() => navigateNative.back()}
+            hitSlop={HIT_SLOP_ICON}
+            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+            android_ripple={null}
+            style={[styles.circle, { backgroundColor: bg }]}
+          >
+            <ChevronLeft size={22} color={textColor} />
+          </NavigatePressable>
+          <View
+            className="h-10 max-w-[220px] items-center justify-center rounded-full px-3"
+            style={[styles.circle, { backgroundColor: bg }]}
+          >
+            <Text
+              className="text-sm font-semibold capitalize"
+              style={{ color: textColor }}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+          </View>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            onPress={onToggleFavorite}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            className="h-10 w-10 items-center justify-center rounded-full"
+            android_ripple={null}
+            style={[styles.circle, { backgroundColor: bg }]}
+          >
+            <Heart
+              size={20}
+              color={heartColor}
+              fill={isFavorite ? '#ef4444' : 'transparent'}
+              strokeWidth={2}
+            />
+          </Pressable>
+          <NavigatePressable
+            onPress={
+              onNavigateToCart ??
+              (() => {
+                setFromProductDetail(true)
+                navigateNative.replace(TAB_ROUTES.CART)
+              })
+            }
+            hitSlop={HIT_SLOP_ICON}
+            className="h-10 w-10 items-center justify-center rounded-full active:opacity-80"
+            android_ripple={null}
+            style={[styles.circle, { backgroundColor: bg }]}
+          >
+            <ShoppingCart size={20} color={textColor} />
+            <CartBadge />
+          </NavigatePressable>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  circle: {
+    height: 40,
+    width: 40,
+    borderRadius: 20,
+  },
+})
 
 export function ProductDetailHeader({
   isDark,
@@ -24,9 +123,12 @@ export function ProductDetailHeader({
   isFavorite,
   onToggleFavorite,
   headerFade,
+  onNavigateToCart,
 }: ProductDetailHeaderProps) {
+  const insets = useSafeAreaInsets()
   const containerStyle = useAnimatedStyle(() => ({
     paddingBottom: 4,
+    paddingTop: Platform.OS === 'ios' ? insets.top - 4 : 16,
     backgroundColor: 'transparent',
     shadowColor: 'transparent',
     shadowOffset: { width: 0, height: 0 },
@@ -176,7 +278,7 @@ export function ProductDetailHeader({
             collapsable={false}
           >
             <NavigatePressable
-              onPress={() => navigateNative.replace(ROUTE.CLIENT_CART)}
+              onPress={onNavigateToCart}
               hitSlop={HIT_SLOP_ICON}
               className="h-10 w-10 items-center justify-center rounded-full active:opacity-80"
               android_ripple={null}

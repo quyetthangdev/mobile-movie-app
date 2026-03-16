@@ -1,6 +1,7 @@
-import { Eye, EyeOff } from 'lucide-react-native'
 import { useQueryClient } from '@tanstack/react-query'
+import { Eye, EyeOff } from 'lucide-react-native'
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   Text,
@@ -8,16 +9,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
-import { useLogin, useProfile } from '@/hooks'
-import { loginSchema } from '@/schemas'
+import { getLoyaltyPoints } from '@/api/loyalty-point'
 import { BannerPage, QUERYKEY, ROUTE } from '@/constants'
+import { useLogin, useProfile } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
+import { loginSchema } from '@/schemas'
 import { useAuthStore, useUserStore } from '@/stores'
-import { getLoyaltyPoints } from '@/api/loyalty-point'
 
 interface LoginFormProps {
   onLoginSuccess?: () => void
@@ -30,13 +30,18 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [phonenumber, setPhonenumber] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [errors, setErrors] = useState<{ phonenumber?: string; password?: string }>({})
+  const [errors, setErrors] = useState<{
+    phonenumber?: string
+    password?: string
+  }>({})
   const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   const setToken = useAuthStore((state) => state.setToken)
   const setRefreshToken = useAuthStore((state) => state.setRefreshToken)
   const setExpireTime = useAuthStore((state) => state.setExpireTime)
-  const setExpireTimeRefreshToken = useAuthStore((state) => state.setExpireTimeRefreshToken)
+  const setExpireTimeRefreshToken = useAuthStore(
+    (state) => state.setExpireTimeRefreshToken,
+  )
   const setLogout = useAuthStore((state) => state.setLogout)
   const setUserInfo = useUserStore((state) => state.setUserInfo)
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
@@ -72,7 +77,8 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         const fieldErrors: { phonenumber?: string; password?: string } = {}
         error.issues.forEach((issue) => {
           if (issue.path[0]) {
-            fieldErrors[issue.path[0] as keyof typeof fieldErrors] = issue.message
+            fieldErrors[issue.path[0] as keyof typeof fieldErrors] =
+              issue.message
           }
         })
         setErrors(fieldErrors)
@@ -115,7 +121,11 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
               // Step 5: Prefetch loyalty points để Profile render từ cache 0ms
               if (profileResult.slug) {
                 await queryClient.prefetchQuery({
-                  queryKey: [QUERYKEY.loyaltyPoints, 'total', { slug: profileResult.slug }],
+                  queryKey: [
+                    QUERYKEY.loyaltyPoints,
+                    'total',
+                    { slug: profileResult.slug },
+                  ],
                   queryFn: () => getLoyaltyPoints(profileResult.slug),
                 })
               }
@@ -152,22 +162,24 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
   return (
     <View className="flex-1 px-6 pt-8">
-      <Text className="text-gray-900 dark:text-white text-3xl font-bold mb-2">Đăng nhập</Text>
-      <Text className="text-gray-600 dark:text-gray-400 text-base mb-8">
-        Vui lòng đăng nhập để tiếp tục
+      <Text className="mb-2 text-3xl font-bold text-gray-900 dark:text-white">
+        {t('login.title')}
+      </Text>
+      <Text className="mb-8 text-base text-gray-600 dark:text-gray-400">
+        {t('login.description')}
       </Text>
 
       <View className="mb-6">
-        <Text className="text-gray-900 dark:text-white text-sm mb-2 font-medium">
-          Số điện thoại
+        <Text className="mb-2 text-sm font-medium text-gray-900 dark:text-white">
+          {t('login.phoneNumber')}
         </Text>
         <TextInput
-          className={`bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-base border ${
+          className={`rounded-lg border bg-white px-4 py-3 text-base text-gray-900 dark:bg-gray-800 dark:text-white ${
             errors.phonenumber
               ? 'border-red-500'
               : 'border-gray-300 dark:border-gray-700'
           }`}
-          placeholder="Nhập số điện thoại"
+          placeholder={t('login.enterPhoneNumber')}
           placeholderTextColor="#999"
           value={phonenumber}
           onChangeText={handlePhoneNumberChange}
@@ -176,30 +188,34 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           editable={!isLoading}
         />
         {errors.phonenumber && (
-          <Text className="text-red-500 text-sm mt-1">{errors.phonenumber}</Text>
+          <Text className="mt-1 text-sm text-red-500">
+            {errors.phonenumber}
+          </Text>
         )}
       </View>
 
       <View className="mb-6">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-gray-900 dark:text-white text-sm font-medium">Mật khẩu</Text>
+        <View className="mb-2 flex-row items-center justify-between">
+          <Text className="text-sm font-medium text-gray-900 dark:text-white">
+            {t('login.password')}
+          </Text>
           <TouchableOpacity
             onPress={() => navigateNative.push(ROUTE.FORGOT_PASSWORD)}
             disabled={isLoading}
           >
-            <Text className="text-primary text-sm font-medium">
+            <Text className="text-sm font-medium text-primary">
               {t('login.forgotPassword')}
             </Text>
           </TouchableOpacity>
         </View>
         <View className="relative">
           <TextInput
-            className={`bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 pr-12 text-base border ${
+            className={`rounded-lg border bg-white px-4 py-3 pr-12 text-base text-gray-900 dark:bg-gray-800 dark:text-white ${
               errors.password
                 ? 'border-red-500'
                 : 'border-gray-300 dark:border-gray-700'
             }`}
-            placeholder="Nhập mật khẩu"
+            placeholder={t('login.enterPassword')}
             placeholderTextColor="#999"
             value={password}
             onChangeText={handlePasswordChange}
@@ -208,7 +224,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
             editable={!isLoading}
           />
           <TouchableOpacity
-            className="absolute right-4 top-0 bottom-0 justify-center"
+            className="absolute bottom-0 right-4 top-0 justify-center"
             onPress={() => setShowPassword(!showPassword)}
             disabled={isLoading}
           >
@@ -220,39 +236,44 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           </TouchableOpacity>
         </View>
         {errors.password && (
-          <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>
+          <Text className="mt-1 text-sm text-red-500">{errors.password}</Text>
         )}
       </View>
 
       <TouchableOpacity
-        className="bg-red-600 dark:bg-primary rounded-lg py-4 items-center justify-center"
+        className="items-center justify-center rounded-lg bg-primary py-4 dark:bg-primary"
         onPress={handleSubmit}
         disabled={isLoading}
       >
         {isLoading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text className="text-white text-base font-semibold">Đăng nhập</Text>
+          <Text className="text-base font-semibold text-white">
+            {t('login.login')}
+          </Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity
-        className="items-center mt-6"
+        className="mt-6 items-center"
         onPress={() => navigateNative.replace('/auth/register')}
         disabled={isLoading}
       >
-        <Text className="text-gray-600 dark:text-gray-400 text-sm">
-          Chưa có tài khoản?{' '}
-          <Text className="text-red-600 dark:text-primary font-semibold">
-            Đăng ký
+        <Text className="text-sm text-gray-600 dark:text-gray-400">
+          {t('login.noAccount')}{' '}
+          <Text className="font-semibold text-primary dark:text-primary">
+            {t('login.register')}
           </Text>
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        className="items-center mt-4"
+        className="mt-4 items-center"
         onPress={() => {
-          const homeCached = !!queryClient.getQueryData(['banners', BannerPage.HOME])
+          const homeCached = !!queryClient.getQueryData([
+            'banners',
+            BannerPage.HOME,
+          ])
           const overlayMs = homeCached ? 100 : 250
           masterTransition?.showLoadingFor(overlayMs)
           requestAnimationFrame(() => {
@@ -263,11 +284,10 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         }}
         disabled={isLoading}
       >
-        <Text className="text-gray-500 dark:text-gray-500 text-sm">
+        <Text className="text-sm text-gray-500 dark:text-gray-500">
           {t('login.goBackToHome')}
         </Text>
       </TouchableOpacity>
     </View>
   )
 }
-

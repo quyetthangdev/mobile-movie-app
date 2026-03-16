@@ -5,6 +5,7 @@
 import { ScreenContainer } from '@/components/layout'
 import dayjs from 'dayjs'
 import { Image } from 'expo-image'
+import { useFocusEffect } from '@react-navigation/native'
 import { useLocalSearchParams, useNavigation } from 'expo-router'
 import { ChevronLeft, ShoppingBag } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
@@ -21,17 +22,26 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
 import NonPropQuantitySelector from '@/components/button/non-prop-quantity-selector'
 import { PriceTag, SliderRelatedProducts } from '@/components/menu'
 import { NavigatePressable } from '@/components/navigation'
-import { ProductDetailHeader } from '@/components/product/product-detail-header'
+import {
+  ProductDetailHeader,
+  ProductDetailHeaderSimple,
+} from '@/components/product/product-detail-header'
 import { Button, StaticText } from '@/components/ui'
-import { OrderFlowStep, publicFileURL } from '@/constants'
+import { OrderFlowStep, colors, publicFileURL } from '@/constants'
+import { TAB_ROUTES } from '@/constants/navigation.config'
 import { MENU_ITEM_DETAIL_LAYOUT } from '@/constants/menu-item-detail-layout'
 import { useSpecificMenuItem } from '@/hooks'
-import { HIT_SLOP_ICON, navigateNative } from '@/lib/navigation'
+import {
+  HIT_SLOP_ICON,
+  navigateNative,
+  setFromProductDetail,
+} from '@/lib/navigation'
 import { useSharedElementDest } from '@/lib/shared-element'
 import { useUserStore } from '@/stores'
 import { useOrderFlowMenuItemDetail } from '@/stores/selectors'
@@ -42,10 +52,12 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated'
 import Carousel, { CarouselRenderItem } from 'react-native-reanimated-carousel'
+import { cn } from '@/utils/cn'
 
 const ProductDetailContent = React.memo(function ProductDetailContent() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const slug = id ?? ''
+  const insets = useSafeAreaInsets()
   const { t } = useTranslation('product')
   const { t: tMenu } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
@@ -115,8 +127,32 @@ const ProductDetailContent = React.memo(function ProductDetailContent() {
   )
 
   const [sliderVisible, setSliderVisible] = useState(false)
-  const SLIDER_SCROLL_THRESHOLD = 400
+  const [isFocused, setIsFocused] = useState(true)
+  const [navigatingToCart, setNavigatingToCart] = useState(false)
   const SLIDER_DEFER_MS = 800
+
+  const handleNavigateToCart = useCallback(() => {
+    setNavigatingToCart(true)
+    setFromProductDetail(true)
+    // Tách unmount (frame 1) và navigation (frame 2) — tránh burst JS thread
+    requestAnimationFrame(() => {
+      navigateNative.replace(TAB_ROUTES.CART)
+    })
+  }, [])
+
+  // #5 Giải phóng RAM khi unmount — Carousel + SliderRelatedProducts có nhiều ảnh
+  useEffect(() => {
+    return () => {
+      Image.clearMemoryCache()
+    }
+  }, [])
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true)
+      return () => setIsFocused(false)
+    }, []),
+  )
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
@@ -135,14 +171,7 @@ const ProductDetailContent = React.memo(function ProductDetailContent() {
     onScroll: (event) => {
       'worklet'
       const y = event.contentOffset.y
-
-      // sliderVisible chỉ ảnh hưởng tới logic JS, không cần UI-thread liên tục
-      if (!sliderVisible && y > SLIDER_SCROLL_THRESHOLD) {
-        // idempotent: nhiều lần true cũng không sao
-        setSliderVisible(true)
-      }
-
-      // Linear theo scroll để cả nút chuyển màu dần, mượt, không hiệu ứng thu vào tâm.
+      // Chỉ cập nhật shared value — KHÔNG gọi setState trong worklet (gây Bridge Traffic / JS spike)
       const p = Math.max(0, Math.min(1, y / headerFadeDistance))
       headerFade.value = p
     },
@@ -416,8 +445,8 @@ const ProductDetailContent = React.memo(function ProductDetailContent() {
     // Skeleton: shell UI hiển thị ngay, content là block placeholder
     return (
       <ScreenContainer
-        edges={['top']}
-        className="flex-1 bg-white dark:bg-gray-900"
+        edges={['top', 'bottom']}
+        className={cn('flex-1', isDark ? 'bg-gray-900' : colors.background.light)}
       >
         <View className="flex-row items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
           <NavigatePressable
@@ -445,8 +474,8 @@ const ProductDetailContent = React.memo(function ProductDetailContent() {
   if (!productDetail) {
     return (
       <ScreenContainer
-        edges={['top']}
-        className="flex-1 bg-white dark:bg-gray-900"
+        edges={['top', 'bottom']}
+        className={cn('flex-1', isDark ? 'bg-gray-900' : colors.background.light)}
       >
         <View className="flex-1 items-center justify-center px-4">
           <Text className="mb-4 text-2xl font-bold">Không tìm thấy món</Text>
@@ -466,8 +495,8 @@ const ProductDetailContent = React.memo(function ProductDetailContent() {
 
   return (
     <ScreenContainer
-      edges={['top']}
-      className="flex-1 bg-white dark:bg-gray-900"
+      edges={['bottom']}
+      className={cn('flex-1', isDark ? 'bg-gray-900' : colors.background.light)}
     >
       <Animated.View // shared element fades in real content after overlay
         style={sharedContentStyle}
@@ -484,50 +513,55 @@ const ProductDetailContent = React.memo(function ProductDetailContent() {
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            contentContainerStyle={{
+              paddingBottom: 88 + insets.bottom,
+            }}
             refreshControl={
-              // Khi đã có dữ liệu, cho phép pull to refresh để refetch chi tiết món
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={refetch}
-                tintColor={isDark ? '#ffffff' : '#111827'}
-              />
+              isFocused ? (
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={refetch}
+                  tintColor={isDark ? '#ffffff' : '#111827'}
+                />
+              ) : undefined
             }
           >
-            <Animated.View
-              ref={heroRef}
-              onLayout={onHeroLayout}
-              className="overflow-hidden bg-gray-100 dark:bg-gray-800"
-              style={imageContainerStyle}
-            >
-              <Carousel
-                width={screenWidth}
-                height={MENU_ITEM_DETAIL_LAYOUT.imageContainerSize(screenWidth)}
-                data={productImages}
-                loop={productImages.length > 1}
-                defaultIndex={currentImageIndex}
-                onProgressChange={(_, absoluteProgress) => {
-                  const index = Math.round(absoluteProgress)
-                  if (
-                    index >= 0 &&
-                    index < productImages.length &&
-                    index !== currentImageIndex
-                  ) {
-                    setCurrentImageIndex(index)
-                  }
-                }}
-                renderItem={heroRenderItem}
-              />
+            {isFocused && !navigatingToCart ? (
+              <>
+                <Animated.View
+                  ref={heroRef}
+                  onLayout={onHeroLayout}
+                  className="overflow-hidden bg-gray-100 dark:bg-gray-800"
+                  style={imageContainerStyle}
+                >
+                  <Carousel
+                    width={screenWidth}
+                    height={MENU_ITEM_DETAIL_LAYOUT.imageContainerSize(screenWidth)}
+                    data={productImages}
+                    loop={productImages.length > 1}
+                    defaultIndex={currentImageIndex}
+                    onProgressChange={(_, absoluteProgress) => {
+                      const index = Math.round(absoluteProgress)
+                      if (
+                        index >= 0 &&
+                        index < productImages.length &&
+                        index !== currentImageIndex
+                      ) {
+                        setCurrentImageIndex(index)
+                      }
+                    }}
+                    renderItem={heroRenderItem}
+                  />
+                  {productImages.length > 1 && (
+                    <View className="absolute bottom-3 right-3 rounded-full bg-black/55 px-2.5 py-1">
+                      <Text className="text-xs font-semibold text-white">
+                        {currentImageIndex + 1}/{productImages.length}
+                      </Text>
+                    </View>
+                  )}
+                </Animated.View>
 
-              {productImages.length > 1 && (
-                <View className="absolute bottom-3 right-3 rounded-full bg-black/55 px-2.5 py-1">
-                  <Text className="text-xs font-semibold text-white">
-                    {currentImageIndex + 1}/{productImages.length}
-                  </Text>
-                </View>
-              )}
-            </Animated.View>
-
-            <View className="flex-col gap-5 py-6">
+                <View className="flex-col gap-5 py-6">
               {/* Thông tin món + giá */}
               <View className="border-b-[1px] border-muted-foreground/5 bg-white px-4 pb-4">
                 <View className="flex-col gap-1">
@@ -670,21 +704,77 @@ const ProductDetailContent = React.memo(function ProductDetailContent() {
                   )}
                 </View>
               ) : null}
-            </View>
+                </View>
+              </>
+            ) : (
+              /* B6: Placeholder nhẹ khi blur — giảm unmount cost khi transition sang Cart */
+              <View
+                ref={heroRef}
+                onLayout={onHeroLayout}
+                style={[
+                  imageContainerStyle,
+                  {
+                    backgroundColor: isDark ? '#1f2937' : '#f3f4f6',
+                  },
+                ]}
+              />
+            )}
           </Animated.ScrollView>
 
-          {/* Header overlay cố định trên cùng, fade từ trong suốt → trắng (UI thread) */}
-          <ProductDetailHeader
-            isDark={isDark}
-            title={productDetail.product.name}
-            isFavorite={isFavorite}
-            onToggleFavorite={() => setIsFavorite((v) => !v)}
-            headerFade={headerFade}
-          />
+          {/* Header overlay — #3 khi blur dùng header đơn giản (không Reanimated) */}
+          {isFocused && !navigatingToCart ? (
+            <ProductDetailHeader
+              isDark={isDark}
+              title={productDetail.product.name}
+              isFavorite={isFavorite}
+              onToggleFavorite={() => setIsFavorite((v) => !v)}
+              headerFade={headerFade}
+              onNavigateToCart={handleNavigateToCart}
+            />
+          ) : (
+            <ProductDetailHeaderSimple
+              isDark={isDark}
+              title={productDetail.product.name}
+              isFavorite={isFavorite}
+              onToggleFavorite={() => setIsFavorite((v) => !v)}
+              onNavigateToCart={handleNavigateToCart}
+            />
+          )}
 
-          {/* Bottom bar: giá tổng (variant + quantity) + nút Thêm vào giỏ */}
-          <View className="border-t border-white/60 bg-white/80 px-4 py-3 shadow-lg shadow-black/15 dark:border-white/10 dark:bg-gray-900/80 dark:shadow-black/40">
-            <View className="flex-row items-center gap-3">
+          {/* Bottom bar — floating style */}
+          {isFocused && !navigatingToCart && (
+          <View
+            pointerEvents="box-none"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              paddingHorizontal: 16,
+              paddingBottom: insets.bottom + 12,
+            }}
+          >
+            <View
+              style={{
+                borderRadius: 20,
+                overflow: 'hidden',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                backgroundColor: isDark
+                  ? 'rgba(17, 19, 24, 0.92)'
+                  : 'rgba(255, 255, 255, 0.92)',
+                ...Platform.select({
+                  ios: {
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 12,
+                  },
+                  android: { elevation: 8 },
+                }),
+              }}
+            >
+              <View className="flex-row items-center gap-3">
               <View className="min-w-0 flex-1 justify-center">
                 <Text className="text-md font-semibold text-muted-foreground dark:text-muted-foreground/5">
                   {labels.totalPrice}
@@ -718,7 +808,9 @@ const ProductDetailContent = React.memo(function ProductDetailContent() {
                 </Text>
               </Button>
             </View>
+            </View>
           </View>
+          )}
         </View>
       </Animated.View>
     </ScreenContainer>

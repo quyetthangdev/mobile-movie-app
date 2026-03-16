@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import {
     ActivityIndicator,
     ScrollView,
@@ -40,15 +41,22 @@ export default function RegisterScreen() {
   }>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const setToken = useAuthStore((state) => state.setToken)
-  const setRefreshToken = useAuthStore((state) => state.setRefreshToken)
-  const setExpireTime = useAuthStore((state) => state.setExpireTime)
-  const setExpireTimeRefreshToken = useAuthStore(
-    (state) => state.setExpireTimeRefreshToken,
+  const { setToken, setRefreshToken, setExpireTime, setExpireTimeRefreshToken, setLogout } =
+    useAuthStore(
+      useShallow((s) => ({
+        setToken: s.setToken,
+        setRefreshToken: s.setRefreshToken,
+        setExpireTime: s.setExpireTime,
+        setExpireTimeRefreshToken: s.setExpireTimeRefreshToken,
+        setLogout: s.setLogout,
+      })),
+    )
+  const { setUserInfo, removeUserInfo } = useUserStore(
+    useShallow((s) => ({
+      setUserInfo: s.setUserInfo,
+      removeUserInfo: s.removeUserInfo,
+    })),
   )
-  const setLogout = useAuthStore((state) => state.setLogout)
-  const setUserInfo = useUserStore((state) => state.setUserInfo)
-  const removeUserInfo = useUserStore((state) => state.removeUserInfo)
 
   const { mutate: registerMutation, isPending } = useRegister()
   const { refetch: refetchProfile } = useProfile()

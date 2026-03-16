@@ -29,11 +29,20 @@ export const useGetSystemFeatureFlagGroups = () => {
   })
 }
 
-export const useGetSystemFeatureFlagsByGroup = (groupName: string) => {
+export interface UseGetSystemFeatureFlagsByGroupOptions {
+  /** Khi false, không fetch — defer đến khi cần (B2). */
+  enabled?: boolean
+}
+
+export const useGetSystemFeatureFlagsByGroup = (
+  groupName: string,
+  options?: UseGetSystemFeatureFlagsByGroupOptions,
+) => {
+  const enabled = options?.enabled !== false && !!groupName
   return useQuery({
     queryKey: [QUERYKEY.systemFeatureFlagsByGroup],
     queryFn: () => getSystemFeatureFlagsByGroup(groupName),
     placeholderData: keepPreviousData,
-    enabled: !!groupName,
+    enabled,
   })
 }

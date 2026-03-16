@@ -24,11 +24,13 @@ import {
   MenuItemQuantityControl,
   PriceRangeFilter,
 } from '@/components/menu'
+import { ScreenContainer } from '@/components/layout/screen-container'
 import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
 import { Skeleton } from '@/components/ui'
 import { FILTER_VALUE, publicFileURL } from '@/constants'
 import {
   useCatalog,
+  useMenuScreenState,
   usePublicSpecificMenu,
   useRunAfterTransition,
   useSpecificMenu,
@@ -36,12 +38,6 @@ import {
 } from '@/hooks'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { getThemeColor } from '@/lib/utils'
-import {
-  useAuthStore,
-  useBranchStore,
-  useMenuFilterStore,
-  useUserStore,
-} from '@/stores'
 import type { IMenuItem, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
 
@@ -49,6 +45,52 @@ import { formatCurrency } from '@/utils'
 type FlatMenuItem =
   | { type: 'header'; id: string; name: string }
   | { type: 'row'; id: string; item: IMenuItem }
+
+const menuListHeaderStyles = StyleSheet.create({
+  root: { padding: 16, paddingBottom: 0 },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  logoImage: { height: 32, width: 112 },
+  branchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  branchText: { fontSize: 12, color: '#6b7280', marginLeft: 4 },
+  catalogSection: { marginBottom: 12 },
+  skeletonRow: { flexDirection: 'row', gap: 8 },
+  skeletonMain: { flex: 1, height: 50, borderRadius: 12 },
+  skeletonFilter: { width: 50, height: 50, borderRadius: 12 },
+  catalogRow: { flexDirection: 'row', gap: 8 },
+  catalogFlex: { flex: 1 },
+  priceFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e50914',
+    backgroundColor: 'rgba(229, 9, 20, 0.05)',
+  },
+  priceFilterText: { fontSize: 14, color: '#e50914' },
+})
+
+const menuListEmptyStyles = StyleSheet.create({
+  container: { padding: 24, alignItems: 'center' },
+  text: { textAlign: 'center', color: '#6b7280' },
+})
+
+const menuFlashListStyles = StyleSheet.create({
+  content: { paddingBottom: 100 },
+})
 
 const MenuListHeader = React.memo(function MenuListHeader({
   showSkeleton,
@@ -65,35 +107,21 @@ const MenuListHeader = React.memo(function MenuListHeader({
   t: (key: string, fallback?: string) => string
 }) {
   return (
-    <View style={{ padding: 16, paddingBottom: 0 }}>
+    <View style={menuListHeaderStyles.root}>
       {/* Logo + Branch dropdown */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-        }}
-      >
+      <View style={menuListHeaderStyles.logoRow}>
         <Image
           source={Images.Brand.Logo as unknown as number}
-          style={{ height: 32, width: 112 }}
+          style={menuListHeaderStyles.logoImage}
           resizeMode="contain"
         />
         <SelectBranchDropdown />
       </View>
 
       {/* Branch info */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 12,
-        }}
-      >
+      <View style={menuListHeaderStyles.branchRow}>
         <MapPin size={16} color="#e50914" />
-        <Text style={{ fontSize: 12, color: '#6b7280', marginLeft: 4 }}>
+        <Text style={menuListHeaderStyles.branchText}>
           {branch
             ? `${branch.name} (${branch.address})`
             : t('menu.noData', 'Chưa chọn chi nhánh')}
@@ -101,37 +129,24 @@ const MenuListHeader = React.memo(function MenuListHeader({
       </View>
 
       {/* Catalog + Price filter */}
-      <View style={{ marginBottom: 12 }}>
+      <View style={menuListHeaderStyles.catalogSection}>
         {showSkeleton ? (
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Skeleton style={{ flex: 1, height: 50, borderRadius: 12 }} />
-            <Skeleton style={{ width: 50, height: 50, borderRadius: 12 }} />
+          <View style={menuListHeaderStyles.skeletonRow}>
+            <Skeleton style={menuListHeaderStyles.skeletonMain} />
+            <Skeleton style={menuListHeaderStyles.skeletonFilter} />
           </View>
         ) : (
           <>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}>
+            <View style={menuListHeaderStyles.catalogRow}>
+              <View style={menuListHeaderStyles.catalogFlex}>
                 <ClientCatalogSelect />
               </View>
               <PriceRangeFilter />
             </View>
             {(menuFilter.minPrice > FILTER_VALUE.MIN_PRICE ||
               menuFilter.maxPrice < FILTER_VALUE.MAX_PRICE) && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  marginTop: 8,
-                  padding: 8,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: '#e50914',
-                  backgroundColor: 'rgba(229, 9, 20, 0.05)',
-                }}
-              >
-                <Text style={{ fontSize: 14, color: '#e50914' }}>
+              <View style={menuListHeaderStyles.priceFilterChip}>
+                <Text style={menuListHeaderStyles.priceFilterText}>
                   {formatCurrency(menuFilter.minPrice)} -{' '}
                   {formatCurrency(menuFilter.maxPrice)}
                 </Text>
@@ -148,7 +163,12 @@ const MenuListHeader = React.memo(function MenuListHeader({
 })
 
 const headerRowStyles = StyleSheet.create({
-  container: { paddingHorizontal: 16, marginBottom: 10, marginTop: 12 },
+  container: {
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    marginTop: 12,
+    borderBottomWidth: 0,
+  },
   title: {
     fontSize: 16,
     fontWeight: '800',
@@ -195,13 +215,18 @@ function menuItemRowPropsAreEqual(
 }
 
 const menuItemRowStyles = StyleSheet.create({
-  wrapper: { marginBottom: 12, paddingHorizontal: 16 },
+  wrapper: {
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 0,
+  },
   card: {
     flexDirection: 'row',
     padding: 8,
     backgroundColor: '#fff',
     borderRadius: 16,
     alignItems: 'stretch',
+    borderWidth: 0,
   },
   imageWrap: {
     width: 92,
@@ -352,12 +377,14 @@ function MenuPlaceholderContent() {
   const { primary: primaryColor, background: themeBackground } =
     getThemeColor(isDark)
   const { scrollRef: _scrollRef, onScroll } = useTabScrollRestore('menu')
-  const userSlug = useUserStore((s) => s.userInfo?.slug)
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
-  const menuFilter = useMenuFilterStore((s) => s.menuFilter)
-  const setMenuFilter = useMenuFilterStore((s) => s.setMenuFilter)
-  const branch = useBranchStore((s) => s.branch)
-  const branchSlug = useBranchStore((s) => s.branch?.slug)
+  const {
+    userSlug,
+    isAuthenticated,
+    menuFilter,
+    setMenuFilter,
+    branch,
+    branchSlug,
+  } = useMenuScreenState()
 
   const handleClearPriceFilter = useCallback(() => {
     setMenuFilter((prev) => ({
@@ -499,8 +526,8 @@ function MenuPlaceholderContent() {
   const listEmptyComponent = useMemo(() => {
     if (!hasBranch) {
       return (
-        <View style={{ padding: 24, alignItems: 'center' }}>
-          <Text style={{ textAlign: 'center', color: '#6b7280' }}>
+        <View style={menuListEmptyStyles.container}>
+          <Text style={menuListEmptyStyles.text}>
             Vui lòng chọn chi nhánh để xem menu
           </Text>
         </View>
@@ -508,8 +535,8 @@ function MenuPlaceholderContent() {
     }
     if (hasBranch && !showSkeleton && flattenedData.length === 0) {
       return (
-        <View style={{ padding: 24, alignItems: 'center' }}>
-          <Text style={{ textAlign: 'center', color: '#6b7280' }}>
+        <View style={menuListEmptyStyles.container}>
+          <Text style={menuListEmptyStyles.text}>
             {t('menu.noData', 'Không có dữ liệu')}
           </Text>
         </View>
@@ -594,11 +621,12 @@ function MenuPlaceholderContent() {
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
+        ItemSeparatorComponent={null}
         ListHeaderComponent={listHeaderComponent}
         ListEmptyComponent={listEmptyComponent}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={menuFlashListStyles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -616,8 +644,8 @@ export default function MenuPlaceholder() {
   const isDark = useColorScheme() === 'dark'
   const themeBackground = getThemeColor(isDark).background
   return (
-    <View style={{ flex: 1, backgroundColor: themeBackground }}>
+    <ScreenContainer edges={['top']} topOffset={-12} style={{ flex: 1, backgroundColor: themeBackground }}>
       <MenuPlaceholderContent />
-    </View>
+    </ScreenContainer>
   )
 }

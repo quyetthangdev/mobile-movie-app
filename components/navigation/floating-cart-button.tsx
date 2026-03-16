@@ -1,9 +1,9 @@
 import { ShoppingCart } from 'lucide-react-native'
 import React from 'react'
 import { Text, View } from 'react-native'
-import Animated, { BounceIn, BounceOut } from 'react-native-reanimated'
 
-import { TAB_ROUTES } from '@/constants'
+import { ROUTE } from '@/constants/route.contstant'
+import { navigateNative } from '@/lib/navigation'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
 
 import { NativeGesturePressable } from './native-gesture-pressable'
@@ -12,13 +12,13 @@ type Props = { primaryColor: string; cartHref?: string }
 
 const FloatingCartButton = React.memo(function FloatingCartButton({
   primaryColor,
-  cartHref = TAB_ROUTES.CART,
+  cartHref = ROUTE.CLIENT_CART,
 }: Props) {
   const cartItemCount = useOrderFlowCartItemCount()
 
   return (
     <NativeGesturePressable
-      navigation={{ type: 'replace', href: cartHref }}
+      onPress={() => navigateNative.push(cartHref)}
       style={{
         width: 64,
         height: 64,
@@ -51,16 +51,9 @@ const FloatingCartButton = React.memo(function FloatingCartButton({
             paddingHorizontal: 5,
           }}
         >
-          <Animated.View
-            key={cartItemCount}
-            entering={BounceIn.springify().damping(50)}
-            exiting={BounceOut.springify().damping(50)}
-            style={{ alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
-              {cartItemCount > 99 ? '99+' : cartItemCount}
-            </Text>
-          </Animated.View>
+          <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>
+            {cartItemCount > 99 ? '99+' : cartItemCount}
+          </Text>
         </View>
       )}
     </NativeGesturePressable>

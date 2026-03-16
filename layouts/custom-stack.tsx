@@ -24,7 +24,7 @@ import {
 import { withLayoutContext } from 'expo-router'
 import { Platform } from 'react-native'
 
-import { MOTION } from '@/constants'
+import { MOTION, colors } from '@/constants'
 
 const { Navigator } = createNativeStackNavigator()
 
@@ -37,30 +37,14 @@ export const CustomStack = withLayoutContext<
 
 export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
-  /**
-   * Animation: simple_push — 2D slide, không hiệu ứng 3D/card depth.
-   * Vẫn chạy trên native thread, giữ gesture như iOS.
-   */
   animation: 'simple_push',
-  /**
-   * Spring-like timing: stiffness 300, damping 30.
-   * Native Stack chỉ cho cấu hình duration; dùng MOTION.nativeStack để tạo cảm giác hãm phanh (brake) ~260ms.
-   */
   animationDuration: MOTION.nativeStack.durationMs,
-  /** Vuốt trở về phản hồi ngay theo đầu ngón tay */
-  gestureEnabled: true,
-  fullScreenGestureEnabled: true,
-  animationMatchesGesture: true,
-  /** Replace dùng push animation thay vì pop — nhất quán với Telegram */
   animationTypeForReplace: 'push',
   presentation: 'card',
-  /** Android: header translucent (edge-to-edge) */
+  contentStyle: { backgroundColor: colors.background.light },
+  // Bỏ gesture/shadow options tạm thời — tránh lỗi "expected boolean, had string" trên native bridge
+  // gestureEnabled, fullScreenGestureEnabled, animationMatchesGesture, fullScreenGestureShadowEnabled
   ...(Platform.OS === 'android' && { headerTranslucent: true }),
-  contentStyle: { backgroundColor: '#ffffff' },
-  /** Shadow đổ lên màn cũ — tạo chiều sâu, cảm giác tự nhiên như Telegram */
-  fullScreenGestureShadowEnabled: true,
-  /** freezeOnBlur: màn background bị freeze → giảm re-render */
-  freezeOnBlur: true,
 }
 
 /**

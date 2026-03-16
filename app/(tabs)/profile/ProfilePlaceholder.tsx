@@ -6,7 +6,7 @@ import {
   User,
   Wallet,
 } from 'lucide-react-native'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { ScreenContainer } from '@/components/layout'
@@ -50,6 +50,14 @@ export default function ProfilePlaceholder() {
     [router],
   )
 
+  const itemHandlers = useMemo(
+    () =>
+      Object.fromEntries(
+        SETTINGS_ITEMS.map((item) => [item.label, () => handlePress(item.href)]),
+      ) as Record<string, () => void>,
+    [handlePress],
+  )
+
   return (
     <ScreenContainer edges={['top']} className="flex-1">
       <ScrollView
@@ -68,7 +76,7 @@ export default function ProfilePlaceholder() {
               key={item.label}
               label={item.label}
               icon={item.icon}
-              onPress={() => handlePress(item.href)}
+              onPress={itemHandlers[item.label]}
               index={index}
             />
           ))}

@@ -10,14 +10,22 @@
  */
 import { useMemo } from 'react'
 
-import { CustomStack, nativeStackScreenOptions } from '@/layouts/custom-stack'
-import { JsStack, jsStackScreenOptions, jsStackSimpleScreenOptions } from '@/layouts/js-stack'
-import type { StackNavigationOptions } from '@react-navigation/stack'
+import {
+  // nativeStackScreenOptions,
+  profileNativeStackScreenOptions,
+} from '@/layouts/custom-stack'
+import {
+  JsStack,
+  jsStackScreenOptions,
+  jsStackSimpleScreenOptions,
+} from '@/layouts/js-stack'
+import { useMasterTransition } from '@/lib/navigation/master-transition-provider'
 import {
   startTransitionFPSMonitor,
   stopTransitionFPSMonitor,
 } from '@/lib/qa/transition-fps-monitor'
-import { useMasterTransition } from '@/lib/navigation/master-transition-provider'
+import type { StackNavigationOptions } from '@react-navigation/stack'
+import { Stack } from 'expo-router'
 
 function useTransitionListeners() {
   const { screenListeners } = useMasterTransition()
@@ -51,7 +59,9 @@ export function StackWithMasterTransition() {
 }
 
 /** Simple slide — dùng cho Profile, Auth, Payment, UpdateOrder */
-export function SimpleStackWithMasterTransition({ screenOptions }: { screenOptions?: StackNavigationOptions } = {}) {
+export function SimpleStackWithMasterTransition({
+  screenOptions,
+}: { screenOptions?: StackNavigationOptions } = {}) {
   const mergedListeners = useTransitionListeners()
 
   return (
@@ -62,13 +72,17 @@ export function SimpleStackWithMasterTransition({ screenOptions }: { screenOptio
   )
 }
 
-/** Native Stack — slide_from_right + spring deceleration (hãm phanh). Dùng cho Menu Detail. */
+/**
+ * Native Stack — slide_from_right + hãm phanh (giống Profile).
+ * Dùng cho Menu → Chi tiết món, Product Detail, ...
+ * profileNativeStackScreenOptions: 380ms, fullScreenGestureEnabled, animationMatchesGesture.
+ */
 export function NativeStackWithMasterTransition() {
   const mergedListeners = useTransitionListeners()
 
   return (
-    <CustomStack
-      screenOptions={nativeStackScreenOptions}
+    <Stack
+      screenOptions={profileNativeStackScreenOptions}
       screenListeners={mergedListeners}
     />
   )

@@ -86,8 +86,11 @@ export const MOTION = {
   nativeStack: {
     stiffness: 300,
     damping: 30,
-    /** 260ms: fast-in, smooth-out, không tạo cảm giác delay nhưng vẫn có pha hãm phanh cuối. */
-    durationMs: 280,
+    /**
+     * 320ms: duration dài hơn → hành trình slide cảm giác xa hơn (Native Stack không hỗ trợ
+     * tùy chỉnh vị trí bắt đầu — animation chạy trên native code).
+     */
+    durationMs: 360,
   },
   /**
    * JS Stack (Home, Menu, Root, Auth, Profile, Payment, UpdateOrder)

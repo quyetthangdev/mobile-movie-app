@@ -111,6 +111,17 @@
     "deliveryPhone": "Delivery phone"
   },
   "cart": {
+    "clearCart": "Clear all",
+    "clearCartDescription": "This action will clear all selected items.",
+    "clearCartSuccess": "Cart cleared",
+    "undo": "Undo",
+    "clearCartWarning": "Are you sure you want to clear the cart?",
+    "clearCartWarningDescription": "This action will clear all selected items.",
+    "clearCartWarningDescription2": "Are you sure you want to clear the cart?",
+    "clearCartWarningDescription3": "This action will clear all selected items.",
+    "clearCartWarningDescription4": "Are you sure you want to clear the cart?",
+    "clearCartWarningDescription5": "This action will clear all selected items.",
+    "clearCartWarningDescription6": "Are you sure you want to clear the cart?",
     "locationError": "Location error",
     "restaurantAddressNotAvailable": "Restaurant address not available",
     "calculatingDeliveryRoute": "Calculating delivery route",

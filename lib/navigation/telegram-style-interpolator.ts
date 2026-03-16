@@ -9,9 +9,9 @@
  *
  * Shadow tối thiểu trên Android — giảm GPU load cho 120Hz.
  */
-import { Animated, Platform } from 'react-native'
 import { MOTION } from '@/constants'
 import type { StackCardInterpolationProps } from '@react-navigation/stack'
+import { Animated, Platform } from 'react-native'
 
 const BG_SCALE_END = 0.94
 const SHADOW_OPACITY_MAX = 0.18

@@ -17,6 +17,8 @@ export type ScreenContainerProps = {
   children: React.ReactNode
   /** Edges cần apply insets. Mặc định ['top'] cho màn stack. */
   edges?: Edge[]
+  /** Điều chỉnh padding top (px). Âm = nhích lên gần status bar hơn. */
+  topOffset?: number
   style?: StyleProp<ViewStyle>
   className?: string
 }
@@ -28,6 +30,7 @@ export type ScreenContainerProps = {
 export function ScreenContainer({
   children,
   edges = ['top'],
+  topOffset = 0,
   style,
   className,
 }: ScreenContainerProps) {
@@ -35,7 +38,7 @@ export function ScreenContainer({
 
   const paddingStyle: ViewStyle = {
     flex: 1,
-    paddingTop: edges.includes('top') ? insets.top : 0,
+    paddingTop: edges.includes('top') ? Math.max(0, insets.top + topOffset) : 0,
     paddingBottom: edges.includes('bottom') ? insets.bottom : 0,
     paddingLeft: edges.includes('left') ? insets.left : 0,
     paddingRight: edges.includes('right') ? insets.right : 0,

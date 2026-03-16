@@ -2,6 +2,11 @@ import { useTranslation } from 'react-i18next'
 
 import { useGetBranchInfoForDelivery } from './use-branch'
 
+export interface UseCalculateDeliveryFeeOptions {
+  /** Khi false, không fetch branch info — defer đến khi cần (B1). */
+  enabled?: boolean
+}
+
 /**
  * Tính phí giao hàng dựa trên khoảng cách và thông tin branch.
  *
@@ -10,13 +15,20 @@ import { useGetBranchInfoForDelivery } from './use-branch'
 export function useCalculateDeliveryFee(
   distance: number,
   branchSlug: string,
+  options?: UseCalculateDeliveryFeeOptions,
 ) {
   const { t } = useTranslation('menu')
+  const shouldFetch =
+    options?.enabled !== false && !!branchSlug
   const {
     data: branchInfo,
     isLoading,
     error,
-  } = useGetBranchInfoForDelivery(branchSlug)
+  } = useGetBranchInfoForDelivery(branchSlug, { enabled: shouldFetch })
+
+  if (!shouldFetch) {
+    return { deliveryFee: 0, isLoading: false, error: null }
+  }
 
   if (isLoading) {
     return { deliveryFee: 0, isLoading: true, error: null }

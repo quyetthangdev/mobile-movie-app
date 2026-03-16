@@ -6,6 +6,7 @@ import {
   IOrderItem,
   IOrderPayment,
   IOrderToUpdate,
+  IProductVariant,
   ITable,
   IUserInfo,
   IVoucher,
@@ -93,6 +94,7 @@ export interface IOrderFlowStore {
   setOrderingData: (data: IOrderingData) => void
   addOrderingItem: (item: IOrderItem) => void
   addOrderingProductVariant: (id: string) => void
+  updateOrderingItemVariant: (itemId: string, variant: IProductVariant) => void
   addPickupTime: (time: number) => void
   removePickupTime: () => void
   updateOrderingItemQuantity: (itemId: string, quantity: number) => void
@@ -358,6 +360,30 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
 
         const updatedItems = orderingData.orderItems.map((item) =>
           item.id === id ? { ...item, variant: item.variant || [] } : item,
+        )
+
+        set({
+          orderingData: {
+            ...orderingData,
+            orderItems: updatedItems,
+          },
+          lastModified: dayjs().valueOf(),
+        })
+      },
+
+      updateOrderingItemVariant: (itemId: string, variant: IProductVariant) => {
+        const { orderingData } = get()
+        if (!orderingData) return
+
+        const updatedItems = orderingData.orderItems.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                variant,
+                size: variant.size?.name ?? item.size,
+                originalPrice: variant.price,
+              }
+            : item,
         )
 
         set({
@@ -1549,6 +1575,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       addNote: (id: string, note: string) => {
         get().addOrderingNote(id, note)
       },
+
+      // Tạm thời chưa expose hàm đổi variant qua compatibility layer; Cart dùng trực tiếp updateOrderingItemVariant
 
       addCustomerInfo: (owner: IUserInfo) => {
         get().updateOrderingCustomer(owner)

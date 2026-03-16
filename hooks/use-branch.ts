@@ -11,12 +11,22 @@ export const useBranch = () => {
   })
 }
 
-export const useGetBranchInfoForDelivery = (slug: string) => {
+export interface UseGetBranchInfoForDeliveryOptions {
+  /** Khi false, không fetch — dùng để defer khi chưa cần (B1). */
+  enabled?: boolean
+}
+
+export const useGetBranchInfoForDelivery = (
+  slug: string,
+  options?: UseGetBranchInfoForDeliveryOptions,
+) => {
+  const enabled = options?.enabled !== false && !!slug
   return useQuery({
     queryKey: ['branchInfoForDelivery', slug],
     queryFn: async () => {
       return getBranchInfoForDelivery(slug)
     },
+    enabled,
   })
 }
 

@@ -9,11 +9,16 @@ import { ITable } from '@/types'
 interface Props {
   table: ITable
   isSelected: boolean
-  statusLabel: string
+  statusLabel?: string
   onPress: () => void
 }
 
-function TableRow({ table, isSelected, statusLabel, onPress }: Props) {
+function TableRow({
+  table,
+  isSelected,
+  statusLabel,
+  onPress,
+}: Props) {
   const isDark = useColorScheme() === 'dark'
   const isAvailable = table.status === TableStatus.AVAILABLE
   const isReserved = table.status === TableStatus.RESERVED
@@ -52,8 +57,13 @@ function TableRow({ table, isSelected, statusLabel, onPress }: Props) {
                 : 'text-gray-900 dark:text-gray-50'
           )}
         >
-          {table.name} – {statusLabel}
+          {table.name}
         </Text>
+        {!!statusLabel && (
+          <Text className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+            {statusLabel}
+          </Text>
+        )}
       </View>
 
       {isSelected && (

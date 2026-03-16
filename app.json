@@ -14,7 +14,7 @@
         "NSPhotoLibraryUsageDescription": "Ứng dụng cần truy cập thư viện ảnh để lưu ảnh.",
         "NSPhotoLibraryAddUsageDescription": "Ứng dụng cần quyền lưu ảnh vào thư viện."
       },
-      "bundleIdentifier": "com.anonymous.mobilemovieapp"
+      "bundleIdentifier": "com.quyetthangmarvel.mobilemovieapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -40,7 +40,7 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "package": "com.anonymous.mobilemovieapp"
+      "package": "com.quyetthangmarvel.mobilemovieapp"
     },
     "web": {
       "output": "static",

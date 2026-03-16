@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, useColorScheme, View } from 'react-native'
 
-import { Button, Dialog, Label } from '@/components/ui'
+import { Button, Label } from '@/components/ui'
 import { colors, VOUCHER_TYPE } from '@/constants'
 import { scheduleStoreUpdate } from '@/lib/navigation'
 import { useOrderFlowDeleteCartItem } from '@/stores/selectors'
@@ -67,12 +67,12 @@ export default function DeleteCartItemDialog({
 
   return (
     <>
-      <Dialog.Trigger>
-        <Button variant="ghost" onPress={() => setIsOpen(true)}>
-          { }
-          <Trash2 size={20} color={isDark ? colors.destructive.dark : colors.destructive.light} />
-        </Button>
-      </Dialog.Trigger>
+      <Button variant="ghost" onPress={() => setIsOpen(true)}>
+        <Trash2
+          size={20}
+          color={isDark ? colors.destructive.dark : colors.destructive.light}
+        />
+      </Button>
       <ConfirmationDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
@@ -82,9 +82,14 @@ export default function DeleteCartItemDialog({
         cancelLabel={tCommon('common.cancel')}
         onConfirm={() => handleDelete(cartItem.id)}
         variant="destructive"
-        icon={<TriangleAlert size={20} color={isDark ? colors.destructive.dark : colors.destructive.light} />}
+        icon={
+          <TriangleAlert
+            size={20}
+            color={isDark ? colors.destructive.dark : colors.destructive.light}
+          />
+        }
         content={
-          <View className="flex gap-4 items-center">
+          <View className="flex items-center gap-4">
             <Label className="leading-5 text-left">
               {t('order.deleteContent')}{' '}
               <Text className="font-bold">{cartItem.name}</Text>
@@ -92,8 +97,8 @@ export default function DeleteCartItemDialog({
             </Label>
           </View>
         }
-        titleClassName="flex-row gap-2 items-center text-destructive"
-        descriptionClassName="p-2 bg-red-100 rounded-md dark:bg-transparent text-destructive"
+        titleClassName="flex-row items-center gap-2 text-destructive"
+        descriptionClassName="rounded-md bg-red-100 p-2 text-destructive dark:bg-transparent"
       />
     </>
   )

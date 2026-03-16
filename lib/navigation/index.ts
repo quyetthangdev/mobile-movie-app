@@ -1,4 +1,8 @@
 export {
+  consumeFromProductDetail,
+  setFromProductDetail,
+} from './from-product-detail-flag'
+export {
   HIT_SLOP_ICON,
   HIT_SLOP_SMALL,
   TRANSITION_DURATION_MS,

@@ -1,9 +1,9 @@
-import { StackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { NativeStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
 
 /**
  * Home stack: tin tức /home/news/[slug], ...
- * JS Stack (Telegram-style): Parallax, Spring, Shadow, Overlay.
+ * Native Stack — slide_from_right, fullScreenGestureEnabled.
  */
 export default function HomeLayout() {
-  return <StackWithMasterTransition />
+  return <NativeStackWithMasterTransition />
 }

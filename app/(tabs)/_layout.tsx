@@ -94,8 +94,11 @@ export default function TabsLayout() {
 
   const isCartPage = pathname?.includes('/cart')
   const isProfileLoginForm = pathname?.includes('/profile') && !isAuthenticated
-  /** Ẩn bar khi ở form đăng nhập profile hoặc trang giỏ hàng (Cart). */
-  const shouldHideBottomBar = isCartPage || isProfileLoginForm
+  const isProfileSubRoute =
+    isAuthenticated && pathname?.includes('/profile/')
+  /** Ẩn bar khi ở form đăng nhập profile, route con của profile, hoặc trang giỏ hàng. */
+  const shouldHideBottomBar =
+    isCartPage || isProfileLoginForm || isProfileSubRoute
 
   const colors = useMemo(() => getThemeColor(isDark), [isDark])
   const tabState = useMemo(

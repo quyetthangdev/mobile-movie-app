@@ -149,7 +149,6 @@ export default function CartScreen() {
     null,
   )
   const [showProductVariantSheet, setShowProductVariantSheet] = useState(false)
-  const [showClearCartSheet, setShowClearCartSheet] = useState(false)
   const [sheetsReady, setSheetsReady] = useState(false)
   const [footerReady, setFooterReady] = useState(false)
   const [fetchOrderTypeEnabled, setFetchOrderTypeEnabled] = useState(false)
@@ -189,14 +188,7 @@ export default function CartScreen() {
   }
 
   const handleOpenClearCart = () => {
-    setShowClearCartSheet(true)
-    setTimeout(() => {
-      if (
-        typeof (ClearCartBottomSheet as { open?: () => void }).open === 'function'
-      ) {
-        ;(ClearCartBottomSheet as { open: () => void }).open()
-      }
-    }, 50)
+    ;(ClearCartBottomSheet as { open: () => void }).open()
   }
 
   const handleDeleteCartItem = useCallback(
@@ -636,8 +628,8 @@ export default function CartScreen() {
       {/* Voucher drawer — mount khi sheetsReady (giống TableSelectSheet) để open() luôn hoạt động ổn định */}
       {sheetsReady && <VoucherListDrawer />}
 
-      {/* Bottom sheet xác nhận xoá toàn bộ giỏ hàng — lazy: chỉ mount khi user tap nút xoá hết */}
-      {showClearCartSheet && <ClearCartBottomSheet />}
+      {/* Bottom sheet xác nhận xoá toàn bộ giỏ hàng — mount khi sheetsReady (giống OrderTypeSheet) */}
+      {sheetsReady && <ClearCartBottomSheet />}
     </ScreenContainer>
   )
 }

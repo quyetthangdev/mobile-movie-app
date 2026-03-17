@@ -81,6 +81,7 @@ const menuListHeaderStyles = StyleSheet.create({
     backgroundColor: 'rgba(229, 9, 20, 0.05)',
   },
   priceFilterText: { fontSize: 14, color: '#e50914' },
+  fixedHeader: { backgroundColor: '#ffffff' },
 })
 
 const menuListEmptyStyles = StyleSheet.create({
@@ -562,7 +563,9 @@ function MenuPlaceholderContent() {
   if (showSkeleton && hasBranch) {
     return (
       <View style={{ flex: 1, backgroundColor: themeBackground }}>
-        {listHeaderComponent}
+        <View style={menuListHeaderStyles.fixedHeader}>
+          {listHeaderComponent}
+        </View>
         <View style={{ padding: 16, flex: 1 }}>
           {[1, 2].map((catIdx) => (
             <View key={`s-${catIdx}`} style={{ marginBottom: 24 }}>
@@ -616,13 +619,16 @@ function MenuPlaceholderContent() {
 
   return (
     <View style={{ flex: 1, backgroundColor: themeBackground }}>
+      <View style={menuListHeaderStyles.fixedHeader}>
+        {listHeaderComponent}
+      </View>
       <FlashList
         data={flattenedData}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
         ItemSeparatorComponent={null}
-        ListHeaderComponent={listHeaderComponent}
+        ListHeaderComponent={null}
         ListEmptyComponent={listEmptyComponent}
         onScroll={onScroll}
         scrollEventThrottle={16}

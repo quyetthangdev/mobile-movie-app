@@ -130,9 +130,11 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
                 })
               }
 
-              // Step 6: Callback cho màn hình (điều hướng, v.v.)
+              // Step 6: Điều hướng — callback nếu có, mặc định về home
               if (onLoginSuccess) {
                 onLoginSuccess()
+              } else {
+                navigateNative.replace('/(tabs)/home')
               }
             } else {
               // Nếu không fetch được profile, rollback auth state
@@ -239,6 +241,20 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           <Text className="mt-1 text-sm text-red-500">{errors.password}</Text>
         )}
       </View>
+
+      <TouchableOpacity
+        className="mb-3 items-center justify-center rounded-lg border border-dashed border-gray-400 py-2 dark:border-gray-500"
+        onPress={() => {
+          setPhonenumber('0324567894')
+          setPassword('123456789a')
+          setErrors({})
+        }}
+        disabled={isLoading}
+      >
+        <Text className="text-sm text-gray-600 dark:text-gray-400">
+          Đăng nhập nhanh (0324567894)
+        </Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         className="items-center justify-center rounded-lg bg-primary py-4 dark:bg-primary"

@@ -16,7 +16,7 @@ import type { TabRoutes, TabState } from './tab-bar-pill'
 
 const ICON_SIZE = 32
 const ITEM_WIDTH = 70
-const PADDING_V = 6
+const PADDING_V = 4
 const CONTENT_HEIGHT = 32 + 14 + 12
 const PILL_RADIUS = (PADDING_V * 2 + CONTENT_HEIGHT) / 2
 const PADDING_H_DEFAULT = 10

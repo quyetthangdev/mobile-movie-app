@@ -281,6 +281,7 @@
     "updatePasswordDescription": "Vui lòng nhập mật khẩu hiện tại và mật khẩu mới để cập nhật mật khẩu của bạn",
     "updateProfile": "Cập nhật hồ sơ",
     "updateProfileDescription": "Thay đổi các thông tin bên dưới để cập nhật thông tin cá nhân của bạn",
+    "confirmUpdateProfile": "Are you sure you want to save your personal information changes?",
     "useGiftCard": "Sử dụng thẻ quà tặng",
     "verified": "Đã xác minh",
     "verify": "Xác minh",

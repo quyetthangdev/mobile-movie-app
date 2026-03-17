@@ -1,10 +1,9 @@
-import { SimpleStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { NativeStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
 
 /**
  * Update Order stack: màn cập nhật đơn hàng /update-order/[slug]
- * JS Stack — timing ease-out 350ms: nhanh đầu → hãm phanh cuối.
- * screenListeners → transitionEnd unlock navigation chính xác.
+ * Native Stack — slide_from_right, fullScreenGestureEnabled.
  */
 export default function UpdateOrderLayout() {
-  return <SimpleStackWithMasterTransition />
+  return <NativeStackWithMasterTransition />
 }

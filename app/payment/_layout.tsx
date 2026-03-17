@@ -1,10 +1,9 @@
-import { SimpleStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { NativeStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
 
 /**
  * Payment stack: màn thanh toán /payment/[order]
- * JS Stack — timing ease-out 350ms: nhanh đầu → hãm phanh cuối.
- * screenListeners → transitionEnd unlock navigation chính xác.
+ * Native Stack — slide_from_right, fullScreenGestureEnabled.
  */
 export default function PaymentLayout() {
-  return <SimpleStackWithMasterTransition />
+  return <NativeStackWithMasterTransition />
 }

@@ -24,7 +24,8 @@ import {
 } from '@/stores'
 import type { ISpecificMenuRequest } from '@/types'
 
-const HOME_IDLE_PREFETCH_MS = 2000
+/** Giảm từ 2s → 300ms — user chủ yếu vào Menu, prefetch sớm hơn để giảm cảm giác khựng */
+const HOME_IDLE_PREFETCH_MS = 300
 
 export function usePredictivePrefetch() {
   const pathname = usePathname()
@@ -32,7 +33,12 @@ export function usePredictivePrefetch() {
   const branchSlug = useBranchStore((s) => s.branch?.slug)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
   const userSlug = useUserStore((s) => s.userInfo?.slug)
-  const menuFilter = useMenuFilterStore((s) => s.menuFilter)
+  const filterBranch = useMenuFilterStore((s) => s.menuFilter.branch)
+  const filterCatalog = useMenuFilterStore((s) => s.menuFilter.catalog)
+  const filterProductName = useMenuFilterStore((s) => s.menuFilter.productName)
+  const filterMinPrice = useMenuFilterStore((s) => s.menuFilter.minPrice)
+  const filterMaxPrice = useMenuFilterStore((s) => s.menuFilter.maxPrice)
+  const filterMenu = useMenuFilterStore((s) => s.menuFilter.menu)
   const hasPrefetchedRef = useRef(false)
 
   const isOnHome =
@@ -41,25 +47,26 @@ export function usePredictivePrefetch() {
     pathname?.startsWith('/(tabs)/home')
 
   const hasUser = isAuthenticated && !!userSlug
-  const hasBranch = !!branchSlug
+  const hasBranch = !!(filterBranch ?? branchSlug)
 
   const menuRequest = useMemo<ISpecificMenuRequest>(
     () => ({
       date: dayjs().format('YYYY-MM-DD'),
-      branch: branchSlug,
-      catalog: menuFilter.catalog,
-      productName: menuFilter.productName,
-      minPrice: menuFilter.minPrice ?? FILTER_VALUE.MIN_PRICE,
-      maxPrice: menuFilter.maxPrice ?? FILTER_VALUE.MAX_PRICE,
-      slug: menuFilter.menu,
+      branch: filterBranch ?? branchSlug ?? undefined,
+      catalog: filterCatalog,
+      productName: filterProductName,
+      minPrice: filterMinPrice ?? FILTER_VALUE.MIN_PRICE,
+      maxPrice: filterMaxPrice ?? FILTER_VALUE.MAX_PRICE,
+      slug: filterMenu,
     }),
     [
+      filterBranch,
       branchSlug,
-      menuFilter.catalog,
-      menuFilter.productName,
-      menuFilter.minPrice,
-      menuFilter.maxPrice,
-      menuFilter.menu,
+      filterCatalog,
+      filterProductName,
+      filterMinPrice,
+      filterMaxPrice,
+      filterMenu,
     ],
   )
 
@@ -73,6 +80,20 @@ export function usePredictivePrefetch() {
           queryKey: ['banners', BannerPage.HOME],
           queryFn: () => getBanners({ page: BannerPage.HOME, isActive: true }),
         })
+        // Prefetch menu ngay khi vào Home — user chủ yếu vào Menu, giảm khựng khi chuyển tab
+        if (hasBranch) {
+          if (hasUser) {
+            queryClient.prefetchQuery({
+              queryKey: ['specific-menu', menuRequest],
+              queryFn: () => getSpecificMenu(menuRequest),
+            })
+          } else {
+            queryClient.prefetchQuery({
+              queryKey: ['public-specific-menu', menuRequest],
+              queryFn: () => getPublicSpecificMenu(menuRequest),
+            })
+          }
+        }
       }
 
       if (pathname?.startsWith('/menu') || pathname?.includes('/(tabs)/menu')) {

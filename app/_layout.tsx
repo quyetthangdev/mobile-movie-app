@@ -11,6 +11,7 @@ import { InteractionManager, Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import LogoutSheetPortal from '@/components/profile/logout-sheet-portal'
 import { GhostMountProvider, NavigationEngineProvider } from '@/lib/navigation'
 import { SharedElementProvider } from '@/lib/shared-element'
 import { useBackHandlerForExit } from '@/hooks'
@@ -84,6 +85,8 @@ const queryClient = new QueryClient({
   },
 })
 
+const SPLASH_TIMEOUT_MS = 5000 // Fallback: ẩn splash sau 5s nếu font/init treo
+
 function AppContent() {
   const [fontsLoaded, fontError] = useBeVietnamProFont()
   const ready = fontsLoaded || fontError
@@ -94,6 +97,14 @@ function AppContent() {
     }
   }, [ready])
 
+  // Fallback: ẩn splash sau timeout nếu font loading treo (mạng chậm, CDN block...)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {})
+    }, SPLASH_TIMEOUT_MS)
+    return () => clearTimeout(t)
+  }, [])
+
   if (!ready) {
     return null
   }
@@ -101,8 +112,9 @@ function AppContent() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <BottomSheetModalProvider>
-          <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <BottomSheetModalProvider>
+            <LogoutSheetPortal />
             <I18nProvider>
               <GhostMountProvider>
                 <NavigationEngineProvider>
@@ -116,8 +128,8 @@ function AppContent() {
                 </NavigationEngineProvider>
               </GhostMountProvider>
             </I18nProvider>
-          </QueryClientProvider>
-        </BottomSheetModalProvider>
+          </BottomSheetModalProvider>
+        </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   )

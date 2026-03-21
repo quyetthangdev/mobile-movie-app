@@ -16,14 +16,28 @@ import React, {
 import { Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 import Animated, { FadeInUp, FadeOutDown } from 'react-native-reanimated'
 
-import { useOrderFlowStore, type IOrderingData } from '@/stores'
+import {
+  useExpandedCartNotesStore,
+  useOrderFlowStore,
+  type IOrderingData,
+} from '@/stores'
 import { useTranslation } from 'react-i18next'
 
 let sheetRef: BottomSheet | null = null
 let openCallback: (() => void) | null = null
 let isComponentMounted = false
+const clearCartOpenRetryIds: ReturnType<typeof setTimeout>[] = []
 
-const ClearCartBottomSheetBase = () => {
+function clearClearCartOpenRetries() {
+  clearCartOpenRetryIds.forEach((id) => clearTimeout(id))
+  clearCartOpenRetryIds.length = 0
+}
+
+interface ClearCartBottomSheetProps {
+  onClose?: () => void
+}
+
+const ClearCartBottomSheetBase = ({ onClose }: ClearCartBottomSheetProps) => {
   const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
   const bottomSheetRef = useRef<BottomSheet>(null)
@@ -75,12 +89,14 @@ const ClearCartBottomSheetBase = () => {
       setIsOpen(index >= 0)
 
       if (index < 0) {
+        clearClearCartOpenRetries()
         setShouldOpen(false)
+        onClose?.()
       } else if (index >= 0 && shouldOpen) {
         setShouldOpen(false)
       }
     },
-    [shouldOpen],
+    [shouldOpen, onClose],
   )
 
   // Handle shouldOpen — mở sheet với retry giống OrderTypeSheet
@@ -162,6 +178,7 @@ const ClearCartBottomSheetBase = () => {
     const closeDelayMs = 200
     snackbarTimeoutRef.current = setTimeout(() => {
       store.clearCart()
+      useExpandedCartNotesStore.getState().clear()
       setSnackbarVisible(true)
       clearSnackbarTimeout()
       snackbarTimeoutRef.current = setTimeout(() => {
@@ -278,27 +295,33 @@ const ClearCartBottomSheetTyped =
 // Static open — logic giống openOrderTypeSheet
 ClearCartBottomSheetTyped.open = () => {
   if (openCallback) {
+    clearClearCartOpenRetries()
     openCallback()
   } else if (sheetRef) {
+    clearClearCartOpenRetries()
     try {
       sheetRef.snapToIndex(0)
     } catch {
       // ignore
     }
   } else {
+    clearClearCartOpenRetries()
     const attempts = [100, 200, 300, 500, 1000]
     attempts.forEach((delay) => {
-      setTimeout(() => {
+      const id = setTimeout(() => {
         if (openCallback) {
+          clearClearCartOpenRetries()
           openCallback()
         } else if (sheetRef) {
           try {
+            clearClearCartOpenRetries()
             sheetRef.snapToIndex(0)
           } catch {
             // ignore
           }
         }
       }, delay)
+      clearCartOpenRetryIds.push(id)
     })
   }
 }

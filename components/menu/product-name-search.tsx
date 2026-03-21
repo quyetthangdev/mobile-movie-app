@@ -2,18 +2,13 @@ import { Search, X } from 'lucide-react-native'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TextInput, TouchableOpacity, View } from 'react-native'
-import { useShallow } from 'zustand/react/shallow'
 
 import { useDebouncedInput } from '@/hooks'
-import { useMenuFilterStore } from '@/stores'
+import { useProductNameFilter, useSetMenuFilter } from '@/stores/selectors'
 
 export default function ProductNameSearch() {
-  const { productName, setMenuFilter } = useMenuFilterStore(
-    useShallow((s) => ({
-      productName: s.menuFilter.productName,
-      setMenuFilter: s.setMenuFilter,
-    })),
-  )
+  const productName = useProductNameFilter()
+  const setMenuFilter = useSetMenuFilter()
   const { t } = useTranslation('menu')
 
   const {

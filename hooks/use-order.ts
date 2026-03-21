@@ -62,11 +62,17 @@ export const useOrders = (
   })
 }
 
-export const useOrdersPublic = () => {
+export interface UseOrdersPublicOptions {
+  enabled?: boolean
+}
+
+export const useOrdersPublic = (options?: UseOrdersPublicOptions) => {
+  const enabled = options?.enabled ?? true
   return useQuery({
     queryKey: ['orders-public'],
     queryFn: () => getAllOrdersPublic(),
     placeholderData: keepPreviousData,
+    enabled,
   })
 }
 

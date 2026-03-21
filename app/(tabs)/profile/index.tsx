@@ -1,5 +1,5 @@
 import { LoginForm } from '@/components/auth'
-import { LogoutConfirmBottomSheet } from '@/components/profile'
+import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
 import { Skeleton } from '@/components/ui'
 import { useLoyaltyPoints, useRunAfterTransition } from '@/hooks'
 import { useAuthStore, useUserStore } from '@/stores'
@@ -150,6 +150,11 @@ const ProfileTest = () => {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const scrollY = useSharedValue(0)
+  const insetsTop = useSharedValue(insets.top)
+
+  useEffect(() => {
+    insetsTop.value = insets.top
+  }, [insets.top, insetsTop])
 
   const handleScroll = useAnimatedScrollHandler({
     onScroll: (e) => {
@@ -201,10 +206,11 @@ const ProfileTest = () => {
   const headerHeightStyle = useAnimatedStyle(() => {
     'worklet'
     const y = scrollY.value
+    const top = insetsTop.value
     const height = interpolate(
       y,
       [0, SCROLL_RANGE],
-      [HEADER_HEIGHT + insets.top, insets.top + TOOLBAR_HEIGHT],
+      [HEADER_HEIGHT + top, top + TOOLBAR_HEIGHT],
       Extrapolation.CLAMP,
     )
     return { height }
@@ -242,6 +248,7 @@ const ProfileTest = () => {
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
 
   const [allowFetch, setAllowFetch] = React.useState(false)
+  const openLogoutSheet = useLogoutSheetStore((s) => s.open)
   useRunAfterTransition(() => setAllowFetch(true), [])
 
   useEffect(() => {
@@ -288,10 +295,6 @@ const ProfileTest = () => {
     router.push('/(tabs)/gift-card' as never)
   }, [router])
 
-  const handleLogoutPress = useCallback(() => {
-    ;(LogoutConfirmBottomSheet as { open: () => void }).open()
-  }, [])
-
   const { t: tToast } = useTranslation('toast')
 
   const handleLogoutConfirm = useCallback(() => {
@@ -300,6 +303,10 @@ const ProfileTest = () => {
     router.replace('/(tabs)/home' as never)
     showToast(tToast('logoutSuccess', 'Đăng xuất thành công'))
   }, [removeUserInfo, router, setLogout, tToast])
+
+  const handleLogoutPress = useCallback(() => {
+    openLogoutSheet(handleLogoutConfirm)
+  }, [openLogoutSheet, handleLogoutConfirm])
 
   if (needsUserInfo || !userInfo) {
     return <LoginForm />
@@ -528,7 +535,6 @@ const ProfileTest = () => {
         </Animated.View>
       </GestureDetector>
 
-      <LogoutConfirmBottomSheet onConfirm={handleLogoutConfirm} />
     </View>
   )
 }

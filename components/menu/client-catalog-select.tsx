@@ -1,11 +1,10 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, useColorScheme, View } from 'react-native'
 import { Dropdown } from 'react-native-element-dropdown'
-import { useShallow } from 'zustand/react/shallow'
 
 import { useCatalog } from '@/hooks'
-import { useMenuFilterStore } from '@/stores'
+import { useCatalogFilter, useSetMenuFilter } from '@/stores/selectors'
 
 interface CatalogOption {
   label: string
@@ -14,12 +13,8 @@ interface CatalogOption {
 
 export default function ClientCatalogSelect() {
   const { t } = useTranslation('menu')
-  const { catalog, setMenuFilter } = useMenuFilterStore(
-    useShallow((s) => ({
-      catalog: s.menuFilter.catalog,
-      setMenuFilter: s.setMenuFilter,
-    })),
-  )
+  const catalog = useCatalogFilter()
+  const setMenuFilter = useSetMenuFilter()
   const { data: catalogData, isPending: isLoadingCatalog } = useCatalog()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
@@ -43,44 +38,40 @@ export default function ClientCatalogSelect() {
   const selectedValue = catalog || null
 
   // Handle selection change
-  const handleChange = (item: CatalogOption) => {
-    setMenuFilter((prev) => ({ ...prev, catalog: item.value || undefined }))
-  }
+  const handleChange = useCallback(
+    (item: CatalogOption) => {
+      setMenuFilter((prev) => ({ ...prev, catalog: item.value || undefined }))
+    },
+    [setMenuFilter],
+  )
 
-  return (
-    <Dropdown
-      data={data}
-      labelField="label"
-      valueField="value"
-      placeholder={t('menu.selectCatalog', 'Chọn danh mục')}
-      value={selectedValue}
-      onChange={handleChange}
-      disable={isLoadingCatalog}
-      // Styling for light/dark mode - improved mobile UI
-      style={{
+  // Phase 2: Memo styles — tránh tạo object mới mỗi render
+  const dropdownStyles = useMemo(
+    () => ({
+      style: {
         backgroundColor: isDark ? '#111827' : '#ffffff',
         borderColor: isDark ? '#374151' : '#e5e7eb',
         borderWidth: 1,
         borderRadius: 12,
         paddingHorizontal: 16,
         height: 50,
-      }}
-      placeholderStyle={{
+      },
+      placeholderStyle: {
         color: isDark ? '#9ca3af' : '#6b7280',
         fontSize: 15,
-        fontWeight: '400',
-      }}
-      selectedTextStyle={{
+        fontWeight: '400' as const,
+      },
+      selectedTextStyle: {
         color: isDark ? '#ffffff' : '#111827',
         fontSize: 15,
-        fontWeight: '500',
-      }}
-      itemTextStyle={{
+        fontWeight: '500' as const,
+      },
+      itemTextStyle: {
         color: isDark ? '#ffffff' : '#111827',
         fontSize: 15,
-        fontWeight: '400',
-      }}
-      containerStyle={{
+        fontWeight: '400' as const,
+      },
+      containerStyle: {
         backgroundColor: isDark ? '#111827' : '#ffffff',
         borderColor: isDark ? '#374151' : '#e5e7eb',
         borderRadius: 12,
@@ -93,79 +84,103 @@ export default function ClientCatalogSelect() {
         borderWidth: 1,
         paddingVertical: 8,
         paddingHorizontal: 4,
-        overflow: 'hidden',
-      }}
-      itemContainerStyle={{
+        overflow: 'hidden' as const,
+      },
+      itemContainerStyle: {
         backgroundColor: isDark ? '#111827' : '#ffffff',
         borderBottomColor: isDark ? '#374151' : '#f3f4f6',
         borderBottomWidth: 1,
         paddingVertical: 2,
         paddingHorizontal: 2,
         minHeight: 44,
-      }}
+      },
+    }),
+    [isDark],
+  )
+
+  const renderItem = useCallback(
+    (item: CatalogOption, selected?: boolean, index?: number) => {
+      const isSelected = selected || item.value === selectedValue
+      const isFirst = index === 0
+      const isLast = index === data.length - 1
+      return (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            backgroundColor: isSelected
+              ? isDark
+                ? '#374151'
+                : '#f3f4f6'
+              : isDark
+                ? '#111827'
+                : '#ffffff',
+            minHeight: 44,
+            borderTopLeftRadius: isFirst ? 12 : 0,
+            borderTopRightRadius: isFirst ? 12 : 0,
+            borderBottomLeftRadius: isLast ? 12 : 0,
+            borderBottomRightRadius: isLast ? 12 : 0,
+          }}
+        >
+          <Text
+            style={{
+              color: isSelected
+                ? isDark
+                  ? '#ffffff'
+                  : '#111827'
+                : isDark
+                  ? '#ffffff'
+                  : '#111827',
+              fontSize: 15,
+              fontWeight: isSelected ? '600' : '400',
+              flex: 1,
+            }}
+          >
+            {item.label}
+          </Text>
+          {isSelected && (
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                backgroundColor: '#e50914',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: 12,
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>✓</Text>
+            </View>
+          )}
+        </View>
+      )
+    },
+    [data.length, isDark, selectedValue],
+  )
+
+  return (
+    <Dropdown
+      data={data}
+      labelField="label"
+      valueField="value"
+      placeholder={t('menu.selectCatalog', 'Chọn danh mục')}
+      value={selectedValue}
+      onChange={handleChange}
+      disable={isLoadingCatalog}
+      style={dropdownStyles.style}
+      placeholderStyle={dropdownStyles.placeholderStyle}
+      selectedTextStyle={dropdownStyles.selectedTextStyle}
+      itemTextStyle={dropdownStyles.itemTextStyle}
+      containerStyle={dropdownStyles.containerStyle}
+      itemContainerStyle={dropdownStyles.itemContainerStyle}
       activeColor={isDark ? '#374151' : '#f3f4f6'}
       maxHeight={300}
       search={false}
-      renderItem={(item: CatalogOption, selected?: boolean, index?: number) => {
-        const isSelected = selected || item.value === selectedValue
-        const isFirst = index === 0
-        const isLast = index === data.length - 1
-        return (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingVertical: 10,
-              paddingHorizontal: 16,
-              backgroundColor: isSelected
-                ? isDark
-                  ? '#374151'
-                  : '#f3f4f6'
-                : isDark
-                  ? '#111827'
-                  : '#ffffff',
-              minHeight: 44,
-              borderTopLeftRadius: isFirst ? 12 : 0,
-              borderTopRightRadius: isFirst ? 12 : 0,
-              borderBottomLeftRadius: isLast ? 12 : 0,
-              borderBottomRightRadius: isLast ? 12 : 0,
-            }}
-          >
-            <Text
-              style={{
-                color: isSelected
-                  ? isDark
-                    ? '#ffffff'
-                    : '#111827'
-                  : isDark
-                    ? '#ffffff'
-                    : '#111827',
-                fontSize: 15,
-                fontWeight: isSelected ? '600' : '400',
-                flex: 1,
-              }}
-            >
-              {item.label}
-            </Text>
-            {isSelected && (
-              <View
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  backgroundColor: '#e50914',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: 12,
-                }}
-              >
-                <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>✓</Text>
-              </View>
-            )}
-          </View>
-        )
-      }}
+      renderItem={renderItem}
     />
   )
 }

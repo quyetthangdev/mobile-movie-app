@@ -52,7 +52,8 @@ const TAB_SWITCH_OVERLAY_MS = 400
 
 /** Route pattern → query key để kiểm tra cache. Nếu có cache thì bỏ qua overlay. */
 const ROUTE_CACHE_QUERY_MAP: Array<{ pattern: RegExp; getQueryKey: (param: string) => unknown[] }> = [
-  { pattern: /\/product\/([^/]+)/, getQueryKey: (id) => ['specific-menu-item', id] },
+  { pattern: /\/menu\/product\/([^/]+)/, getQueryKey: (id) => ['specific-menu-item', id] },
+  { pattern: /\/product\/([^/]+)/, getQueryKey: (id) => ['specific-menu-item', id] }, // redirect target
   { pattern: /\/update-order\/([^/]+)/, getQueryKey: (slug) => ['order', slug] },
   { pattern: /\/payment\/([^/]+)/, getQueryKey: (orderSlug) => ['order', orderSlug] },
 ]

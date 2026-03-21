@@ -15,14 +15,22 @@ let sheetRef: BottomSheet | null = null
 let openCallback: (() => void) | null = null
 let isComponentMounted = false
 let pendingOpen = false
+const tableOpenRetryTimeoutIds: ReturnType<typeof setTimeout>[] = []
+
+function clearTableOpenRetries() {
+  tableOpenRetryTimeoutIds.forEach((id) => clearTimeout(id))
+  tableOpenRetryTimeoutIds.length = 0
+}
 
 interface TableSelectSheetProps {
   branchSlug: string
+  /** Gọi khi sheet đóng (index -1) — dùng cho single-active-sheet pattern. */
+  onClose?: () => void
 }
 
 const TABLE_PAGE_SIZE = 12
 
-function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
+function TableSelectSheet({ branchSlug, onClose }: TableSelectSheetProps) {
   const { t } = useTranslation('table')
   const isDark = useColorScheme() === 'dark'
   const bottomSheetRef = useRef<BottomSheet>(null)
@@ -63,6 +71,10 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
     }, 300)
 
     return () => {
+      isComponentMounted = false
+      sheetRef = null
+      openCallback = null
+      pendingOpen = false
       clearTimeout(timeoutId1)
       clearTimeout(timeoutId2)
     }
@@ -90,12 +102,14 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
       setIsOpen(index >= 0)
 
       if (index < 0) {
+        clearTableOpenRetries()
         setShouldOpen(false)
+        onClose?.()
       } else if (index >= 0 && shouldOpen) {
         setShouldOpen(false)
       }
     },
-    [shouldOpen],
+    [shouldOpen, onClose],
   )
 
   // Handle shouldOpen state change — mở sheet với retry giống VoucherListDrawer
@@ -141,7 +155,8 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
     }
   }, [shouldOpen])
 
-  const { data, isLoading } = useTables(branchSlug)
+  // Defer fetch như Voucher: chỉ fetch khi sắp mở (shouldOpen) — tránh API + re-render block BottomSheet mount
+  const { data, isLoading } = useTables(shouldOpen ? branchSlug : undefined)
   const tables = useMemo(() => data?.result || [], [data])
   const visibleTables = useMemo(
     () => tables.slice(0, visibleCount),
@@ -321,6 +336,17 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
     )
   }, [handleLoadMore, hasMoreTables, isDark, isLoadingMore, t])
 
+  const keyExtractor = useCallback((item: ITable) => item.slug, [])
+
+  const backgroundStyle = useMemo(
+    () => ({ backgroundColor: isDark ? '#111827' : '#ffffff' }),
+    [isDark],
+  )
+  const containerStyle = useMemo(
+    () => ({ zIndex: 9999, elevation: 9999 }),
+    [],
+  )
+
   return (
     <BottomSheet
       ref={bottomSheetRef}
@@ -330,13 +356,8 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
       enablePanDownToClose
       enableContentPanningGesture={false}
       backdropComponent={renderBackdrop}
-      backgroundStyle={{
-        backgroundColor: isDark ? '#111827' : '#ffffff',
-      }}
-      containerStyle={{
-        zIndex: 9999,
-        elevation: 9999,
-      }}
+      backgroundStyle={backgroundStyle}
+      containerStyle={containerStyle}
     >
       <View className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <Text className="text-base font-semibold text-gray-900 dark:text-gray-50">
@@ -354,7 +375,7 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
       ) : tables.length > 0 ? (
         <BottomSheetFlatList
           data={visibleTables}
-          keyExtractor={(item: ITable) => item.slug}
+          keyExtractor={keyExtractor}
           initialNumToRender={8}
           windowSize={5}
           maxToRenderPerBatch={8}
@@ -385,8 +406,10 @@ function TableSelectSheet({ branchSlug }: TableSelectSheetProps) {
 // Expose static method to open sheet — copy pattern từ VoucherListDrawer (B3: pendingOpen khi chưa mount)
 TableSelectSheet.open = () => {
   if (openCallback) {
+    clearTableOpenRetries()
     openCallback()
   } else if (sheetRef) {
+    clearTableOpenRetries()
     try {
       sheetRef.snapToIndex(0)
     } catch (error) {
@@ -394,6 +417,7 @@ TableSelectSheet.open = () => {
       console.error('[TableSelectSheet.open] Error:', error)
     }
   } else {
+    clearTableOpenRetries()
     pendingOpen = true
     // eslint-disable-next-line no-console
     console.warn(
@@ -402,11 +426,13 @@ TableSelectSheet.open = () => {
 
     const attempts = [100, 200, 300, 500, 1000]
     attempts.forEach((delay, index) => {
-      setTimeout(() => {
+      const id = setTimeout(() => {
         if (openCallback) {
+          clearTableOpenRetries()
           openCallback()
         } else if (sheetRef) {
           try {
+            clearTableOpenRetries()
             sheetRef.snapToIndex(0)
           } catch (error) {
             // eslint-disable-next-line no-console
@@ -422,6 +448,7 @@ TableSelectSheet.open = () => {
           )
         }
       }, delay)
+      tableOpenRetryTimeoutIds.push(id)
     })
   }
 }

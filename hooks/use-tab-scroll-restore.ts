@@ -26,12 +26,13 @@ export function useTabScrollRestore(tabKey: TabScrollKey) {
     }, [tabKey, getY]),
   )
 
-  const onScroll = useCallback(
+  const onScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       save(tabKey, e.nativeEvent.contentOffset.y)
     },
     [tabKey, save],
   )
 
-  return { scrollRef, onScroll }
+  // Chỉ lưu khi scroll dừng (onMomentumScrollEnd, onScrollEndDrag) — tránh Bridge overload khi scroll
+  return { scrollRef, onScrollEnd }
 }

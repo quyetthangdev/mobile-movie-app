@@ -1,6 +1,6 @@
 /**
  * MenuItemQuantityControl — Chỉ nút + (Add to cart), không hiển thị số lượng.
- * Subscribe store để xử lý add, ClientMenuItem đứng yên.
+ * Khi onAddToCart được truyền từ parent: không subscribe store → tránh re-render cascade.
  */
 import dayjs from 'dayjs'
 import { Plus } from 'lucide-react-native'
@@ -21,17 +21,88 @@ interface MenuItemQuantityControlProps {
   item: IMenuItem
   hasStock: boolean
   isMobile: boolean
+  /** Callback từ parent — khi có thì không subscribe store */
+  onAddToCart?: (item: IMenuItem) => void
 }
 
-export const MenuItemQuantityControl = React.memo(
-  function MenuItemQuantityControl({
+function buildOrderItem(item: IMenuItem): IOrderItem {
+  return {
+    id: `item_${dayjs().valueOf()}_${Math.random().toString(36).substr(2, 9)}`,
+    slug: item?.product?.slug,
+    image: item?.product?.image,
+    name: item?.product?.name,
+    quantity: 1,
+    size: item?.product?.variants[0]?.size?.name,
+    allVariants: item?.product?.variants,
+    variant: item?.product?.variants[0],
+    originalPrice: item?.product?.variants[0]?.price,
+    productSlug: item?.product?.slug,
+    description: item?.product?.description,
+    isLimit: item?.product?.isLimit,
+    isGift: item?.product?.isGift,
+    promotion: item?.promotion ?? null,
+    promotionValue: item?.promotion?.value ?? 0,
+    note: '',
+  }
+}
+
+/** Không subscribe store — dùng onAddToCart từ parent */
+const MenuItemQuantityControlWithCallback = React.memo(
+  function MenuItemQuantityControlWithCallback({
     item,
     hasStock,
     isMobile,
-  }: MenuItemQuantityControlProps) {
+    onAddToCart,
+  }: MenuItemQuantityControlProps & { onAddToCart: (item: IMenuItem) => void }) {
+    const { t } = useTranslation('menu')
+
+    const handleAddToCart = React.useCallback(() => {
+      onAddToCart(item)
+    }, [item, onAddToCart])
+
+    if (!hasStock) {
+      return (
+        <View
+          className={
+            isMobile
+              ? 'rounded-full bg-primary px-4 py-1'
+              : 'w-full rounded-full bg-red-500 px-3 py-2'
+          }
+        >
+          <Text
+            className={`text-xs font-semibold text-white ${!isMobile ? 'text-center' : ''}`}
+          >
+            {t('menu.outOfStock', 'Hết hàng')}
+          </Text>
+        </View>
+      )
+    }
+
+    return (
+      <PressableWithFeedback
+        onPress={handleAddToCart}
+        hitSlop={HIT_SLOP_SMALL}
+        className={
+          isMobile
+            ? 'z-50 h-8 w-8 items-center justify-center rounded-full bg-primary'
+            : 'w-full items-center justify-center rounded-full bg-primary px-3 py-2'
+        }
+      >
+        <Plus size={20} color="#ffffff" />
+      </PressableWithFeedback>
+    )
+  },
+)
+
+/** Subscribe store — dùng khi không có onAddToCart từ parent */
+const MenuItemQuantityControlWithStore = React.memo(
+  function MenuItemQuantityControlWithStore({
+    item,
+    hasStock,
+    isMobile,
+  }: Omit<MenuItemQuantityControlProps, 'onAddToCart'>) {
     const { t } = useTranslation('menu')
     const { t: tToast } = useTranslation('toast')
-
     const {
       hasOrderingData,
       orderingOwner,
@@ -61,25 +132,7 @@ export const MenuItemQuantityControl = React.memo(
       if (!item?.product?.variants?.length || !isHydrated) return
       if (!ensureOrdering()) return
 
-      const orderItem: IOrderItem = {
-        id: `item_${dayjs().valueOf()}_${Math.random().toString(36).substr(2, 9)}`,
-        slug: item?.product?.slug,
-        image: item?.product?.image,
-        name: item?.product?.name,
-        quantity: 1,
-        size: item?.product?.variants[0]?.size?.name,
-        allVariants: item?.product?.variants,
-        variant: item?.product?.variants[0],
-        originalPrice: item?.product?.variants[0]?.price,
-        productSlug: item?.product?.slug,
-        description: item?.product?.description,
-        isLimit: item?.product?.isLimit,
-        isGift: item?.product?.isGift,
-        promotion: item?.promotion ?? null,
-        promotionValue: item?.promotion?.value ?? 0,
-        note: '',
-      }
-
+      const orderItem = buildOrderItem(item)
       try {
         scheduleStoreUpdate(() => addOrderingItem(orderItem))
         showToast(
@@ -122,5 +175,19 @@ export const MenuItemQuantityControl = React.memo(
         <Plus size={20} color="#ffffff" />
       </PressableWithFeedback>
     )
+  },
+)
+
+export const MenuItemQuantityControl = React.memo(
+  function MenuItemQuantityControl(props: MenuItemQuantityControlProps) {
+    if (props.onAddToCart) {
+      return (
+        <MenuItemQuantityControlWithCallback
+          {...props}
+          onAddToCart={props.onAddToCart}
+        />
+      )
+    }
+    return <MenuItemQuantityControlWithStore {...props} />
   },
 )

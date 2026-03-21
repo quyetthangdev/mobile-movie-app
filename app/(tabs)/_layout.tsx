@@ -5,15 +5,21 @@ import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Tabs, usePathname } from 'expo-router'
-import React, { useLayoutEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { View, useColorScheme } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { getPublicSpecificMenu, getSpecificMenu } from '@/api'
 import { getLoyaltyPoints } from '@/api/loyalty-point'
 import { AnimatedTabBar, FloatingCartButton } from '@/components/navigation'
 import { QUERYKEY, tabsScreenOptions } from '@/constants'
+import { usePredictivePrefetch } from '@/hooks'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { getThemeColor, hexToRgba } from '@/lib/utils'
 import {
@@ -38,6 +44,7 @@ const FADE_HEIGHT = 120
 export default function TabsLayout() {
   const { t } = useTranslation('tabs')
   const pathname = usePathname()
+  usePredictivePrefetch()
   const isDark = useColorScheme() === 'dark'
   const insets = useSafeAreaInsets()
   const prevPathnameRef = useRef(pathname)
@@ -96,9 +103,13 @@ export default function TabsLayout() {
   const isProfileLoginForm = pathname?.includes('/profile') && !isAuthenticated
   const isProfileSubRoute =
     isAuthenticated && pathname?.includes('/profile/')
-  /** Ẩn bar khi ở form đăng nhập profile, route con của profile, hoặc trang giỏ hàng. */
+  const isProductDetail = pathname?.includes('/product')
+  /** Ẩn bar khi ở product detail, form đăng nhập profile, route con của profile, hoặc trang giỏ hàng. */
   const shouldHideBottomBar =
-    isCartPage || isProfileLoginForm || isProfileSubRoute
+    isProductDetail ||
+    isCartPage ||
+    isProfileLoginForm ||
+    isProfileSubRoute
 
   const colors = useMemo(() => getThemeColor(isDark), [isDark])
   const tabState = useMemo(
@@ -140,19 +151,37 @@ export default function TabsLayout() {
     }
   }, [insets.bottom])
 
+  const barOpacity = useSharedValue(shouldHideBottomBar ? 0 : 1)
+  useEffect(() => {
+    barOpacity.value = withTiming(shouldHideBottomBar ? 0 : 1, {
+      duration: 150,
+    })
+  }, [shouldHideBottomBar, barOpacity])
+
+  const barAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: barOpacity.value,
+  }))
+
   return (
     <View style={{ flex: 1 }}>
-      {!shouldHideBottomBar && (
-        <View
-          renderToHardwareTextureAndroid
-          style={{
+      <Animated.View
+        renderToHardwareTextureAndroid
+        style={[
+          {
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
+            zIndex: 10,
+          },
+          barAnimatedStyle,
+        ]}
+        pointerEvents={shouldHideBottomBar ? 'none' : 'auto'}
+      >
+        <View
+          style={{
             height: totalBottomHeight,
             pointerEvents: 'none',
-            zIndex: 5,
           }}
         >
           <LinearGradient
@@ -170,74 +199,7 @@ export default function TabsLayout() {
             style={{ flex: 1 }}
           />
         </View>
-      )}
-
-      {/* detachInactiveScreens=false: tránh flash UI trang cũ khi chuyển tab (expo/expo#35116) */}
-      <Tabs
-        detachInactiveScreens={false}
-        screenOptions={{
-          ...tabsScreenOptions,
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.mutedForeground,
-          lazy: true,
-          tabBarStyle: {
-            backgroundColor: 'transparent',
-            borderTopWidth: 0,
-            height: 0,
-            paddingBottom: 0,
-            paddingTop: 0,
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-          tabBarLabelStyle: { display: 'none' },
-          tabBarIconStyle: { display: 'none' },
-        }}
-      >
-        <Tabs.Screen
-          name="home"
-          options={{
-            title: t('tabs.home', 'Trang chủ'),
-            headerTitle: t('tabs.home', 'Trang chủ'),
-            tabBarButton: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="menu"
-          options={{
-            title: t('tabs.menu', 'Thực đơn'),
-            headerTitle: t('tabs.menu', 'Thực đơn'),
-            tabBarButton: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="cart"
-          options={{
-            title: t('tabs.cart', 'Giỏ hàng'),
-            headerTitle: t('tabs.cart', 'Giỏ hàng'),
-            tabBarButton: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="gift-card"
-          options={{
-            title: t('tabs.giftCard', 'Thẻ quà tặng'),
-            headerTitle: t('tabs.giftCard', 'Thẻ quà tặng'),
-            tabBarButton: () => null,
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: t('tabs.profile', 'Tài khoản'),
-            headerTitle: t('tabs.profile', 'Tài khoản'),
-            tabBarButton: () => null,
-          }}
-        />
-      </Tabs>
-
-      {!shouldHideBottomBar && (
         <View
-          renderToHardwareTextureAndroid
           style={{
             position: 'absolute',
             bottom: 0,
@@ -250,7 +212,6 @@ export default function TabsLayout() {
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 12,
-            zIndex: 10,
           }}
         >
           <AnimatedTabBar
@@ -319,7 +280,72 @@ export default function TabsLayout() {
           />
           <FloatingCartButton primaryColor={colors.primary} />
         </View>
-      )}
+      </Animated.View>
+
+      {/* P1-T4: detachInactiveScreens=true — giảm RAM ~100MB. Revert nếu flash UI (expo/expo#35116) */}
+      <Tabs
+        detachInactiveScreens={true}
+        screenOptions={{
+          ...tabsScreenOptions,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.mutedForeground,
+          lazy: true,
+          tabBarStyle: {
+            backgroundColor: 'transparent',
+            borderTopWidth: 0,
+            height: 0,
+            paddingBottom: 0,
+            paddingTop: 0,
+            elevation: 0,
+            shadowOpacity: 0,
+          },
+          tabBarLabelStyle: { display: 'none' },
+          tabBarIconStyle: { display: 'none' },
+        }}
+      >
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: t('tabs.home', 'Trang chủ'),
+            headerTitle: t('tabs.home', 'Trang chủ'),
+            tabBarButton: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="menu"
+          options={{
+            title: t('tabs.menu', 'Thực đơn'),
+            headerTitle: t('tabs.menu', 'Thực đơn'),
+            tabBarButton: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="cart"
+          options={{
+            title: t('tabs.cart', 'Giỏ hàng'),
+            headerTitle: t('tabs.cart', 'Giỏ hàng'),
+            tabBarButton: () => null,
+            // Pre-mount Cart — tránh spike khi Product Detail → Cart (lazy mount nặng)
+            lazy: false,
+          }}
+        />
+        <Tabs.Screen
+          name="gift-card"
+          options={{
+            title: t('tabs.giftCard', 'Thẻ quà tặng'),
+            headerTitle: t('tabs.giftCard', 'Thẻ quà tặng'),
+            tabBarButton: () => null,
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: t('tabs.profile', 'Tài khoản'),
+            headerTitle: t('tabs.profile', 'Tài khoản'),
+            tabBarButton: () => null,
+          }}
+        />
+      </Tabs>
     </View>
   )
 }

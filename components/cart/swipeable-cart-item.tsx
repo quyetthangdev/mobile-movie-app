@@ -1,5 +1,12 @@
 import { Trash2 } from 'lucide-react-native'
-import React, { memo, ReactNode, useMemo } from 'react'
+import React, {
+  memo,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
@@ -33,6 +40,8 @@ const SPRING_CONFIG = {
   stiffness: 180,
 }
 
+const GESTURE_DEFER_MS = 350
+
 const SwipeableCartItemComponent = ({
   children,
   itemId,
@@ -41,12 +50,18 @@ const SwipeableCartItemComponent = ({
 }: SwipeableCartItemProps) => {
   const translateX = useSharedValue(0)
   const startX = useSharedValue(0)
+  const [gestureEnabled, setGestureEnabled] = useState(false)
+
+  useEffect(() => {
+    const id = setTimeout(() => setGestureEnabled(true), GESTURE_DEFER_MS)
+    return () => clearTimeout(id)
+  }, [])
 
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetX([-18, 18])
-        .failOffsetY([-10, 10])
+        .activeOffsetX([-30, 30])
+        .failOffsetY([-6, 6])
         .minDistance(8)
         .onStart(() => {
           startX.value = translateX.value
@@ -92,9 +107,16 @@ const SwipeableCartItemComponent = ({
     ),
   }))
 
-  const handlePressDelete = () => {
+  const handlePressDelete = useCallback(() => {
     onDelete(itemId)
-  }
+  }, [itemId, onDelete])
+
+  const onStartShouldSetResponderTrue = useCallback(() => true, [])
+
+  const deleteActionWidthStyle = useMemo(
+    () => ({ width: maxSwipeDistance }),
+    [maxSwipeDistance],
+  )
 
   return (
     <View className="relative my-1">
@@ -103,26 +125,31 @@ const SwipeableCartItemComponent = ({
         style={[
           styles.deleteActionContainer,
           deleteActionStyle,
-          { width: maxSwipeDistance },
+          deleteActionWidthStyle,
         ]}
         className="absolute bottom-0 right-0 top-0 items-center justify-center"
       >
         <View
           className="h-full w-full items-center justify-center"
-          onStartShouldSetResponder={() => true}
+          onStartShouldSetResponder={onStartShouldSetResponderTrue}
           onResponderRelease={handlePressDelete}
         >
           <Trash2 size={22} color="#fff" />
         </View>
       </Animated.View>
 
-      {/* Foreground content (cart item UI) */}
-      <GestureDetector gesture={panGesture}>
+      {/* Foreground content (cart item UI) — C4/C11: defer gesture mount 350ms để giảm init đồng thời */}
+      {gestureEnabled ? (
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={foregroundStyle}>
+            <View className="mr-2">{children}</View>
+          </Animated.View>
+        </GestureDetector>
+      ) : (
         <Animated.View style={foregroundStyle}>
-          {/* Tạo khoảng cách giữa ô đỏ và thẻ món */}
           <View className="mr-2">{children}</View>
         </Animated.View>
-      </GestureDetector>
+      )}
     </View>
   )
 }

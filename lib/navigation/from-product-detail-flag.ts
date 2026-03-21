@@ -1,7 +1,7 @@
 /**
  * Flag để Cart biết user vừa navigate từ Product Detail (app/product/[id]).
- * Khi true → Cart dùng delay cao hơn (150ms) để tách unmount Product Detail và mount Cart,
- * giảm CPU/JS thread spike.
+ * Consume khi Cart mount để reset. Unmount Product Detail đã nhẹ (simplified tree + defer clearCache)
+ * nên Cart dùng delay thống nhất 150ms như Tab bar → Cart.
  */
 let fromProductDetail = false
 

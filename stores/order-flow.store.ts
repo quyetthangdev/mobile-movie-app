@@ -81,6 +81,11 @@ export interface IOrderFlowStore {
   isHydrated: boolean
   lastModified: number
 
+  /** Tổng quantity orderItems — derived, tránh reduce trong selector */
+  orderItemTotalQuantity: number
+  /** Tổng tiền trước voucher — VoucherListDrawer subscribe, tránh re-render khi cart thay đổi */
+  minOrderValue: number
+
   // Flow data cho từng bước
   orderingData: IOrderingData | null
   paymentData: IPaymentData | null
@@ -198,6 +203,18 @@ const generateOrderItemId = () => {
   return `item_${dayjs().valueOf()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
+/** Tổng quantity của orderItems — dùng cho selector, tránh reduce trong component */
+const calcOrderItemTotalQuantity = (items: IOrderItem[] | undefined): number =>
+  items?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0
+
+/** Tổng tiền trước voucher (cho minOrderValue) — VoucherListDrawer subscribe primitive */
+const calcMinOrderValue = (items: IOrderItem[] | undefined): number =>
+  items?.reduce((acc, item) => {
+    const original = item.originalPrice ?? 0
+    const promotionDiscount = item.promotionDiscount ?? 0
+    return acc + (original - promotionDiscount) * (item.quantity || 0)
+  }, 0) ?? 0
+
 // Helper function to convert IOrderDetail to IOrderItem
 const convertOrderDetailToOrderItem = (
   orderDetail: IOrderDetail,
@@ -238,6 +255,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       currentStep: OrderFlowStep.ORDERING,
       isHydrated: false,
       lastModified: dayjs().valueOf(),
+      orderItemTotalQuantity: 0,
+      minOrderValue: 0,
       orderingData: null,
       paymentData: null,
       updatingData: null,
@@ -284,6 +303,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         }
         set({
           currentStep: OrderFlowStep.ORDERING,
+          orderItemTotalQuantity: 0,
+          minOrderValue: 0,
           orderingData: newOrderingData,
           paymentData: null,
           updatingData: null,
@@ -294,6 +315,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       setOrderingData: (data: IOrderingData) => {
         set({
           orderingData: data,
+          orderItemTotalQuantity: calcOrderItemTotalQuantity(data.orderItems),
+          minOrderValue: calcMinOrderValue(data.orderItems),
           lastModified: dayjs().valueOf(),
         })
       },
@@ -324,6 +347,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           }
           set({
             currentStep: OrderFlowStep.ORDERING,
+            orderItemTotalQuantity: calcOrderItemTotalQuantity(newOrderingData.orderItems),
+            minOrderValue: calcMinOrderValue(newOrderingData.orderItems),
             orderingData: newOrderingData,
             paymentData: null,
             updatingData: null,
@@ -344,6 +369,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
 
         set({
           currentStep: OrderFlowStep.ORDERING,
+          orderItemTotalQuantity: calcOrderItemTotalQuantity(updatedItems),
+          minOrderValue: calcMinOrderValue(updatedItems),
           orderingData: {
             ...orderingData,
             orderItems: updatedItems,
@@ -387,6 +414,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         )
 
         set({
+          minOrderValue: calcMinOrderValue(updatedItems),
           orderingData: {
             ...orderingData,
             orderItems: updatedItems,
@@ -404,6 +432,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         )
 
         set({
+          orderItemTotalQuantity: calcOrderItemTotalQuantity(updatedItems),
+          minOrderValue: calcMinOrderValue(updatedItems),
           orderingData: {
             ...orderingData,
             orderItems: updatedItems,
@@ -421,6 +451,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         )
 
         set({
+          orderItemTotalQuantity: calcOrderItemTotalQuantity(updatedItems),
+          minOrderValue: calcMinOrderValue(updatedItems),
           orderingData: {
             ...orderingData,
             orderItems: updatedItems,
@@ -647,6 +679,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
 
       clearOrderingData: () => {
         set({
+          orderItemTotalQuantity: 0,
+          minOrderValue: 0,
           orderingData: null,
           lastModified: dayjs().valueOf(),
         })
@@ -1482,6 +1516,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       clearAllData: () => {
         set({
           currentStep: OrderFlowStep.ORDERING,
+          orderItemTotalQuantity: 0,
+          minOrderValue: 0,
           orderingData: null,
           paymentData: null,
           updatingData: null,
@@ -1512,10 +1548,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         return currentStep === OrderFlowStep.ORDERING ? orderingData : null
       },
 
-      getCartItemCount: () => {
-        const cart = get().getCartItems()
-        return cart?.orderItems?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0
-      },
+      getCartItemCount: () => get().orderItemTotalQuantity ?? 0,
 
       getOrderItems: () => {
         const { currentStep, updatingData } = get()
@@ -1679,10 +1712,15 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Set hydrated flag after store is rehydrated
-          // Use setTimeout as fallback for queueMicrotask in React Native
+          // Set hydrated flag + derive orderItemTotalQuantity, minOrderValue (không persist)
+          const total = calcOrderItemTotalQuantity(state.orderingData?.orderItems)
+          const minVal = calcMinOrderValue(state.orderingData?.orderItems)
           setTimeout(() => {
-            useOrderFlowStore.setState({ isHydrated: true })
+            useOrderFlowStore.setState({
+              isHydrated: true,
+              orderItemTotalQuantity: total,
+              minOrderValue: minVal,
+            })
           }, 0)
         }
       },

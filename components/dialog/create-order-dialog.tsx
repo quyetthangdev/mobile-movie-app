@@ -9,7 +9,7 @@ import {
   ShoppingCart,
   User,
 } from 'lucide-react-native'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 
@@ -29,7 +29,9 @@ import {
   useUpdateOrderStore,
   useUserStore,
 } from '@/stores'
-import { useOrderFlowCreateOrder } from '@/stores/selectors'
+import { useShallow } from 'zustand/react/shallow'
+import { useOrderFlowCreateOrderDialog } from '@/stores/selectors'
+import { useOrderFlowStore } from '@/stores'
 import { ICreateOrderRequest, OrderTypeEnum } from '@/types'
 import {
   calculateCartItemDisplay,
@@ -60,7 +62,7 @@ export default function PlaceOrderDialog({
   const { t } = useTranslation(['menu'])
   const { t: tCommon } = useTranslation('common')
   const { t: tToast } = useTranslation('toast')
-  const { orderingData, transitionToPayment } = useOrderFlowCreateOrder()
+  const orderFields = useOrderFlowCreateOrderDialog()
   const clearUpdateOrderStore = useUpdateOrderStore((s) => s.clearStore)
   const { mutate: createOrder, isPending } = useCreateOrder()
   const { mutate: createOrderWithoutLogin, isPending: isPendingWithoutLogin } =
@@ -68,39 +70,60 @@ export default function PlaceOrderDialog({
   const [isOpen, setIsOpen] = useState(false)
   // #1 Lazy: Chỉ mount Dialog.Content sau lần mở đầu — giảm CPU khi Cart mount
   const [hasOpened, setHasOpened] = useState(false)
-  const userInfo = useUserStore((s) => s.userInfo)
   const getUserInfo = useUserStore((s) => s.getUserInfo)
-  const branch = useBranchStore((s) => s.branch)
+  const branchSlugFromBranch = useBranchStore((s) => s.branch?.slug)
+  const { hasUser, roleName, userBranchSlug } = useUserStore(
+    useShallow((s) => ({
+      hasUser: !!s.userInfo,
+      roleName: s.userInfo?.role?.name,
+      userBranchSlug: s.userInfo?.branch?.slug,
+    })),
+  )
 
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
-  const order = orderingData
+  const { transitionToPayment, ...orderFieldsData } = orderFields
+  const order = useMemo(() => {
+    const od = useOrderFlowStore.getState().orderingData
+    if (!od) return null
+    return { ...od, ...orderFieldsData } as IOrderingData
+  }, [orderFieldsData])
 
   // #1 Lazy: Chỉ tính displayItems, cartTotals, deliveryFee khi dialog mở — giảm CPU khi Cart mount
   const branchSlug =
-    !userInfo || userInfo.role.name === Role.CUSTOMER
-      ? branch?.slug
-      : userInfo.branch?.slug
+    !hasUser || roleName === Role.CUSTOMER
+      ? branchSlugFromBranch
+      : userBranchSlug
 
-  const displayItems = hasOpened
-    ? calculateCartItemDisplay(order, order?.voucher || null)
-    : []
-  const cartTotals = hasOpened
-    ? calculateCartTotals(displayItems, order?.voucher || null)
-    : {
-        subTotalBeforeDiscount: 0,
-        promotionDiscount: 0,
-        voucherDiscount: 0,
-        finalTotal: 0,
-      }
+  // Phase 1: Memo — tránh tính lại mỗi render khi order/voucher không đổi
+  const displayItems = useMemo(
+    () =>
+      hasOpened && order
+        ? calculateCartItemDisplay(order, order?.voucher || null)
+        : [],
+    [hasOpened, order],
+  )
+  const cartTotals = useMemo(
+    () =>
+      hasOpened && displayItems.length > 0
+        ? calculateCartTotals(displayItems, order?.voucher || null)
+        : {
+            subTotalBeforeDiscount: 0,
+            promotionDiscount: 0,
+            voucherDiscount: 0,
+            finalTotal: 0,
+          },
+    [hasOpened, displayItems, order],
+  )
   const deliveryFee = useCalculateDeliveryFee(
     parseKm(order?.deliveryDistance) || 0,
     branchSlug || '',
     { enabled: hasOpened },
   )
 
-  const handleSubmit = (order: IOrderingData) => {
+  const handleSubmit = (orderParam: IOrderingData) => {
+    const order = useOrderFlowStore.getState().orderingData ?? orderParam
     if (!order) return
 
     if (!branchSlug) {
@@ -140,12 +163,12 @@ export default function PlaceOrderDialog({
     }
 
     // Call API to create order
-    if (userInfo) {
+    if (hasUser) {
       createOrder(createOrderRequest, {
         onSuccess: (data) => {
           const orderSlug = data.result.slug
           const paymentRoute =
-            userInfo?.role.name === Role.CUSTOMER
+            roleName === Role.CUSTOMER
               ? ROUTE.CLIENT_PAYMENT
               : ROUTE.SYSTEM_PAYMENT
 

@@ -4,47 +4,60 @@
 import { FlashList } from '@shopify/flash-list'
 import dayjs from 'dayjs'
 import { Image as ExpoImage } from 'expo-image'
-import { MapPin, X } from 'lucide-react-native'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { MapPin } from 'lucide-react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Image,
+  InteractionManager,
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   useColorScheme,
 } from 'react-native'
 
 import { Images } from '@/assets/images'
 import { SelectBranchDropdown } from '@/components/branch'
+import { ScreenContainer } from '@/components/layout/screen-container'
 import {
   ClientCatalogSelect,
   MenuItemQuantityControl,
+  PriceFilterChip,
   PriceRangeFilter,
 } from '@/components/menu'
-import { ScreenContainer } from '@/components/layout/screen-container'
 import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
 import { Skeleton } from '@/components/ui'
-import { FILTER_VALUE, publicFileURL } from '@/constants'
+// import { publicFileURL } from '@/constants'
 import {
   useCatalog,
   useMenuScreenState,
+  usePressInPrefetchMenuItem,
+  usePrimaryColor,
   usePublicSpecificMenu,
   useRunAfterTransition,
   useSpecificMenu,
   useTabScrollRestore,
+  useViewableMenuPrefetch,
 } from '@/hooks'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { getThemeColor } from '@/lib/utils'
 import type { IMenuItem, ISpecificMenuRequest } from '@/types'
 import { formatCurrency } from '@/utils'
+import { getProductImageUrl } from '@/utils/product-image-url'
 
 /** Mục phẳng: Header (tên catalog) hoặc Row (IMenuItem) */
 type FlatMenuItem =
   | { type: 'header'; id: string; name: string }
   | { type: 'row'; id: string; item: IMenuItem }
+
+/** Ngưỡng defer: >50 items → group/flatten off-thread để tránh jank */
+const DEFER_THRESHOLD = 50
+/** Data layering: render 25 item đầu ngay, phần còn lại sau 120ms */
+const FIRST_BATCH_SIZE = 25
+const SECOND_BATCH_DELAY_MS = 120
+/** Fallback: nếu JS bị block, timer 120ms có thể delay — force sync sau 250ms */
+const DISPLAY_DATA_FALLBACK_MS = 250
 
 const menuListHeaderStyles = StyleSheet.create({
   root: { padding: 16, paddingBottom: 0 },
@@ -68,19 +81,6 @@ const menuListHeaderStyles = StyleSheet.create({
   skeletonFilter: { width: 50, height: 50, borderRadius: 12 },
   catalogRow: { flexDirection: 'row', gap: 8 },
   catalogFlex: { flex: 1 },
-  priceFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 8,
-    padding: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e50914',
-    backgroundColor: 'rgba(229, 9, 20, 0.05)',
-  },
-  priceFilterText: { fontSize: 14, color: '#e50914' },
   fixedHeader: { backgroundColor: '#ffffff' },
 })
 
@@ -93,23 +93,41 @@ const menuFlashListStyles = StyleSheet.create({
   content: { paddingBottom: 100 },
 })
 
+/** Progressive mount: Catalog 50ms, Filter 100ms — phân tán tải Yoga layout */
+const CATALOG_MOUNT_DELAY_MS = 50
+const FILTER_MOUNT_DELAY_MS = 100
+
 const MenuListHeader = React.memo(function MenuListHeader({
   showSkeleton,
   branch,
-  menuFilter,
-  handleClearPriceFilter,
-  t,
+  noBranchText,
 }: {
   showSkeleton: boolean
   branch: { name: string; address: string } | null | undefined
-  primaryColor: string
-  menuFilter: { minPrice: number; maxPrice: number }
-  handleClearPriceFilter: () => void
-  t: (key: string, fallback?: string) => string
+  noBranchText: string
 }) {
+  const [catalogReady, setCatalogReady] = useState(false)
+  const [filterReady, setFilterReady] = useState(false)
+
+  useEffect(() => {
+    if (showSkeleton) {
+      queueMicrotask(() => {
+        setCatalogReady(false)
+        setFilterReady(false)
+      })
+      return
+    }
+    const t1 = setTimeout(() => setCatalogReady(true), CATALOG_MOUNT_DELAY_MS)
+    const t2 = setTimeout(() => setFilterReady(true), FILTER_MOUNT_DELAY_MS)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [showSkeleton])
+
   return (
     <View style={menuListHeaderStyles.root}>
-      {/* Logo + Branch dropdown */}
+      {/* Frame 1: Logo + Branch info (mount ngay) */}
       <View style={menuListHeaderStyles.logoRow}>
         <Image
           source={Images.Brand.Logo as unknown as number}
@@ -119,17 +137,14 @@ const MenuListHeader = React.memo(function MenuListHeader({
         <SelectBranchDropdown />
       </View>
 
-      {/* Branch info */}
       <View style={menuListHeaderStyles.branchRow}>
         <MapPin size={16} color="#e50914" />
         <Text style={menuListHeaderStyles.branchText}>
-          {branch
-            ? `${branch.name} (${branch.address})`
-            : t('menu.noData', 'Chưa chọn chi nhánh')}
+          {branch ? `${branch.name} (${branch.address})` : noBranchText}
         </Text>
       </View>
 
-      {/* Catalog + Price filter */}
+      {/* Frame 2 (50ms): ClientCatalogSelect — Frame 3 (100ms): PriceRangeFilter */}
       <View style={menuListHeaderStyles.catalogSection}>
         {showSkeleton ? (
           <View style={menuListHeaderStyles.skeletonRow}>
@@ -140,22 +155,19 @@ const MenuListHeader = React.memo(function MenuListHeader({
           <>
             <View style={menuListHeaderStyles.catalogRow}>
               <View style={menuListHeaderStyles.catalogFlex}>
-                <ClientCatalogSelect />
+                {catalogReady ? (
+                  <ClientCatalogSelect />
+                ) : (
+                  <Skeleton style={menuListHeaderStyles.skeletonMain} />
+                )}
               </View>
-              <PriceRangeFilter />
+              {filterReady ? (
+                <PriceRangeFilter />
+              ) : (
+                <Skeleton style={menuListHeaderStyles.skeletonFilter} />
+              )}
             </View>
-            {(menuFilter.minPrice > FILTER_VALUE.MIN_PRICE ||
-              menuFilter.maxPrice < FILTER_VALUE.MAX_PRICE) && (
-              <View style={menuListHeaderStyles.priceFilterChip}>
-                <Text style={menuListHeaderStyles.priceFilterText}>
-                  {formatCurrency(menuFilter.minPrice)} -{' '}
-                  {formatCurrency(menuFilter.maxPrice)}
-                </Text>
-                <TouchableOpacity onPress={handleClearPriceFilter}>
-                  <X size={20} color="#6b7280" />
-                </TouchableOpacity>
-              </View>
-            )}
+            <PriceFilterChip />
           </>
         )}
       </View>
@@ -179,11 +191,10 @@ const headerRowStyles = StyleSheet.create({
 
 const CatalogHeaderRow = React.memo(function CatalogHeaderRow({
   name,
-  primaryColor,
 }: {
   name: string
-  primaryColor: string
 }) {
+  const primaryColor = usePrimaryColor()
   return (
     <View style={headerRowStyles.container}>
       <Text style={[headerRowStyles.title, { color: primaryColor }]}>
@@ -194,10 +205,19 @@ const CatalogHeaderRow = React.memo(function CatalogHeaderRow({
 })
 
 function menuItemRowPropsAreEqual(
-  prev: { item: IMenuItem; primaryColor: string },
-  next: { item: IMenuItem; primaryColor: string },
+  prev: {
+    item: IMenuItem
+    onPressIn?: (slug: string) => void
+    listIndex?: number
+  },
+  next: {
+    item: IMenuItem
+    onPressIn?: (slug: string) => void
+    listIndex?: number
+  },
 ): boolean {
-  if (prev.primaryColor !== next.primaryColor) return false
+  if (prev.onPressIn !== next.onPressIn) return false
+  if (prev.listIndex !== next.listIndex) return false
   const a = prev.item
   const b = next.item
   const aSlug = a.slug ?? a.product?.slug
@@ -274,13 +294,19 @@ const menuItemRowStyles = StyleSheet.create({
   },
 })
 
+/** Số ảnh đầu tiên dùng priority="high" — 4–8 ảnh decode đồng thời, ưu tiên above-fold */
+const MENU_IMAGE_HIGH_PRIORITY_INDEX = 4
+
 const MenuItemRow = React.memo(function MenuItemRow({
   item,
-  primaryColor,
+  onPressIn,
+  listIndex,
 }: {
   item: IMenuItem
-  primaryColor: string
+  onPressIn?: (slug: string) => void
+  listIndex?: number
 }) {
+  const primaryColor = usePrimaryColor()
   const minPrice = item.product?.variants?.length
     ? Math.min(...item.product.variants.map((v) => v.price))
     : 0
@@ -290,14 +316,10 @@ const MenuItemRow = React.memo(function MenuItemRow({
 
   const hasPromotion = item.promotion && item.promotion.value > 0
 
-  const imageUrl = React.useMemo(() => {
-    const raw = item.product?.image?.trim()
-    if (!raw) return null
-    if (/^https?:\/\//i.test(raw)) return raw
-    const base = publicFileURL ?? ''
-    if (!base) return null
-    return `${base.replace(/\/$/, '')}/${raw.replace(/^\//, '')}`
-  }, [item.product?.image])
+  const imageUrl = React.useMemo(
+    () => getProductImageUrl(item.product?.image),
+    [item.product?.image],
+  )
 
   const slug = item.slug ?? item.product?.slug ?? ''
 
@@ -311,10 +333,11 @@ const MenuItemRow = React.memo(function MenuItemRow({
       navigation={{
         type: 'push',
         href: {
-          pathname: '/product/[id]',
+          pathname: '/(tabs)/menu/product/[id]',
           params: { id: slug },
         },
       }}
+      onPressIn={onPressIn ? () => onPressIn(slug) : undefined}
       hapticStyle="light"
       style={menuItemRowStyles.wrapper}
     >
@@ -325,6 +348,18 @@ const MenuItemRow = React.memo(function MenuItemRow({
               source={{ uri: imageUrl }}
               style={menuItemRowStyles.image}
               contentFit="cover"
+              recyclingKey={(item.product?.image || slug || '').replace(
+                /^\//,
+                '',
+              )}
+              priority={
+                listIndex != null && listIndex < MENU_IMAGE_HIGH_PRIORITY_INDEX
+                  ? 'high'
+                  : 'low'
+              }
+              cachePolicy="disk"
+              allowDownscaling
+              enforceEarlyResizing
             />
           ) : (
             <Image
@@ -377,24 +412,26 @@ function MenuPlaceholderContent() {
   const isDark = useColorScheme() === 'dark'
   const { primary: primaryColor, background: themeBackground } =
     getThemeColor(isDark)
-  const { scrollRef: _scrollRef, onScroll } = useTabScrollRestore('menu')
+  const { scrollRef: _scrollRef, onScrollEnd } = useTabScrollRestore('menu')
   const {
     userSlug,
     isAuthenticated,
     menuFilter,
     setMenuFilter,
-    branch,
     branchSlug,
+    branchName,
+    branchAddress,
   } = useMenuScreenState()
 
-  const handleClearPriceFilter = useCallback(() => {
-    setMenuFilter((prev) => ({
-      ...prev,
-      minPrice: FILTER_VALUE.MIN_PRICE,
-      maxPrice: FILTER_VALUE.MAX_PRICE,
-      branch: branchSlug ?? prev.branch,
-    }))
-  }, [setMenuFilter, branchSlug])
+  const branch = useMemo((): { name: string; address: string } | null => {
+    if (branchName != null || branchAddress != null) {
+      return {
+        name: (branchName as string) ?? '',
+        address: (branchAddress as string) ?? '',
+      }
+    }
+    return null
+  }, [branchName, branchAddress])
 
   const today = dayjs().format('YYYY-MM-DD')
 
@@ -423,7 +460,21 @@ function MenuPlaceholderContent() {
   }, [menuFilter?.date, setMenuFilter, today])
 
   const [allowFetch, setAllowFetch] = useState(false)
-  useRunAfterTransition(() => setAllowFetch(true), [])
+  const [headerReady, setHeaderReady] = useState(false)
+  const [allowCatalog, setAllowCatalog] = useState(false)
+  // androidDelayMs: -20 — fire ~180ms từ mount, pre-emptive để giảm thời gian skeleton
+  useRunAfterTransition(() => setAllowFetch(true), [], { androidDelayMs: -20 })
+  useRunAfterTransition(
+    () => {
+      setAllowCatalog(true)
+      setHeaderReady(true)
+    },
+    [],
+    { androidDelayMs: 100 },
+  )
+
+  const prefetchMenuItem = usePressInPrefetchMenuItem()
+  const { viewabilityConfigCallbackPairs } = useViewableMenuPrefetch()
 
   const hasUser = isAuthenticated && !!userSlug
   const hasBranch = !!menuFilter.branch || !!branchSlug
@@ -442,42 +493,141 @@ function MenuPlaceholderContent() {
   } = usePublicSpecificMenu(menuRequest, shouldFetchPublic)
   const menuData = hasUser ? specificMenuData : publicMenuData
   const isPending = hasUser ? specificPending : publicPending
-  const { data: catalogData } = useCatalog()
+  const { data: catalogData } = useCatalog({ enabled: allowCatalog })
   const masterTransition = useMasterTransitionOptional()
 
-  const groupedByCatalog = useMemo(() => {
-    const items = menuData?.result?.menuItems ?? []
-    const catalogs = catalogData?.result ?? []
-    const groupsBySlug: Record<string, IMenuItem[]> = {}
-    for (const item of items) {
-      const slug = item.product?.catalog?.slug
-      if (slug) (groupsBySlug[slug] ??= []).push(item)
-    }
-    return catalogs
-      .map((catalog) => ({ catalog, items: groupsBySlug[catalog.slug] ?? [] }))
-      .filter((g) => g.items.length > 0)
-      .sort((a, b) => b.items.length - a.items.length)
-  }, [menuData?.result?.menuItems, catalogData?.result])
+  const rawMenuItems = useMemo(
+    () => menuData?.result?.menuItems ?? [],
+    [menuData?.result?.menuItems],
+  )
+  const catalogs = useMemo(
+    () => catalogData?.result ?? [],
+    [catalogData?.result],
+  )
+  const rawItemCount = rawMenuItems.length
 
-  /** Data flattening: chuyển groupedByCatalog thành mảng phẳng header + row */
-  const flattenedData = useMemo<FlatMenuItem[]>(() => {
-    const out: FlatMenuItem[] = []
-    for (const g of groupedByCatalog) {
-      out.push({
-        type: 'header',
-        id: `h-${g.catalog.slug}`,
-        name: g.catalog.name,
-      })
-      for (const item of g.items) {
-        out.push({
-          type: 'row',
-          id: item.slug ?? item.product?.slug ?? `row-${out.length}`,
-          item,
-        })
+  type GroupedItem = {
+    catalog: { slug: string; name: string }
+    items: IMenuItem[]
+  }
+  const computeGrouped = useCallback(
+    (
+      items: IMenuItem[],
+      catalogList: { slug: string; name: string }[],
+    ): GroupedItem[] => {
+      const groupsBySlug: Record<string, IMenuItem[]> = {}
+      for (const item of items) {
+        const slug = item.product?.catalog?.slug
+        if (slug) (groupsBySlug[slug] ??= []).push(item)
       }
+      return catalogList
+        .map((catalog) => ({
+          catalog,
+          items: groupsBySlug[catalog.slug] ?? [],
+        }))
+        .filter((g) => g.items.length > 0)
+        .sort((a, b) => b.items.length - a.items.length)
+    },
+    [],
+  )
+  const flattenGrouped = useCallback(
+    (grouped: GroupedItem[]): FlatMenuItem[] => {
+      const out: FlatMenuItem[] = []
+      for (const g of grouped) {
+        out.push({
+          type: 'header',
+          id: `h-${g.catalog.slug}`,
+          name: g.catalog.name,
+        })
+        for (const item of g.items) {
+          out.push({
+            type: 'row',
+            id: item.slug ?? item.product?.slug ?? `row-${out.length}`,
+            item,
+          })
+        }
+      }
+      return out
+    },
+    [],
+  )
+
+  /** Nhỏ: sync. Lớn (>50): defer qua setTimeout(0) để nhường UI thread. */
+  const [deferredGrouped, setDeferredGrouped] = useState<GroupedItem[] | null>(
+    null,
+  )
+  const groupedByCatalogSync = useMemo(() => {
+    if (rawItemCount > DEFER_THRESHOLD) return null
+    return computeGrouped(rawMenuItems, catalogs)
+  }, [rawItemCount, rawMenuItems, catalogs, computeGrouped])
+
+  useEffect(() => {
+    if (rawItemCount <= DEFER_THRESHOLD || !catalogs.length) {
+      setDeferredGrouped(null)
+      return
     }
-    return out
-  }, [groupedByCatalog])
+    const id = setTimeout(() => {
+      InteractionManager.runAfterInteractions(() => {
+        const grouped = computeGrouped(rawMenuItems, catalogs)
+        setDeferredGrouped(grouped)
+      })
+    }, 0)
+    return () => clearTimeout(id)
+  }, [rawItemCount, rawMenuItems, catalogs, computeGrouped])
+
+  const groupedByCatalog =
+    rawItemCount <= DEFER_THRESHOLD ? groupedByCatalogSync : deferredGrouped
+  // const itemCount = groupedByCatalog
+  //   ? groupedByCatalog.reduce((sum, g) => sum + g.items.length, 0)
+  //   : 0
+
+  const flattenedDataFull = useMemo<FlatMenuItem[]>(() => {
+    if (!groupedByCatalog) return []
+    return flattenGrouped(groupedByCatalog)
+  }, [groupedByCatalog, flattenGrouped])
+
+  /** Data layering: 25 item đầu ngay, full list sau 120ms — tránh FlashList ngộp. */
+  const [displayData, setDisplayData] = useState<FlatMenuItem[]>([])
+  const displayDataSyncRef = useRef(false)
+  useEffect(() => {
+    if (flattenedDataFull.length === 0) {
+      setDisplayData([])
+      displayDataSyncRef.current = false
+      return
+    }
+    if (flattenedDataFull.length <= FIRST_BATCH_SIZE) {
+      setDisplayData(flattenedDataFull)
+      displayDataSyncRef.current = true
+      return
+    }
+    setDisplayData(flattenedDataFull.slice(0, FIRST_BATCH_SIZE))
+    displayDataSyncRef.current = false
+
+    const mainTimer = setTimeout(() => {
+      setDisplayData(flattenedDataFull)
+      displayDataSyncRef.current = true
+    }, SECOND_BATCH_DELAY_MS)
+
+    const fallbackTimer = setTimeout(() => {
+      if (!displayDataSyncRef.current) {
+        setDisplayData((prev) =>
+          prev.length < flattenedDataFull.length ? flattenedDataFull : prev,
+        )
+      }
+    }, DISPLAY_DATA_FALLBACK_MS)
+
+    return () => {
+      clearTimeout(mainTimer)
+      clearTimeout(fallbackTimer)
+    }
+  }, [flattenedDataFull])
+
+  const flattenedData =
+    flattenedDataFull.length > FIRST_BATCH_SIZE
+      ? displayData.length > 0
+        ? displayData
+        : flattenedDataFull.slice(0, FIRST_BATCH_SIZE)
+      : flattenedDataFull
 
   useEffect(() => {
     if (!isPending && masterTransition?.hideLoadingOverlay)
@@ -485,18 +635,31 @@ function MenuPlaceholderContent() {
   }, [isPending, masterTransition?.hideLoadingOverlay, masterTransition])
 
   // Flow chuẩn: cache hit → content ngay; cache miss → skeleton → useRunAfterTransition → fetch
-  const showSkeleton = hasBranch && !menuData
+  // Defer: khi >50 items đang chờ group/flatten off-thread → giữ skeleton
+  const showSkeleton =
+    (hasBranch && !menuData) ||
+    !headerReady ||
+    (rawItemCount > DEFER_THRESHOLD && !groupedByCatalog)
 
   const getItemType = useCallback((item: FlatMenuItem) => item.type, [])
 
+  const noBranchText = t('menu.noData', 'Chưa chọn chi nhánh')
+  const noDataText = t('menu.noData', 'Không có dữ liệu')
+
   const renderItem = useCallback(
-    ({ item }: { item: FlatMenuItem }) => {
+    ({ item, index }: { item: FlatMenuItem; index: number }) => {
       if (item.type === 'header') {
-        return <CatalogHeaderRow name={item.name} primaryColor={primaryColor} />
+        return <CatalogHeaderRow name={item.name} />
       }
-      return <MenuItemRow item={item.item} primaryColor={primaryColor} />
+      return (
+        <MenuItemRow
+          item={item.item}
+          onPressIn={prefetchMenuItem}
+          listIndex={index}
+        />
+      )
     },
-    [primaryColor],
+    [prefetchMenuItem],
   )
 
   const keyExtractor = useCallback((item: FlatMenuItem) => item.id, [])
@@ -506,24 +669,15 @@ function MenuPlaceholderContent() {
       <MenuListHeader
         showSkeleton={showSkeleton}
         branch={branch ?? null}
-        primaryColor={primaryColor}
-        menuFilter={menuFilter}
-        handleClearPriceFilter={handleClearPriceFilter}
-        t={(key, fallback) =>
-          fallback !== undefined
-            ? (t as (k: string, opts?: { defaultValue?: string }) => string)(
-                key,
-                {
-                  defaultValue: fallback,
-                },
-              )
-            : t(key)
-        }
+        noBranchText={noBranchText}
       />
     ),
-    [showSkeleton, branch, primaryColor, menuFilter, handleClearPriceFilter, t],
+    [showSkeleton, branch, noBranchText],
   )
 
+  /** Tránh flash "Không có dữ liệu" khi đang load/xử lý: chỉ hiện khi chắc chắn đã xong và thật sự không có món */
+  const isProcessing =
+    isPending || (rawMenuItems.length > 0 && flattenedData.length === 0) // có data nhưng chưa group (chờ catalogs/defer)
   const listEmptyComponent = useMemo(() => {
     if (!hasBranch) {
       return (
@@ -534,17 +688,21 @@ function MenuPlaceholderContent() {
         </View>
       )
     }
-    if (hasBranch && !showSkeleton && flattenedData.length === 0) {
+    if (
+      hasBranch &&
+      !showSkeleton &&
+      flattenedData.length === 0 &&
+      !isProcessing
+    ) {
       return (
         <View style={menuListEmptyStyles.container}>
-          <Text style={menuListEmptyStyles.text}>
-            {t('menu.noData', 'Không có dữ liệu')}
-          </Text>
+          <Text style={menuListEmptyStyles.text}>{noDataText}</Text>
         </View>
       )
     }
     return null
-  }, [hasBranch, showSkeleton, flattenedData.length, t])
+  }, [hasBranch, showSkeleton, flattenedData.length, isProcessing, noDataText])
+
   const [refreshing, setRefreshing] = useState(false)
 
   const handleRefresh = useCallback(() => {
@@ -622,6 +780,7 @@ function MenuPlaceholderContent() {
       <View style={menuListHeaderStyles.fixedHeader}>
         {listHeaderComponent}
       </View>
+      {/* FlashList v2: estimatedItemSize đã bỏ — tự động measure nội bộ */}
       <FlashList
         data={flattenedData}
         renderItem={renderItem}
@@ -630,10 +789,13 @@ function MenuPlaceholderContent() {
         ItemSeparatorComponent={null}
         ListHeaderComponent={null}
         ListEmptyComponent={listEmptyComponent}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+        onMomentumScrollEnd={onScrollEnd}
+        onScrollEndDrag={onScrollEnd}
+        viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs}
         contentContainerStyle={menuFlashListStyles.content}
         showsVerticalScrollIndicator={false}
+        drawDistance={300}
+        overrideProps={{ initialDrawBatchSize: 6 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -650,7 +812,11 @@ export default function MenuPlaceholder() {
   const isDark = useColorScheme() === 'dark'
   const themeBackground = getThemeColor(isDark).background
   return (
-    <ScreenContainer edges={['top']} topOffset={-12} style={{ flex: 1, backgroundColor: themeBackground }}>
+    <ScreenContainer
+      edges={['top']}
+      topOffset={-12}
+      style={{ flex: 1, backgroundColor: themeBackground }}
+    >
       <MenuPlaceholderContent />
     </ScreenContainer>
   )

@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { Plus } from 'lucide-react-native'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ImageSourcePropType } from 'react-native'
 import { Image, Pressable, Text, TouchableOpacity, View } from 'react-native'
@@ -10,7 +10,7 @@ import { Images } from '@/assets/images'
 import { publicFileURL } from '@/constants'
 import { scheduleStoreUpdate } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
-import { IMenuItem, IOrderItem, IProduct } from '@/types'
+import { IMenuItem, IOrderItem } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
 
 interface ClientMenuItemForUpdateOrderProps {
@@ -35,8 +35,9 @@ const ClientMenuItemForUpdateOrder = React.memo(
       })),
     )
 
-    const getPriceRange = (variants: IProduct['variants']) => {
-      if (!variants || variants.length === 0) return null
+    const priceRange = useMemo(() => {
+      const variants = item.product.variants
+      if (!variants?.length) return null
       const prices = variants.map((v) => v.price)
       const minPrice = Math.min(...prices)
       const maxPrice = Math.max(...prices)
@@ -45,7 +46,7 @@ const ClientMenuItemForUpdateOrder = React.memo(
         max: maxPrice,
         isSinglePrice: minPrice === maxPrice,
       }
-    }
+    }, [item.product.variants])
 
     const handleAddToDraft = () => {
       if (!hasUpdatingData || !item?.product?.variants?.length) return
@@ -82,7 +83,6 @@ const ClientMenuItemForUpdateOrder = React.memo(
     const defaultStock = item.defaultStock ?? 0
     const hasStock =
       !item.isLocked && (currentStock > 0 || !item.product.isLimit)
-    const priceRange = getPriceRange(item.product.variants)
     const hasPromotion = item.promotion && item.promotion.value > 0
 
     return (

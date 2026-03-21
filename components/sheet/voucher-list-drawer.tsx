@@ -13,7 +13,10 @@ import {
   useVouchersForOrder,
 } from '@/hooks'
 import { useOrderFlowStore, useUserStore } from '@/stores'
-import { useOrderFlowVoucherDrawer } from '@/stores/selectors'
+import {
+  useOrderFlowVoucherDrawer,
+  useOrderFlowVoucherDrawerData,
+} from '@/stores/selectors'
 import {
   type ICartItem,
   IGetAllVoucherRequest,
@@ -28,7 +31,6 @@ import {
   showToast,
 } from '@/utils'
 import BottomSheet, {
-  BottomSheetBackdrop,
   BottomSheetBackdropProps,
   BottomSheetFlatList,
   BottomSheetTextInput,
@@ -45,6 +47,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
+  Pressable,
+  StyleSheet,
   Text,
   TouchableOpacity,
   useColorScheme,
@@ -67,17 +71,46 @@ let sheetRef: BottomSheet | null = null
 let openCallback: (() => void) | null = null
 let isComponentMounted = false
 let pendingOpen = false
+const retryTimeoutIds: ReturnType<typeof setTimeout>[] = []
 
-function VoucherListDrawer() {
+function clearRetryTimeouts() {
+  retryTimeoutIds.forEach((id) => clearTimeout(id))
+  retryTimeoutIds.length = 0
+}
+
+interface VoucherListDrawerProps {
+  /** Gọi khi sheet đóng (index -1) — dùng cho single-active-sheet pattern. */
+  onClose?: () => void
+}
+
+function VoucherListDrawer(props?: VoucherListDrawerProps) {
+  const { onClose } = props ?? {}
   dayjs.extend(utc)
   const { t } = useTranslation(['voucher'])
   const { t: tToast } = useTranslation('toast')
-  const userInfo = useUserStore((s) => s.userInfo)
+  const { hasUser, roleName, phonenumber, userSlug } = useUserStore(
+    useShallow((s) => ({
+      hasUser: !!s.userInfo,
+      roleName: s.userInfo?.role?.name,
+      phonenumber: s.userInfo?.phonenumber,
+      userSlug: s.userInfo?.slug,
+    })),
+  )
   const { addVoucher, removeVoucher, isHydrated } = useOrderFlowVoucherDrawer()
 
-  const cartItems = useOrderFlowStore(
-    useShallow((s) => s.orderingData),
-  ) as ICartItem | null
+  const { minOrderValue, voucher, paymentMethod, orderItemsLength } =
+    useOrderFlowVoucherDrawerData()
+
+  // P2-T1: Đọc orderItems từ store khi re-render — deps trigger re-read khi cart thay đổi
+  const orderItems = useMemo(
+    () => useOrderFlowStore.getState().orderingData?.orderItems ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps trigger re-read, không dùng trong body
+    [minOrderValue, voucher, paymentMethod, orderItemsLength],
+  )
+  const cartItemsForDisplay = useMemo(
+    () => (orderItems.length > 0 ? ({ orderItems } as ICartItem) : null),
+    [orderItems],
+  )
   const isRemovingVoucherRef = useRef(false)
   const { mutate: validateVoucher } = useValidateVoucher()
   const { mutate: validatePublicVoucher } = useValidatePublicVoucher()
@@ -103,6 +136,7 @@ function VoucherListDrawer() {
       if (currentRef && isComponentMounted) {
         sheetRef = currentRef
         openCallback = () => {
+          clearRetryTimeouts()
           setShouldOpen(true)
         }
         if (pendingOpen) {
@@ -129,6 +163,7 @@ function VoucherListDrawer() {
       isComponentMounted = false
       clearTimeout(timeoutId1)
       clearTimeout(timeoutId2)
+      clearRetryTimeouts()
       sheetRef = null
       openCallback = null
       pendingOpen = false
@@ -140,14 +175,12 @@ function VoucherListDrawer() {
     if (bottomSheetRef.current && isComponentMounted) {
       sheetRef = bottomSheetRef.current
       openCallback = () => {
+        clearRetryTimeouts()
         setShouldOpen(true)
       }
       if (pendingOpen) {
         pendingOpen = false
-        // Đẩy setState ra khỏi thân effect để tránh cascading renders
-        setTimeout(() => {
-          setShouldOpen(true)
-        }, 0)
+        setTimeout(() => setShouldOpen(true), 0)
       }
     }
   }, [bottomSheetRef])
@@ -163,35 +196,21 @@ function VoucherListDrawer() {
 
   // Check voucher validation when user changes
   useEffect(() => {
-    if (cartItems?.voucher) {
-      if (!userInfo && cartItems?.voucher.isVerificationIdentity) {
+    if (voucher) {
+      if (!hasUser && voucher.isVerificationIdentity) {
         showErrorToast(1003)
         removeVoucher()
       }
     }
-  }, [userInfo, cartItems?.voucher, removeVoucher])
+  }, [hasUser, voucher, removeVoucher])
 
   // Determine if user is customer owner
   const isCustomerOwner =
-    !!userInfo &&
-    userInfo.role?.name === Role.CUSTOMER &&
-    userInfo.phonenumber !== 'default-customer'
-
-  const minOrderValue = useMemo(() => {
-    return (
-      cartItems?.orderItems.reduce((acc, item) => {
-        const original = item.originalPrice ?? 0
-        const promotionDiscount = item.promotionDiscount ?? 0
-        return acc + (original - promotionDiscount) * item.quantity
-      }, 0) || 0
-    )
-  }, [cartItems?.orderItems])
+    hasUser && roleName === Role.CUSTOMER && phonenumber !== 'default-customer'
 
   const nonGiftOrderItems = useMemo(() => {
-    return (cartItems?.orderItems || []).filter(
-      (item) => !(item as { isGift?: boolean }).isGift,
-    )
-  }, [cartItems?.orderItems])
+    return orderItems.filter((item) => !(item as { isGift?: boolean }).isGift)
+  }, [orderItems])
 
   const cartProductSlugs = useMemo(
     () =>
@@ -208,8 +227,8 @@ function VoucherListDrawer() {
       hasPaging: true,
       page: currentPage,
       size: pagination.pageSize,
-      user: userInfo?.slug,
-      paymentMethod: cartItems?.paymentMethod,
+      user: userSlug,
+      paymentMethod,
       minOrderValue: minOrderValue,
       orderItems:
         nonGiftOrderItems.map((item) => ({
@@ -222,8 +241,8 @@ function VoucherListDrawer() {
     [
       currentPage,
       pagination.pageSize,
-      userInfo?.slug,
-      cartItems?.paymentMethod,
+      userSlug,
+      paymentMethod,
       minOrderValue,
       nonGiftOrderItems,
     ],
@@ -268,9 +287,7 @@ function VoucherListDrawer() {
 
   // Validation logic trong useMemo — tránh chạy reduce/some trong effect mỗi lần
   const shouldRemoveVoucher = useMemo(() => {
-    if (!cartItems?.voucher) return false
-
-    const { voucher } = cartItems
+    if (!voucher) return false
     const orderItems = nonGiftOrderItems
     const voucherProductSlugs =
       voucher.voucherProducts?.map((vp) => vp.product.slug) || []
@@ -314,7 +331,7 @@ function VoucherListDrawer() {
     }
 
     return false
-  }, [cartItems, cartProductSlugs, nonGiftOrderItems])
+  }, [voucher, cartProductSlugs, nonGiftOrderItems])
 
   // Effect nhẹ — chỉ gọi removeVoucher khi shouldRemoveVoucher
   useEffect(() => {
@@ -484,7 +501,7 @@ function VoucherListDrawer() {
     isCustomerOwner,
     minOrderValue,
     nonGiftOrderItems,
-    cartItems?.paymentMethod,
+    paymentMethod,
     voucherList?.result?.items,
     publicVoucherList?.result?.items,
     localVoucherList.length,
@@ -492,18 +509,15 @@ function VoucherListDrawer() {
 
   // Gộp: Sync voucher từ cart + re-sync khi drawer mở (highlight voucher đã áp dụng)
   useEffect(() => {
-    if (cartItems?.voucher) {
-      const voucherSlug = cartItems.voucher.slug
+    if (voucher) {
+      const voucherSlug = voucher.slug
       startTransition(() => {
         setSelectedVoucher('')
         setTempSelectedVoucher(voucherSlug)
         setLocalVoucherList((prevList) => {
           const exists = prevList.some((item) => item.slug === voucherSlug)
           if (exists) return prevList
-          return truncateVoucherList([
-            cartItems.voucher as IVoucher,
-            ...prevList,
-          ])
+          return truncateVoucherList([voucher as IVoucher, ...prevList])
         })
       })
     } else {
@@ -512,12 +526,11 @@ function VoucherListDrawer() {
         setTempSelectedVoucher('')
       })
     }
-  }, [isOpen, cartItems?.voucher])
+  }, [isOpen, voucher])
 
-  const voucher = cartItems?.voucher || null
   const displayItems = useMemo(
-    () => calculateCartItemDisplay(cartItems, voucher),
-    [cartItems, voucher],
+    () => calculateCartItemDisplay(cartItemsForDisplay, voucher),
+    [cartItemsForDisplay, voucher],
   )
   const cartTotals = useMemo(
     () => calculateCartTotals(displayItems, voucher),
@@ -558,7 +571,7 @@ function VoucherListDrawer() {
       const sevenAmToday = dayjs().hour(7).minute(0).second(0).millisecond(0)
       const isValidDate = !dayjs(voucher.endDate).isBefore(sevenAmToday)
       const requiresLogin = voucher.isVerificationIdentity === true
-      const isUserLoggedIn = !!userInfo?.slug
+      const isUserLoggedIn = !!userSlug
       const isIdentityValid =
         !requiresLogin || (requiresLogin && isUserLoggedIn)
       return (
@@ -571,12 +584,12 @@ function VoucherListDrawer() {
         hasValidProducts
       )
     },
-    [cartProductSlugs, cartTotals, userInfo?.slug],
+    [cartProductSlugs, cartTotals, userSlug],
   )
 
   const handleCompleteSelection = async () => {
     if (!tempSelectedVoucher) {
-      if (cartItems?.voucher) {
+      if (voucher) {
         removeVoucher()
         showToast(tToast('toast.removeVoucherSuccess'))
       }
@@ -593,16 +606,16 @@ function VoucherListDrawer() {
       return
     }
 
-    if (cartItems?.voucher?.slug === tempSelectedVoucher) {
+    if (voucher?.slug === tempSelectedVoucher) {
       bottomSheetRef.current?.close()
       return
     }
 
     const validateVoucherParam: IValidateVoucherRequest = {
       voucher: selectedVoucherData.slug,
-      user: userInfo?.slug || '',
+      user: userSlug || '',
       orderItems:
-        cartItems?.orderItems.map((item) => ({
+        orderItems.map((item) => ({
           quantity: item.quantity,
           variant: item.variant.slug,
           note: item.note,
@@ -692,16 +705,17 @@ function VoucherListDrawer() {
 
       // Only reset shouldOpen when actually closed, not when opening
       if (index < 0) {
-        setShouldOpen(false) // Reset shouldOpen flag when closed
-        // Reset when closed
+        clearRetryTimeouts()
+        setShouldOpen(false)
         setSelectedVoucher('')
         setTempSelectedVoucher('')
+        onClose?.()
       } else if (index >= 0 && shouldOpen) {
         // Sheet opened successfully, reset shouldOpen flag
         setShouldOpen(false)
       }
     },
-    [shouldOpen],
+    [shouldOpen, onClose],
   )
 
   // Handle shouldOpen state change
@@ -748,15 +762,17 @@ function VoucherListDrawer() {
     }
   }, [shouldOpen])
 
-  // Backdrop component
+  // Backdrop — custom Pressable vì pressBehavior="close" đôi khi không nhận touch (gorhom v5)
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
+      <Pressable
         {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.5}
-        pressBehavior="close"
+        style={[
+          StyleSheet.absoluteFill,
+          props.style,
+          { backgroundColor: 'rgba(0,0,0,0.5)' },
+        ]}
+        onPress={() => bottomSheetRef.current?.close()}
       />
     ),
     [],
@@ -958,6 +974,12 @@ function VoucherListDrawer() {
   )
 }
 
+/** P1-T1: Hủy pending open và retry timeouts — gọi từ CartContentFull cleanup khi unmount */
+function cancelPendingOpen() {
+  clearRetryTimeouts()
+  pendingOpen = false
+}
+
 // Expose static method to open drawer — retry khi chưa mount (giống TableSelectSheet)
 VoucherListDrawer.open = () => {
   if (openCallback) {
@@ -970,14 +992,17 @@ VoucherListDrawer.open = () => {
       console.error('[VoucherListDrawer.open] Error:', error)
     }
   } else {
+    clearRetryTimeouts()
     pendingOpen = true
     const attempts = [100, 200, 300, 500, 1000]
     attempts.forEach((delay, index) => {
-      setTimeout(() => {
+      const id = setTimeout(() => {
         if (openCallback) {
+          clearRetryTimeouts()
           openCallback()
         } else if (sheetRef) {
           try {
+            clearRetryTimeouts()
             sheetRef.snapToIndex(0)
           } catch (err) {
             // eslint-disable-next-line no-console
@@ -988,8 +1013,11 @@ VoucherListDrawer.open = () => {
           }
         }
       }, delay)
+      retryTimeoutIds.push(id)
     })
   }
 }
+
+VoucherListDrawer.cancelPendingOpen = cancelPendingOpen
 
 export default VoucherListDrawer

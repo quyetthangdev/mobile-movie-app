@@ -1,14 +1,15 @@
 import dayjs from 'dayjs'
 import { Image } from 'expo-image'
 import type { TFunction } from 'i18next'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Dimensions,
   FlatList,
   Image as RNImage,
-  Platform,
+  InteractionManager,
   Pressable,
+  ScrollView,
   Text,
   View,
 } from 'react-native'
@@ -27,6 +28,9 @@ import { formatCurrency } from '@/utils'
 
 /** Ngày cố định trong session — thay useRef vì linter cấm đọc ref trong render */
 const SESSION_DATE_STR = dayjs().format('YYYY-MM-DD')
+
+/** ScrollView + map thay FlatList khi items ≤ 20 — tránh nested FlatList-in-ScrollView gây tụt FPS */
+const USE_SCROLLVIEW_THRESHOLD = 20
 
 interface SliderRelatedProductsProps {
   currentProduct: string
@@ -87,6 +91,7 @@ const RelatedProductItem = React.memo(
               source={{ uri: imageUrl }}
               style={{ width: itemWidth, height: 120, borderRadius: 12 }}
               contentFit="cover"
+              recyclingKey={item.slug}
               placeholder={(Images.Food.DefaultProductImage as unknown as number)}
               placeholderContentFit="cover"
               cachePolicy="memory-disk"
@@ -182,12 +187,24 @@ export default function SliderRelatedProducts({
   const hasUser = !!userSlug
   const hasBranch = !!filters.branch
 
+  const [fetchEnabled, setFetchEnabled] = useState(false)
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    const task = InteractionManager.runAfterInteractions(() => {
+      timeoutId = setTimeout(() => setFetchEnabled(true), 500)
+    })
+    return () => {
+      task.cancel()
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [])
+
   const { data: relatedProducts, isPending } = useSpecificMenu(
     filters,
-    hasUser && hasBranch,
+    hasUser && hasBranch && fetchEnabled,
   )
   const { data: publicSpecificMenu, isPending: isPendingPublicSpecificMenu } =
-    usePublicSpecificMenu(filters, !hasUser && hasBranch)
+    usePublicSpecificMenu(filters, !hasUser && hasBranch && fetchEnabled)
 
   const relatedProductsData = useMemo(() => {
     const items = hasUser
@@ -252,76 +269,82 @@ export default function SliderRelatedProducts({
     [itemLength],
   )
 
-  const renderSkeleton = useCallback(
-    () => (
-      <View
-        className="min-h-[210px] w-full flex-col"
-        style={{ width: itemWidth, marginRight: itemSpacing }}
-      >
-        <View
-          className="mb-2 w-full rounded-xl bg-gray-200 dark:bg-gray-700"
-          style={{ height: 120 }}
-        />
-        <View className="mb-2 h-4 rounded bg-gray-200 dark:bg-gray-700" />
-        <View className="h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
-      </View>
-    ),
-    [itemWidth, itemSpacing],
-  )
+  const useScrollView = relatedProductsData.length <= USE_SCROLLVIEW_THRESHOLD
 
   if (!relatedProductsData || relatedProductsData.length === 0) {
     if (isLoading) {
+      const skeletonCount = 6
       return (
         <View className="mt-4 w-full px-4">
           <Text className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
             {t('menu.relatedProducts', 'Sản phẩm liên quan')}
           </Text>
-          <FlatList
-            data={[...Array(6).keys()]}
+          <ScrollView
             horizontal
-            initialNumToRender={2}
-            maxToRenderPerBatch={1}
-            windowSize={3}
-            removeClippedSubviews
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(_, index) => `skeleton-${index}`}
-            renderItem={renderSkeleton}
             contentContainerStyle={{ paddingHorizontal: 4 }}
-            getItemLayout={(_, index) => ({
-              length: itemLength,
-              offset: itemLength * index,
-              index,
-            })}
-          />
+          >
+            {Array.from({ length: skeletonCount }, (_, index) => index).map((index) => (
+              <View
+                key={`skeleton-${index}`}
+                className="min-h-[210px] w-full flex-col"
+                style={{ width: itemWidth, marginRight: itemSpacing }}
+              >
+                <View
+                  className="mb-2 w-full rounded-xl bg-gray-200 dark:bg-gray-700"
+                  style={{ height: 120 }}
+                />
+                <View className="mb-2 h-4 rounded bg-gray-200 dark:bg-gray-700" />
+                <View className="h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
+              </View>
+            ))}
+          </ScrollView>
         </View>
       )
     }
     return null
   }
 
-  return (
-    <View
-      className="mt-4 w-full px-4"
-      {...(Platform.OS === 'android' && {
-        renderToHardwareTextureAndroid: true,
-      })}
+  const listContent = useScrollView ? (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 4 }}
     >
+      {relatedProductsData.map((item) => (
+        <RelatedProductItem
+          key={item.slug}
+          item={item}
+          itemWidth={itemWidth}
+          itemSpacing={itemSpacing}
+          onPress={handleItemPress}
+          onPressIn={handlePressIn}
+          t={t}
+        />
+      ))}
+    </ScrollView>
+  ) : (
+    <FlatList
+      data={relatedProductsData}
+      horizontal
+      initialNumToRender={2}
+      maxToRenderPerBatch={1}
+      windowSize={3}
+      removeClippedSubviews={true}
+      getItemLayout={getItemLayout}
+      showsHorizontalScrollIndicator={false}
+      keyExtractor={(item) => item.slug}
+      renderItem={renderItem}
+      contentContainerStyle={{ paddingHorizontal: 4 }}
+    />
+  )
+
+  return (
+    <View className="mt-4 w-full px-4">
       <Text className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
         {t('menu.relatedProducts', 'Sản phẩm liên quan')}
       </Text>
-      <FlatList
-        data={relatedProductsData}
-        horizontal
-        initialNumToRender={2}
-        maxToRenderPerBatch={1}
-        windowSize={3}
-        removeClippedSubviews={true}
-        getItemLayout={getItemLayout}
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.slug}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingHorizontal: 4 }}
-      />
+      {listContent}
     </View>
   )
 }

@@ -22,6 +22,11 @@ const deviceLanguage = normalizeLanguage(
   interpolation: {
     escapeValue: false,
   },
+  react: {
+    // Chỉ re-render khi đổi ngôn ngữ — tránh re-render do store/loaded events
+    bindI18n: 'languageChanged',
+    bindI18nStore: '',
+  },
 })
 
 export default i18n

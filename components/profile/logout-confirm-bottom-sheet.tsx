@@ -26,13 +26,58 @@ let sheetRef: BottomSheet | null = null
 let openCallback: (() => void) | null = null
 let isComponentMounted = false
 
+const LogoutConfirmBottomSheetContent = memo(
+  function LogoutConfirmBottomSheetContent({
+    onCancel,
+    onConfirm,
+  }: {
+    onCancel: () => void
+    onConfirm: () => void
+    isDark: boolean
+  }) {
+    const { t } = useTranslation('auth')
+    const { t: tCommon } = useTranslation('common')
+    return (
+      <View className="px-4 pb-5 pt-2">
+        <Text className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-50">
+          {t('logout.title', 'Đăng xuất')}
+        </Text>
+        <Text className="mb-6 text-sm text-gray-500 dark:text-gray-400">
+          {t('logout.description', 'Bạn có chắc chắn muốn đăng xuất không?')}
+        </Text>
+
+        <View className="flex-row gap-3">
+          <TouchableOpacity
+            onPress={onCancel}
+            className="flex-1 items-center justify-center rounded-full border border-gray-300 bg-white py-3 dark:border-gray-600 dark:bg-gray-900"
+            activeOpacity={0.8}
+          >
+            <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              {tCommon('common.cancel', 'Huỷ')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onConfirm}
+            className="flex-1 items-center justify-center rounded-full py-3"
+            activeOpacity={0.8}
+            style={{ backgroundColor: '#EF4444' }}
+          >
+            <Text className="text-sm font-semibold text-white">
+              {t('logout.logout', 'Đăng xuất')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  },
+)
+
 type Props = {
   onConfirm: () => void
 }
 
 const LogoutConfirmBottomSheetBase = ({ onConfirm }: Props) => {
-  const { t } = useTranslation('auth')
-  const { t: tCommon } = useTranslation('common')
   const isDark = useColorScheme() === 'dark'
   const bottomSheetRef = useRef<BottomSheet>(null)
   const [shouldOpen, setShouldOpen] = useState(false)
@@ -63,15 +108,11 @@ const LogoutConfirmBottomSheetBase = ({ onConfirm }: Props) => {
     }, 300)
 
     return () => {
+      isComponentMounted = false
+      sheetRef = null
+      openCallback = null
       clearTimeout(timeoutId1)
       clearTimeout(timeoutId2)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (bottomSheetRef.current && isComponentMounted) {
-      sheetRef = bottomSheetRef.current
-      openCallback = () => setShouldOpen(true)
     }
   }, [])
 
@@ -149,6 +190,17 @@ const LogoutConfirmBottomSheetBase = ({ onConfirm }: Props) => {
     onConfirm()
   }, [close, onConfirm])
 
+  const content = useMemo(
+    () => (
+      <LogoutConfirmBottomSheetContent
+        onCancel={close}
+        onConfirm={handleConfirm}
+        isDark={isDark}
+      />
+    ),
+    [close, handleConfirm, isDark],
+  )
+
   return (
     <View style={styles.overlay} pointerEvents="box-none">
       <BottomSheet
@@ -165,37 +217,7 @@ const LogoutConfirmBottomSheetBase = ({ onConfirm }: Props) => {
         }}
         containerStyle={styles.container}
       >
-        <View className="px-4 pb-5 pt-2">
-          <Text className="mb-2 text-base font-semibold text-gray-900 dark:text-gray-50">
-            {t('logout.title', 'Đăng xuất')}
-          </Text>
-          <Text className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-            {t('logout.description', 'Bạn có chắc chắn muốn đăng xuất không?')}
-          </Text>
-
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              onPress={close}
-              className="flex-1 items-center justify-center rounded-full border border-gray-300 bg-white py-3 dark:border-gray-600 dark:bg-gray-900"
-              activeOpacity={0.8}
-            >
-              <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                {tCommon('common.cancel', 'Huỷ')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleConfirm}
-              className="flex-1 items-center justify-center rounded-full py-3"
-              activeOpacity={0.8}
-              style={{ backgroundColor: '#EF4444' }}
-            >
-              <Text className="text-sm font-semibold text-white">
-                {t('logout.logout', 'Đăng xuất')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {content}
       </BottomSheet>
     </View>
   )
@@ -205,9 +227,10 @@ LogoutConfirmBottomSheetBase.displayName = 'LogoutConfirmBottomSheet'
 
 const MemoizedLogoutConfirmBottomSheet = memo(LogoutConfirmBottomSheetBase)
 
-type LogoutConfirmBottomSheetComponent = typeof MemoizedLogoutConfirmBottomSheet & {
-  open: () => void
-}
+type LogoutConfirmBottomSheetComponent =
+  typeof MemoizedLogoutConfirmBottomSheet & {
+    open: () => void
+  }
 
 const LogoutConfirmBottomSheetTyped =
   MemoizedLogoutConfirmBottomSheet as LogoutConfirmBottomSheetComponent

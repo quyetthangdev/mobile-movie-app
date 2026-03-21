@@ -5,9 +5,15 @@ import { Text, TouchableOpacity, useColorScheme } from 'react-native'
 import { cn } from '@/lib/utils'
 import { useOrderFlowStore } from '@/stores'
 import { OrderTypeEnum } from '@/types'
+
 import TableSelectSheet from './table-select-sheet'
 
-export default function TableSelect() {
+interface TableSelectProps {
+  /** Gọi trước open() — hook phụ (analytics, v.v.) */
+  onBeforeOpen?: () => void
+}
+
+export default function TableSelect({ onBeforeOpen }: TableSelectProps) {
   const { t } = useTranslation('table')
   const isDark = useColorScheme() === 'dark'
 
@@ -24,7 +30,11 @@ export default function TableSelect() {
   // TAKE OUT không chọn bàn
   if (cartType === OrderTypeEnum.TAKE_OUT) return null
 
-  const handlePress = () => TableSelectSheet.open()
+  const handlePress = () => {
+    onBeforeOpen?.()
+    const sheet = TableSelectSheet as { open?: () => void }
+    if (typeof sheet.open === 'function') sheet.open()
+  }
 
   return (
     <TouchableOpacity

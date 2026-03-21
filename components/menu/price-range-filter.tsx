@@ -1,18 +1,22 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
   useColorScheme,
 } from 'react-native'
-import { useShallow } from 'zustand/react/shallow'
 
 import { Drawer } from '@/components/ui'
 import { FILTER_VALUE } from '@/constants'
-import { useMenuFilterStore } from '@/stores'
-import { useBranchSlug } from '@/stores/selectors'
+import {
+  useBranchSlug,
+  useMinPriceFilter,
+  useMaxPriceFilter,
+  useSetMenuFilter,
+} from '@/stores/selectors'
 import { formatCurrency, formatCurrencyWithSymbol } from '@/utils'
 import { Filter } from 'lucide-react-native'
 import DualRangeSlider from './dual-range-slider'
@@ -20,13 +24,9 @@ import DualRangeSlider from './dual-range-slider'
 export default function PriceRangeFilter() {
   const { t } = useTranslation(['menu'])
   const branchSlug = useBranchSlug()
-  const { minPrice, maxPrice, setMenuFilter } = useMenuFilterStore(
-    useShallow((s) => ({
-      minPrice: s.menuFilter.minPrice,
-      maxPrice: s.menuFilter.maxPrice,
-      setMenuFilter: s.setMenuFilter,
-    })),
-  )
+  const minPrice = useMinPriceFilter()
+  const maxPrice = useMaxPriceFilter()
+  const setMenuFilter = useSetMenuFilter()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   // Primary color from CSS variables
@@ -35,7 +35,38 @@ export default function PriceRangeFilter() {
   const primaryColor = isDark ? '#D68910' : '#F7A737'
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  
+
+  const dynamicStyles = useMemo(
+    () => ({
+      currencySuffix: {
+        position: 'absolute' as const,
+        right: 10,
+        bottom: 8,
+        color: isDark ? '#9ca3af' : '#6b7280',
+        fontSize: 12,
+        fontWeight: '500' as const,
+      },
+      presetActive: {
+        borderColor: isDark ? 'rgba(214, 137, 16, 0.5)' : 'rgba(247, 167, 55, 0.5)',
+        backgroundColor: primaryColor,
+      },
+      presetInactive: {
+        borderColor: undefined,
+        backgroundColor: 'transparent' as const,
+      },
+      presetTextActive: { color: primaryColor },
+      applyButton: {
+        backgroundColor: primaryColor,
+        shadowColor: primaryColor,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3,
+        elevation: 3,
+      },
+    }),
+    [isDark, primaryColor],
+  )
+
   // Calculate formatted values
   const minPriceFormatted = formatCurrencyWithSymbol(minPrice ?? FILTER_VALUE.MIN_PRICE, false)
   const maxPriceFormatted = formatCurrencyWithSymbol(maxPrice ?? FILTER_VALUE.MAX_PRICE, false)
@@ -194,21 +225,10 @@ export default function PriceRangeFilter() {
                   onChangeText={handleMinPriceInputChange}
                   placeholder="0"
                   className="w-full h-11 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white px-3 pr-9"
-                  style={{ fontSize: 14, fontWeight: '500' }}
+                  style={styles.inputText}
                   placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
                 />
-                <Text
-                  style={{
-                    position: 'absolute',
-                    right: 10,
-                    bottom: 8,
-                    color: isDark ? '#9ca3af' : '#6b7280',
-                    fontSize: 12,
-                    fontWeight: '500',
-                  }}
-                >
-                  đ
-                </Text>
+                <Text style={dynamicStyles.currencySuffix}>đ</Text>
               </View>
 
               <View className="pt-6">
@@ -225,21 +245,10 @@ export default function PriceRangeFilter() {
                   onChangeText={handleMaxPriceInputChange}
                   placeholder="0"
                   className="w-full h-11 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white px-3 pr-9"
-                  style={{ fontSize: 14, fontWeight: '500' }}
+                  style={styles.inputText}
                   placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
                 />
-                <Text
-                  style={{
-                    position: 'absolute',
-                    right: 10,
-                    bottom: 8,
-                    color: isDark ? '#9ca3af' : '#6b7280',
-                    fontSize: 12,
-                    fontWeight: '500',
-                  }}
-                >
-                  đ
-                </Text>
+                <Text style={dynamicStyles.currencySuffix}>đ</Text>
               </View>
             </View>
           </View>
@@ -250,40 +259,26 @@ export default function PriceRangeFilter() {
               {t('menu.quickSelect', 'Chọn nhanh')}
             </Text>
             <View className="flex-row flex-wrap gap-2">
-              {presets.map((preset) => (
-                <TouchableOpacity
-                  key={preset.label}
-                  onPress={() => handlePresetClick(preset.min, preset.max)}
-                  className={`px-3.5 py-2.5 rounded-lg border ${
-                    isPresetActive(preset.min, preset.max)
-                      ? 'border-primary dark:border-primary'
-                      : 'border-gray-200 dark:border-gray-600'
-                  } active:opacity-70`}
-                  style={{
-                    borderColor: isPresetActive(preset.min, preset.max)
-                      ? isDark
-                        ? 'rgba(214, 137, 16, 0.5)'
-                        : 'rgba(247, 167, 55, 0.5)'
-                      : undefined,
-                    backgroundColor: isPresetActive(preset.min, preset.max) ? primaryColor : 'transparent',
-                  }}
-                >
-                  <Text
-                    className={`text-xs ${
-                      isPresetActive(preset.min, preset.max)
-                        ? 'font-semibold'
-                        : 'text-gray-900 dark:text-white font-medium'
-                    }`}
-                    style={{
-                      color: isPresetActive(preset.min, preset.max)
-                        ? primaryColor
-                        : undefined,
-                    }}
+              {presets.map((preset) => {
+                const active = isPresetActive(preset.min, preset.max)
+                return (
+                  <TouchableOpacity
+                    key={preset.label}
+                    onPress={() => handlePresetClick(preset.min, preset.max)}
+                    className={`px-3.5 py-2.5 rounded-lg border ${
+                      active ? 'border-primary dark:border-primary' : 'border-gray-200 dark:border-gray-600'
+                    } active:opacity-70`}
+                    style={active ? dynamicStyles.presetActive : dynamicStyles.presetInactive}
                   >
-                    {preset.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      className={`text-xs ${active ? 'font-semibold' : 'text-gray-900 dark:text-white font-medium'}`}
+                      style={active ? dynamicStyles.presetTextActive : undefined}
+                    >
+                      {preset.label}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
           </View>
 
@@ -301,14 +296,7 @@ export default function PriceRangeFilter() {
               <TouchableOpacity
                 onPress={handleApply}
                 className="flex-1 px-4 py-3 rounded-lg items-center justify-center"
-                style={{
-                  backgroundColor: primaryColor,
-                  shadowColor: primaryColor,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 3,
-                  elevation: 3,
-                }}
+                style={dynamicStyles.applyButton}
               >
                 <Text className="text-white font-bold text-sm">
                   {t('menu.apply', 'Áp dụng')}
@@ -321,3 +309,10 @@ export default function PriceRangeFilter() {
     </Drawer>
   )
 }
+
+const styles = StyleSheet.create({
+  inputText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+})

@@ -4,13 +4,7 @@ import BottomSheet, {
   BottomSheetFlatList,
 } from '@gorhom/bottom-sheet'
 import { ShoppingBag } from 'lucide-react-native'
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 
@@ -21,17 +15,27 @@ import { cn } from '@/lib/utils'
 let sheetRef: BottomSheet | null = null
 let openCallback: (() => void) | null = null
 let isComponentMounted = false
+const openRetryTimeoutIds: ReturnType<typeof setTimeout>[] = []
+
+function clearOrderTypeOpenRetries() {
+  openRetryTimeoutIds.forEach((id) => clearTimeout(id))
+  openRetryTimeoutIds.length = 0
+}
 
 interface OrderTypeSheetProps {
   /** B2: Khi false, không fetch feature flags — defer đến khi cần. */
   fetchEnabled?: boolean
+  /** Gọi khi sheet đóng (index -1) — dùng cho single-active-sheet pattern. */
+  onClose?: () => void
 }
 
-function OrderTypeSheet({ fetchEnabled = true }: OrderTypeSheetProps) {
+function OrderTypeSheet({ fetchEnabled = true, onClose }: OrderTypeSheetProps) {
   const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
   const bottomSheetRef = useRef<BottomSheet>(null)
-  const { orderTypes, selectedType, handleChange } = useOrderTypeOptions({ enabled: fetchEnabled })
+  const { orderTypes, selectedType, handleChange } = useOrderTypeOptions({
+    enabled: fetchEnabled,
+  })
   const [shouldOpen, setShouldOpen] = useState(false)
   const [_isOpen, setIsOpen] = useState(false)
 
@@ -86,14 +90,15 @@ function OrderTypeSheet({ fetchEnabled = true }: OrderTypeSheetProps) {
       setIsOpen(index >= 0)
 
       if (index < 0) {
-        // Đóng sheet → reset shouldOpen
+        clearOrderTypeOpenRetries()
         setShouldOpen(false)
+        onClose?.()
       } else if (index >= 0 && shouldOpen) {
         // Vừa mở thành công → reset cờ shouldOpen
         setShouldOpen(false)
       }
     },
-    [shouldOpen],
+    [shouldOpen, onClose],
   )
 
   // Handle shouldOpen state change — mở sheet với retry giống VoucherListDrawer
@@ -158,60 +163,71 @@ function OrderTypeSheet({ fetchEnabled = true }: OrderTypeSheetProps) {
     value: string
   }
 
-  const renderItem = ({ item }: { item: OrderTypeItem }) => {
-    const isSelected = selectedType?.value === item.value
-    return (
-      <TouchableOpacity
-        onPress={() => {
-          handleChange(item.value)
-          bottomSheetRef.current?.close()
-        }}
-        className={cn(
-          'mx-3 my-2 flex-row items-center gap-3 rounded-xl px-4 py-3',
-          '',
-          isSelected
-            ? 'border border-primary/60 bg-primary/5'
-            : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900',
-        )}
-      >
-        {/* Icon đầu option */}
-        <View
+  const keyExtractor = useCallback((item: OrderTypeItem) => item.value, [])
+
+  const renderItem = useCallback(
+    ({ item }: { item: OrderTypeItem }) => {
+      const isSelected = selectedType?.value === item.value
+      return (
+        <TouchableOpacity
+          onPress={() => {
+            handleChange(item.value)
+            bottomSheetRef.current?.close()
+          }}
           className={cn(
-            'h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800',
-            isSelected ? 'bg-primary/10' : 'bg-gray-100 dark:bg-gray-800',
+            'mx-3 my-2 flex-row items-center gap-3 rounded-xl px-4 py-3',
+            '',
+            isSelected
+              ? 'border border-primary/60 bg-primary/5'
+              : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900',
           )}
         >
-          <ShoppingBag
-            size={18}
-            color={
-              isSelected ? colors.primary.light : colors.mutedForeground.light
-            }
-          />
-        </View>
-
-        <View className="flex-1 flex-row items-center justify-between">
-          <Text
-            numberOfLines={1}
+          {/* Icon đầu option */}
+          <View
             className={cn(
-              'flex-1 text-sm font-medium',
-              isSelected
-                ? 'text-primary dark:text-primary'
-                : 'text-gray-900 dark:text-gray-50',
+              'h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800',
+              isSelected ? 'bg-primary/10' : 'bg-gray-100 dark:bg-gray-800',
             )}
           >
-            {item.label}
-          </Text>
-          {isSelected && (
-            <View className="ml-2 h-6 items-center justify-center rounded-full bg-primary/10 px-3">
-              <Text className="text-xs font-semibold text-primary dark:text-primary">
-                ✓
-              </Text>
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
-    )
-  }
+            <ShoppingBag
+              size={18}
+              color={
+                isSelected ? colors.primary.light : colors.mutedForeground.light
+              }
+            />
+          </View>
+
+          <View className="flex-1 flex-row items-center justify-between">
+            <Text
+              numberOfLines={1}
+              className={cn(
+                'flex-1 text-sm font-medium',
+                isSelected
+                  ? 'text-primary dark:text-primary'
+                  : 'text-gray-900 dark:text-gray-50',
+              )}
+            >
+              {item.label}
+            </Text>
+            {isSelected && (
+              <View className="ml-2 h-6 items-center justify-center rounded-full bg-primary/10 px-3">
+                <Text className="text-xs font-semibold text-primary dark:text-primary">
+                  ✓
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      )
+    },
+    [handleChange, selectedType?.value],
+  )
+
+  const backgroundStyle = useMemo(
+    () => ({ backgroundColor: isDark ? '#111827' : '#ffffff' }),
+    [isDark],
+  )
+  const containerStyle = useMemo(() => ({ zIndex: 9999, elevation: 9999 }), [])
 
   return (
     <BottomSheet
@@ -224,13 +240,8 @@ function OrderTypeSheet({ fetchEnabled = true }: OrderTypeSheetProps) {
       enableDynamicSizing={false}
       backdropComponent={renderBackdrop}
       android_keyboardInputMode="adjustResize"
-      backgroundStyle={{
-        backgroundColor: isDark ? '#111827' : '#ffffff',
-      }}
-      containerStyle={{
-        zIndex: 9999,
-        elevation: 9999,
-      }}
+      backgroundStyle={backgroundStyle}
+      containerStyle={containerStyle}
     >
       <View className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         <Text className="text-base font-semibold text-gray-900 dark:text-gray-50">
@@ -240,7 +251,7 @@ function OrderTypeSheet({ fetchEnabled = true }: OrderTypeSheetProps) {
 
       <BottomSheetFlatList
         data={orderTypes}
-        keyExtractor={(item: OrderTypeItem) => item.value}
+        keyExtractor={keyExtractor}
         renderItem={renderItem}
         ListEmptyComponent={
           <View className="items-center px-4 py-8">
@@ -257,8 +268,10 @@ function OrderTypeSheet({ fetchEnabled = true }: OrderTypeSheetProps) {
 // Hàm helper mở sheet với retry logic (export để dùng ở component khác)
 export function openOrderTypeSheet() {
   if (openCallback) {
+    clearOrderTypeOpenRetries()
     openCallback()
   } else if (sheetRef) {
+    clearOrderTypeOpenRetries()
     try {
       sheetRef.snapToIndex(0)
     } catch (error) {
@@ -272,13 +285,16 @@ export function openOrderTypeSheet() {
       '[OrderTypeSheet.open] Both sheetRef and openCallback are null, retrying with multiple attempts...',
     )
 
+    clearOrderTypeOpenRetries()
     const attempts = [100, 200, 300, 500, 1000]
     attempts.forEach((delay, index) => {
-      setTimeout(() => {
+      const id = setTimeout(() => {
         if (openCallback) {
+          clearOrderTypeOpenRetries()
           openCallback()
         } else if (sheetRef) {
           try {
+            clearOrderTypeOpenRetries()
             sheetRef.snapToIndex(0)
           } catch (error) {
             // eslint-disable-next-line no-console
@@ -294,6 +310,7 @@ export function openOrderTypeSheet() {
           )
         }
       }, delay)
+      openRetryTimeoutIds.push(id)
     })
   }
 }

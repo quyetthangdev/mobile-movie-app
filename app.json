@@ -67,7 +67,8 @@
           "savePhotosPermission": "Cho phép ứng dụng lưu ảnh vào thư viện.",
           "isAccessMediaLocationEnabled": false
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true

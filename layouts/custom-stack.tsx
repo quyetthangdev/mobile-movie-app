@@ -24,7 +24,7 @@ import {
 import { withLayoutContext } from 'expo-router'
 import { Platform } from 'react-native'
 
-import { MOTION, colors } from '@/constants'
+import { colors } from '@/constants'
 
 const { Navigator } = createNativeStackNavigator()
 
@@ -38,7 +38,7 @@ export const CustomStack = withLayoutContext<
 export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   animation: 'simple_push',
-  animationDuration: MOTION.nativeStack.durationMs,
+  animationDuration: 250,
   animationTypeForReplace: 'push',
   presentation: 'card',
   contentStyle: { backgroundColor: colors.background.light },
@@ -48,18 +48,14 @@ export const nativeStackScreenOptions: NativeStackNavigationOptions = {
 }
 
 /**
- * Profile: slide_from_right + animationDuration dài hơn → pha cuối chậm, êm.
+ * Profile: slide_from_right + animationDuration 250ms (snappy).
  * fullScreenGestureEnabled: true — vuốt đóng có quán tính hãm phanh đồng bộ.
  * Header: headerShown: false (màn tự custom header). Bật headerShown: true nếu cần header native.
  */
 export const profileNativeStackScreenOptions: NativeStackNavigationOptions = {
   ...nativeStackScreenOptions,
   animation: 'slide_from_right',
-  /**
-   * Duration vừa phải (~380ms) giống profile placeholder test trước đó:
-   * đủ để cảm nhận hãm phanh nhưng không tạo cảm giác delay.
-   */
-  animationDuration: 380,
+  animationDuration: 250,
   /**
    * Giữ gesture toàn màn + animation bám theo ngón tay để cảm giác kéo-thả như Telegram.
    */

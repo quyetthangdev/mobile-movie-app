@@ -1,3 +1,6 @@
+export { CartHeaderBlur, useCartHeaderHeight } from './cart-header-blur'
+export { CartList } from './cart-list'
+export { CartOrderNoteInput } from './cart-order-note-input'
 export { default as CartItemQuantityControl } from './cart-item-quantity-control'
 export { default as CartSkeleton } from './cart-skeleton'
 export { default as OrderNoteInput } from './order-note-input'

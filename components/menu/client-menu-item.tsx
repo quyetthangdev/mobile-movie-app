@@ -14,6 +14,7 @@ import { MenuItemQuantityControl } from './menu-item-quantity-control'
 
 interface IClientMenuItemProps {
   item: IMenuItem
+  onAddToCart?: (item: IMenuItem) => void
 }
 
 function getMinPrice(variants: IProduct['variants']): number | null {
@@ -25,6 +26,7 @@ function clientMenuItemAreEqual(
   prev: Readonly<IClientMenuItemProps>,
   next: Readonly<IClientMenuItemProps>,
 ): boolean {
+  if (prev.onAddToCart !== next.onAddToCart) return false
   const a = prev.item
   const b = next.item
   return (
@@ -42,7 +44,7 @@ function clientMenuItemAreEqual(
  * ClientMenuItem — Chỉ chứa hình ảnh, tên, giá (tĩnh).
  * Không subscribe store. MenuItemQuantityControl xử lý quantity + Add to cart.
  */
-export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClientMenuItemProps) {
+export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddToCart }: IClientMenuItemProps) {
   const { t } = useTranslation('menu')
   const prefetchMenuItem = usePressInPrefetchMenuItem()
   const isMobile = useIsMobile()
@@ -56,8 +58,9 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
     if (!base) return null
     return `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
   }, [item.product.image])
-  const getPriceRange = (variants: IProduct['variants']) => {
-    if (!variants || variants.length === 0) return null
+  const priceRange = useMemo(() => {
+    const variants = item.product.variants
+    if (!variants?.length) return null
     const prices = variants.map((v) => v.price)
     const minPrice = Math.min(...prices)
     const maxPrice = Math.max(...prices)
@@ -66,12 +69,11 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
       max: maxPrice,
       isSinglePrice: minPrice === maxPrice,
     }
-  }
+  }, [item.product.variants])
 
   const currentStock = item.currentStock ?? 0
   const defaultStock = item.defaultStock ?? 0
   const hasStock = !item.isLocked && (currentStock > 0 || !item.product.isLimit)
-  const priceRange = getPriceRange(item.product.variants)
   const hasPromotion = item.promotion && item.promotion.value > 0
 
   return (
@@ -106,6 +108,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
               source={{ uri: imageUrl }}
               contentFit="cover"
               cachePolicy="memory-disk"
+              recyclingKey={item.slug}
               style={{ width: '100%', height: '100%', borderRadius: 12 }}
             />
           ) : (
@@ -187,7 +190,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
               </View>
             )}
             <View>
-              <MenuItemQuantityControl item={item} hasStock={hasStock} isMobile={true} />
+              <MenuItemQuantityControl item={item} hasStock={hasStock} isMobile={true} onAddToCart={onAddToCart} />
             </View>
           </View>
         ) : (
@@ -225,7 +228,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item }: IClie
       {/* Desktop: Add to Cart / Quantity */}
       {!isMobile && (
         <View className="flex justify-end items-end p-2 sm:w-full">
-          <MenuItemQuantityControl item={item} hasStock={hasStock} isMobile={false} />
+          <MenuItemQuantityControl item={item} hasStock={hasStock} isMobile={false} onAddToCart={onAddToCart} />
         </View>
       )}
     </View>

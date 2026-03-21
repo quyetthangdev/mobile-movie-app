@@ -106,33 +106,38 @@ export const setupAutoClearCart = async (): Promise<void> => {
   }
 }
 
+/** Set lookup O(1) thay vì Array.includes O(m) — giảm isVoucherApplicable từ O(n*m) xuống O(n+m) */
+function getRequiredSlugsSet(voucher: IVoucher): Set<string> {
+  const slugs = voucher.voucherProducts?.map((vp) => vp.product?.slug ?? '') ?? []
+  return new Set(slugs.filter(Boolean))
+}
+
 function isVoucherApplicable(cartItems: ICartItem, voucher: IVoucher): boolean {
   if (!cartItems?.orderItems || cartItems.orderItems.length === 0) {
     return false // Không có sản phẩm → không áp dụng
   }
 
-  // Lấy slug sản phẩm trong giỏ
-  const cartSlugs = cartItems.orderItems.map((item) => item.slug ?? '')
-
-  // Lấy slug sản phẩm mà voucher áp dụng
-  const requiredSlugs =
-    voucher.voucherProducts?.map((vp) => vp.product?.slug ?? '') || []
+  const requiredSlugsSet = getRequiredSlugsSet(voucher)
 
   // Nếu voucher không giới hạn sản phẩm nào → áp dụng cho tất cả
-  if (requiredSlugs.length === 0) {
+  if (requiredSlugsSet.size === 0) {
     return checkMinOrderValue(cartItems, voucher)
   }
 
-  // Kiểm tra theo rule
+  const orderItems = cartItems.orderItems
+
+  // Kiểm tra theo rule — O(n) với Set.has thay vì O(n*m) với Array.includes
   if (voucher.applicabilityRule === APPLICABILITY_RULE.ALL_REQUIRED) {
-    // Tất cả sản phẩm trong giỏ phải nằm trong voucherProducts
-    const allInVoucher = cartSlugs.every((slug) => requiredSlugs.includes(slug))
+    const allInVoucher = orderItems.every(
+      (item) => requiredSlugsSet.has(item.slug ?? ''),
+    )
     if (!allInVoucher) return false
   }
 
   if (voucher.applicabilityRule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED) {
-    // Ít nhất một sản phẩm trong giỏ nằm trong voucherProducts
-    const hasAtLeastOne = cartSlugs.some((slug) => requiredSlugs.includes(slug))
+    const hasAtLeastOne = orderItems.some((item) =>
+      requiredSlugsSet.has(item.slug ?? ''),
+    )
     if (!hasAtLeastOne) return false
   }
 
@@ -159,24 +164,24 @@ function isVoucherApplicableFromOrderDetails(
 ): boolean {
   if (!orderItems || orderItems.length === 0) return false
 
-  const cartSlugs = orderItems.map((item) => item.variant?.product?.slug ?? '')
-  const requiredSlugs =
-    voucher.voucherProducts?.map((vp) => vp.product?.slug ?? '') || []
+  const requiredSlugsSet = getRequiredSlugsSet(voucher)
 
   // Nếu voucher áp dụng cho tất cả sản phẩm
-  if (requiredSlugs.length === 0) {
+  if (requiredSlugsSet.size === 0) {
     return true
   }
 
   if (voucher.applicabilityRule === APPLICABILITY_RULE.ALL_REQUIRED) {
-    // Tất cả sản phẩm trong giỏ phải nằm trong voucherProducts
-    const allInVoucher = cartSlugs.every((slug) => requiredSlugs.includes(slug))
+    const allInVoucher = orderItems.every((item) =>
+      requiredSlugsSet.has(item.variant?.product?.slug ?? ''),
+    )
     return allInVoucher
   }
 
   if (voucher.applicabilityRule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED) {
-    // Ít nhất một sản phẩm trong giỏ nằm trong voucherProducts
-    const hasAtLeastOne = cartSlugs.some((slug) => requiredSlugs.includes(slug))
+    const hasAtLeastOne = orderItems.some((item) =>
+      requiredSlugsSet.has(item.variant?.product?.slug ?? ''),
+    )
     return hasAtLeastOne
   }
   return false
@@ -195,8 +200,10 @@ export function calculateCartItemDisplay(
   const type = voucher?.type
   const orderItems = cartItems.orderItems
 
-  const inVoucherList = (item: IOrderItem) =>
-    voucher?.voucherProducts?.some((vp) => vp.product?.slug === item.slug)
+  // Precompute Set O(m) — tránh O(n*m) khi gọi .some() cho từng item
+  const eligibleSlugsSet = voucher
+    ? getRequiredSlugsSet(voucher)
+    : (new Set() as Set<string>)
 
   return orderItems.map((item) => {
     const original = item.originalPrice ?? 0
@@ -207,7 +214,7 @@ export function calculateCartItemDisplay(
       Math.round(original * ((item.promotionValue || 0) / 100))
 
     const priceAfterPromotion = Math.max(0, original - promotionDiscount)
-    const isEligible = inVoucherList(item)
+    const isEligible = eligibleSlugsSet.has(item.slug ?? '')
 
     // ===== Không có hoặc voucher không hợp lệ =====
     if (!isVoucherValid || !voucher) {
@@ -332,19 +339,13 @@ export function calculateOrderItemDisplay(
 ): IDisplayOrderItem[] {
   if (!orderItems || orderItems.length === 0) return []
 
-  const voucherProductSlugs =
-    voucher?.voucherProducts?.map((vp) => vp.product?.slug ?? '') || []
+  const eligibleSlugsSet = voucher ? getRequiredSlugsSet(voucher) : new Set<string>()
 
   const isVoucherValid = voucher
     ? isVoucherApplicableFromOrderDetails(orderItems, voucher)
     : false
   const rule = voucher?.applicabilityRule
   const type = voucher?.type
-
-  const inVoucherList = (item: IOrderDetail) => {
-    const slug = item?.variant?.product?.slug ?? ''
-    return voucherProductSlugs.includes(slug)
-  }
 
   return orderItems.map((item) => {
     const original = item.variant?.price ?? 0
@@ -359,7 +360,7 @@ export function calculateOrderItemDisplay(
     }
 
     const priceAfterPromotion = Math.max(0, original - promotionDiscount)
-    const isEligible = inVoucherList(item)
+    const isEligible = eligibleSlugsSet.has(productSlug)
 
     // Default
     let finalPrice = priceAfterPromotion
@@ -511,8 +512,10 @@ export function calculateCartTotals(
   displayItems: IDisplayCartItem[],
   voucher: IVoucher | null,
 ) {
-  const allowedProductSlugs =
-    voucher?.voucherProducts?.map((vp) => vp.product?.slug) || []
+  // T9: Set O(m) thay vì array — tránh O(n*m) khi .includes() trong loop
+  const allowedProductSlugsSet = new Set(
+    voucher?.voucherProducts?.map((vp) => vp.product?.slug).filter(Boolean) ?? [],
+  )
 
   // Tổng giá gốc chưa giảm (native reduce thay lodash — giảm Long Task)
   const subTotalBeforeDiscount = sumBy(
@@ -530,7 +533,7 @@ export function calculateCartTotals(
           voucher?.type === VOUCHER_TYPE.FIXED_VALUE) &&
           voucher?.applicabilityRule ===
             APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED)) &&
-      allowedProductSlugs.includes(item.slug) &&
+      allowedProductSlugsSet.has(item.slug ?? '') &&
       item.voucherDiscount &&
       item.voucherDiscount > 0
 
@@ -554,7 +557,7 @@ export function calculateCartTotals(
     if (type === VOUCHER_TYPE.SAME_PRICE_PRODUCT) {
       // Cộng đúng voucherDiscount từng món hợp lệ
       voucherDiscount = sumBy(displayItems, (item) => {
-        if (allowedProductSlugs.includes(item.slug)) {
+        if (allowedProductSlugsSet.has(item.slug ?? '')) {
           return (item.voucherDiscount || 0) * (item.quantity || 0)
         }
         return 0

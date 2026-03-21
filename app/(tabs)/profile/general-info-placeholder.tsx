@@ -1,8 +1,10 @@
 /**
  * Thông tin cá nhân — UI giống Profile: avatar, 2 nút header, các trường thông tin bên dưới.
  */
-import { LogoutConfirmBottomSheet } from '@/components/profile'
+import { colors } from '@/constants/colors.constant'
 import { useAuthStore, useUserStore } from '@/stores'
+import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
+import { showToast } from '@/utils'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import {
@@ -26,8 +28,6 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { colors } from '@/constants/colors.constant'
-import { showToast } from '@/utils'
 
 const AVATAR_SIZE = 100
 const HEADER_HEIGHT = 240
@@ -78,8 +78,13 @@ function InfoRow({
         <Icon size={18} color="#ffffff" />
       </View>
       <View style={styles.infoContent}>
-        <Text style={[styles.infoLabel, { color: theme.textMuted }]}>{label}</Text>
-        <Text style={[styles.infoValue, { color: theme.text }]} numberOfLines={2}>
+        <Text style={[styles.infoLabel, { color: theme.textMuted }]}>
+          {label}
+        </Text>
+        <Text
+          style={[styles.infoValue, { color: theme.text }]}
+          numberOfLines={2}
+        >
           {value}
         </Text>
       </View>
@@ -101,11 +106,12 @@ export default function GeneralInfoPlaceholder() {
   const setLogout = useAuthStore((state) => state.setLogout)
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
   const handleBack = useCallback(() => router.back(), [router])
-  const handleEdit = useCallback(() => router.push('/(tabs)/profile/edit'), [router])
-  const handleLogoutPress = useCallback(() => {
-    ;(LogoutConfirmBottomSheet as { open: () => void }).open()
-  }, [])
+  const handleEdit = useCallback(
+    () => router.push('/(tabs)/profile/edit'),
+    [router],
+  )
   const isLoggingOutRef = useRef(false)
+  const openLogoutSheet = useLogoutSheetStore((s) => s.open)
 
   const handleLogoutConfirm = useCallback(() => {
     isLoggingOutRef.current = true
@@ -114,6 +120,10 @@ export default function GeneralInfoPlaceholder() {
     router.replace('/(tabs)/home' as never)
     showToast(tToast('logoutSuccess', 'Đăng xuất thành công'))
   }, [removeUserInfo, router, setLogout, tToast])
+
+  const handleLogoutPress = useCallback(() => {
+    openLogoutSheet(handleLogoutConfirm)
+  }, [openLogoutSheet, handleLogoutConfirm])
 
   const initials = useMemo(() => {
     if (!userInfo) return ''
@@ -173,7 +183,9 @@ export default function GeneralInfoPlaceholder() {
               style={[styles.editBtn, { backgroundColor: theme.editBtn }]}
               onPress={handleEdit}
             >
-              <Text style={[styles.editBtnText, { color: theme.text }]}>Sửa</Text>
+              <Text style={[styles.editBtnText, { color: theme.text }]}>
+                Sửa
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -187,18 +199,30 @@ export default function GeneralInfoPlaceholder() {
               height: AVATAR_SIZE,
               left: (screenWidth - AVATAR_SIZE) / 2,
               top: insets.top + 60,
-            }]}
+            },
+          ]}
         >
           {userInfo.image ? (
             <Image
-              source={{ uri: userInfo.image, width: AVATAR_SIZE * 2, height: AVATAR_SIZE * 2 }}
+              source={{
+                uri: userInfo.image,
+                width: AVATAR_SIZE * 2,
+                height: AVATAR_SIZE * 2,
+              }}
               style={styles.avatarImage}
               contentFit="cover"
               cachePolicy="disk"
             />
           ) : (
-            <View style={[styles.avatarFallback, { backgroundColor: theme.avatarFallback }]}>
-              <Text style={[styles.avatarFallbackText, { color: theme.textMuted }]}>
+            <View
+              style={[
+                styles.avatarFallback,
+                { backgroundColor: theme.avatarFallback },
+              ]}
+            >
+              <Text
+                style={[styles.avatarFallbackText, { color: theme.textMuted }]}
+              >
                 {initials || 'U'}
               </Text>
             </View>
@@ -206,16 +230,27 @@ export default function GeneralInfoPlaceholder() {
         </View>
 
         {/* Tên và SĐT dưới avatar */}
-        <View style={[styles.namePhoneWrap, { top: insets.top + 60 + AVATAR_SIZE + 12 }]}>
+        <View
+          style={[
+            styles.namePhoneWrap,
+            { top: insets.top + 60 + AVATAR_SIZE + 12 },
+          ]}
+        >
           <View style={styles.nameRow}>
-            <Text style={[styles.nameText, { color: theme.text }]} numberOfLines={1}>
+            <Text
+              style={[styles.nameText, { color: theme.text }]}
+              numberOfLines={1}
+            >
               {userInfo.firstName} {userInfo.lastName}
             </Text>
             {(userInfo.isVerifiedEmail || userInfo.isVerifiedPhonenumber) && (
               <Shield size={16} color={successColor} fill={successColor} />
             )}
           </View>
-          <Text style={[styles.phoneText, { color: theme.textMuted }]} numberOfLines={1}>
+          <Text
+            style={[styles.phoneText, { color: theme.textMuted }]}
+            numberOfLines={1}
+          >
             {userInfo.phonenumber ||
               t('profile.contactInfo.noPhone', 'Chưa cập nhật số điện thoại')}
           </Text>
@@ -240,7 +275,10 @@ export default function GeneralInfoPlaceholder() {
             icon={UserIcon}
             iconColor={ICON_COLORS.blue}
             label={t('profile.contactInfo.name', 'Họ và tên')}
-            value={`${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim() || t('profile.contactInfo.notUpdated', 'Chưa cập nhật')}
+            value={
+              `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim() ||
+              t('profile.contactInfo.notUpdated', 'Chưa cập nhật')
+            }
             theme={theme}
           />
           <View style={[styles.divider, { backgroundColor: theme.divider }]} />
@@ -249,7 +287,10 @@ export default function GeneralInfoPlaceholder() {
             icon={Phone}
             iconColor={ICON_COLORS.green}
             label={t('profile.contactInfo.phone', 'Số điện thoại')}
-            value={userInfo.phonenumber || t('profile.contactInfo.notUpdated', 'Chưa cập nhật')}
+            value={
+              userInfo.phonenumber ||
+              t('profile.contactInfo.notUpdated', 'Chưa cập nhật')
+            }
             theme={theme}
           />
           <View style={[styles.divider, { backgroundColor: theme.divider }]} />
@@ -258,7 +299,10 @@ export default function GeneralInfoPlaceholder() {
             icon={Mail}
             iconColor={ICON_COLORS.red}
             label={t('profile.contactInfo.email', 'Email')}
-            value={userInfo.email || t('profile.contactInfo.notUpdated', 'Chưa cập nhật')}
+            value={
+              userInfo.email ||
+              t('profile.contactInfo.notUpdated', 'Chưa cập nhật')
+            }
             theme={theme}
           />
           <View style={[styles.divider, { backgroundColor: theme.divider }]} />
@@ -267,7 +311,10 @@ export default function GeneralInfoPlaceholder() {
             icon={MapPin}
             iconColor={ICON_COLORS.blue}
             label={t('profile.contactInfo.address', 'Địa chỉ')}
-            value={userInfo.address || t('profile.contactInfo.notUpdated', 'Chưa cập nhật')}
+            value={
+              userInfo.address ||
+              t('profile.contactInfo.notUpdated', 'Chưa cập nhật')
+            }
             theme={theme}
           />
         </View>
@@ -300,8 +347,6 @@ export default function GeneralInfoPlaceholder() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <LogoutConfirmBottomSheet onConfirm={handleLogoutConfirm} />
     </View>
   )
 }

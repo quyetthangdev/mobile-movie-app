@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import {
   InteractionManager,
   ScrollView,
+  StyleSheet,
   Text,
   View,
   useColorScheme,
@@ -18,7 +19,7 @@ import { NativeGesturePressable } from '@/components/navigation/native-gesture-p
 import { Skeleton } from '@/components/ui'
 import { publicFileURL } from '@/constants'
 import { TAB_ROUTES } from '@/constants/navigation.config'
-import { useRunAfterTransition, useSpecificMenuItem } from '@/hooks'
+import { useOrderFlowAddToCart, useRunAfterTransition, useSpecificMenuItem } from '@/hooks'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { getThemeColor } from '@/lib/utils'
 import type { IMenuItem } from '@/types'
@@ -27,6 +28,7 @@ import { formatCurrency } from '@/utils'
 export default function MenuItemDetailPlaceholder() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
   const { t } = useTranslation('product')
+  const onAddToCart = useOrderFlowAddToCart()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = getThemeColor(isDark).primary
   const masterTransition = useMasterTransitionOptional()
@@ -82,58 +84,28 @@ export default function MenuItemDetailPlaceholder() {
     !allowFetch || !isContentReady || isLoading || !productDetail
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+    <View style={styles.container}>
       {/* Header: back - logo - cart */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: 8,
-        }}
-      >
+      <View style={styles.header}>
         <NativeGesturePressable navigation={{ type: 'back' }} hapticStyle="light">
-          <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: '#e5e7eb',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#ffffff',
-            }}
-          >
+          <View style={styles.iconButton}>
             <ChevronLeft size={18} color="#111827" />
           </View>
         </NativeGesturePressable>
         <ExpoImage
           source={Images.Brand.Logo as unknown as number}
-          style={{ height: 32, width: 112 }}
+          style={styles.logo}
           contentFit="contain"
+          recyclingKey="brand-logo"
         />
         <NativeGesturePressable
           navigation={{
-            type: 'push',
+            type: 'replace',
             href: TAB_ROUTES.CART,
           }}
           hapticStyle="light"
         >
-          <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: '#e5e7eb',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#ffffff',
-            }}
-          >
+          <View style={styles.iconButton}>
             <ShoppingCart size={18} color="#111827" />
             <CartBadge />
           </View>
@@ -141,98 +113,44 @@ export default function MenuItemDetailPlaceholder() {
       </View>
 
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+        <View style={styles.content}>
           {showSkeleton ? (
             <View>
-              <Skeleton
-                style={{
-                  width: '100%',
-                  height: 260,
-                  borderRadius: 16,
-                  marginBottom: 16,
-                }}
-              />
-              <Skeleton
-                style={{
-                  width: '70%',
-                  height: 22,
-                  borderRadius: 6,
-                  marginBottom: 8,
-                }}
-              />
-              <Skeleton
-                style={{
-                  width: 120,
-                  height: 20,
-                  borderRadius: 6,
-                  marginBottom: 16,
-                }}
-              />
-              <Skeleton
-                style={{
-                  width: '90%',
-                  height: 14,
-                  borderRadius: 4,
-                  marginBottom: 8,
-                }}
-              />
-              <Skeleton
-                style={{
-                  width: '80%',
-                  height: 14,
-                  borderRadius: 4,
-                  marginBottom: 24,
-                }}
-              />
-              <View style={{ alignItems: 'flex-end' }}>
-                <Skeleton
-                  style={{ width: 40, height: 40, borderRadius: 20 }}
-                />
+              <Skeleton style={styles.skeletonImage} />
+              <Skeleton style={styles.skeletonTitle} />
+              <Skeleton style={styles.skeletonPrice} />
+              <Skeleton style={styles.skeletonLine1} />
+              <Skeleton style={styles.skeletonLine2} />
+              <View style={styles.skeletonButtonWrap}>
+                <Skeleton style={styles.skeletonButton} />
               </View>
             </View>
           ) : (
             <View>
               {/* Ảnh */}
-              <View
-                style={{
-                  width: '100%',
-                  height: 260,
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  backgroundColor: '#f3f4f6',
-                  marginBottom: 16,
-                }}
-              >
+              <View style={styles.imageContainer}>
                 {imageUrl ? (
                   <ExpoImage
                     source={{ uri: imageUrl }}
-                    style={{ width: '100%', height: '100%' }}
+                    style={styles.image}
                     contentFit="cover"
+                    recyclingKey={slug ?? imageUrl}
                   />
                 ) : (
-                  <View style={{ flex: 1, backgroundColor: '#e5e7eb' }} />
+                  <View style={styles.imagePlaceholder} />
                 )}
               </View>
 
               {/* Tên & giá */}
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{ fontSize: 20, fontWeight: '700', marginBottom: 4 }}
-                  numberOfLines={2}
-                >
+              <View style={styles.titleSection}>
+                <Text style={styles.productName} numberOfLines={2}>
                   {productDetail.product.name}
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '700',
-                    color: primaryColor,
-                  }}
-                >
+                <Text style={[styles.price, { color: primaryColor }]}>
                   {minPrice > 0
                     ? formatCurrency(minPrice)
                     : t('product.contact', 'Liên hệ')}
@@ -242,26 +160,19 @@ export default function MenuItemDetailPlaceholder() {
               {/* Mô tả ngắn */}
               {productDetail.product.description ? (
                 <View>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: '#4b5563',
-                      lineHeight: 20,
-                      marginBottom: 24,
-                    }}
-                    numberOfLines={4}
-                  >
+                  <Text style={styles.description} numberOfLines={4}>
                     {productDetail.product.description}
                   </Text>
                 </View>
               ) : null}
 
               {/* Nút Add to cart */}
-              <View style={{ alignItems: 'flex-end' }}>
+              <View style={styles.addButtonWrap}>
                 <MenuItemQuantityControl
                   item={productDetail as unknown as IMenuItem}
                   hasStock={hasStock}
                   isMobile={true}
+                  onAddToCart={onAddToCart}
                 />
               </View>
             </View>
@@ -271,4 +182,82 @@ export default function MenuItemDetailPlaceholder() {
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f9fafb' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  logo: { height: 32, width: 112 },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingTop: 8 },
+  skeletonImage: {
+    width: '100%',
+    height: 260,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  skeletonTitle: {
+    width: '70%',
+    height: 22,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  skeletonPrice: {
+    width: 120,
+    height: 20,
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  skeletonLine1: {
+    width: '90%',
+    height: 14,
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonLine2: {
+    width: '80%',
+    height: 14,
+    borderRadius: 4,
+    marginBottom: 24,
+  },
+  skeletonButtonWrap: { alignItems: 'flex-end' },
+  skeletonButton: { width: 40, height: 40, borderRadius: 20 },
+  imageContainer: {
+    width: '100%',
+    height: 260,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#f3f4f6',
+    marginBottom: 16,
+  },
+  image: { width: '100%', height: '100%' },
+  imagePlaceholder: { flex: 1, backgroundColor: '#e5e7eb' },
+  titleSection: { marginBottom: 16 },
+  productName: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  price: { fontSize: 18, fontWeight: '700' },
+  description: {
+    fontSize: 14,
+    color: '#4b5563',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  addButtonWrap: { alignItems: 'flex-end' },
+})
 

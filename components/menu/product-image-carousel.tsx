@@ -60,6 +60,7 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
             contentFit="cover"
             cachePolicy="memory-disk"
             priority="normal"
+            recyclingKey={item}
             className="h-full w-full"
           />
         </Pressable>

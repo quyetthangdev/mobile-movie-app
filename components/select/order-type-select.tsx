@@ -10,18 +10,28 @@ import { openOrderTypeSheet } from './order-type-sheet'
 interface OrderTypeSelectProps {
   /** B2: Khi false, không fetch feature flags — defer đến khi cần. */
   fetchEnabled?: boolean
+  /** Gọi trước open() — dùng cho lazy mount: set hasOpenedOrderType để mount OrderTypeSheet */
+  onBeforeOpen?: () => void
 }
 
-export default function OrderTypeSelect({ fetchEnabled = true }: OrderTypeSelectProps) {
+export default function OrderTypeSelect({
+  fetchEnabled = true,
+  onBeforeOpen,
+}: OrderTypeSelectProps) {
   const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
   const { selectedType } = useOrderTypeOptions({ enabled: fetchEnabled })
 
   const selectedOrderTypeLabel = selectedType?.label || null
 
+  const handlePress = () => {
+    onBeforeOpen?.()
+    openOrderTypeSheet()
+  }
+
   return (
     <TouchableOpacity
-      onPress={() => openOrderTypeSheet()}
+      onPress={handlePress}
       className={cn(
         'flex-row items-center gap-2 h-11 px-3 py-2 rounded-md',
         'bg-white dark:bg-gray-800',

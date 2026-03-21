@@ -12,6 +12,9 @@ export const TAB_ROUTES = {
   PROFILE: '/(tabs)/profile',
 } as const
 
+/** Push từ Product Detail (menu stack) — slide, back về chi tiết món. */
+export const MENU_STACK_CART = '/(tabs)/menu/cart' as const
+
 export type TabRouteKey = keyof typeof TAB_ROUTES
 
 /**

@@ -4,7 +4,8 @@ import { navigateNative } from '@/lib/navigation'
 import { IBanner } from '@/types'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { ImageSourcePropType } from 'react-native'
-import { Dimensions, FlatList, Image, Linking, Pressable, View } from 'react-native'
+import { Dimensions, FlatList, Linking, Pressable, View } from 'react-native'
+import { Image } from 'expo-image'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -38,6 +39,8 @@ const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBann
 
   // State for active index (only updated on scroll end, not every frame)
   const [activeIndexState, setActiveIndexState] = useState(0)
+  const activeIndexRef = useRef(0)
+  activeIndexRef.current = activeIndexState
 
   // Helper function to extract pathname from URL
   const extractPathname = useCallback((url: string): string => {
@@ -95,17 +98,18 @@ const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBann
   }, [isInternalRoute, extractPathname])
 
 
-  // Auto-scroll functionality
+  // Auto-scroll functionality — dùng ref để tránh recreate interval mỗi khi activeIndexState đổi
   useEffect(() => {
     if (bannerData.length <= 1) return
 
     const interval = setInterval(() => {
-      const next = activeIndexState + 1 >= bannerData.length ? 0 : activeIndexState + 1
+      const current = activeIndexRef.current
+      const next = current + 1 >= bannerData.length ? 0 : current + 1
       flatListRef.current?.scrollToIndex({ index: next, animated: true })
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [bannerData.length, activeIndexState])
+  }, [bannerData.length])
 
   // Handle scroll end - only update state when scroll completes (not every frame)
   const handleScrollEnd = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
@@ -161,18 +165,18 @@ const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBann
             <Image
               source={imageSource}
               className="w-full h-full"
-              resizeMode="cover"
+              contentFit="cover"
               style={{ opacity: 0.3 }}
               blurRadius={20}
             />
           </View>
 
-          {/* Main image - clear and prominent on top */}
+          {/* Main image - clear and prominent on top (expo-image: cache + memory) */}
           <View className="absolute inset-0 justify-center items-center px-4" style={{ zIndex: 10 }}>
             <Image
               source={imageSource}
               className="w-full h-full"
-              resizeMode="contain"
+              contentFit="contain"
             />
           </View>
         </View>

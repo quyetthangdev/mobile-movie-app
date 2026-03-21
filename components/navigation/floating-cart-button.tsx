@@ -2,23 +2,21 @@ import { ShoppingCart } from 'lucide-react-native'
 import React from 'react'
 import { Text, View } from 'react-native'
 
-import { ROUTE } from '@/constants/route.contstant'
-import { navigateNative } from '@/lib/navigation'
+import { TAB_ROUTES } from '@/constants/navigation.config'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
 
 import { NativeGesturePressable } from './native-gesture-pressable'
 
-type Props = { primaryColor: string; cartHref?: string }
+type Props = { primaryColor: string }
 
 const FloatingCartButton = React.memo(function FloatingCartButton({
   primaryColor,
-  cartHref = ROUTE.CLIENT_CART,
 }: Props) {
   const cartItemCount = useOrderFlowCartItemCount()
 
   return (
     <NativeGesturePressable
-      onPress={() => navigateNative.push(cartHref)}
+      navigation={{ type: 'replace', href: TAB_ROUTES.CART }}
       style={{
         width: 64,
         height: 64,

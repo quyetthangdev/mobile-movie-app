@@ -50,7 +50,7 @@ export const DOT_SCALE_ACTIVE = 1.25
  * @see docs/IMPLEMENTATION_TASKS.md T-401
  */
 export const MOTION = {
-  /** Transition duration — đồng bộ với OPEN_SPEC timing (350ms), navigation-lock, transition-lock */
+  /** Tab transition duration (~200ms) — dùng cho useRunAfterTransition, tab overlay */
   transitionDurationMs: 200,
 
   /** Press scale khi tap (NativeGesturePressable) */

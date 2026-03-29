@@ -220,7 +220,14 @@ export const ProductDetailOptionsSection = React.memo(
           </View>
         )}
 
-        <View style={{ gap: 4, paddingTop: 8 }}>
+        <View
+          style={{
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: isDark ? '#374151' : '#e5e7eb',
+            marginTop: 4,
+          }}
+        />
+        <View style={{ gap: 4, paddingTop: 4 }}>
           <Text style={{ fontSize: 18, fontWeight: '600', color: isDark ? '#f9fafb' : '#111827' }}>
             {descriptionLabel}
           </Text>

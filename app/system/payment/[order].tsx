@@ -1,13 +1,6 @@
-import React from 'react'
-import { Text, View } from 'react-native'
-
-const SystemPayment = () => {
-  return (
-    <View>
-      <Text>SystemPayment</Text>
-    </View>
-  )
-}
-
-export default SystemPayment
-
+/**
+ * System Payment — reuse client payment page.
+ * Staff/admin payment methods (cash, credit card) are already handled
+ * by PaymentMethodRadioGroup based on user role.
+ */
+export { default } from '@/app/payment/[order]'

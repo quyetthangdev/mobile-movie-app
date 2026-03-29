@@ -5,18 +5,19 @@ import { Text, TouchableOpacity, useColorScheme } from 'react-native'
 import { useOrderTypeOptions } from '@/hooks'
 import { cn } from '@/lib/utils'
 
-import { openOrderTypeSheet } from './order-type-sheet'
-
 interface OrderTypeSelectProps {
   /** B2: Khi false, không fetch feature flags — defer đến khi cần. */
   fetchEnabled?: boolean
-  /** Gọi trước open() — dùng cho lazy mount: set hasOpenedOrderType để mount OrderTypeSheet */
+  /** Gọi trước open() — dùng cho lazy mount: set activeSheet để mount OrderTypeSheet */
   onBeforeOpen?: () => void
+  /** true = chỉ gọi onBeforeOpen, không load/open sheet (parent render sheet với openOnMount) */
+  useMountOpen?: boolean
 }
 
 export default function OrderTypeSelect({
   fetchEnabled = true,
   onBeforeOpen,
+  useMountOpen = false,
 }: OrderTypeSelectProps) {
   const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
@@ -26,7 +27,8 @@ export default function OrderTypeSelect({
 
   const handlePress = () => {
     onBeforeOpen?.()
-    openOrderTypeSheet()
+    if (useMountOpen) return
+    import('./order-type-sheet').then((m) => m.openOrderTypeSheet())
   }
 
   return (

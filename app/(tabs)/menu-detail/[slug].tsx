@@ -17,7 +17,10 @@ import { MenuItemQuantityControl } from '@/components/menu'
 import { CartBadge } from '@/components/navigation/cart-badge'
 import { NativeGesturePressable } from '@/components/navigation/native-gesture-pressable'
 import { Skeleton } from '@/components/ui'
-import { publicFileURL } from '@/constants'
+import {
+  getProductImageUrl,
+  PRODUCT_IMAGE_MAX_WIDTH_DETAIL,
+} from '@/utils/product-image-url'
 import { TAB_ROUTES } from '@/constants/navigation.config'
 import { useOrderFlowAddToCart, useRunAfterTransition, useSpecificMenuItem } from '@/hooks'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
@@ -50,6 +53,13 @@ export default function MenuItemDetailPlaceholder() {
     }
   }, [])
 
+  /** Image Memory: Khi pop — clear memory cache để RAM hạ ngay (defer tránh block unmount) */
+  useEffect(() => {
+    return () => {
+      queueMicrotask(() => ExpoImage.clearMemoryCache())
+    }
+  }, [])
+
   const enabled = allowFetch && isContentReady && !!slug
   const { data, isLoading } = useSpecificMenuItem(slug || '', enabled)
 
@@ -70,8 +80,11 @@ export default function MenuItemDetailPlaceholder() {
   const imageUrl = useMemo(() => {
     const img = productDetail?.product.image
     if (!img) return ''
-    const base = (publicFileURL ?? '').replace(/\/$/, '')
-    return `${base}/${img.replace(/^\//, '')}`
+    return (
+      getProductImageUrl(img, {
+        maxWidth: PRODUCT_IMAGE_MAX_WIDTH_DETAIL || undefined,
+      }) ?? ''
+    )
   }, [productDetail?.product.image])
 
   const hasStock = useMemo(() => {
@@ -138,6 +151,7 @@ export default function MenuItemDetailPlaceholder() {
                     source={{ uri: imageUrl }}
                     style={styles.image}
                     contentFit="cover"
+                    cachePolicy="disk"
                     recyclingKey={slug ?? imageUrl}
                   />
                 ) : (

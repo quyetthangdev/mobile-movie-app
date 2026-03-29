@@ -94,7 +94,7 @@ const RelatedProductItem = React.memo(
               recyclingKey={item.slug}
               placeholder={(Images.Food.DefaultProductImage as unknown as number)}
               placeholderContentFit="cover"
-              cachePolicy="memory-disk"
+              cachePolicy="disk"
               priority="low"
             />
           ) : (

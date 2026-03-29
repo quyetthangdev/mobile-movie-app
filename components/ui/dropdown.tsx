@@ -1,15 +1,14 @@
 import { cn } from '@/lib/utils'
 import { SPRING_CONFIGS } from '@/constants/motion'
-import * as SystemUI from 'expo-system-ui'
 import { Check, ChevronRight } from 'lucide-react-native'
-import React, { ComponentProps, useEffect, useRef } from 'react'
+import React, { ComponentProps, useEffect, useMemo, useRef } from 'react'
 import {
-  Dimensions,
   Modal,
   Pressable,
   Text,
   TouchableOpacity,
   useColorScheme,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import Animated, {
@@ -150,20 +149,20 @@ function Dropdown({
 }: DropdownProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
   const [triggerLayout, setTriggerLayout] = React.useState<TriggerLayout | null>(null)
-  const [isMounted, setIsMounted] = React.useState(false)
+  // isMounted stays true while open OR during exit animation
+  const [showContent, setShowContent] = React.useState(false)
 
   const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen
   const onOpenChange = controlledOnOpenChange || setUncontrolledOpen
 
-  // Giữ Modal hiển thị trong khi chạy exit animation
-  useEffect(() => {
-    if (open) {
-      const id = setTimeout(() => setIsMounted(true), 0)
-      return () => clearTimeout(id)
-    }
+  // open → mount content immediately via effect
+  React.useEffect(() => {
+    if (open) setShowContent(true)
   }, [open])
 
-  const handleExitComplete = () => setIsMounted(false)
+  const isMounted = open || showContent
+
+  const handleExitComplete = React.useCallback(() => setShowContent(false), [])
 
   // Separate trigger and content from children
   const childrenArray = React.Children.toArray(children)
@@ -173,19 +172,6 @@ function Dropdown({
   const content = childrenArray.find((child) =>
     isComponentType(child, DropdownContent)
   )
-
-  // Keep navigation bar color white when Modal opens/closes
-  useEffect(() => {
-    if (open) {
-      requestAnimationFrame(() => {
-        SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {})
-      })
-    } else {
-      requestAnimationFrame(() => {
-        SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {})
-      })
-    }
-  }, [open])
 
   return (
     <DropdownContext.Provider
@@ -247,18 +233,6 @@ function DropdownTrigger({
     }
   }, [shouldMeasure])
 
-  // Measure trigger when opening (backup measurement)
-  React.useEffect(() => {
-    if (context?.open && triggerRef.current) {
-      requestAnimationFrame(() => {
-        if (triggerRef.current) {
-          triggerRef.current.measureInWindow((x, y, width, height) => {
-            contextRef.current?.setTriggerLayout({ x, y, width, height })
-          })
-        }
-      })
-    }
-  }, [context?.open])
 
   const handlePress = () => {
     // Trigger measurement via state
@@ -331,7 +305,8 @@ function DropdownContent({
   const context = React.useContext(DropdownContext)
   const contentRef = useRef<View>(null)
   const [contentLayout, setContentLayout] = React.useState<{ width: number; height: number } | null>(null)
-  
+  const { width: screenWidth } = useWindowDimensions()
+
   const scale = useSharedValue(0.95)
   const opacity = useSharedValue(0)
   const slideX = useSharedValue(0)
@@ -396,44 +371,30 @@ function DropdownContent({
     }
   })
 
-  // Calculate position based on trigger layout
-  const getPositionStyle = () => {
-    if (!context?.triggerLayout) {
-      // Fallback to old positioning if no trigger layout
-      return {}
-    }
+  // Memoize position — chỉ tính lại khi trigger layout, content layout, side, hoặc screen width thay đổi
+  const positionStyle = useMemo(() => {
+    if (!context?.triggerLayout) return {}
 
     const { y, height: triggerHeight } = context.triggerLayout
-    const contentHeight = contentLayout?.height || 100
-    const screenWidth = Dimensions.get('window').width
-    const horizontalPadding = 20 // Padding 2 cạnh
+    const contentHeight = contentLayout?.height ?? 100
+    const horizontalPadding = 20
 
     let top = 0
-
-    // Calculate vertical position based on side
     if (side === 'bottom') {
-      // Add extra spacing to prevent overlap with trigger
-      // Minimum 16px spacing, plus sideOffset if provided
-      const minSpacing = 16
-      top = y + triggerHeight + minSpacing + sideOffset
+      top = y + triggerHeight + 16 + sideOffset
     } else if (side === 'top') {
-      const minSpacing = 16
-      top = y - contentHeight - minSpacing - sideOffset
+      top = y - contentHeight - 16 - sideOffset
     } else {
-      // For left/right, center vertically
       top = y + (triggerHeight - contentHeight) / 2
     }
 
-    // Content has full width with padding on sides
-    return { 
-      top, 
-      left: horizontalPadding, 
+    return {
+      top,
+      left: horizontalPadding,
       right: horizontalPadding,
-      width: screenWidth - (horizontalPadding * 2)
+      width: screenWidth - horizontalPadding * 2,
     }
-  }
-
-  const positionStyle = getPositionStyle()
+  }, [context?.triggerLayout, contentLayout, side, sideOffset, screenWidth])
 
   return (
     <Pressable

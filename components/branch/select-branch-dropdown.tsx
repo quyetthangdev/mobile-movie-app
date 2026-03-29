@@ -1,138 +1,163 @@
 import { useLocalSearchParams } from 'expo-router'
 import { Check, MapPin } from 'lucide-react-native'
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Text, TouchableOpacity, View, useColorScheme } from 'react-native'
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native'
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui'
 import { useBranch } from '@/hooks'
-import { cn } from '@/lib/utils'
+import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useBranchStore } from '@/stores'
 
-/**
- * SelectBranchDropdown Component
- * 
- * Displays a branch selector dropdown with improved mobile UI/UX.
- * Shows branch name in trigger button and list of branches in dropdown.
- * 
- * @example
- * ```tsx
- * <SelectBranchDropdown />
- * ```
- */
-export default function SelectBranchDropdown() {
+type BranchItem = {
+  slug: string
+  name: string
+  address: string
+}
+
+// Tách BranchRow ra memo riêng để chỉ re-render đúng item thay đổi.
+// onSelect là stable callback từ parent — mỗi item tự tạo handler từ slug.
+const BranchRow = React.memo(function BranchRow({
+  item,
+  isSelected,
+  isLast,
+  onSelect,
+}: {
+  item: BranchItem
+  isSelected: boolean
+  isLast: boolean
+  onSelect: (slug: string) => void
+}) {
+  const isDark = useColorScheme() === 'dark'
+  const primaryColor = usePrimaryColor()
+  const pinColor = isDark ? '#9ca3af' : '#6b7280'
+
+  const handlePress = useCallback(
+    () => onSelect(item.slug),
+    [item.slug, onSelect],
+  )
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      activeOpacity={0.7}
+      style={[
+        styles.branchRow,
+        !isLast && styles.branchRowBorder,
+        isSelected && styles.branchRowSelected,
+      ]}
+    >
+      <View style={styles.pinWrap}>
+        <MapPin size={18} color={isSelected ? primaryColor : pinColor} />
+      </View>
+      <View style={styles.branchInfo}>
+        <View style={styles.branchNameRow}>
+          <Text
+            style={[styles.branchName, isSelected && { color: primaryColor }]}
+            numberOfLines={1}
+          >
+            {item.name}
+          </Text>
+          {isSelected && <Check size={16} color={primaryColor} />}
+        </View>
+        <Text style={styles.branchAddress} numberOfLines={2}>
+          {item.address}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  )
+})
+
+function SelectBranchDropdown() {
   const { t } = useTranslation('branch')
-  const { data: branchRes } = useBranch()
+  const [isOpen, setIsOpen] = useState(false)
+  // Lazy fetch: chỉ bật enabled sau lần mở đầu tiên.
+  // Các lần sau dùng cache của QueryClient, không re-fetch.
+  const hasOpenedRef = useRef(false)
+  const [fetchEnabled, setFetchEnabled] = useState(false)
+
+  const { data: branchRes } = useBranch({ enabled: fetchEnabled })
   const branch = useBranchStore((s) => s.branch)
   const setBranch = useBranchStore((s) => s.setBranch)
   const isDark = useColorScheme() === 'dark'
-  
-  // Get branch from URL params
-  const searchParams = useLocalSearchParams<{ branch?: string }>()
-  const branchSlug = searchParams.branch
 
+  // Sync branch từ URL params (e.g. deep link vào màn hình có ?branch=xxx)
+  const { branch: branchSlugParam } = useLocalSearchParams<{ branch?: string }>()
   useEffect(() => {
-    if (branchSlug && branchRes?.result) {
-      const b = branchRes.result.find((item) => item.slug === branchSlug)
-      if (b) {
-        setBranch(b)
-      }
-    }
-  }, [branchSlug, branchRes, setBranch])
+    if (!branchSlugParam || !branchRes?.result) return
+    const found = branchRes.result.find((b) => b.slug === branchSlugParam)
+    if (found) setBranch(found)
+  }, [branchSlugParam, branchRes, setBranch])
 
-  const handleSelectChange = (selectedSlug: string) => {
-    const b = branchRes?.result?.find((item) => item.slug === selectedSlug)
-    if (b) {
-      setBranch(b)
+  const handleOpenChange = useCallback((open: boolean) => {
+    setIsOpen(open)
+    if (open && !hasOpenedRef.current) {
+      hasOpenedRef.current = true
+      setFetchEnabled(true)
     }
-  }
+  }, [])
 
-  // Get selected branch name for display
-  const selectedBranchName = branch?.name || null
+  const handleSelect = useCallback(
+    (slug: string) => {
+      const found = branchRes?.result?.find((b) => b.slug === slug)
+      if (found) setBranch(found)
+    },
+    [branchRes, setBranch],
+  )
+
+  const branches = branchRes?.result ?? []
+  const lastIndex = branches.length - 1
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
-        <TouchableOpacity
-          className={cn(
-            'flex-row items-center gap-2 px-3 py-2 rounded-md',
-            'bg-transparent',
-            'active:bg-gray-100/50 dark:active:bg-gray-800/50',
-            'min-w-[120px] max-w-[180px]'
-          )}
-        >
+        <TouchableOpacity style={styles.trigger} activeOpacity={0.7}>
           <MapPin size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
-          {selectedBranchName ? (
-            <Text
-              className="text-sm font-medium text-gray-900 dark:text-gray-50 flex-1"
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {selectedBranchName}
-            </Text>
-          ) : (
-            <Text className="text-sm text-gray-500 dark:text-gray-400">
-              {t('branch.chooseBranch', 'Chọn chi nhánh')}
-            </Text>
-          )}
+          <Text
+            style={[
+              styles.triggerText,
+              !branch?.name && styles.triggerPlaceholder,
+            ]}
+            numberOfLines={1}
+          >
+            {branch?.name ?? t('branch.chooseBranch', 'Chọn chi nhánh')}
+          </Text>
         </TouchableOpacity>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="end" sideOffset={8}>
-        <View className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-          <Text className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+
+      <DropdownMenuContent sideOffset={8}>
+        <View style={styles.contentHeader}>
+          <Text style={styles.contentHeaderText}>
             {t('branch.chooseBranch', 'Chọn chi nhánh')}
           </Text>
         </View>
-        <View className="max-h-[400px]">
-          {branchRes?.result && branchRes.result.length > 0 ? (
-            branchRes.result.map((item, index) => {
-              const isSelected = branch?.slug === item.slug
-              const isLast = index === branchRes.result.length - 1
-              return (
-                <TouchableOpacity
-                  key={item.slug}
-                  onPress={() => handleSelectChange(item.slug)}
-                  className={cn(
-                    'px-4 py-3 flex-row items-start gap-3',
-                    !isLast && 'border-b border-gray-100 dark:border-gray-800',
-                    isSelected && 'bg-gray-50 dark:bg-gray-800/50',
-                    'active:bg-gray-100 dark:active:bg-gray-700'
-                  )}
-                >
-                  <View className="mt-0.5">
-                    <MapPin size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
-                  </View>
-                  <View className="flex-1">
-                    <View className="flex-row items-center gap-2 mb-1">
-                      <Text
-                        className={cn(
-                          'text-sm font-medium flex-1',
-                          isSelected
-                            ? 'text-primary dark:text-primary'
-                            : 'text-gray-900 dark:text-gray-50'
-                        )}
-                        numberOfLines={1}
-                      >
-                        {item.name}
-                      </Text>
-                      {isSelected && (
-                        <Check size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
-                      )}
-                    </View>
-                    <Text
-                      className="text-xs text-gray-600 dark:text-gray-400"
-                      numberOfLines={2}
-                    >
-                      {item.address}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )
-            })
+        <View style={styles.branchList}>
+          {branches.length > 0 ? (
+            branches.map((item, index) => (
+              <BranchRow
+                key={item.slug}
+                item={item}
+                isSelected={branch?.slug === item.slug}
+                isLast={index === lastIndex}
+                onSelect={handleSelect}
+              />
+            ))
           ) : (
-            <View className="px-4 py-8 items-center">
-              <Text className="text-sm text-gray-500 dark:text-gray-400">
-                {t('branch.noBranches', 'Không có chi nhánh nào')}
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>
+                {fetchEnabled
+                  ? t('branch.noBranches', 'Không có chi nhánh nào')
+                  : '...'}
               </Text>
             </View>
           )}
@@ -142,3 +167,87 @@ export default function SelectBranchDropdown() {
   )
 }
 
+export default React.memo(SelectBranchDropdown)
+
+const styles = StyleSheet.create({
+  trigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 120,
+    maxWidth: 180,
+  },
+  triggerText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  triggerPlaceholder: {
+    color: '#6b7280',
+    fontWeight: '400',
+  },
+  contentHeader: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e5e7eb',
+  },
+  contentHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  branchList: {
+    maxHeight: 400,
+  },
+  branchRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  branchRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#f3f4f6',
+  },
+  branchRowSelected: {
+    backgroundColor: '#f9fafb',
+  },
+  pinWrap: {
+    marginTop: 2,
+  },
+  branchInfo: {
+    flex: 1,
+  },
+  branchNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  branchName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  branchAddress: {
+    fontSize: 12,
+    color: '#6b7280',
+    lineHeight: 16,
+  },
+  emptyState: {
+    paddingHorizontal: 16,
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+})

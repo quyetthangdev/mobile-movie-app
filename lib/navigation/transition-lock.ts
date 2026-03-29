@@ -2,7 +2,7 @@
  * Transition Lock — Prefetch lock (isTransitionLocked).
  * Navigation lock: navigation-lock.ts (isNavigationLocked).
  */
-import { TRANSITION_DURATION_MS } from './constants'
+import { STACK_TRANSITION_DURATION_MS } from './constants'
 
 const FALLBACK_LOCK_MS = 600
 
@@ -18,7 +18,7 @@ const clearTimeoutIfAny = () => {
 
 export const isTransitionLocked = () => Date.now() < lockUntil
 
-export const acquireTransitionLock = (durationMs = TRANSITION_DURATION_MS) => {
+export const acquireTransitionLock = (durationMs = STACK_TRANSITION_DURATION_MS) => {
   clearTimeoutIfAny()
   const lockMs = Math.min(durationMs + 200, FALLBACK_LOCK_MS)
   lockUntil = Date.now() + lockMs

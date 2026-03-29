@@ -18,10 +18,10 @@ import {
   Trophy,
   User,
 } from 'lucide-react-native'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  StatusBar,
+  AppState,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,10 +32,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureDetector, ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 import Animated, {
-  Extrapolation,
-  interpolate,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated'
 import { colors } from '@/constants/colors.constant'
@@ -95,7 +94,7 @@ interface MenuItemProps {
   primaryColor?: string
 }
 
-function MenuItem({
+const MenuItem = React.memo(function MenuItem({
   icon: Icon,
   iconColor,
   title,
@@ -140,7 +139,7 @@ function MenuItem({
       {!isPrimary && <ChevronRight size={20} color={textMuted} />}
     </TouchableOpacity>
   )
-}
+})
 
 const ProfileTest = () => {
   const { width: screenWidth } = useWindowDimensions()
@@ -149,6 +148,8 @@ const ProfileTest = () => {
   const theme = PROFILE_THEME[isDark ? 'dark' : 'light']
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const routerRef = useRef(router)
+  routerRef.current = router
   const scrollY = useSharedValue(0)
   const insetsTop = useSharedValue(insets.top)
 
@@ -166,80 +167,63 @@ const ProfileTest = () => {
   const avatarTop = insets.top + AVATAR_TOP
   const nameTop = avatarTop + AVATAR_SIZE + 12
   const headerNameY = insets.top + 28
-
-  const avatarStyle = useAnimatedStyle(() => {
-    'worklet'
-    const y = scrollY.value
-    const opacity = interpolate(y, [0, SCROLL_RANGE], [1, 0], Extrapolation.CLAMP)
-    const translateY = interpolate(y, [0, SCROLL_RANGE], [0, -y], Extrapolation.CLAMP)
-    return {
-      opacity,
-      transform: [{ translateY }],
-    }
-  })
-
-  const phoneStyle = useAnimatedStyle(() => {
-    'worklet'
-    const y = scrollY.value
-    const opacity = interpolate(y, [0, SCROLL_RANGE], [1, 0], Extrapolation.CLAMP)
-    return {
-      opacity,
-      transform: [{ translateY: -y }],
-    }
-  })
-
   const nameCenterY = nameTop + 12
+  const nameTravel = -(nameCenterY - headerNameY)
+
+  // Single derived progress 0→1 — computed once on UI thread, shared across all styles
+  const progress = useDerivedValue(() => {
+    'worklet'
+    const p = scrollY.value / SCROLL_RANGE
+    return p < 0 ? 0 : p > 1 ? 1 : p
+  })
+
+  // Toolbar blur progress (starts at 50% scroll)
+  const blurProgress = useDerivedValue(() => {
+    'worklet'
+    const p = (scrollY.value - SCROLL_RANGE * 0.5) / (SCROLL_RANGE * 0.5)
+    return p < 0 ? 0 : p > 1 ? 1 : p
+  })
+
+  // Avatar + phone: fade out + translate up (merged — 1 style instead of 2)
+  const avatarPhoneStyle = useAnimatedStyle(() => {
+    'worklet'
+    const p = progress.value
+    return {
+      opacity: 1 - p,
+      transform: [{ translateY: -scrollY.value * p }],
+    }
+  })
+
+  // Name: slides up to dock at header toolbar position
   const nameStyle = useAnimatedStyle(() => {
     'worklet'
-    const y = scrollY.value
-    const translateY = interpolate(
-      y,
-      [0, SCROLL_RANGE],
-      [0, -(nameCenterY - headerNameY)],
-      Extrapolation.CLAMP,
-    )
     return {
-      transform: [{ translateY }],
+      transform: [{ translateY: nameTravel * progress.value }],
     }
   })
 
+  // Header section: collapse height
   const headerHeightStyle = useAnimatedStyle(() => {
     'worklet'
-    const y = scrollY.value
     const top = insetsTop.value
-    const height = interpolate(
-      y,
-      [0, SCROLL_RANGE],
-      [HEADER_HEIGHT + top, top + TOOLBAR_HEIGHT],
-      Extrapolation.CLAMP,
-    )
-    return { height }
+    const expanded = HEADER_HEIGHT + top
+    const collapsed = top + TOOLBAR_HEIGHT
+    return { height: expanded - (expanded - collapsed) * progress.value }
   })
 
+  // Toolbar blur + header bg: inverse pair (1 style each, read from shared blurProgress)
   const toolbarBlurStyle = useAnimatedStyle(() => {
     'worklet'
-    const opacity = interpolate(
-      scrollY.value,
-      [SCROLL_RANGE * 0.5, SCROLL_RANGE],
-      [0, 1],
-      Extrapolation.CLAMP,
-    )
-    return { opacity }
+    return { opacity: blurProgress.value }
   })
 
   const headerBgStyle = useAnimatedStyle(() => {
     'worklet'
-    const opacity = interpolate(
-      scrollY.value,
-      [SCROLL_RANGE * 0.5, SCROLL_RANGE],
-      [1, 0],
-      Extrapolation.CLAMP,
-    )
-    return { opacity }
+    return { opacity: 1 - blurProgress.value }
   })
 
   const { t } = useTranslation('profile')
-  const handleBack = useCallback(() => router.back(), [router])
+  const handleBack = useCallback(() => routerRef.current.back(), [])
   const { animatedStyle, closeProfile, panGesture } =
     useProfileAnimation(handleBack)
   const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
@@ -251,9 +235,15 @@ const ProfileTest = () => {
   const openLogoutSheet = useLogoutSheetStore((s) => s.open)
   useRunAfterTransition(() => setAllowFetch(true), [])
 
+  const shouldClearCacheRef = useRef(false)
   useEffect(() => {
+    const sub = AppState.addEventListener(
+      'memoryWarning',
+      () => { shouldClearCacheRef.current = true },
+    )
     return () => {
-      Image.clearMemoryCache()
+      sub.remove()
+      if (shouldClearCacheRef.current) Image.clearMemoryCache()
     }
   }, [])
 
@@ -268,41 +258,43 @@ const ProfileTest = () => {
     useLoyaltyPoints(userInfo?.slug, allowFetch)
 
   const openEdit = useCallback(() => {
-    router.push('/(tabs)/profile/edit')
-  }, [router])
+    routerRef.current.push('/(tabs)/profile/edit')
+  }, [])
 
   const openGeneralInfo = useCallback(() => {
-    router.push('/(tabs)/profile/general-info-placeholder')
-  }, [router])
+    routerRef.current.push('/(tabs)/profile/general-info-placeholder')
+  }, [])
 
   const openPoints = useCallback(() => {
-    router.push('/(tabs)/profile/points-placeholder')
-  }, [router])
+    routerRef.current.push('/(tabs)/profile/points-placeholder')
+  }, [])
 
   const openCoins = useCallback(() => {
-    router.push('/(tabs)/profile/coins-placeholder')
-  }, [router])
+    routerRef.current.push('/(tabs)/profile/coins-placeholder')
+  }, [])
 
   const openOrdersHistory = useCallback(() => {
-    router.push('/(tabs)/profile/orders-history-placeholder')
-  }, [router])
+    routerRef.current.push('/(tabs)/profile/orders-history-placeholder')
+  }, [])
 
   const openAccountSettings = useCallback(() => {
-    router.push('/(tabs)/profile/account-settings-placeholder')
-  }, [router])
+    routerRef.current.push('/(tabs)/profile/account-settings-placeholder')
+  }, [])
 
   const openGiftCard = useCallback(() => {
-    router.push('/(tabs)/gift-card' as never)
-  }, [router])
+    routerRef.current.push('/(tabs)/gift-card' as never)
+  }, [])
 
   const { t: tToast } = useTranslation('toast')
 
   const handleLogoutConfirm = useCallback(() => {
+    // Unregister FCM token + stop refresh scheduler (fire-and-forget)
+    import('@/lib/fcm-token-manager').then((m) => m.cleanupTokenOnLogout())
     setLogout()
     removeUserInfo()
-    router.replace('/(tabs)/home' as never)
+    routerRef.current.replace('/(tabs)/home' as never)
     showToast(tToast('logoutSuccess', 'Đăng xuất thành công'))
-  }, [removeUserInfo, router, setLogout, tToast])
+  }, [removeUserInfo, setLogout, tToast])
 
   const handleLogoutPress = useCallback(() => {
     openLogoutSheet(handleLogoutConfirm)
@@ -314,11 +306,6 @@ const ProfileTest = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <StatusBar
-          barStyle={isDark ? 'light-content' : 'dark-content'}
-          backgroundColor="transparent"
-          translucent
-        />
       <GestureDetector gesture={panGesture}>
         <Animated.View
           style={[styles.profileCard, { backgroundColor: theme.bg }, animatedStyle]}
@@ -364,6 +351,7 @@ const ProfileTest = () => {
               </View>
             </View>
             {/* Avatar tròn giữa - mờ và di chuyển lên khi cuộn */}
+            {/* Avatar — fades + translates up with scroll */}
             <Animated.View
               style={[
                 styles.avatarWrap,
@@ -373,7 +361,7 @@ const ProfileTest = () => {
                   left: (screenWidth - AVATAR_SIZE) / 2,
                   top: avatarTop,
                 },
-                avatarStyle,
+                avatarPhoneStyle,
               ]}
             >
               {userInfo?.image ? (
@@ -392,7 +380,7 @@ const ProfileTest = () => {
               )}
             </Animated.View>
           </Animated.View>
-          {/* Tên: overlay riêng, di chuyển lên và dừng ở header (không bị clip khi header collapse) */}
+          {/* Tên + SĐT: overlay riêng, tên dừng ở header, SĐT mờ cùng avatar */}
           <View style={[styles.namePhoneWrap, { top: nameTop }]} pointerEvents="none">
             <Animated.Text
               style={[styles.nameText, nameStyle, { color: theme.text }]}
@@ -400,7 +388,7 @@ const ProfileTest = () => {
             >
               {userInfo?.firstName} {userInfo?.lastName}
             </Animated.Text>
-            <Animated.View style={phoneStyle}>
+            <Animated.View style={avatarPhoneStyle}>
               <Text
                 style={[styles.phoneText, { color: theme.textMuted }]}
                 numberOfLines={1}

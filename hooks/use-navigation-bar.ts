@@ -1,6 +1,10 @@
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
-import changeNavigationBarColor, { hideNavigationBar, showNavigationBar } from 'react-native-navigation-bar-color'
+import {
+  changeNavigationBarColor,
+  hideNavigationBar,
+  showNavigationBar,
+} from 'navigation-bar-color'
 
 /**
  * Hook để quản lý Navigation Bar trên Android
@@ -20,13 +24,8 @@ export function useNavigationBar(
       return
     }
 
-    // Đổi màu navigation bar - gọi trực tiếp
-    // Implementation JavaScript không trả về Promise nhưng vẫn hoạt động
-    try {
-      changeNavigationBarColor(backgroundColor, light, animated)
-    } catch {
-      // Bỏ qua lỗi nếu API không khả dụng
-    }
+    // Đổi màu navigation bar — gọi Expo Module (JSI khi New Arch bật)
+    changeNavigationBarColor(backgroundColor, light, animated).catch(() => {})
 
     // Cleanup: Không cần reset vì navigation bar sẽ tự động reset khi app đóng
   }, [backgroundColor, light, animated])
@@ -43,21 +42,11 @@ export const setNavigationBarColor = (
   backgroundColor: string,
   light: boolean = true,
   animated: boolean = true
-): Promise<unknown> => {
+): Promise<{ success: boolean }> => {
   if (Platform.OS !== 'android') {
     return Promise.resolve({ success: false })
   }
-
-  try {
-    const result = changeNavigationBarColor(backgroundColor, light, animated) as unknown
-    // Thư viện có thể trả về Promise (theo README) nhưng type definition không chính xác
-    if (result && typeof result === 'object' && 'catch' in result) {
-      return result as Promise<unknown>
-    }
-    return Promise.resolve({ success: true })
-  } catch {
-    return Promise.resolve({ success: false })
-  }
+  return changeNavigationBarColor(backgroundColor, light, animated)
 }
 
 /**
@@ -65,16 +54,10 @@ export const setNavigationBarColor = (
  * 
  * @param hidden - true = ẩn, false = hiện
  */
-export const setNavigationBarHidden = (hidden: boolean): boolean => {
+export const setNavigationBarHidden = (hidden: boolean): Promise<{ success: boolean }> => {
   if (Platform.OS !== 'android') {
-    return false
+    return Promise.resolve({ success: false })
   }
-
-  if (hidden) {
-    return hideNavigationBar()
-  } else {
-    showNavigationBar()
-    return true
-  }
+  return hidden ? hideNavigationBar() : showNavigationBar()
 }
 

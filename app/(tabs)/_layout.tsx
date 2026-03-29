@@ -28,7 +28,6 @@ import {
   useMenuFilterStore,
   useUserStore,
 } from '@/stores'
-
 const TAB_ROUTES = {
   HOME: '/(tabs)/home',
   MENU: '/(tabs)/menu',
@@ -66,7 +65,9 @@ export default function TabsLayout() {
 
     if (!masterTransition) return
 
-    const wasFromDetailScreen = /(?:^|\/)(product|update-order|payment)\//.test(prev ?? '')
+    const wasFromDetailScreen = /(?:^|\/)(product|update-order|payment)\//.test(
+      prev ?? '',
+    )
     if (wasFromDetailScreen) return
 
     if (isNowMenu) {
@@ -101,15 +102,11 @@ export default function TabsLayout() {
 
   const isCartPage = pathname?.includes('/cart')
   const isProfileLoginForm = pathname?.includes('/profile') && !isAuthenticated
-  const isProfileSubRoute =
-    isAuthenticated && pathname?.includes('/profile/')
+  const isProfileSubRoute = isAuthenticated && pathname?.includes('/profile/')
   const isProductDetail = pathname?.includes('/product')
   /** Ẩn bar khi ở product detail, form đăng nhập profile, route con của profile, hoặc trang giỏ hàng. */
   const shouldHideBottomBar =
-    isProductDetail ||
-    isCartPage ||
-    isProfileLoginForm ||
-    isProfileSubRoute
+    isProductDetail || isCartPage || isProfileLoginForm || isProfileSubRoute
 
   const colors = useMemo(() => getThemeColor(isDark), [isDark])
   const tabState = useMemo(
@@ -143,10 +140,11 @@ export default function TabsLayout() {
     [],
   )
 
-  const { totalBottomHeight } = useMemo(() => {
-    const bottomGap = Math.max(8, insets.bottom * 0.5)
-    const bgHeight = BAR_HEIGHT + BAR_PADDING + bottomGap
+  const { totalBottomHeight, bottomGap } = useMemo(() => {
+    const gap = Math.max(8, insets.bottom)
+    const bgHeight = BAR_HEIGHT + BAR_PADDING + gap
     return {
+      bottomGap: gap,
       totalBottomHeight: FADE_HEIGHT + bgHeight,
     }
   }, [insets.bottom])
@@ -176,7 +174,7 @@ export default function TabsLayout() {
           },
           barAnimatedStyle,
         ]}
-        pointerEvents={shouldHideBottomBar ? 'none' : 'auto'}
+        pointerEvents={shouldHideBottomBar ? 'none' : 'box-none'}
       >
         <View
           style={{
@@ -205,7 +203,7 @@ export default function TabsLayout() {
             bottom: 0,
             left: 0,
             right: 0,
-            paddingBottom: Math.max(8, insets.bottom * 0.5),
+            paddingBottom: bottomGap,
             paddingHorizontal: 16,
             paddingTop: 8,
             flexDirection: 'row',
@@ -278,15 +276,19 @@ export default function TabsLayout() {
             }}
             onBeforeTabSwitch={undefined}
           />
-          <FloatingCartButton primaryColor={colors.primary} />
+          <FloatingCartButton
+            primaryColor={colors.primary}
+          />
         </View>
       </Animated.View>
 
-      {/* P1-T4: detachInactiveScreens=true — giảm RAM ~100MB. Revert nếu flash UI (expo/expo#35116) */}
+      {/* detachInactiveScreens=true — giảm RAM ~100MB. Revert nếu flash UI (expo/expo#35116) */}
       <Tabs
         detachInactiveScreens={true}
         screenOptions={{
           ...tabsScreenOptions,
+          headerShown: false,
+          animation: 'none',
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.mutedForeground,
           lazy: true,
@@ -306,42 +308,41 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="home"
           options={{
+            headerShown: false,
             title: t('tabs.home', 'Trang chủ'),
-            headerTitle: t('tabs.home', 'Trang chủ'),
             tabBarButton: () => null,
           }}
         />
         <Tabs.Screen
           name="menu"
           options={{
+            headerShown: false,
             title: t('tabs.menu', 'Thực đơn'),
-            headerTitle: t('tabs.menu', 'Thực đơn'),
             tabBarButton: () => null,
           }}
         />
         <Tabs.Screen
           name="cart"
           options={{
+            headerShown: false,
             title: t('tabs.cart', 'Giỏ hàng'),
-            headerTitle: t('tabs.cart', 'Giỏ hàng'),
             tabBarButton: () => null,
-            // Pre-mount Cart — tránh spike khi Product Detail → Cart (lazy mount nặng)
             lazy: false,
           }}
         />
         <Tabs.Screen
           name="gift-card"
           options={{
+            headerShown: false,
             title: t('tabs.giftCard', 'Thẻ quà tặng'),
-            headerTitle: t('tabs.giftCard', 'Thẻ quà tặng'),
             tabBarButton: () => null,
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
+            headerShown: false,
             title: t('tabs.profile', 'Tài khoản'),
-            headerTitle: t('tabs.profile', 'Tài khoản'),
             tabBarButton: () => null,
           }}
         />

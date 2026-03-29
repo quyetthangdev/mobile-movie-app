@@ -1,0 +1,150 @@
+import { shouldAutoRemoveVoucher } from '@/components/sheet/voucher-validation'
+import { usePrimaryColor } from '@/hooks/use-primary-color'
+import {
+  cartActions,
+  useCartItems,
+  useCartVoucher,
+} from '@/stores/cart.store'
+import { showToast } from '@/utils'
+import { FlashList } from '@shopify/flash-list'
+import { useRouter } from 'expo-router'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { StyleSheet, useColorScheme, View } from 'react-native'
+import type { SharedValue } from 'react-native-reanimated'
+
+import { type CartDisplayItem, toDisplayItem } from './cart-display-item'
+import { CartDisplayItemRow } from './cart-item-row'
+
+import { PerfCartEmpty } from './cart-empty'
+
+import { PerfCartFooter } from './cart-footer-perf'
+import { CartOrderNote } from './cart-order-note'
+import { CartSizeSheet } from './cart-size-sheet'
+
+// ─── List helpers (module-level — 0 allocation per render) ───────────────────
+
+
+const ItemSeparator = () => <View style={listStyles.separator} />
+
+const listStyles = StyleSheet.create({
+  root: { flex: 1 },
+  content: { paddingTop: 80, paddingBottom: 120 },
+  separator: { height: 10 },
+})
+
+// ─── Main Content ────────────────────────────────────────────────────────────
+
+export default function CartContent({ scrollY }: { scrollY?: SharedValue<number> }) {
+  const router = useRouter()
+  const isDark = useColorScheme() === 'dark'
+  const primaryColor = usePrimaryColor()
+  const rawItems = useCartItems()
+  const items = useMemo(() => rawItems.map(toDisplayItem), [rawItems])
+  const removeItem = cartActions.removeItem
+  const { t } = useTranslation('menu')
+  // 3.3 — Auto-remove voucher when cart changes make it invalid
+  const perfVoucher = useCartVoucher()
+  const voucherProducts = perfVoucher?.voucherProducts
+  const voucherProductSet = useMemo(
+    () => new Set<string>(voucherProducts?.map((vp) => vp.product?.slug).filter((s): s is string => !!s) ?? []),
+    [voucherProducts],
+  )
+  const cartProductSlugs = useMemo(
+    () => rawItems.map((i) => i.productSlug || i.slug || '').filter(Boolean),
+    [rawItems],
+  )
+  // Stable primitive key — only changes when products are added/removed, not on qty/note changes
+  const cartSlugKey = cartProductSlugs.join(',')
+  const hasMountedRef = useRef(false)
+  useEffect(() => {
+    // Skip first render — avoid state update before mount completes
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true
+      return
+    }
+    if (!perfVoucher) return
+    const shouldRemove = shouldAutoRemoveVoucher(perfVoucher, voucherProductSet, cartProductSlugs, rawItems)
+    if (shouldRemove) {
+      cartActions.setVoucher(null)
+      showToast('Voucher không còn hợp lệ, đã tự động gỡ')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfVoucher, voucherProductSet, cartSlugKey])
+
+  const [sizeSheetItemId, setSizeSheetItemId] = useState<string | null>(null)
+  const handleSizePress = useCallback((cartKey: string) => setSizeSheetItemId(cartKey), [])
+  const handleSizeClose = useCallback(() => setSizeSheetItemId(null), [])
+
+  const handleBrowse = useCallback(() => {
+    if (router.canGoBack()) router.back()
+    else router.replace('/(tabs)/menu')
+  }, [router])
+
+  const handleDelete = useCallback(
+    (cartKey?: string) => {
+      if (cartKey) removeItem(cartKey)
+    },
+    [removeItem],
+  )
+
+  const handleScroll = useCallback(
+    (e: { nativeEvent: { contentOffset: { y: number } } }) => {
+      if (scrollY) scrollY.value = e.nativeEvent.contentOffset.y
+    },
+    [scrollY],
+  )
+
+  const renderItem = useCallback(
+    ({ item }: { item: CartDisplayItem }) => (
+      <CartDisplayItemRow
+        item={item}
+        primaryColor={primaryColor}
+        isDark={isDark}
+        onDelete={handleDelete}
+        onSizePress={handleSizePress}
+        voucher={perfVoucher}
+      />
+    ),
+    [primaryColor, isDark, handleDelete, handleSizePress, perfVoucher],
+  )
+
+  const keyExtractor = useCallback((item: CartDisplayItem) => item.cartKey, [])
+
+  if (items.length === 0) {
+    return (
+      <PerfCartEmpty
+        isDark={isDark}
+        onBrowse={handleBrowse}
+        browseLabel={t('menu.viewDetails')}
+      />
+    )
+  }
+
+  return (
+    <View style={listStyles.root}>
+      <FlashList
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        onScroll={handleScroll}
+        scrollEventThrottle={32}
+        contentContainerStyle={listStyles.content}
+        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={ItemSeparator}
+        ListFooterComponent={<CartOrderNote isDark={isDark} />}
+      />
+      <PerfCartFooter
+        primaryColor={primaryColor}
+        isDark={isDark}
+      />
+      <CartSizeSheet
+        visible={!!sizeSheetItemId}
+        itemId={sizeSheetItemId}
+        onClose={handleSizeClose}
+        isDark={isDark}
+        primaryColor={primaryColor}
+      />
+    </View>
+  )
+}

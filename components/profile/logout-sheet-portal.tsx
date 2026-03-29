@@ -1,44 +1,42 @@
 /**
- * Logout sheet — RN Modal + BottomSheet (tránh freeze Android với native stack).
+ * Logout sheet — Modal + BottomSheet pattern (giống cart confirm order sheet).
+ * Store-driven: visible từ useLogoutSheetStore, mount Modal chỉ khi mở.
  */
 import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetBackdropProps,
+  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
-import React, { useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from 'react-native'
+import { Modal, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
+import { colors } from '@/constants'
 import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
+
+const LOGOUT_SHEET_SNAP = ['30%']
 
 const LogoutSheetPortal = () => {
   const { visible, onConfirm, close } = useLogoutSheetStore()
   const sheetRef = useRef<BottomSheet>(null)
   const isDark = useColorScheme() === 'dark'
 
-  const snapPoints = useMemo(() => ['30%'], [])
-
   const handleChange = useCallback(
     (index: number) => {
-      if (index === -1) {
-        close()
-      }
+      if (index === -1) close()
     },
     [close],
   )
 
   const handleConfirm = useCallback(() => {
-    onConfirm?.()
     sheetRef.current?.close()
+    onConfirm?.()
   }, [onConfirm])
+
+  const bgStyle = useMemo(
+    () => ({ backgroundColor: isDark ? colors.gray[900] : colors.white.light }),
+    [isDark],
+  )
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -46,44 +44,35 @@ const LogoutSheetPortal = () => {
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.5}
+        opacity={0.4}
         pressBehavior="close"
       />
     ),
     [],
   )
 
-  if (!visible) {
-    return null
-  }
+  if (!visible) return null
 
   return (
     <Modal
-      animationType="none"
       transparent
       visible
       statusBarTranslucent
+      animationType="none"
       onRequestClose={() => sheetRef.current?.close()}
     >
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureHandlerRootView style={s.flex}>
         <BottomSheet
           ref={sheetRef}
           index={0}
-          snapPoints={snapPoints}
-          animateOnMount={false}
-          enableDynamicSizing={false}
+          snapPoints={LOGOUT_SHEET_SNAP}
           enablePanDownToClose
           enableContentPanningGesture={false}
           enableHandlePanningGesture
-          enableOverDrag={false}
-          activeOffsetY={[-1, 1]}
-          failOffsetX={[-5, 5]}
-          onChange={handleChange}
+          enableDynamicSizing={false}
           backdropComponent={renderBackdrop}
-          backgroundStyle={{
-            backgroundColor: isDark ? '#111827' : '#ffffff',
-          }}
-          containerStyle={{ zIndex: 99999, elevation: 99999 }}
+          backgroundStyle={bgStyle}
+          onChange={handleChange}
         >
           <LogoutSheetContent
             onCancel={() => sheetRef.current?.close()}
@@ -96,7 +85,7 @@ const LogoutSheetPortal = () => {
   )
 }
 
-const LogoutSheetContent = React.memo(function LogoutSheetContent({
+const LogoutSheetContent = memo(function LogoutSheetContent({
   onCancel,
   onConfirm,
   isDark,
@@ -107,97 +96,83 @@ const LogoutSheetContent = React.memo(function LogoutSheetContent({
 }) {
   const { t } = useTranslation('auth')
   const { t: tCommon } = useTranslation('common')
+
   return (
-    <View style={styles.content}>
-      <Text style={[styles.title, isDark && styles.titleDark]}>
+    <View style={s.content}>
+      <Text style={[s.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
         {t('logout.title', 'Đăng xuất')}
       </Text>
-      <Text style={[styles.description, isDark && styles.descriptionDark]}>
+      <Text style={[s.description, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
         {t('logout.description', 'Bạn có chắc chắn muốn đăng xuất không?')}
       </Text>
 
-      <View style={styles.buttons}>
-        <TouchableOpacity
+      <View style={s.spacer} />
+
+      <View style={s.footer}>
+        <Pressable
           onPress={onCancel}
-          style={[styles.button, styles.cancelButton, isDark && styles.cancelButtonDark]}
-          activeOpacity={0.8}
+          style={[s.cancelBtn, { backgroundColor: isDark ? colors.gray[800] : colors.gray[100] }]}
         >
-          <Text style={[styles.buttonText, isDark && styles.buttonTextDark]}>
+          <Text style={[s.cancelText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
             {tCommon('common.cancel', 'Huỷ')}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          onPress={onConfirm}
-          style={[styles.button, styles.confirmButton]}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.confirmButtonText}>
+        <Pressable onPress={onConfirm} style={s.confirmBtn}>
+          <Text style={s.confirmText}>
             {t('logout.logout', 'Đăng xuất')}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   )
 })
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
+  flex: { flex: 1 },
   content: {
-    paddingHorizontal: 16,
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 4,
     paddingBottom: 20,
-    paddingTop: 8,
   },
   title: {
+    fontSize: 17,
+    fontWeight: '700',
     marginBottom: 8,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  titleDark: {
-    color: '#f9fafb',
   },
   description: {
-    marginBottom: 24,
     fontSize: 14,
-    color: '#6b7280',
   },
-  descriptionDark: {
-    color: '#9ca3af',
-  },
-  buttons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
+  spacer: {
     flex: 1,
+  },
+  footer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 999,
   },
-  cancelButton: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#ffffff',
-  },
-  cancelButtonDark: {
-    borderColor: '#4b5563',
-    backgroundColor: '#111827',
-  },
-  buttonText: {
-    fontSize: 14,
+  cancelText: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#1f2937',
   },
-  buttonTextDark: {
-    color: '#f3f4f6',
-  },
-  confirmButton: {
+  confirmBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#EF4444',
   },
-  confirmButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+  confirmText: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#ffffff',
   },
 })

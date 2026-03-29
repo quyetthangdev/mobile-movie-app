@@ -42,6 +42,8 @@ export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   animationTypeForReplace: 'push',
   presentation: 'card',
   contentStyle: { backgroundColor: colors.background.light },
+  statusBarStyle: 'dark',
+  statusBarTranslucent: true,
   // Bỏ gesture/shadow options tạm thời — tránh lỗi "expected boolean, had string" trên native bridge
   // gestureEnabled, fullScreenGestureEnabled, animationMatchesGesture, fullScreenGestureShadowEnabled
   ...(Platform.OS === 'android' && { headerTranslucent: true }),

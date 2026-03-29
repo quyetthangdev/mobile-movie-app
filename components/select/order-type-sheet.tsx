@@ -27,16 +27,22 @@ interface OrderTypeSheetProps {
   fetchEnabled?: boolean
   /** Gọi khi sheet đóng (index -1) — dùng cho single-active-sheet pattern. */
   onClose?: () => void
+  /** Lazy mount: mở ngay khi mount — dùng khi render conditional, không cần gọi .open() */
+  openOnMount?: boolean
 }
 
-function OrderTypeSheet({ fetchEnabled = true, onClose }: OrderTypeSheetProps) {
+function OrderTypeSheet({
+  fetchEnabled = true,
+  onClose,
+  openOnMount,
+}: OrderTypeSheetProps) {
   const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
   const bottomSheetRef = useRef<BottomSheet>(null)
   const { orderTypes, selectedType, handleChange } = useOrderTypeOptions({
     enabled: fetchEnabled,
   })
-  const [shouldOpen, setShouldOpen] = useState(false)
+  const [shouldOpen, setShouldOpen] = useState(!!openOnMount)
   const [_isOpen, setIsOpen] = useState(false)
 
   // Copy đúng pattern ref + openCallback từ VoucherListDrawer

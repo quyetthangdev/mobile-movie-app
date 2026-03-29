@@ -1,4 +1,3 @@
-export { forVelocityDrivenHorizontal } from './velocity-driven-transition'
 export {
   ParallaxDriverProvider,
   useParallaxDriver,

@@ -2,7 +2,6 @@ import { PaymentMethod } from '@/constants'
 import {
   ICartItem,
   IOrder,
-  IOrderDetail,
   IOrderItem,
   IOrderPayment,
   IOrderToUpdate,
@@ -10,14 +9,25 @@ import {
   ITable,
   IUserInfo,
   IVoucher,
-  OrderStatus,
   OrderTypeEnum,
 } from '@/types'
 import { createSafeStorage } from '@/utils/storage'
 import dayjs from 'dayjs'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+
+import { useCartDisplayStore } from './cart-display.store'
+import { usePaymentFlowStore } from './payment-flow.store'
+import { useUpdateOrderFlowStore } from './update-order-flow.store'
 import { useUserStore } from './user.store'
+
+// Re-export interfaces from standalone stores for backward compat
+export type { IPaymentData } from './payment-flow.store'
+export type { IUpdatingData } from './update-order-flow.store'
+
+// Import types for internal use
+import type { IPaymentData } from './payment-flow.store'
+import type { IUpdatingData } from './update-order-flow.store'
 
 // Order Flow Steps
 export enum OrderFlowStep {
@@ -26,7 +36,7 @@ export enum OrderFlowStep {
   UPDATING = 'updating',
 }
 
-// Ordering Phase Data (tương tự cart store)
+// Ordering Phase Data (tuong tu cart store)
 export interface IOrderingData {
   id: string
   slug: string
@@ -55,25 +65,6 @@ export interface IOrderingData {
   deliveryPlaceId?: string
 }
 
-// Payment Phase Data (tương tự payment store)
-export interface IPaymentData {
-  orderSlug: string
-  paymentMethod: PaymentMethod
-  transactionId?: string
-  qrCode: string
-  paymentSlug: string
-  orderData?: IOrder
-  paymentAmount?: number
-  isQrValid: boolean
-}
-
-// Updating Phase Data (tương tự update-order store)
-export interface IUpdatingData {
-  originalOrder: IOrder
-  updateDraft: IOrderToUpdate
-  hasChanges: boolean
-}
-
 // Main Order Flow State
 export interface IOrderFlowStore {
   // Current flow state
@@ -81,12 +72,12 @@ export interface IOrderFlowStore {
   isHydrated: boolean
   lastModified: number
 
-  /** Tổng quantity orderItems — derived, tránh reduce trong selector */
+  /** Tong quantity orderItems — derived, tranh reduce trong selector */
   orderItemTotalQuantity: number
-  /** Tổng tiền trước voucher — VoucherListDrawer subscribe, tránh re-render khi cart thay đổi */
+  /** Tong tien truoc voucher — VoucherListDrawer subscribe, tranh re-render khi cart thay doi */
   minOrderValue: number
 
-  // Flow data cho từng bước
+  // Flow data cho tung buoc
   orderingData: IOrderingData | null
   paymentData: IPaymentData | null
   updatingData: IUpdatingData | null
@@ -94,7 +85,7 @@ export interface IOrderFlowStore {
   // Actions for flow management
   setCurrentStep: (step: OrderFlowStep) => void
 
-  // Ordering phase actions (tương tự cart store)
+  // Ordering phase actions (tuong tu cart store)
   initializeOrdering: () => void
   setOrderingData: (data: IOrderingData) => void
   addOrderingItem: (item: IOrderItem) => void
@@ -123,7 +114,7 @@ export interface IOrderFlowStore {
   setDeliveryPhone: (phone: string) => void
   clearDeliveryInfo: () => void
 
-  // Payment phase actions (tương tự payment store)
+  // Payment phase actions (delegated to usePaymentFlowStore)
   initializePayment: (orderSlug: string, paymentMethod: PaymentMethod) => void
   setPaymentData: (data: Partial<IPaymentData>) => void
   updatePaymentMethod: (method: PaymentMethod, transactionId?: string) => void
@@ -132,7 +123,7 @@ export interface IOrderFlowStore {
   setPaymentSlug: (slug: string) => void
   clearPaymentData: () => void
 
-  // Updating phase actions (tương tự update-order store)
+  // Updating phase actions (delegated to useUpdateOrderFlowStore)
   initializeUpdating: (originalOrder: IOrder) => void
   setUpdateDraft: (draft: IOrderToUpdate) => void
   updateDraftItem: (itemId: string, changes: Partial<IOrderItem>) => void
@@ -203,11 +194,11 @@ const generateOrderItemId = () => {
   return `item_${dayjs().valueOf()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
-/** Tổng quantity của orderItems — dùng cho selector, tránh reduce trong component */
+/** Tong quantity cua orderItems — dung cho selector, tranh reduce trong component */
 const calcOrderItemTotalQuantity = (items: IOrderItem[] | undefined): number =>
   items?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0
 
-/** Tổng tiền trước voucher (cho minOrderValue) — VoucherListDrawer subscribe primitive */
+/** Tong tien truoc voucher (cho minOrderValue) — VoucherListDrawer subscribe primitive */
 const calcMinOrderValue = (items: IOrderItem[] | undefined): number =>
   items?.reduce((acc, item) => {
     const original = item.originalPrice ?? 0
@@ -215,29 +206,12 @@ const calcMinOrderValue = (items: IOrderItem[] | undefined): number =>
     return acc + (original - promotionDiscount) * (item.quantity || 0)
   }, 0) ?? 0
 
-// Helper function to convert IOrderDetail to IOrderItem
-const convertOrderDetailToOrderItem = (
-  orderDetail: IOrderDetail,
-): IOrderItem => {
-  return {
-    isGift: false,
-    id: orderDetail.id || generateOrderItemId(),
-    slug: orderDetail.slug,
-    image: orderDetail.variant.product.image,
-    name: orderDetail.variant.product.name,
-    quantity: orderDetail.quantity,
-    size: orderDetail.variant.size.name,
-    allVariants: orderDetail.variant.product.variants,
-    variant: orderDetail.variant,
-    originalPrice: orderDetail.variant.price,
-    promotion: orderDetail.promotion || null,
-    promotionValue: orderDetail.promotion?.value || 0,
-    productSlug: orderDetail.variant.product.slug,
-    description: orderDetail.variant.product.description,
-    isLimit: orderDetail.variant.product.isLimit,
-    note: orderDetail.note || '',
-  }
-}
+/** Raw subtotal tai store: dung loop JS nhe, tranh serialize JSON + native bridge tren moi update. */
+const calcRawSubTotal = (items: IOrderItem[] | undefined): number =>
+  items?.reduce(
+    (sum, item) => sum + (item.originalPrice ?? 0) * (item.quantity || 0),
+    0,
+  ) ?? 0
 
 // Helper function to convert ICartItem to IOrderItem[]
 const convertCartItemToOrderItems = (cartItem: ICartItem): IOrderItem[] => {
@@ -246,6 +220,22 @@ const convertCartItemToOrderItems = (cartItem: ICartItem): IOrderItem[] => {
     isGift: false,
     id: item.id || generateOrderItemId(),
   }))
+}
+
+/** Helper: sync paymentData from standalone store into order-flow store */
+const syncPaymentData = (set: (state: Partial<IOrderFlowStore>) => void) => {
+  set({
+    paymentData: usePaymentFlowStore.getState().paymentData,
+    lastModified: dayjs().valueOf(),
+  })
+}
+
+/** Helper: sync updatingData from standalone store into order-flow store */
+const syncUpdatingData = (set: (state: Partial<IOrderFlowStore>) => void) => {
+  set({
+    updatingData: useUpdateOrderFlowStore.getState().updatingData,
+    lastModified: dayjs().valueOf(),
+  })
 }
 
 export const useOrderFlowStore = create<IOrderFlowStore>()(
@@ -379,6 +369,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           updatingData: null,
           lastModified: dayjs().valueOf(),
         })
+        useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
+        useCartDisplayStore.getState().clearDisplay()
       },
 
       addOrderingProductVariant: (id: string) => {
@@ -421,6 +413,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           },
           lastModified: dayjs().valueOf(),
         })
+        useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
+        useCartDisplayStore.getState().clearDisplay()
       },
 
       updateOrderingItemQuantity: (itemId: string, quantity: number) => {
@@ -440,6 +434,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           },
           lastModified: dayjs().valueOf(),
         })
+        useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
+        useCartDisplayStore.getState().clearDisplay()
       },
 
       removeOrderingItem: (itemId: string) => {
@@ -459,6 +455,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           },
           lastModified: dayjs().valueOf(),
         })
+        useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
+        useCartDisplayStore.getState().clearDisplay()
       },
 
       addPickupTime: (time: number) => {
@@ -592,6 +590,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           },
           lastModified: dayjs().valueOf(),
         })
+        useCartDisplayStore.getState().clearDisplay()
       },
 
       removeOrderingVoucher: () => {
@@ -605,6 +604,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           },
           lastModified: dayjs().valueOf(),
         })
+        useCartDisplayStore.getState().clearDisplay()
       },
 
       setOrderingType: (type: OrderTypeEnum) => {
@@ -684,6 +684,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           orderingData: null,
           lastModified: dayjs().valueOf(),
         })
+        useCartDisplayStore.getState().clearDisplay()
+        useCartDisplayStore.getState().setRawSubTotal(0)
       },
 
       // ===================
@@ -776,106 +778,45 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       },
 
       // ===================
-      // PAYMENT PHASE
+      // PAYMENT PHASE (delegated to usePaymentFlowStore)
       // ===================
       initializePayment: (orderSlug: string, paymentMethod?: PaymentMethod) => {
-        const newPaymentData: IPaymentData = {
-          orderSlug,
-          paymentMethod: paymentMethod || PaymentMethod.BANK_TRANSFER,
-          qrCode: '',
-          paymentSlug: '',
-          isQrValid: false,
-        }
-
+        usePaymentFlowStore.getState().initializePayment(orderSlug, paymentMethod)
         set({
           currentStep: OrderFlowStep.PAYMENT,
-          paymentData: newPaymentData,
+          paymentData: usePaymentFlowStore.getState().paymentData,
           orderingData: null,
           lastModified: dayjs().valueOf(),
         })
       },
 
       setPaymentData: (data: Partial<IPaymentData>) => {
-        const { paymentData } = get()
-        if (!paymentData) return
-
-        set({
-          paymentData: {
-            ...paymentData,
-            ...data,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        usePaymentFlowStore.getState().setPaymentData(data)
+        syncPaymentData(set)
       },
 
       updatePaymentMethod: (method: PaymentMethod, transactionId?: string) => {
-        const { paymentData } = get()
-        if (!paymentData) return
-
-        set({
-          paymentData: {
-            ...paymentData,
-            paymentMethod: method,
-            transactionId,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        usePaymentFlowStore.getState().updatePaymentMethod(method, transactionId)
+        syncPaymentData(set)
       },
 
       updateQrCode: (qrCode: string) => {
-        const { paymentData } = get()
-        if (!paymentData) return
-
-        // Validate QR code against order data
-        const isQrValid =
-          paymentData.orderData?.payment?.amount != null &&
-          paymentData.orderData.subtotal != null &&
-          paymentData.orderData.payment.amount ===
-            paymentData.orderData.subtotal &&
-          qrCode.trim() !== ''
-
-        set({
-          paymentData: {
-            ...paymentData,
-            qrCode,
-            isQrValid,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        usePaymentFlowStore.getState().updateQrCode(qrCode)
+        syncPaymentData(set)
       },
 
       setOrderFromAPI: (order: IOrder) => {
-        const { paymentData } = get()
-        if (!paymentData) return
-
-        set({
-          paymentData: {
-            ...paymentData,
-            // Preserve the user's selected payment method; do not overwrite from API
-            // The API method can lag behind the latest UI selection and cause visual reverts
-            paymentMethod: paymentData.paymentMethod,
-            orderData: order,
-            paymentAmount: order.payment?.amount || 0,
-            paymentSlug: order.payment?.slug || '',
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        usePaymentFlowStore.getState().setOrderFromAPI(order)
+        syncPaymentData(set)
       },
 
       setPaymentSlug: (slug: string) => {
-        const { paymentData } = get()
-        if (!paymentData) return
-
-        set({
-          paymentData: {
-            ...paymentData,
-            paymentSlug: slug,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        usePaymentFlowStore.getState().setPaymentSlug(slug)
+        syncPaymentData(set)
       },
 
       clearPaymentData: () => {
+        usePaymentFlowStore.getState().clearPaymentData()
         set({
           paymentData: null,
           lastModified: dayjs().valueOf(),
@@ -883,608 +824,148 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       },
 
       // ===================
-      // UPDATING PHASE
+      // UPDATING PHASE (delegated to useUpdateOrderFlowStore)
       // ===================
       initializeUpdating: (originalOrder: IOrder) => {
-        // Tạo ID cho các order items và cập nhật originalOrder
-        const orderItemsWithIds = originalOrder.orderItems.map((item) => ({
-          ...item,
-          id: item.slug || generateOrderItemId(), // Giữ ID cũ nếu có, tạo mới nếu không
-        }))
-
-        const updatedOriginalOrder: IOrder = {
-          ...originalOrder,
-          orderItems: orderItemsWithIds,
-          deliveryAddress: originalOrder.deliveryTo?.formattedAddress || '',
-          deliveryDistance: originalOrder.deliveryDistance,
-          deliveryDuration: originalOrder.deliveryDuration,
-          deliveryPhone: originalOrder.deliveryPhone,
-          deliveryTo: originalOrder.deliveryTo,
-          deliveryFee: originalOrder.deliveryFee,
-          // Ensure voucher is copied into updatedOriginalOrder
-          voucher: originalOrder.voucher || null,
-        }
-
-        // Create initial draft from original order with same IDs
-        const updateDraft: IOrderToUpdate = {
-          id: generateOrderId(), // Draft has a separate ID
-          slug: updatedOriginalOrder.slug,
-          productSlug:
-            updatedOriginalOrder.orderItems[0]?.variant.product.slug || '',
-          status: updatedOriginalOrder.status || OrderStatus.PENDING,
-          owner: updatedOriginalOrder.owner?.slug || '',
-          ownerFullName:
-            updatedOriginalOrder.owner?.firstName +
-              ' ' +
-              updatedOriginalOrder.owner?.lastName || '',
-          ownerPhoneNumber: updatedOriginalOrder.owner?.phonenumber || '',
-          ownerRole: updatedOriginalOrder.owner?.role.name || '',
-          paymentMethod: updatedOriginalOrder.payment?.paymentMethod || '',
-          type: updatedOriginalOrder.type,
-          timeLeftTakeOut: updatedOriginalOrder.timeLeftTakeOut,
-          table: updatedOriginalOrder.table?.slug || '',
-          tableName: updatedOriginalOrder.table?.name || '',
-          orderItems: orderItemsWithIds.map((item) => ({
-            ...convertOrderDetailToOrderItem(item),
-            id: item.id, // Use same ID
-          })),
-          deliveryAddress:
-            updatedOriginalOrder.deliveryTo?.formattedAddress || '',
-          deliveryDistance: updatedOriginalOrder.deliveryDistance,
-          deliveryDuration: updatedOriginalOrder.deliveryDuration,
-          deliveryPhone: updatedOriginalOrder.deliveryPhone,
-          // deliveryPlaceId: updatedOriginalOrder.deliveryPlaceId, // Keep the same placeId
-          voucher: updatedOriginalOrder.voucher,
-          description: updatedOriginalOrder.description || '',
-          approvalBy: updatedOriginalOrder.approvalBy?.slug || '',
-          deliveryTo: updatedOriginalOrder.deliveryTo,
-          deliveryFee: updatedOriginalOrder.deliveryFee,
-        }
-
-        const newUpdatingData: IUpdatingData = {
-          originalOrder: updatedOriginalOrder,
-          updateDraft,
-          hasChanges: false,
-        }
-
+        useUpdateOrderFlowStore.getState().initializeUpdating(originalOrder)
         set({
           currentStep: OrderFlowStep.UPDATING,
-          updatingData: newUpdatingData,
+          updatingData: useUpdateOrderFlowStore.getState().updatingData,
           paymentData: null,
           lastModified: dayjs().valueOf(),
         })
       },
 
       setUpdateDraft: (draft: IOrderToUpdate) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        // Reference equality O(1) thay vì JSON.stringify O(n)
-        const hasChanges = draft !== updatingData.updateDraft
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: draft,
-            hasChanges,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().setUpdateDraft(draft)
+        syncUpdatingData(set)
       },
 
       updateDraftItem: (itemId: string, changes: Partial<IOrderItem>) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedItems = updatingData.updateDraft.orderItems.map((item) =>
-          item.id === itemId ? { ...item, ...changes } : item,
-        )
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          orderItems: updatedItems,
-        }
-
-        // Đang modify → hasChanges luôn true, không cần JSON.stringify
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().updateDraftItem(itemId, changes)
+        syncUpdatingData(set)
       },
 
       updateDraftItemQuantity: (itemId: string, quantity: number) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedItems = updatingData.updateDraft.orderItems.map((item) =>
-          item.id === itemId ? { ...item, quantity } : item,
-        )
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          orderItems: updatedItems,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().updateDraftItemQuantity(itemId, quantity)
+        syncUpdatingData(set)
       },
 
       addDraftItem: (item: IOrderItem) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const newItem = {
-          ...item,
-          slug: item.productSlug || '',
-          id: generateOrderItemId(),
-        }
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          orderItems: [...updatingData.updateDraft.orderItems, newItem],
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().addDraftItem(item)
+        syncUpdatingData(set)
       },
 
       removeDraftItem: (itemId: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedItems = updatingData.updateDraft.orderItems.filter(
-          (item) => item.id !== itemId,
-        )
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          orderItems: updatedItems,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().removeDraftItem(itemId)
+        syncUpdatingData(set)
       },
 
       addDraftPickupTime: (time: number) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: { ...updatingData.updateDraft, timeLeftTakeOut: time },
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().addDraftPickupTime(time)
+        syncUpdatingData(set)
       },
 
       removeDraftPickupTime: () => {
-        const { updatingData } = get()
-        if (!updatingData) return
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: {
-              ...updatingData.updateDraft,
-              timeLeftTakeOut: undefined,
-            },
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().removeDraftPickupTime()
+        syncUpdatingData(set)
       },
 
       addDraftNote: (itemId: string, note: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedItems = updatingData.updateDraft.orderItems.map((item) =>
-          item.id === itemId ? { ...item, note } : item,
-        )
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          orderItems: updatedItems,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().addDraftNote(itemId, note)
+        syncUpdatingData(set)
       },
 
       updateDraftCustomer: (customer: IUserInfo) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const fullName =
-          `${customer.firstName || ''} ${customer.lastName || ''}`.trim()
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          owner: customer.slug,
-          ownerFullName: fullName,
-          ownerPhoneNumber: customer.phonenumber,
-          ownerRole: customer.role.name,
-          approvalBy: customer.slug,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().updateDraftCustomer(customer)
+        syncUpdatingData(set)
       },
 
       removeDraftCustomer: () => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const requiresVerification =
-          updatingData.updateDraft.voucher?.isVerificationIdentity === true
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          owner: '',
-          ownerFullName: '',
-          ownerPhoneNumber: '',
-          ownerRole: '',
-          voucher: requiresVerification
-            ? null
-            : updatingData.updateDraft.voucher,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().removeDraftCustomer()
+        syncUpdatingData(set)
       },
 
       setDraftTable: (table: ITable) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          timeLeftTakeOut: undefined,
-          table: table.slug,
-          tableName: table.name,
-          type: table.type || OrderTypeEnum.AT_TABLE,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().setDraftTable(table)
+        syncUpdatingData(set)
       },
 
       removeDraftTable: () => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          timeLeftTakeOut: undefined,
-          table: '',
-          tableName: '',
-          type: OrderTypeEnum.AT_TABLE,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().removeDraftTable()
+        syncUpdatingData(set)
       },
 
       setDraftVoucher: (voucher: IVoucher | null) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          voucher,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().setDraftVoucher(voucher)
+        syncUpdatingData(set)
       },
 
       removeDraftVoucher: () => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          voucher: null,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().removeDraftVoucher()
+        syncUpdatingData(set)
       },
 
       setDraftType: (type: OrderTypeEnum) => {
-        const { updatingData } = get()
-        if (!updatingData) return
+        useUpdateOrderFlowStore.getState().setDraftType(type)
+        syncUpdatingData(set)
+      },
 
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          type,
-          // Nếu type là take-out, chỉ remove table, giữ nguyên timeLeftTakeOut
-          ...(type === OrderTypeEnum.TAKE_OUT && {
-            table: '',
-            tableName: '',
-          }),
-          // Nếu type là at-table, remove timeLeftTakeOut
-          ...(type === OrderTypeEnum.AT_TABLE && {
-            timeLeftTakeOut: undefined,
-          }),
-        }
+      setDraftDescription: (description: string) => {
+        useUpdateOrderFlowStore.getState().setDraftDescription(description)
+        syncUpdatingData(set)
+      },
 
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+      setDraftApprovalBy: (approvalBy: string) => {
+        useUpdateOrderFlowStore.getState().setDraftApprovalBy(approvalBy)
+        syncUpdatingData(set)
+      },
+
+      setDraftPaymentMethod: (method: string) => {
+        useUpdateOrderFlowStore.getState().setDraftPaymentMethod(method)
+        syncUpdatingData(set)
+      },
+
+      resetDraftToOriginal: () => {
+        useUpdateOrderFlowStore.getState().resetDraftToOriginal()
+        syncUpdatingData(set)
       },
 
       setDraftDeliveryAddress: (address: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          deliveryAddress: address,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().setDraftDeliveryAddress(address)
+        syncUpdatingData(set)
       },
+
       setDraftDeliveryDistanceDuration: (
         distance: number,
         duration: number,
       ) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          deliveryDistance: distance,
-          deliveryDuration: duration,
-        }
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().setDraftDeliveryDistanceDuration(distance, duration)
+        syncUpdatingData(set)
       },
+
       setDraftDeliveryCoords: (lat: number, lng: number, placeId?: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          deliveryLat: lat,
-          deliveryLng: lng,
-          deliveryPlaceId: placeId,
-        }
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().setDraftDeliveryCoords(lat, lng, placeId)
+        syncUpdatingData(set)
       },
+
       setDraftDeliveryPlaceId: (placeId: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          deliveryPlaceId: placeId,
-        }
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: {
-              ...updatedDraft,
-              deliveryPlaceId: placeId,
-            },
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().setDraftDeliveryPlaceId(placeId)
+        syncUpdatingData(set)
       },
+
       setDraftDeliveryPhone: (phone: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          deliveryPhone: phone,
-        }
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().setDraftDeliveryPhone(phone)
+        syncUpdatingData(set)
       },
+
       clearDraftDeliveryInfo: () => {
-        const { updatingData } = get()
-        if (!updatingData) return
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          deliveryAddress: '',
-          deliveryDistance: 0,
-          deliveryDuration: 0,
-          deliveryPhone: '',
-        }
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      setDraftDescription: (description: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          description,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      setDraftApprovalBy: (approvalBy: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          approvalBy,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      setDraftPaymentMethod: (method: string) => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const updatedDraft = {
-          ...updatingData.updateDraft,
-          paymentMethod: method,
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: updatedDraft,
-            hasChanges: true,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      resetDraftToOriginal: () => {
-        const { updatingData } = get()
-        if (!updatingData) return
-
-        const resetDraft: IOrderToUpdate = {
-          id: generateOrderId(),
-          slug: updatingData.originalOrder.slug,
-          productSlug:
-            updatingData.originalOrder.orderItems[0].variant.product.slug || '',
-          status: updatingData.originalOrder.status || OrderStatus.PENDING,
-          owner: updatingData.originalOrder.owner?.slug || '',
-          ownerFullName: updatingData.originalOrder.owner?.firstName || '',
-          ownerPhoneNumber: updatingData.originalOrder.owner?.phonenumber || '',
-          paymentMethod:
-            updatingData.originalOrder.payment?.paymentMethod || '',
-          type: updatingData.originalOrder.type,
-          table: updatingData.originalOrder.table?.slug || '',
-          tableName: updatingData.originalOrder.table?.name || '',
-          orderItems: updatingData.originalOrder.orderItems.map(
-            convertOrderDetailToOrderItem,
-          ),
-          voucher: updatingData.originalOrder.voucher,
-          description: updatingData.originalOrder.description || '',
-          approvalBy: updatingData.originalOrder.approvalBy?.slug || '',
-        }
-
-        set({
-          updatingData: {
-            ...updatingData,
-            updateDraft: resetDraft,
-            hasChanges: false,
-          },
-          lastModified: dayjs().valueOf(),
-        })
+        useUpdateOrderFlowStore.getState().clearDraftDeliveryInfo()
+        syncUpdatingData(set)
       },
 
       clearUpdatingData: () => {
+        useUpdateOrderFlowStore.getState().clearUpdatingData()
         set({
           updatingData: null,
           lastModified: dayjs().valueOf(),
@@ -1495,18 +976,30 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       // FLOW TRANSITIONS
       // ===================
       transitionToPayment: (orderSlug: string) => {
-        get().clearOrderingData()
-        get().initializePayment(orderSlug, PaymentMethod.BANK_TRANSFER)
+        // Mobile: giữ orderingData (cart) để user quay lại nếu cần
+        usePaymentFlowStore.getState().initializePayment(orderSlug, PaymentMethod.BANK_TRANSFER)
+        set({
+          currentStep: OrderFlowStep.PAYMENT,
+          paymentData: usePaymentFlowStore.getState().paymentData,
+          lastModified: dayjs().valueOf(),
+        })
       },
 
       transitionToUpdating: (originalOrder: IOrder) => {
-        get().clearPaymentData()
-        get().initializeUpdating(originalOrder)
+        usePaymentFlowStore.getState().clearPaymentData()
+        useUpdateOrderFlowStore.getState().initializeUpdating(originalOrder)
+        set({
+          currentStep: OrderFlowStep.UPDATING,
+          paymentData: null,
+          updatingData: useUpdateOrderFlowStore.getState().updatingData,
+          lastModified: dayjs().valueOf(),
+        })
       },
 
       transitionBackToOrdering: () => {
-        get().clearPaymentData()
-        get().clearUpdatingData()
+        usePaymentFlowStore.getState().clearPaymentData()
+        useUpdateOrderFlowStore.getState().clearUpdatingData()
+        set({ paymentData: null, updatingData: null })
         get().initializeOrdering()
       },
 
@@ -1514,6 +1007,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       // UTILITIES
       // ===================
       clearAllData: () => {
+        usePaymentFlowStore.getState().clearPaymentData()
+        useUpdateOrderFlowStore.getState().clearUpdatingData()
         set({
           currentStep: OrderFlowStep.ORDERING,
           orderItemTotalQuantity: 0,
@@ -1551,8 +1046,11 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       getCartItemCount: () => get().orderItemTotalQuantity ?? 0,
 
       getOrderItems: () => {
-        const { currentStep, updatingData } = get()
-        return currentStep === OrderFlowStep.UPDATING ? updatingData : null
+        const { currentStep } = get()
+        if (currentStep === OrderFlowStep.UPDATING) {
+          return useUpdateOrderFlowStore.getState().updatingData
+        }
+        return null
       },
 
       clearCart: () => {
@@ -1609,7 +1107,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         get().addOrderingNote(id, note)
       },
 
-      // Tạm thời chưa expose hàm đổi variant qua compatibility layer; Cart dùng trực tiếp updateOrderingItemVariant
+      // Tam thoi chua expose ham doi variant qua compatibility layer; Cart dung truc tiep updateOrderingItemVariant
 
       addCustomerInfo: (owner: IUserInfo) => {
         get().updateOrderingCustomer(owner)
@@ -1651,7 +1149,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         method: PaymentMethod | string,
         transactionId?: string,
       ) => {
-        const { currentStep, orderingData, paymentData } = get()
+        const { currentStep, orderingData } = get()
 
         if (currentStep === OrderFlowStep.ORDERING && orderingData) {
           set({
@@ -1661,17 +1159,19 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             },
             lastModified: dayjs().valueOf(),
           })
-        } else if (currentStep === OrderFlowStep.PAYMENT && paymentData) {
-          get().updatePaymentMethod(method as PaymentMethod, transactionId)
+        } else if (currentStep === OrderFlowStep.PAYMENT) {
+          usePaymentFlowStore.getState().updatePaymentMethod(method as PaymentMethod, transactionId)
+          syncPaymentData(set)
         }
       },
 
       setQrCode: (qrCode: string) => {
-        get().updateQrCode(qrCode)
+        usePaymentFlowStore.getState().updateQrCode(qrCode)
+        syncPaymentData(set)
       },
 
       setOrderSlug: (slug: string) => {
-        const { currentStep, orderingData, paymentData } = get()
+        const { currentStep, orderingData } = get()
 
         if (currentStep === OrderFlowStep.ORDERING && orderingData) {
           set({
@@ -1684,14 +1184,9 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
             },
             lastModified: dayjs().valueOf(),
           })
-        } else if (currentStep === OrderFlowStep.PAYMENT && paymentData) {
-          set({
-            paymentData: {
-              ...paymentData,
-              orderSlug: slug,
-            },
-            lastModified: dayjs().valueOf(),
-          })
+        } else if (currentStep === OrderFlowStep.PAYMENT) {
+          usePaymentFlowStore.getState().setPaymentData({ orderSlug: slug })
+          syncPaymentData(set)
         }
       },
 
@@ -1706,21 +1201,26 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       partialize: (state) => ({
         currentStep: state.currentStep,
         orderingData: state.orderingData,
-        paymentData: state.paymentData,
-        updatingData: state.updatingData,
         lastModified: state.lastModified,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Set hydrated flag + derive orderItemTotalQuantity, minOrderValue (không persist)
-          const total = calcOrderItemTotalQuantity(state.orderingData?.orderItems)
-          const minVal = calcMinOrderValue(state.orderingData?.orderItems)
+          // Set hydrated flag + derive orderItemTotalQuantity, minOrderValue (khong persist)
+          const items = state.orderingData?.orderItems
+          const total = calcOrderItemTotalQuantity(items)
+          const minVal = calcMinOrderValue(items)
           setTimeout(() => {
+            // Sync paymentData and updatingData from standalone stores after hydration
+            const paymentData = usePaymentFlowStore.getState().paymentData
+            const updatingData = useUpdateOrderFlowStore.getState().updatingData
             useOrderFlowStore.setState({
               isHydrated: true,
               orderItemTotalQuantity: total,
               minOrderValue: minVal,
+              paymentData,
+              updatingData,
             })
+            useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(items ?? []))
           }, 0)
         }
       },

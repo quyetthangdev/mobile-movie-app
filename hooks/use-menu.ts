@@ -10,9 +10,7 @@ export const useSpecificMenu = (
     queryKey: ['specific-menu', query],
     queryFn: async () => getSpecificMenu(query),
     enabled: !!enabled,
-    // Luôn coi là stale để refetch khi mount / pull-to-refresh
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 30_000,
   })
 }
 
@@ -24,8 +22,7 @@ export const usePublicSpecificMenu = (
     queryKey: ['public-specific-menu', query],
     queryFn: async () => getPublicSpecificMenu(query),
     enabled: !!enabled,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 30_000,
   })
 }
 
@@ -34,7 +31,6 @@ export const useSpecificMenuItem = (slug: string, enabled = true) => {
     queryKey: ['specific-menu-item', slug],
     queryFn: async () => getSpecificMenuItem(slug),
     enabled: !!slug && enabled,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 30_000,
   })
 }

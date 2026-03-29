@@ -50,3 +50,18 @@ app-example
 # Expo modules build output
 modules/*/android/build/
 modules/*/ios/build/
+
+# Firebase / Google Services
+google-services.json
+GoogleService-Info.plist
+
+# Signing keys
+*.keystore
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+
+# Sentry
+.sentryclirc

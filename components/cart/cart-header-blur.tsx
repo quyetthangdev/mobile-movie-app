@@ -17,7 +17,7 @@ export type CartHeaderBlurProps = {
   isDark?: boolean
 }
 
-const HEADER_CONTENT_HEIGHT = 60
+export const CART_HEADER_CONTENT_HEIGHT = 60
 
 export function CartHeaderBlur({
   onBack,
@@ -38,7 +38,7 @@ export function CartHeaderBlur({
           top: 0,
           left: 0,
           right: 0,
-          height: insets.top + HEADER_CONTENT_HEIGHT,
+          height: insets.top + CART_HEADER_CONTENT_HEIGHT,
           zIndex: 10,
           elevation: 10,
           overflow: 'hidden',
@@ -96,7 +96,7 @@ export function CartHeaderBlur({
 
 export function useCartHeaderHeight() {
   const insets = useSafeAreaInsets()
-  return insets.top + HEADER_CONTENT_HEIGHT
+  return insets.top + CART_HEADER_CONTENT_HEIGHT
 }
 
 const styles = StyleSheet.create({

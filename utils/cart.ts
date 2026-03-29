@@ -5,7 +5,7 @@ function sumBy<T>(arr: T[], fn: (item: T) => number): number {
 }
 
 import { APPLICABILITY_RULE, VOUCHER_TYPE } from '@/constants'
-import { useCartItemStore } from '@/stores'
+import { useCartItemStore } from '@/stores/cart-legacy.store'
 import {
   ICartItem,
   IDisplayCartItem,
@@ -108,7 +108,8 @@ export const setupAutoClearCart = async (): Promise<void> => {
 
 /** Set lookup O(1) thay vì Array.includes O(m) — giảm isVoucherApplicable từ O(n*m) xuống O(n+m) */
 function getRequiredSlugsSet(voucher: IVoucher): Set<string> {
-  const slugs = voucher.voucherProducts?.map((vp) => vp.product?.slug ?? '') ?? []
+  const slugs =
+    voucher.voucherProducts?.map((vp) => vp.product?.slug ?? '') ?? []
   return new Set(slugs.filter(Boolean))
 }
 
@@ -128,8 +129,8 @@ function isVoucherApplicable(cartItems: ICartItem, voucher: IVoucher): boolean {
 
   // Kiểm tra theo rule — O(n) với Set.has thay vì O(n*m) với Array.includes
   if (voucher.applicabilityRule === APPLICABILITY_RULE.ALL_REQUIRED) {
-    const allInVoucher = orderItems.every(
-      (item) => requiredSlugsSet.has(item.slug ?? ''),
+    const allInVoucher = orderItems.every((item) =>
+      requiredSlugsSet.has(item.slug ?? ''),
     )
     if (!allInVoucher) return false
   }
@@ -187,11 +188,35 @@ function isVoucherApplicableFromOrderDetails(
   return false
 }
 
+const CART_DISPLAY_CACHE_MAX = 5
+const displayCache = new Map<string, IDisplayCartItem[]>()
+
+function getCartDisplayCacheKey(
+  cartItems: ICartItem | null,
+  voucher: IVoucher | null,
+): string {
+  if (!cartItems?.orderItems?.length) return 'empty'
+  const itemsKey = cartItems.orderItems
+    .map(
+      (o) =>
+        `${o.id}:${o.quantity}:${o.originalPrice}:${o.promotionValue ?? ''}:${o.slug ?? ''}`,
+    )
+    .join('|')
+  const vKey = voucher
+    ? `${voucher.slug ?? ''}:${voucher.type}:${voucher.value}:${voucher.applicabilityRule}:${voucher.minOrderValue ?? ''}:${(voucher.voucherProducts ?? []).map((vp) => vp.product?.slug ?? '').join(',')}`
+    : 'null'
+  return `${itemsKey}::${vKey}`
+}
+
 export function calculateCartItemDisplay(
   cartItems: ICartItem | null,
   voucher: IVoucher | null,
 ): IDisplayCartItem[] {
   if (!cartItems || !cartItems.orderItems) return []
+
+  const key = getCartDisplayCacheKey(cartItems, voucher)
+  const cached = displayCache.get(key)
+  if (cached) return cached
 
   const isVoucherValid = voucher
     ? isVoucherApplicable(cartItems, voucher)
@@ -205,7 +230,7 @@ export function calculateCartItemDisplay(
     ? getRequiredSlugsSet(voucher)
     : (new Set() as Set<string>)
 
-  return orderItems.map((item) => {
+  const result = orderItems.map((item) => {
     const original = item.originalPrice ?? 0
 
     // Giảm từ promotion (nếu có)
@@ -331,6 +356,13 @@ export function calculateCartItemDisplay(
       voucherDiscount: 0,
     }
   })
+
+  if (displayCache.size >= CART_DISPLAY_CACHE_MAX) {
+    const firstKey = displayCache.keys().next().value
+    if (firstKey) displayCache.delete(firstKey)
+  }
+  displayCache.set(key, result)
+  return result
 }
 
 export function calculateOrderItemDisplay(
@@ -339,7 +371,9 @@ export function calculateOrderItemDisplay(
 ): IDisplayOrderItem[] {
   if (!orderItems || orderItems.length === 0) return []
 
-  const eligibleSlugsSet = voucher ? getRequiredSlugsSet(voucher) : new Set<string>()
+  const eligibleSlugsSet = voucher
+    ? getRequiredSlugsSet(voucher)
+    : new Set<string>()
 
   const isVoucherValid = voucher
     ? isVoucherApplicableFromOrderDetails(orderItems, voucher)
@@ -514,7 +548,8 @@ export function calculateCartTotals(
 ) {
   // T9: Set O(m) thay vì array — tránh O(n*m) khi .includes() trong loop
   const allowedProductSlugsSet = new Set(
-    voucher?.voucherProducts?.map((vp) => vp.product?.slug).filter(Boolean) ?? [],
+    voucher?.voucherProducts?.map((vp) => vp.product?.slug).filter(Boolean) ??
+      [],
   )
 
   // Tổng giá gốc chưa giảm (native reduce thay lodash — giảm Long Task)
@@ -754,4 +789,116 @@ export function calculateVoucherDiscountFromOrder(
   }
 
   return voucherDiscount
+}
+
+/** Cart/order có orderItems + voucher — dùng cho tính display & totals */
+type CartLike = { orderItems: IOrderItem[]; voucher?: IVoucher | null } | null
+
+/** Native-first: calculateDisplayItems cho cart. Dùng cho create-order-dialog. */
+export function calculateCartDisplayAndTotals(
+  order: CartLike,
+  voucher: IVoucher | null,
+): {
+  displayItems: IDisplayCartItem[]
+  cartTotals: {
+    subTotalBeforeDiscount: number
+    promotionDiscount: number
+    voucherDiscount: number
+    finalTotal: number
+  }
+} {
+  const v = voucher ?? order?.voucher ?? null
+  if (!order?.orderItems?.length) {
+    return {
+      displayItems: [],
+      cartTotals: {
+        subTotalBeforeDiscount: 0,
+        promotionDiscount: 0,
+        voucherDiscount: 0,
+        finalTotal: 0,
+      },
+    }
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Optional native module; dynamic require allows try-catch fallback on web/Expo Go
+    const { calculateDisplayItemsNative } = require('cart-price-calc') as {
+      calculateDisplayItemsNative: (input: {
+        orderItems: Array<Record<string, unknown>>
+        voucher: Record<string, unknown> | null
+      }) => {
+        displayItems: IDisplayCartItem[]
+        totals: { subTotalBeforeDiscount: number; promotionDiscount: number; voucherDiscount: number; finalTotal: number }
+      } | null
+    }
+    const nativeResult = calculateDisplayItemsNative({
+      orderItems: order.orderItems as unknown as Array<Record<string, unknown>>,
+      voucher: v
+        ? {
+            type: v.type,
+            value: v.value,
+            applicabilityRule: v.applicabilityRule,
+            minOrderValue: v.minOrderValue,
+            voucherProducts: v.voucherProducts,
+          }
+        : null,
+    })
+    if (nativeResult) {
+      return {
+        displayItems: nativeResult.displayItems as IDisplayCartItem[],
+        cartTotals: nativeResult.totals,
+      }
+    }
+  } catch {
+    // Native module không có (Expo Go, web)
+  }
+  const displayItems = calculateCartItemDisplay(order as ICartItem, v)
+  const cartTotals = calculateCartTotals(displayItems, v)
+  return { displayItems, cartTotals }
+}
+
+/** Native-first: gọi cart-price-calc nếu có, fallback sang JS. Dùng cho payment, update-order, history. */
+export function calculateOrderDisplayAndTotals(
+  orderItems: IOrderDetail[],
+  voucher: IVoucher | null,
+): {
+  displayItems: IDisplayOrderItem[]
+  cartTotals: {
+    subTotalBeforeDiscount: number
+    promotionDiscount: number
+    voucherDiscount: number
+    finalTotal: number
+  } | null
+} {
+  if (!orderItems?.length) {
+    return {
+      displayItems: [],
+      cartTotals: null,
+    }
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Optional native module; dynamic require allows try-catch fallback on web/Expo Go
+    const { calculateOrderItemDisplayNative } = require('cart-price-calc') as {
+      calculateOrderItemDisplayNative: (
+        items: unknown[],
+        v: unknown,
+      ) => { displayItems: IDisplayOrderItem[]; totals: unknown } | null
+    }
+    const nativeResult = calculateOrderItemDisplayNative(orderItems, voucher)
+    if (nativeResult) {
+      return {
+        displayItems: nativeResult.displayItems as IDisplayOrderItem[],
+        cartTotals: nativeResult.totals as {
+          subTotalBeforeDiscount: number
+          promotionDiscount: number
+          voucherDiscount: number
+          finalTotal: number
+        },
+      }
+    }
+  } catch {
+    // Native module không có (Expo Go, web)
+  }
+  const displayItems = calculateOrderItemDisplay(orderItems, voucher)
+  const cartTotals = calculatePlacedOrderTotals(displayItems, voucher)
+  return { displayItems, cartTotals }
 }

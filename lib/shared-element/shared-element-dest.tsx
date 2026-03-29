@@ -9,9 +9,16 @@
  * Real content ẩn (opacity 0) cho đến khi overlay animation complete,
  * rồi fade in để tránh visual doubling.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native'
-import { measure, useAnimatedRef, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
+import {
+  measure,
+  useAnimatedRef,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated'
 import type Animated from 'react-native-reanimated'
 
 import { useSharedElementOptional, type ElementRect } from './shared-element-provider'
@@ -45,42 +52,23 @@ export function useSharedElementDest(): SharedElementDestResult {
             }
             sharedElement.setDestRect(rect)
             setHasMeasured(true)
+            // Show real content sau overlay. withDelay trên UI thread — tránh mutate trong useEffect (React Compiler).
+            contentVisible.value = withDelay(350, withTiming(1, { duration: 0 }))
           }
         } catch {
           // View not ready yet
         }
       })
     },
-    [animatedRef, hasMeasured, sharedElement],
+    [animatedRef, hasMeasured, sharedElement, contentVisible],
   )
 
-  useEffect(() => {
-    if (!sharedElement) {
-      contentVisible.value = 1
-      return
-    }
-
-    // When shared element is not active, show content immediately
-    if (!sharedElement.isActive.value) {
-      contentVisible.value = 1
-    }
-  }, [sharedElement, contentVisible])
-
+  // Không mutate contentVisible trong useEffect (React Compiler). Chỉ dùng init + onLayout.
   const animatedStyle = useAnimatedStyle<ViewStyle>(() => {
     'worklet'
     return { opacity: contentVisible.value }
   })
   const contentStyle: StyleProp<ViewStyle> = animatedStyle
-
-  // Show real content after overlay animation settles (completeTransition gọi từ MasterTransitionProvider)
-  useEffect(() => {
-    if (!sharedElement || !hasMeasured) return
-
-    const timer = setTimeout(() => {
-      contentVisible.value = 1
-    }, 350)
-    return () => clearTimeout(timer)
-  }, [hasMeasured, sharedElement, contentVisible])
 
   return { animatedRef, onLayout, contentStyle }
 }

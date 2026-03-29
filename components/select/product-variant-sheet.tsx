@@ -16,7 +16,17 @@ let openCallback: ((itemId: string) => void) | null = null
 let pendingItemId: string | null = null
 let currentItemId: string | null = null
 
-function ProductVariantSheet() {
+interface ProductVariantSheetProps {
+  /** Lazy mount: itemId khi mở từ cart — thay cho openForItem() gọi trước mount */
+  initialItemId?: string
+  /** Gọi khi sheet đóng (index -1) — reset parent state */
+  onClose?: () => void
+}
+
+function ProductVariantSheet({
+  initialItemId,
+  onClose,
+}: ProductVariantSheetProps = {}) {
   const { t } = useTranslation('product')
   const isDark = useColorScheme() === 'dark'
   const bottomSheetRef = useRef<BottomSheet>(null)
@@ -39,15 +49,27 @@ function ProductVariantSheet() {
 
   const snapPoints = useMemo(() => ['45%'], [])
 
-  // Chỉ chạy khi mount — xử lý trường hợp openForItem được gọi trước khi component mount.
-  // Khi đã mount, openForItem mở sheet trực tiếp qua sheetRef.
+  // Chỉ chạy khi mount — xử lý openForItem trước mount hoặc initialItemId (lazy load).
   useEffect(() => {
-    if (pendingItemId && sheetRef) {
-      currentItemId = pendingItemId
-      pendingItemId = null
-      sheetRef.snapToIndex(0)
+    const itemId = initialItemId ?? pendingItemId
+    if (!itemId) return
+
+    currentItemId = itemId
+    pendingItemId = null
+
+    const open = () => {
+      if (sheetRef) {
+        sheetRef.snapToIndex(0)
+        return true
+      }
+      return false
     }
-  }, [])
+
+    if (!open()) {
+      const t = setTimeout(open, 100)
+      return () => clearTimeout(t)
+    }
+  }, [initialItemId])
 
   const getCartItems = useOrderFlowStore((s) => s.getCartItems)
   const updateOrderingItemVariant = useOrderFlowStore(
@@ -55,11 +77,19 @@ function ProductVariantSheet() {
   )
   const cartItems = getCartItems()
 
+  const effectiveItemId = initialItemId ?? currentItemId
   const activeItem =
-    cartItems?.orderItems.find((i) => i.id === currentItemId) ?? null
+    cartItems?.orderItems.find((i) => i.id === effectiveItemId) ?? null
   const variants = (activeItem?.allVariants || []) as IProductVariant[]
   const selectedSlug = (activeItem?.variant as IProductVariant | undefined)
     ?.slug
+
+  const handleSheetChanges = useCallback(
+    (index: number) => {
+      if (index < 0) onClose?.()
+    },
+    [onClose],
+  )
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -80,8 +110,8 @@ function ProductVariantSheet() {
       const sizeName = item.size?.name || ''
 
       const handlePress = () => {
-        if (!currentItemId) return
-        updateOrderingItemVariant(currentItemId, item)
+        if (!effectiveItemId) return
+        updateOrderingItemVariant(effectiveItemId, item)
         sheetRef?.close()
       }
 
@@ -114,7 +144,7 @@ function ProductVariantSheet() {
         </View>
       )
     },
-    [selectedSlug, t, updateOrderingItemVariant],
+    [selectedSlug, t, updateOrderingItemVariant, effectiveItemId],
   )
 
   return (
@@ -125,6 +155,7 @@ function ProductVariantSheet() {
       enablePanDownToClose
       enableContentPanningGesture={false}
       enableDynamicSizing={false}
+      onChange={handleSheetChanges}
       backdropComponent={renderBackdrop}
       backgroundStyle={{
         backgroundColor: isDark ? '#111827' : '#ffffff',

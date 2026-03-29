@@ -2,9 +2,12 @@
  * Order Flow selectors — chuẩn hóa selector hooks cho order-flow.store.
  * Dùng thay vì useOrderFlowStore() trực tiếp để giảm re-render.
  */
+import type { IOrderItem } from '@/types'
 import { useShallow } from 'zustand/react/shallow'
 
 import { OrderFlowStep, useOrderFlowStore } from '../order-flow.store'
+
+const EMPTY_ORDER_ITEMS: IOrderItem[] = []
 
 /**
  * @deprecated P3-T1: Dùng selector granular thay vì full orderingData.
@@ -136,9 +139,55 @@ export const useOrderFlowMenuItemDetailActions = () =>
 export const useOrderFlowCartList = () =>
   useOrderFlowStore(
     useShallow((s) => ({
-      orderItems: s.orderingData?.orderItems ?? [],
+      orderItems: s.orderingData?.orderItems ?? EMPTY_ORDER_ITEMS,
       voucher: s.orderingData?.voucher ?? null,
     })),
+  )
+
+/** Chỉ subscribe orderType — cho delivery fee effect trong CartContentFull */
+export const useOrderFlowOrderType = () =>
+  useOrderFlowStore((s) => s.orderingData?.type)
+
+/** Chỉ subscribe deliveryDistance — cho useCalculateDeliveryFee */
+export const useOrderFlowDeliveryDistance = () =>
+  useOrderFlowStore((s) => s.orderingData?.deliveryDistance)
+
+/**
+ * Per-item selector — chỉ re-render khi đúng item đó đổi.
+ * Dùng khi cần atomic update (VD: CartItemRow dùng liveItem).
+ * Lưu ý: Cần item.id. Unchanged items giữ ref (map: ... : item).
+ */
+export const useOrderItem = (itemId: string) =>
+  useOrderFlowStore((s) =>
+    s.orderingData?.orderItems?.find((i) => i.id === itemId),
+  )
+
+/** Chỉ subscribe quantity của 1 item — atomic nhất. */
+export const useOrderItemQuantity = (itemId: string): number =>
+  useOrderFlowStore(
+    (s) =>
+      s.orderingData?.orderItems?.find((i) => i.id === itemId)?.quantity ?? 0,
+  )
+
+/**
+ * CartFooter — chỉ subscribe type/table/delivery*, không re-render khi orderItems thay đổi.
+ * Dùng khi tách Footer riêng — Footer nhận finalTotal từ parent (tính từ orderItems).
+ */
+export const useOrderFlowCartFooterData = () =>
+  useOrderFlowStore(
+    useShallow((s) => {
+      const d = s.orderingData
+      return {
+        type: d?.type,
+        table: d?.table,
+        tableName: d?.tableName,
+        deliveryAddress: d?.deliveryAddress,
+        deliveryPhone: d?.deliveryPhone,
+        deliveryDistance: d?.deliveryDistance,
+        deliveryPlaceId: d?.deliveryPlaceId,
+        orderItemsLength: d?.orderItems?.length ?? 0,
+      }
+    }),
   )
 
 /** MenuItemQuantityControl — chỉ re-render khi hasOrderingData/orderingOwner/isHydrated/currentStep/userSlug thay đổi, không khi cart items thay đổi */

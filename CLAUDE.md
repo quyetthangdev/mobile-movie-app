@@ -1,0 +1,117 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+A food/beverage ordering app (Trend Coffee/Tea) built with React Native + Expo. Despite the repo name "mobile-movie-app", this is a full ordering platform targeting iOS, Android, and Web.
+
+## Common Commands
+
+```bash
+# Development
+expo start                    # Start dev server
+expo run:android              # Run on Android
+expo run:ios                  # Run on iOS
+
+# Quality checks
+npm run typecheck             # TypeScript strict check (tsc --noEmit)
+npm run lint                  # ESLint
+npm run lint:fix              # ESLint with auto-fix
+npm run check                 # typecheck + lint combined
+npm run check-circular        # Detect circular dependencies (madge)
+npm run format                # Prettier formatting
+
+# Build
+npm run build                 # Web export
+npm run build:android         # EAS production Android build
+npm run build:ios             # EAS production iOS build
+```
+
+## Architecture
+
+### Routing (Expo Router - file-based)
+
+- `app/_layout.tsx` — Root layout with all global providers (QueryClient, GestureHandler, BottomSheet, MasterTransition, SharedElement, Toast, I18n, GhostMount)
+- `app/(tabs)/_layout.tsx` — Tab navigator with animated tab bar and floating cart button
+- Main tabs: home, menu, cart, gift-card, profile, perf (dev)
+- Nested routes: `/(tabs)/menu/product/[id]`, `/auth/*`, `/payment/[order]`, `/update-order/[order]`
+
+### State Management
+
+- **Zustand** (39 stores in `stores/`) — Client state, very granular per-domain stores
+- **TanStack React Query** — Server state (API data), 30s stale time, 5min GC
+- Key large stores: `order-flow.store.ts` (52KB), `update-order.store.ts` (29KB), `cart.store.ts` (16KB)
+- Store selectors live in `stores/selectors/`
+
+### Navigation Engine (`lib/navigation/`)
+
+Custom navigation layer on top of Expo Router with:
+- **MasterTransitionProvider** — Syncs native stack animation progress with Reanimated shared values
+- **GhostMountProvider** — Pre-mounts routes (e.g., menu) for instant navigation
+- **Navigation locking** — Prevents concurrent navigations from causing animation conflicts
+- **Transition task queue** — Schedules store updates safely during transitions
+- **Loading overlay** — Shows during slow navigations, skipped when QueryClient has cached data
+
+### Styling
+
+- **NativeWind 4.2** (Tailwind CSS for React Native) with CSS variable-based theming
+- Custom font: BeVietnamPro (4 weights)
+- Prettier auto-sorts Tailwind classes
+
+### Animation
+
+- **React Native Reanimated 4.1** — GPU-accelerated animations
+- Parallax configs in `lib/transitions/`
+- Shared element transitions in `lib/shared-element/`
+- Animation constants in `constants/motion.ts`
+
+### API Layer
+
+- Axios-based clients in `api/` with interceptors
+- Environment URLs via `EXPO_PUBLIC_*` variables loaded in `metro.config.js`
+- Firebase Cloud Messaging for push notifications
+
+### Forms & Validation
+
+- React Hook Form + Zod, unified via `hooks/use-zod-form.ts`
+
+### Local Native Modules (`modules/`)
+
+- `cart-price-calc` — Price calculation engine
+- `navigation-bar-color` — Android navigation bar color control
+
+## Key Patterns
+
+- **Predictive prefetching**: `use-predictive-prefetch`, `use-press-in-prefetch`, `use-viewable-menu-prefetch` — data is fetched before the user navigates
+- **Bottom sheets** via `@gorhom/bottom-sheet` are used extensively for selection UIs (order type, table, variants, vouchers)
+- **Skeleton screens** for loading states throughout the app
+- **Path alias**: `@/*` maps to project root (configured in babel + tsconfig)
+- **patch-package** for dependency patches (see `patches/`)
+
+## Code Style
+
+- TypeScript strict mode
+- No semicolons, single quotes, trailing commas
+- Print width: 80
+- React 19 (no need for `import React`)
+- NativeWind className-based styling (not StyleSheet)
+
+## ⚡ Performance & Optimization Rules
+
+To maintain a consistent **60fps** and minimize **JS Thread spikes**, all components and features must adhere to the following optimization standards:
+
+### 1. List Rendering
+- **Prioritize `FlashList`:** Always use `@shopify/flash-list` instead of the default `FlatList` for long or complex lists (e.g., Product Menu, Order History, Voucher Lists).
+- **Estimated Item Size:** You **must** provide a precise `estimatedItemSize` prop to ensure efficient view recycling.
+
+### 2. Rendering & Memoization
+- **Strict Memoization:** - Wrap all functions passed as props to child components in `useCallback`.
+    - Use `useMemo` for any complex logic, data transformations from Zustand stores, or derived state calculations.
+- **Pure Components:** Use `React.memo` for list items and expensive UI sub-trees to prevent unnecessary re-renders when the parent state changes.
+
+### 3. Animation & Thread Management
+- **UI Thread Execution:** Always perform animations on the **UI Thread** using `react-native-reanimated`. Avoid layouts that trigger JS-driven animations.
+- **Interaction Management:** Do not execute heavy logic (e.g., complex cart calculations or large JSON parsing) during active navigation or animations.
+- **Micro-optimizations:** Use `runOnJS` sparingly and only when necessary to sync back to the JavaScript thread.
+

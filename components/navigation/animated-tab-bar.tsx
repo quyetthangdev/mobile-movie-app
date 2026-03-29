@@ -12,7 +12,6 @@ import Animated, {
 } from 'react-native-reanimated'
 
 import { AnimatedTabButton } from './animated-tab-button'
-import type { TabRoutes, TabState } from './tab-bar-pill'
 
 const ICON_SIZE = 32
 const ITEM_WIDTH = 70
@@ -37,8 +36,18 @@ type Colors = {
 type AnimatedTabBarProps = {
   t: TFunction<'tabs'>
   colors: Colors
-  tabState: TabState
-  tabRoutes: TabRoutes
+  tabState: {
+    isHomeActive: boolean
+    isMenuActive: boolean
+    isGiftCardActive: boolean
+    isProfileActive: boolean
+  }
+  tabRoutes: {
+    home: string
+    menu: string
+    giftCard: string
+    profile: string
+  }
   /** Gọi TRƯỚC khi chuyển tab — (href) => skip nếu đã cache. */
   onBeforeTabSwitch?: (href: string) => void
   /** Gọi ngay khi finger down — prefetch không block. */

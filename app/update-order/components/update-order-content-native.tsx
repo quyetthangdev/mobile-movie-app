@@ -14,8 +14,7 @@ import {
   VOUCHER_TYPE,
 } from '@/constants'
 import {
-  calculateOrderItemDisplay,
-  calculatePlacedOrderTotals,
+  calculateOrderDisplayAndTotals,
   capitalizeFirstLetter,
   formatCurrency,
   showErrorToastMessage,
@@ -62,8 +61,7 @@ export default function UpdateOrderContentNative({
   const accumulatedPointsToUse = updatingData?.originalOrder?.accumulatedPointsToUse || 0
 
   const transformedOrderItems = transformOrderItemToOrderDetail(orderItems)
-  const displayItems = calculateOrderItemDisplay(transformedOrderItems, voucher)
-  const cartTotals = calculatePlacedOrderTotals(displayItems, voucher)
+  const { displayItems, cartTotals } = calculateOrderDisplayAndTotals(transformedOrderItems, voucher)
   const finalTotal =
     (cartTotals?.finalTotal || 0) + deliveryFee - (accumulatedPointsToUse || 0)
 

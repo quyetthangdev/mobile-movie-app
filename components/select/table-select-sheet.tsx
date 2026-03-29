@@ -26,15 +26,21 @@ interface TableSelectSheetProps {
   branchSlug: string
   /** Gọi khi sheet đóng (index -1) — dùng cho single-active-sheet pattern. */
   onClose?: () => void
+  /** Lazy mount: mở ngay khi mount — dùng khi render conditional, không cần gọi .open() */
+  openOnMount?: boolean
 }
 
 const TABLE_PAGE_SIZE = 12
 
-function TableSelectSheet({ branchSlug, onClose }: TableSelectSheetProps) {
+function TableSelectSheet({
+  branchSlug,
+  onClose,
+  openOnMount,
+}: TableSelectSheetProps) {
   const { t } = useTranslation('table')
   const isDark = useColorScheme() === 'dark'
   const bottomSheetRef = useRef<BottomSheet>(null)
-  const [shouldOpen, setShouldOpen] = useState(false)
+  const [shouldOpen, setShouldOpen] = useState(!!openOnMount)
   const [_isOpen, setIsOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(TABLE_PAGE_SIZE)
   const [isLoadingMore, setIsLoadingMore] = useState(false)

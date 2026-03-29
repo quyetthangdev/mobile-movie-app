@@ -5,21 +5,32 @@
  * TransitionProgressSyncer (trong screen) sync Animated.Value → SharedValue.
  * Parallax interpolate dựa trên progress này → giảm jank.
  */
+import { useQueryClient } from '@tanstack/react-query'
 import { usePathname } from 'expo-router'
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { InteractionManager, View } from 'react-native'
 import { runOnUI } from 'react-native-reanimated'
-import { useQueryClient } from '@tanstack/react-query'
 
 import { GlobalLoadingOverlay } from '@/components/ui/global-loading-overlay'
 import type { SharedValue } from 'react-native-reanimated'
 import { useSharedValue } from 'react-native-reanimated'
 
-import { useGhostMount } from './ghost-mount-provider'
-import { setTransitionQueueing } from './transition-task-queue'
-import { cancelScheduledUnlockTimers, unlockNavigation } from './navigation-lock'
-import { ParallaxDriverProvider } from '@/lib/transitions/reanimated-parallax-driver'
+import { markCartFlowEvent } from '@/lib/qa/cart-flow-benchmark'
 import { useSharedElementOptional } from '@/lib/shared-element'
+import { ParallaxDriverProvider } from '@/lib/transitions/reanimated-parallax-driver'
+import { useGhostMount } from './ghost-mount-provider'
+import {
+  cancelScheduledUnlockTimers,
+  unlockNavigation,
+} from './navigation-lock'
+import { setTransitionQueueing } from './transition-task-queue'
 
 export type MasterTransitionContextValue = {
   /** Progress 0→1 (push) hoặc 1→0 (pop). Physics-based, không timing. */
@@ -39,33 +50,68 @@ export type MasterTransitionContextValue = {
   hideLoadingOverlay: () => void
 }
 
-const MasterTransitionContext = createContext<MasterTransitionContextValue | null>(
-  null,
-)
+const MasterTransitionContext =
+  createContext<MasterTransitionContextValue | null>(null)
 
 /** Tạm tắt overlay — bật lại khi cần */
 const OVERLAY_ENABLED = false
+/** P3: Tắt Parallax → bỏ TransitionProgressSyncer listener mỗi frame. Bật lại nếu cần hiệu ứng depth. */
+const PARALLAX_ENABLED = false
 /** Delay sau transitionEnd trước khi ẩn overlay — bù khoảng delay skeleton */
 const OVERLAY_HIDE_DELAY_MS = 180
 /** Mặc định khi gọi showLoadingFor() (vd: tab switch) */
 const TAB_SWITCH_OVERLAY_MS = 400
+/** Perf mode: tắt InteractionHandle để giảm bookkeeping JS trong transition. */
+const USE_INTERACTION_HANDLE = false
+/**
+ * Deep-dive A/B: queueing global thường tăng overhead trong flow hiện tại.
+ * Mặc định tắt queueing; chỉ bật khi cần test/điều tra.
+ */
+function shouldEnableTransitionQueueing(): boolean {
+  const g = globalThis as { __ENABLE_TRANSITION_QUEUEING?: boolean } | undefined
+  if (typeof g?.__ENABLE_TRANSITION_QUEUEING === 'boolean') {
+    return g.__ENABLE_TRANSITION_QUEUEING
+  }
+  return false
+}
 
 /** Route pattern → query key để kiểm tra cache. Nếu có cache thì bỏ qua overlay. */
-const ROUTE_CACHE_QUERY_MAP: Array<{ pattern: RegExp; getQueryKey: (param: string) => unknown[] }> = [
-  { pattern: /\/menu\/product\/([^/]+)/, getQueryKey: (id) => ['specific-menu-item', id] },
-  { pattern: /\/product\/([^/]+)/, getQueryKey: (id) => ['specific-menu-item', id] }, // redirect target
-  { pattern: /\/update-order\/([^/]+)/, getQueryKey: (slug) => ['order', slug] },
-  { pattern: /\/payment\/([^/]+)/, getQueryKey: (orderSlug) => ['order', orderSlug] },
+const ROUTE_CACHE_QUERY_MAP: Array<{
+  pattern: RegExp
+  getQueryKey: (param: string) => unknown[]
+}> = [
+  {
+    pattern: /\/menu\/product\/([^/]+)/,
+    getQueryKey: (id) => ['specific-menu-item', id],
+  },
+  {
+    pattern: /\/product\/([^/]+)/,
+    getQueryKey: (id) => ['specific-menu-item', id],
+  }, // redirect target
+  {
+    pattern: /\/update-order\/([^/]+)/,
+    getQueryKey: (slug) => ['order', slug],
+  },
+  {
+    pattern: /\/payment\/([^/]+)/,
+    getQueryKey: (orderSlug) => ['order', orderSlug],
+  },
 ]
 
-export function MasterTransitionProvider({ children }: { children: React.ReactNode }) {
+export function MasterTransitionProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const pathname = usePathname()
   const queryClient = useQueryClient()
   const transitionProgress = useSharedValue(0)
   const isTransitioning = useSharedValue(false)
   const { clearPreload } = useGhostMount()
   const sharedElement = useSharedElementOptional()
-  const interactionHandleRef = useRef<ReturnType<typeof InteractionManager.createInteractionHandle> | null>(null)
+  const interactionHandleRef = useRef<ReturnType<
+    typeof InteractionManager.createInteractionHandle
+  > | null>(null)
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
   const overlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -79,12 +125,23 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
 
   const onTransitionStart = useCallback(
     (e: { data: { closing: boolean } }) => {
-      if (interactionHandleRef.current != null) {
-        InteractionManager.clearInteractionHandle(interactionHandleRef.current)
-        interactionHandleRef.current = null
+      if (USE_INTERACTION_HANDLE) {
+        if (interactionHandleRef.current != null) {
+          InteractionManager.clearInteractionHandle(
+            interactionHandleRef.current,
+          )
+          interactionHandleRef.current = null
+        }
+        interactionHandleRef.current =
+          InteractionManager.createInteractionHandle()
       }
-      interactionHandleRef.current = InteractionManager.createInteractionHandle()
-      setTransitionQueueing(true)
+      markCartFlowEvent('transition_start', {
+        closing: e.data.closing,
+        pathname,
+      })
+      if (shouldEnableTransitionQueueing()) {
+        setTransitionQueueing(true)
+      }
       const closing = e.data.closing
 
       // Shared Element: reverse overlay animation when swiping back
@@ -103,15 +160,23 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
         overlayTimeoutRef.current = null
       }
     },
-    [isTransitioning, transitionProgress, sharedElement],
+    [isTransitioning, transitionProgress, sharedElement, pathname],
   )
 
   const onTransitionEnd = useCallback(
     (e: { data: { closing: boolean } }) => {
-      if (interactionHandleRef.current != null) {
-        InteractionManager.clearInteractionHandle(interactionHandleRef.current)
-        interactionHandleRef.current = null
+      if (USE_INTERACTION_HANDLE) {
+        if (interactionHandleRef.current != null) {
+          InteractionManager.clearInteractionHandle(
+            interactionHandleRef.current,
+          )
+          interactionHandleRef.current = null
+        }
       }
+      markCartFlowEvent('transition_end', {
+        closing: e.data.closing,
+        pathname,
+      })
       cancelScheduledUnlockTimers()
       unlockNavigation()
       const closing = e.data.closing
@@ -126,7 +191,9 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
         isTransitioning.value = false
         transitionProgress.value = closing ? 0 : 1
       })()
-      setTransitionQueueing(false)
+      if (shouldEnableTransitionQueueing()) {
+        setTransitionQueueing(false)
+      }
       clearPreload()
       // Hiện overlay SAU khi transition xong (push) — tránh chồng lên animation trượt.
       // Bỏ qua overlay nếu đã có cache (product, menu, ...).
@@ -164,7 +231,14 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
         }, OVERLAY_HIDE_DELAY_MS)
       }
     },
-    [clearPreload, isTransitioning, transitionProgress, sharedElement, pathname, queryClient],
+    [
+      clearPreload,
+      isTransitioning,
+      transitionProgress,
+      sharedElement,
+      pathname,
+      queryClient,
+    ],
   )
 
   const showLoadingFor = useCallback((ms = TAB_SWITCH_OVERLAY_MS) => {
@@ -214,15 +288,26 @@ export function MasterTransitionProvider({ children }: { children: React.ReactNo
       showLoadingOverlay: showLoadingOverlayNoTimeout,
       hideLoadingOverlay,
     }),
-    [transitionProgress, isTransitioning, screenListeners, showLoadingFor, showLoadingOverlayNoTimeout, hideLoadingOverlay],
+    [
+      transitionProgress,
+      isTransitioning,
+      screenListeners,
+      showLoadingFor,
+      showLoadingOverlayNoTimeout,
+      hideLoadingOverlay,
+    ],
   )
 
   return (
     <MasterTransitionContext.Provider value={value}>
       <View style={{ flex: 1 }}>
-        <ParallaxDriverProvider progress={transitionProgress}>
-          {children}
-        </ParallaxDriverProvider>
+        {PARALLAX_ENABLED ? (
+          <ParallaxDriverProvider progress={transitionProgress}>
+            {children}
+          </ParallaxDriverProvider>
+        ) : (
+          children
+        )}
         <GlobalLoadingOverlay visible={showLoadingOverlay} />
       </View>
     </MasterTransitionContext.Provider>

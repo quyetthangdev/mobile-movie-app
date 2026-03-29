@@ -2,9 +2,12 @@ import { AlertCircle, CheckCircle, Info, XCircle } from 'lucide-react-native'
 import React, { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, {
+  cancelAnimation,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withSequence,
   withSpring,
 } from 'react-native-reanimated'
 
@@ -35,22 +38,28 @@ const ToastItem = React.memo(function ToastItem({ toast, onHide }: ToastItemProp
     translateY.value = -100
     opacity.value = 0
 
-    // Animation vào - từ trên xuống, SPRING_CONFIGS.modal cho độ nảy nhẹ khi 'đậu'
-    translateY.value = withSpring(0, SPRING_CONFIGS.modal)
-    opacity.value = withSpring(1, SPRING_CONFIGS.modal)
+    const delayMs = toast.duration * 1000
+    const hideCallback = (finished?: boolean) => {
+      'worklet'
+      if (finished) runOnJS(onHide)(toast.id)
+    }
 
-    // Tự động ẩn sau duration
-    const timer = setTimeout(() => {
-      translateY.value = withSpring(-100, SPRING_CONFIGS.modal)
-      opacity.value = withSpring(0, SPRING_CONFIGS.modal, (finished) => {
-        // Callback runs after animation completes
-        if (finished) {
-          runOnJS(onHide)(toast.id)
-        }
-      })
-    }, toast.duration * 1000)
-
-    return () => clearTimeout(timer)
+    // Chuỗi: enter → delay → exit → callback. Toàn bộ trên UI thread, tránh setTimeout đánh thức JS.
+    translateY.value = withSequence(
+      withSpring(0, SPRING_CONFIGS.modal),
+      withDelay(delayMs, withSpring(-100, SPRING_CONFIGS.modal)),
+    )
+    opacity.value = withSequence(
+      withSpring(1, SPRING_CONFIGS.modal),
+      withDelay(
+        delayMs,
+        withSpring(0, SPRING_CONFIGS.modal, hideCallback),
+      ),
+    )
+    return () => {
+      cancelAnimation(translateY)
+      cancelAnimation(opacity)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast.id, toast.duration, onHide])
 

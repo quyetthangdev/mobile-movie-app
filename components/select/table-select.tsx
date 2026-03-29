@@ -6,14 +6,17 @@ import { cn } from '@/lib/utils'
 import { useOrderFlowStore } from '@/stores'
 import { OrderTypeEnum } from '@/types'
 
-import TableSelectSheet from './table-select-sheet'
-
 interface TableSelectProps {
   /** Gọi trước open() — hook phụ (analytics, v.v.) */
   onBeforeOpen?: () => void
+  /** true = chỉ gọi onBeforeOpen, không load/open sheet (parent render sheet với openOnMount) */
+  useMountOpen?: boolean
 }
 
-export default function TableSelect({ onBeforeOpen }: TableSelectProps) {
+export default function TableSelect({
+  onBeforeOpen,
+  useMountOpen = false,
+}: TableSelectProps) {
   const { t } = useTranslation('table')
   const isDark = useColorScheme() === 'dark'
 
@@ -32,8 +35,10 @@ export default function TableSelect({ onBeforeOpen }: TableSelectProps) {
 
   const handlePress = () => {
     onBeforeOpen?.()
-    const sheet = TableSelectSheet as { open?: () => void }
-    if (typeof sheet.open === 'function') sheet.open()
+    if (useMountOpen) return
+    import('./table-select-sheet').then((m) => {
+      ;(m.default as { open?: () => void }).open?.()
+    })
   }
 
   return (

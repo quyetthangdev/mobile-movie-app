@@ -1,163 +1,155 @@
-// import { create } from 'zustand'
-// import moment from 'moment'
-// import type { NotificationPayload } from '@/types'
-// import type { INotification, INotificationMetadata, PrinterFailNotificationItem } from '@/types/notification.type'
-// import { NotificationMessageCode } from '@/constants'
+/**
+ * Notification Store — in-memory list of received notifications (max 50).
+ *
+ * addNotification: parse FCM payload → INotification → prepend to list
+ * markAsRead / markAllAsRead: optimistic local update
+ * hydrateFromApi: merge API data into local store (API takes priority)
+ * getUnreadCount: derived count
+ */
+import { create } from 'zustand'
 
-// interface NotificationStore {
-//   notifications: INotification[]
-//   addNotification: (payload: NotificationPayload, options?: { markAsRead?: boolean }) => void
-//   markAsRead: (slug: string) => void
-//   markAllAsRead: () => void
-//   clearAll: () => void
+import type {
+  INotification,
+  INotificationMetadata,
+} from '@/types/notification.type'
 
-//   // Selector helpers
-//   getUnreadCount: () => number
-//   getUnreadPrinterFails: () => PrinterFailNotificationItem[]
+// ─── Types ──────────────────────────────────────────────────────────────────
 
-//   // Hydrate từ API (initial load)
-//   hydrateFromApi: (items: INotification[]) => void
-// }
+export interface NotificationPayload {
+  notification?: {
+    title?: string
+    body?: string
+    icon?: string
+    image?: string
+  }
+  data?: Record<string, string>
+  messageId?: string
+}
 
-// const MAX_NOTIFICATIONS = 50
+interface NotificationStore {
+  notifications: INotification[]
+  addNotification: (
+    payload: NotificationPayload,
+    options?: { markAsRead?: boolean },
+  ) => void
+  markAsRead: (slug: string) => void
+  markAllAsRead: () => void
+  clearAll: () => void
+  getUnreadCount: () => number
+  hydrateFromApi: (items: INotification[]) => void
+}
 
-// // Helper: xác định thông báo là lỗi in
-// const isPrinterFailNotification = (message: string): boolean => {
-//   return [
-//     NotificationMessageCode.ORDER_BILL_FAILED_PRINTING,
-//     NotificationMessageCode.ORDER_CHEF_ORDER_FAILED_PRINTING,
-//     NotificationMessageCode.ORDER_LABEL_TICKET_FAILED_PRINTING,
-//   ].includes(message as NotificationMessageCode)
-// }
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-// const transformPayloadToNotification = (
-//   payload: NotificationPayload,
-//   markAsRead = false,
-// ): INotification => {
-//   const data = payload.data ?? {}
-  
-//   // ⚠️ QUAN TRỌNG: Parse data.payload nếu có (backend gửi message code trong payload JSON string)
-//   let parsedPayload: Record<string, string> = {}
-//   if (data.payload && typeof data.payload === 'string') {
-//     try {
-//       parsedPayload = JSON.parse(data.payload)
-//     } catch {
-//       // Ignore parse errors
-//     }
-//   }
-  
-//   // Merge parsed payload vào data (parsed payload có priority cao hơn)
-//   const mergedData = { ...data, ...parsedPayload }
-  
-//   const slug = mergedData.slug || data.slug || payload.messageId || `${Date.now()}`
-//   const createdAt = mergedData.createdAt || data.createdAt || new Date().toISOString()
-//   const message = mergedData.message || data.message || payload.notification?.body || ''
-//   const type = mergedData.type || data.type || 'system'
+const MAX_NOTIFICATIONS = 50
 
-//   const metadata: INotificationMetadata = {
-//     order: mergedData.order || data.order || '',
-//     orderType: mergedData.orderType || data.orderType || '',
-//     tableName: mergedData.tableName || data.tableName || '',
-//     table: mergedData.table || data.table || '',
-//     branchName: mergedData.branchName || data.branchName || '',
-//     branch: mergedData.branch || data.branch || '',
-//     referenceNumber: mergedData.referenceNumber || data.referenceNumber || '',
-//     createdAt: mergedData.createdAt || data.createdAt,
-//   }
+function transformPayloadToNotification(
+  payload: NotificationPayload,
+  markAsRead = false,
+): INotification {
+  const data = payload.data ?? {}
 
-//   return {
-//     slug,
-//     createdAt,
-//     message,
-//     senderId: mergedData.senderId || data.senderId || '',
-//     receiverId: mergedData.receiverId || data.receiverId || '',
-//     type,
-//     isRead: markAsRead,
-//     metadata,
-//   }
-// }
+  // Parse data.payload JSON string (backend sends metadata here)
+  let parsedPayload: Record<string, string> = {}
+  if (data.payload && typeof data.payload === 'string') {
+    try {
+      parsedPayload = JSON.parse(data.payload) as Record<string, string>
+    } catch {
+      // Ignore parse errors
+    }
+  }
 
-// export const useNotificationStore = create<NotificationStore>((set, get) => ({
-//   notifications: [],
-//   addNotification: (payload, options) => {
-//     set((state) => {
-//       const item = transformPayloadToNotification(payload, options?.markAsRead ?? false)
-//       const filtered = state.notifications.filter((notif) => notif.slug !== item.slug)
-//       const notifications = [item, ...filtered].slice(0, MAX_NOTIFICATIONS)
-//       return { notifications }
-//     })
-//   },
-//   markAsRead: (slug) => {
-//     set((state) => ({
-//       notifications: state.notifications.map((notif) =>
-//         notif.slug === slug ? { ...notif, isRead: true } : notif,
-//       ),
-//     }))
-//   },
-//   markAllAsRead: () => {
-//     set((state) => ({
-//       notifications: state.notifications.map((notif) => ({ ...notif, isRead: true })),
-//     }))
-//   },
-//   clearAll: () => set({ notifications: [] }),
+  // Merge: parsed payload takes priority over raw data
+  const merged = { ...data, ...parsedPayload }
 
-//   // Đếm số notification chưa đọc
-//   getUnreadCount: () => {
-//     const state = get()
-//     return state.notifications.filter((notif) => !notif.isRead).length
-//   },
+  const slug =
+    merged.slug || data.slug || payload.messageId || `${Date.now()}`
+  const createdAt =
+    merged.createdAt || data.createdAt || new Date().toISOString()
+  const message =
+    merged.message || data.message || payload.notification?.body || ''
+  const type = merged.type || data.type || 'system'
 
-//   // Lấy danh sách thông báo lỗi in chưa đọc, đã map về PrinterFailNotificationItem và sort theo thời gian đặt (cũ nhất trước)
-//   getUnreadPrinterFails: () => {
-//     const state = get()
+  const metadata: INotificationMetadata = {
+    order: merged.order || '',
+    orderType: merged.orderType || '',
+    tableName: merged.tableName || '',
+    table: merged.table || '',
+    branchName: merged.branchName || '',
+    branch: merged.branch || '',
+    referenceNumber: merged.referenceNumber || '',
+    createdAt: merged.createdAt || data.createdAt || createdAt,
+  }
 
-//     const printerFails: PrinterFailNotificationItem[] = state.notifications
-//       .filter((notification) => !notification.isRead && isPrinterFailNotification(notification.message))
-//       .map((notification) => {
-//         const metadata = notification.metadata as INotificationMetadata
+  return {
+    slug,
+    createdAt,
+    message,
+    senderId: merged.senderId || '',
+    receiverId: merged.receiverId || '',
+    type,
+    isRead: markAsRead,
+    metadata,
+  }
+}
 
-//         return {
-//           isRead: notification.isRead,
-//           slug: notification.slug,
-//           message: notification.message as NotificationMessageCode,
-//           metadata,
-//         }
-//       })
-//       .sort((a, b) => {
-//         const timeA = moment(a.metadata.createdAt).valueOf()
-//         const timeB = moment(b.metadata.createdAt).valueOf()
-//         return timeA - timeB // Cũ nhất trước
-//       })
+// ─── Store ──────────────────────────────────────────────────────────────────
 
-//     return printerFails
-//   },
+export const useNotificationStore = create<NotificationStore>((set, get) => ({
+  notifications: [],
 
-//   // Hydrate danh sách notification từ API (giữ lại các notification hiện tại, merge theo slug)
-//   hydrateFromApi: (items: INotification[]) => {
-//     if (!items || items.length === 0) return
+  addNotification: (payload, options) => {
+    set((state) => {
+      const item = transformPayloadToNotification(
+        payload,
+        options?.markAsRead ?? false,
+      )
+      // Dedup by slug, prepend new, cap at MAX
+      const filtered = state.notifications.filter(
+        (n) => n.slug !== item.slug,
+      )
+      return { notifications: [item, ...filtered].slice(0, MAX_NOTIFICATIONS) }
+    })
+  },
 
-//     set((state) => {
-//       const map = new Map<string, INotification>()
+  markAsRead: (slug) => {
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.slug === slug ? { ...n, isRead: true } : n,
+      ),
+    }))
+  },
 
-//       // Ưu tiên dữ liệu hiện tại
-//       state.notifications.forEach((n) => {
-//         map.set(n.slug, n)
-//       })
+  markAllAsRead: () => {
+    set((state) => ({
+      notifications: state.notifications.map((n) => ({
+        ...n,
+        isRead: true,
+      })),
+    }))
+  },
 
-//       // Merge dữ liệu từ API (lưu tất cả, không filter)
-//       items.forEach((n) => {
-//         map.set(n.slug, n)
-//       })
+  clearAll: () => set({ notifications: [] }),
 
-//       const merged = Array.from(map.values())
-//         .sort((a, b) => {
-//           const timeA = new Date(a.createdAt).getTime()
-//           const timeB = new Date(b.createdAt).getTime()
-//           return timeB - timeA // Mới nhất trước
-//         })
-//         .slice(0, MAX_NOTIFICATIONS)
+  getUnreadCount: () => {
+    return get().notifications.filter((n) => !n.isRead).length
+  },
 
-//       return { notifications: merged }
-//     })
-//   },
-// }))
+  hydrateFromApi: (items) => {
+    if (!items || items.length === 0) return
+    set((state) => {
+      const map = new Map<string, INotification>()
+      // Existing local notifications first
+      for (const n of state.notifications) map.set(n.slug, n)
+      // API data overwrites
+      for (const n of items) map.set(n.slug, n)
+      const merged = Array.from(map.values())
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        .slice(0, MAX_NOTIFICATIONS)
+      return { notifications: merged }
+    })
+  },
+}))

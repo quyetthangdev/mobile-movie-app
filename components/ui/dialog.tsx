@@ -14,6 +14,7 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSpring,
 } from 'react-native-reanimated'
 
@@ -109,14 +110,12 @@ function DialogContent({ children, className, onClose, onExitComplete, open = tr
       translateY.value = -8
       backdropOpacity.value = 0
 
-      const timeoutId = setTimeout(() => {
-        backdropOpacity.value = withSpring(1, SPRING)
-        opacity.value = withSpring(1, SPRING)
-        scale.value = withSpring(1, SPRING)
-        translateY.value = withSpring(0, SPRING)
-      }, 16) // one frame delay để tránh giật khung đầu
-
-      return () => clearTimeout(timeoutId)
+      // withDelay(16) thay setTimeout — frame delay trên UI thread, tránh đánh thức JS
+      backdropOpacity.value = withDelay(16, withSpring(1, SPRING))
+      opacity.value = withDelay(16, withSpring(1, SPRING))
+      scale.value = withDelay(16, withSpring(1, SPRING))
+      translateY.value = withDelay(16, withSpring(0, SPRING))
+      return
     }
 
     // Đóng: dứt khoát nhưng không khựng — dùng spring

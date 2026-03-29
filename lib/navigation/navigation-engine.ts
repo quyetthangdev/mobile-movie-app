@@ -20,7 +20,7 @@ import {
   type HrefLike as LockHrefLike,
   type RouterLike as LockRouterLike,
 } from './navigation-lock'
-import { TRANSITION_DURATION_MS } from './constants'
+import { STACK_TRANSITION_DURATION_MS } from './constants'
 import { acquireTransitionLock } from './transition-lock'
 
 export type HrefLike = Href | string
@@ -42,13 +42,13 @@ export const executeNavFromGesture = (
   href?: HrefLike,
 ) => {
   // Instant path: không thêm rAF, để transition bắt đầu càng sớm càng tốt
-  executeNav(type, href, TRANSITION_DURATION_MS)
+  executeNav(type, href, STACK_TRANSITION_DURATION_MS)
 }
 
 const executeNav = (
   type: 'push' | 'replace' | 'navigate' | 'back',
   href?: HrefLike,
-  duration = TRANSITION_DURATION_MS,
+  duration = STACK_TRANSITION_DURATION_MS,
 ) => {
   
   const r = getRouter()
@@ -111,19 +111,19 @@ const executeNav = (
 export const navigateNative = {
   push: (href: HrefLike) => {
     if (isNavigationLocked()) return
-    executeNav('push', href, TRANSITION_DURATION_MS)
+    executeNav('push', href, STACK_TRANSITION_DURATION_MS)
   },
   replace: (href: HrefLike) => {
     if (isNavigationLocked()) return
-    executeNav('replace', href, TRANSITION_DURATION_MS)
+    executeNav('replace', href, STACK_TRANSITION_DURATION_MS)
   },
   navigate: (href: HrefLike) => {
     if (isNavigationLocked()) return
-    executeNav('navigate', href, TRANSITION_DURATION_MS)
+    executeNav('navigate', href, STACK_TRANSITION_DURATION_MS)
   },
   back: () => {
     if (isNavigationLocked()) return
-    executeNav('back', undefined, TRANSITION_DURATION_MS)
+    executeNav('back', undefined, STACK_TRANSITION_DURATION_MS)
   },
 }
 

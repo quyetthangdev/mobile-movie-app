@@ -5,11 +5,13 @@
  * Khi router.push: Màn đích đã warm trong bộ nhớ → giảm drop frame.
  */
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, useColorScheme, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { CartTransitionShell } from '@/components/cart'
 import { MenuItemSkeletonShell } from '@/components/skeletons'
 
-export type GhostRouteKey = 'menu-item' | 'news' | null
+export type GhostRouteKey = 'menu-item' | 'menu-cart' | 'news' | null
 
 type GhostMountContextValue = {
   preload: (route: GhostRouteKey, params?: Record<string, string>) => void
@@ -18,18 +20,45 @@ type GhostMountContextValue = {
 
 const GhostMountContext = createContext<GhostMountContextValue | null>(null)
 
+/**
+ * Ghost preload thường giúp perceived latency nhưng tạo thêm JS work tại press-in.
+ * Mặc định tắt để ưu tiên CPU/JS-thread benchmark; chỉ bật khi cần A/B.
+ */
+function isGhostPreloadEnabled(): boolean {
+  const g = globalThis as { __ENABLE_GHOST_PRELOAD?: boolean } | undefined
+  return !!g?.__ENABLE_GHOST_PRELOAD
+}
+
+/** Shell cho ghost mount Cart — onBack no-op vì render ẩn */
+function CartGhostShell() {
+  const isDark = useColorScheme() === 'dark'
+  const insets = useSafeAreaInsets()
+  return (
+    <CartTransitionShell
+      onBack={() => {}}
+      isDark={isDark}
+      insets={{ top: insets.top, bottom: insets.bottom }}
+    />
+  )
+}
+
 const ROUTE_SKELETONS: Record<Exclude<GhostRouteKey, null>, React.ComponentType> = {
   'menu-item': MenuItemSkeletonShell,
+  'menu-cart': CartGhostShell,
   news: MenuItemSkeletonShell, // TODO: NewsSkeletonShell khi có
 }
 
 export function GhostMountProvider({ children }: { children: React.ReactNode }) {
   const [ghostRoute, setGhostRoute] = useState<GhostRouteKey>(null)
 
-  const preload = useCallback((route: GhostRouteKey, _params?: Record<string, string>) => {
-    if (!route) return
-    setGhostRoute(route)
-  }, [])
+  const preload = useCallback(
+    (route: GhostRouteKey, _params?: Record<string, string>) => {
+      if (!route) return
+      if (!isGhostPreloadEnabled()) return
+      setGhostRoute(route)
+    },
+    [],
+  )
 
   const clearPreload = useCallback(() => {
     setGhostRoute(null)

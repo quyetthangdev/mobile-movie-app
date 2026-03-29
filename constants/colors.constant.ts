@@ -32,6 +32,19 @@ interface ColorConstants {
     light: string
     dark: string
   }
+  /** Tailwind gray scale — Zinc-based */
+  gray: {
+    50: string
+    100: string
+    200: string
+    300: string
+    400: string
+    500: string
+    600: string
+    700: string
+    800: string
+    900: string
+  }
   success: {
     light: string
     dark: string
@@ -78,10 +91,10 @@ export const colors: ColorConstants = {
   },
 
   // Background colors (from --background CSS variable)
-  // Light: hsl(210, 16%, 96%) = #F8F9FB
+  // Light: hsl(210, 15%, 95%) = #F0F2F5
   // Dark: hsl(220, 12%, 7%) = #0F0F10
   background: {
-    light: '#F8F9FB',
+    light: '#F0F2F5',
     dark: '#0F0F10',
   },
 
@@ -107,6 +120,20 @@ export const colors: ColorConstants = {
   border: {
     light: '#e5e7eb',
     dark: '#2e2e2e',
+  },
+
+  // Tailwind gray scale (matches gray-50 → gray-900)
+  gray: {
+    50: '#f9fafb',
+    100: '#f3f4f6',
+    200: '#e5e7eb',
+    300: '#d1d5db',
+    400: '#9ca3af',
+    500: '#6b7280',
+    600: '#4b5563',
+    700: '#374151',
+    800: '#1f2937',
+    900: '#111827',
   },
 
   // Success colors (green) for verified status

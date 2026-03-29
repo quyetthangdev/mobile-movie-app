@@ -2,20 +2,11 @@
  * Product Detail Selection — Zustand slice cho size, quantity, price, toppings.
  * Atomic updates → chỉ PriceFooter, QuantitySelector, ToppingCheckbox re-render.
  * Image Header, Description không subscribe → không re-render khi chọn size/topping.
+ * computeProductDetailTotal: native-first (JSI).
  */
 import type { IProductVariant } from '@/types'
+import { computeProductDetailTotal } from '@/utils'
 import { create } from 'zustand'
-
-function computeTotal(
-  price: number | null,
-  quantity: number,
-  toppingExtraPrice: number,
-  promotionDiscountPercent: number,
-): number | null {
-  if (price == null) return null
-  const afterDiscount = price * (1 - promotionDiscountPercent / 100)
-  return (afterDiscount + toppingExtraPrice) * quantity
-}
 
 export interface ProductDetailSelectionState {
   /** Slug món đang xem — reset khi navigate sang món khác */
@@ -73,7 +64,7 @@ export const useProductDetailSelectionStore = create<
   setProductPromotion: (discountPercent) =>
     set((s) => ({
       promotionDiscountPercent: discountPercent,
-      computedTotalPrice: computeTotal(
+      computedTotalPrice: computeProductDetailTotal(
         s.price,
         s.quantity,
         s.toppingExtraPrice,
@@ -92,7 +83,7 @@ export const useProductDetailSelectionStore = create<
         ...(params.price !== undefined && { price: params.price }),
         ...(params.quantity !== undefined && { quantity: params.quantity }),
         ...(params.note !== undefined && { note: params.note }),
-        computedTotalPrice: computeTotal(
+        computedTotalPrice: computeProductDetailTotal(
           price,
           qty,
           s.toppingExtraPrice,
@@ -104,7 +95,7 @@ export const useProductDetailSelectionStore = create<
   setQuantity: (quantity) =>
     set((s) => ({
       quantity,
-      computedTotalPrice: computeTotal(
+      computedTotalPrice: computeProductDetailTotal(
         s.price,
         quantity,
         s.toppingExtraPrice,
@@ -122,7 +113,7 @@ export const useProductDetailSelectionStore = create<
       return {
         selectedToppingIds: next,
         toppingExtraPrice: toppingExtra,
-        computedTotalPrice: computeTotal(
+        computedTotalPrice: computeProductDetailTotal(
           s.price,
           s.quantity,
           toppingExtra,

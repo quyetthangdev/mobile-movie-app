@@ -24,7 +24,7 @@ export type NativeGesturePressableProps = {
     | { type: 'replace'; href: HrefLike }
     | { type: 'navigate'; href: HrefLike }
     | { type: 'back' }
-  /** Gọi TRƯỚC navigation. Nếu return Promise thì await trước khi navigate — tránh nháy. */
+  /** Gọi TRƯỚC navigation. Nếu return Promise thì await trước khi navigate. Giữ lightweight — không JSON.parse / tính voucher — để tránh back-pressure từ runOnJS. */
   beforeNavigate?: () => void | Promise<void>
   /** Fallback: gọi khi có navigation. Nếu chỉ truyền onPress, dùng setImmediate. */
   onPress?: () => void

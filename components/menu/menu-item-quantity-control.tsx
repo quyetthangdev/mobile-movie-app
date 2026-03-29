@@ -114,24 +114,18 @@ const MenuItemQuantityControlWithStore = React.memo(
     } = useOrderFlowMenuItemControl()
     const userSlug = useUserStore((s) => s.userInfo?.slug)
 
-    const ensureOrdering = () => {
+    const handleAddToCart = React.useCallback(() => {
+      if (!item?.product?.variants?.length || !isHydrated) return
       if (currentStep !== OrderFlowStep.ORDERING)
         setCurrentStep(OrderFlowStep.ORDERING)
       if (!hasOrderingData) {
         initializeOrdering()
-        return false
+        return
       }
       if (userSlug && !orderingOwner.trim()) {
         initializeOrdering()
-        return false
+        return
       }
-      return true
-    }
-
-    const handleAddToCart = () => {
-      if (!item?.product?.variants?.length || !isHydrated) return
-      if (!ensureOrdering()) return
-
       const orderItem = buildOrderItem(item)
       try {
         scheduleStoreUpdate(() => addOrderingItem(orderItem))
@@ -142,7 +136,18 @@ const MenuItemQuantityControlWithStore = React.memo(
       } catch {
         // Silent fail
       }
-    }
+    }, [
+      item,
+      isHydrated,
+      currentStep,
+      hasOrderingData,
+      orderingOwner,
+      userSlug,
+      setCurrentStep,
+      initializeOrdering,
+      addOrderingItem,
+      tToast,
+    ])
 
     if (!hasStock) {
       return (

@@ -6,10 +6,9 @@ import {
   Notebook,
   Phone,
   Receipt,
-  ShoppingCart,
-  User,
+  ShoppingCart
 } from 'lucide-react-native'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 
@@ -23,24 +22,25 @@ import {
   useCreateOrderWithoutLogin,
 } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
+import { onReactProfilerRender } from '@/lib/qa/react-profiler-logger'
 import {
   IOrderingData,
   useBranchStore,
+  useOrderFlowStore,
   useUpdateOrderStore,
   useUserStore,
 } from '@/stores'
-import { useShallow } from 'zustand/react/shallow'
 import { useOrderFlowCreateOrderDialog } from '@/stores/selectors'
-import { useOrderFlowStore } from '@/stores'
 import { ICreateOrderRequest, OrderTypeEnum } from '@/types'
 import {
-  calculateCartItemDisplay,
-  calculateCartTotals,
+  calculateCartDisplayAndTotals,
   formatCurrency,
   parseKm,
   showErrorToast,
   showToast,
 } from '@/utils'
+import { Profiler } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 interface IPlaceOrderDialogProps {
   onSuccess?: () => void
@@ -49,6 +49,8 @@ interface IPlaceOrderDialogProps {
   fullWidthButton?: boolean
   /** Dùng TouchableOpacity thay Button — giảm PlaceOrderDialog ~10ms (Profiler) */
   lightButton?: boolean
+  /** Mount xong mở dialog ngay (dùng cho lazy mount từ CartFooter). */
+  autoOpenOnMount?: boolean
 }
 
 export default function PlaceOrderDialog({
@@ -57,6 +59,7 @@ export default function PlaceOrderDialog({
   onSuccess,
   fullWidthButton = true,
   lightButton = false,
+  autoOpenOnMount = false,
 }: IPlaceOrderDialogProps) {
   const queryClient = useQueryClient()
   const { t } = useTranslation(['menu'])
@@ -96,26 +99,29 @@ export default function PlaceOrderDialog({
       ? branchSlugFromBranch
       : userBranchSlug
 
-  // Phase 1: Memo — tránh tính lại mỗi render khi order/voucher không đổi
-  const displayItems = useMemo(
-    () =>
-      hasOpened && order
-        ? calculateCartItemDisplay(order, order?.voucher || null)
-        : [],
-    [hasOpened, order],
-  )
-  const cartTotals = useMemo(
-    () =>
-      hasOpened && displayItems.length > 0
-        ? calculateCartTotals(displayItems, order?.voucher || null)
-        : {
-            subTotalBeforeDiscount: 0,
-            promotionDiscount: 0,
-            voucherDiscount: 0,
-            finalTotal: 0,
-          },
-    [hasOpened, displayItems, order],
-  )
+  // Phase 1: Memo — native-first (calculateDisplayItemsNative), fallback JS
+  const { displayItems, cartTotals } = useMemo(() => {
+    if (!hasOpened || !order) {
+      return {
+        displayItems: [] as ReturnType<typeof calculateCartDisplayAndTotals>['displayItems'],
+        cartTotals: {
+          subTotalBeforeDiscount: 0,
+          promotionDiscount: 0,
+          voucherDiscount: 0,
+          finalTotal: 0,
+        },
+      }
+    }
+    return calculateCartDisplayAndTotals(order, order?.voucher || null)
+  }, [hasOpened, order])
+  const displayItemsBySlug = useMemo(() => {
+    const map = new Map<string, (typeof displayItems)[number]>()
+    for (const d of displayItems) {
+      const slug = (d as { slug?: string }).slug
+      if (slug) map.set(slug, d)
+    }
+    return map
+  }, [displayItems])
   const deliveryFee = useCalculateDeliveryFee(
     parseKm(order?.deliveryDistance) || 0,
     branchSlug || '',
@@ -184,6 +190,8 @@ export default function PlaceOrderDialog({
 
           onSuccess?.()
           transitionToPayment(orderSlug)
+          // Clear cart sau khi đơn đã tạo thành công — orderingData không còn cần
+          useOrderFlowStore.getState().clearOrderingData()
 
           setIsOpen(false)
           onSuccessfulOrder?.()
@@ -208,6 +216,7 @@ export default function PlaceOrderDialog({
 
           onSuccess?.()
           transitionToPayment(orderSlug)
+          useOrderFlowStore.getState().clearOrderingData()
 
           setIsOpen(false)
           onSuccessfulOrder?.()
@@ -233,7 +242,11 @@ export default function PlaceOrderDialog({
     return t('order.create')
   })()
 
-  const isButtonDisabled = disabled || isPending || isPendingWithoutLogin
+  const needsTable = order?.type === OrderTypeEnum.AT_TABLE && !order?.table
+  const needsDeliveryInfo = order?.type === OrderTypeEnum.DELIVERY && (
+    !order?.deliveryAddress || !order?.deliveryPhone || !PHONE_NUMBER_REGEX.test(order?.deliveryPhone || '')
+  )
+  const isButtonDisabled = disabled || isPending || isPendingWithoutLogin || needsTable || needsDeliveryInfo
 
   const triggerContent = (
     <>
@@ -244,8 +257,16 @@ export default function PlaceOrderDialog({
     </>
   )
 
+  useEffect(() => {
+    if (autoOpenOnMount) {
+      setHasOpened(true)
+      setIsOpen(true)
+    }
+  }, [autoOpenOnMount])
+
   return (
-    <>
+    <Profiler id="CreateOrderDialog" onRender={onReactProfilerRender}>
+      <>
       <Dialog.Trigger>
         {lightButton ? (
           <TouchableOpacity
@@ -255,9 +276,9 @@ export default function PlaceOrderDialog({
               setIsOpen(true)
             }}
             activeOpacity={0.8}
-            className={`flex flex-row items-center justify-center gap-2 rounded-full bg-primary px-16 py-3 text-sm ${
+            className={`flex flex-row items-center justify-center gap-2 rounded-full bg-primary py-3 text-sm ${
               fullWidthButton ? 'w-full' : ''
-            } ${isButtonDisabled ? 'opacity-50' : ''}`}
+            } ${isButtonDisabled ? 'opacity-50 px-5' : 'px-6'}`}
           >
             {triggerContent}
           </TouchableOpacity>
@@ -280,7 +301,8 @@ export default function PlaceOrderDialog({
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         {/* #1 Lazy: Chỉ mount Dialog.Content khi user bấm Đặt món — giảm CPU khi Cart mount */}
         {hasOpened && (
-        <Dialog.Content className="max-w-md gap-0 rounded-md p-0">
+        <Profiler id="CreateOrderDialogContent" onRender={onReactProfilerRender}>
+          <Dialog.Content className="max-w-md gap-0 rounded-md p-0">
           <Dialog.Close onPress={() => setIsOpen(false)} />
           <Dialog.Header className="p-4">
             <View className="border-b border-gray-200 pb-2 dark:border-gray-700">
@@ -383,30 +405,6 @@ export default function PlaceOrderDialog({
                         </Text>
                       </View>
                     )}
-                  {order?.ownerFullName && (
-                    <View className="flex-row justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
-                      <View className="flex-row items-center gap-2">
-                        <User size={16} color="#6b7280" />
-                        <Text className="text-gray-600 dark:text-gray-400">
-                          {t('order.customer')}
-                        </Text>
-                      </View>
-                      <Text className="font-medium">{order.ownerFullName}</Text>
-                    </View>
-                  )}
-                  {order?.ownerPhoneNumber && (
-                    <View className="flex-row justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
-                      <View className="flex-row items-center gap-2">
-                        <Phone size={16} color="#6b7280" />
-                        <Text className="text-gray-600 dark:text-gray-400">
-                          {t('order.phoneNumber')}
-                        </Text>
-                      </View>
-                      <Text className="font-medium">
-                        {order.ownerPhoneNumber}
-                      </Text>
-                    </View>
-                  )}
                   {order?.description && (
                     <View className="flex-row justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
                       <View className="flex-row items-center gap-2">
@@ -420,9 +418,9 @@ export default function PlaceOrderDialog({
                   )}
                 </View>
                 <View className="mt-6 flex-col gap-4 border-t border-dashed border-gray-300 px-2 py-4 dark:border-gray-600">
-                  {order?.orderItems.map((item, index) => (
+                  {order?.orderItems.map((item) => (
                     <View
-                      key={index}
+                      key={item.id}
                       className="flex-row items-center justify-between"
                     >
                       <View className="flex-1 flex-col gap-2">
@@ -440,8 +438,8 @@ export default function PlaceOrderDialog({
                       </View>
                       {(() => {
                         const finalPrice =
-                          (displayItems.find((di) => di.slug === item.slug)
-                            ?.finalPrice ?? 0) * item.quantity
+                          (displayItemsBySlug.get(item.slug ?? '')?.finalPrice ??
+                            0) * item.quantity
                         const original =
                           (item.originalPrice ?? item.originalPrice ?? 0) *
                           item.quantity
@@ -560,9 +558,11 @@ export default function PlaceOrderDialog({
               </View>
             </View>
           </Dialog.Footer>
-        </Dialog.Content>
+          </Dialog.Content>
+        </Profiler>
         )}
       </Dialog>
-    </>
+      </>
+    </Profiler>
   )
 }

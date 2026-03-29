@@ -1,22 +1,18 @@
 /**
- * Transition Progress Sync — Đồng bộ progress từ Stack sang SharedValue.
+ * Transition Progress Sync — Đồng bộ progress từ Native Stack sang SharedValue.
  *
- * Sử dụng Animated.event với useNativeDriver và node listener thay vì
- * addListener (JS bridge hop). Animated.Value.__nodeID được attach trực tiếp
- * vào native driver → progress update mỗi frame KHÔNG qua JS thread.
- *
- * Fallback: nếu không có native node, dùng addListener + runOnUI.
+ * Dùng useTransitionProgress (react-native-screens) — progress từ native stack,
+ * listener sync qua runOnUI để ParallaxDriver có frame-by-frame progress.
  */
 import { useEffect, useRef } from 'react'
-import { useCardAnimation } from '@react-navigation/stack'
+import { useTransitionProgress } from 'react-native-screens'
 import { runOnUI } from 'react-native-reanimated'
 
 import { useMasterTransition } from './master-transition-provider'
 
 export function TransitionProgressSyncer() {
-  const { current } = useCardAnimation()
+  const { progress } = useTransitionProgress()
   const { transitionProgress } = useMasterTransition()
-  const progress = current?.progress
   const rafRef = useRef<number | null>(null)
 
   useEffect(() => {

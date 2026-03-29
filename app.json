@@ -14,7 +14,8 @@
         "NSPhotoLibraryUsageDescription": "Ứng dụng cần truy cập thư viện ảnh để lưu ảnh.",
         "NSPhotoLibraryAddUsageDescription": "Ứng dụng cần quyền lưu ảnh vào thư viện."
       },
-      "bundleIdentifier": "com.quyetthangmarvel.mobilemovieapp"
+      "bundleIdentifier": "com.quyetthangmarvel.mobilemovieapp",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +24,7 @@
         "backgroundImage": "./assets/images/icon/icon.png",
         "monochromeImage": "./assets/images/icon/icon.png"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
       "navigationBar": {
         "backgroundColor": "#ffffff",
@@ -40,7 +41,8 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "package": "com.quyetthangmarvel.mobilemovieapp"
+      "package": "com.quyetthangmarvel.mobilemovieapp",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -68,7 +70,16 @@
           "isAccessMediaLocationEnabled": false
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon/icon.png",
+          "color": "#F7A737",
+          "sounds": ["./assets/sound/notification.mp3"],
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

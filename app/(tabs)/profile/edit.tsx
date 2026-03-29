@@ -22,7 +22,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -152,6 +151,52 @@ const PROFILE_THEME = {
   },
 } as const
 
+/** Isolated text field — only this component re-renders on keystroke */
+const FormField = React.memo(function FormField({
+  label,
+  value: initialValue,
+  onChangeRef,
+  placeholder,
+  labelColor,
+  editable = true,
+  autoCapitalize,
+  inputClassName,
+}: {
+  label: string
+  value: string
+  onChangeRef: React.MutableRefObject<string>
+  placeholder?: string
+  labelColor: string
+  editable?: boolean
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters'
+  inputClassName?: string
+}) {
+  const [localValue, setLocalValue] = useState(initialValue)
+  const handleChange = useCallback((text: string) => {
+    setLocalValue(text)
+    onChangeRef.current = text
+  }, [onChangeRef])
+
+  return (
+    <View style={editFieldStyles.field}>
+      <Text style={[editFieldStyles.label, { color: labelColor }]}>{label}</Text>
+      <Input
+        value={localValue}
+        onChangeText={editable ? handleChange : undefined}
+        placeholder={placeholder}
+        editable={editable}
+        autoCapitalize={autoCapitalize}
+        className={inputClassName}
+      />
+    </View>
+  )
+})
+
+const editFieldStyles = StyleSheet.create({
+  field: { marginBottom: 16 },
+  label: { fontSize: 12, marginBottom: 6 },
+})
+
 function ProfileEditForm({ userInfo }: { userInfo: IUserInfo }) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -163,9 +208,10 @@ function ProfileEditForm({ userInfo }: { userInfo: IUserInfo }) {
   const { t: tToast } = useTranslation('toast')
   const setUserInfo = useUserStore((state) => state.setUserInfo)
 
-  const [firstName, setFirstName] = useState(userInfo.firstName ?? '')
-  const [lastName, setLastName] = useState(userInfo.lastName ?? '')
-  const [address, setAddress] = useState(userInfo.address ?? '')
+  // Refs hold current form values — no parent re-render on keystroke
+  const firstNameRef = useRef(userInfo.firstName ?? '')
+  const lastNameRef = useRef(userInfo.lastName ?? '')
+  const addressRef = useRef(userInfo.address ?? '')
   const [dob, setDob] = useState(
     normalizeDob(userInfo.dob) || (userInfo.dob ?? ''),
   )
@@ -184,25 +230,19 @@ function ProfileEditForm({ userInfo }: { userInfo: IUserInfo }) {
   const handleConfirmUpdate = useCallback(() => {
     setUserInfo?.({
       ...userInfo,
-      firstName,
-      lastName,
-      address,
+      firstName: firstNameRef.current,
+      lastName: lastNameRef.current,
+      address: addressRef.current,
       dob: dob || userInfo.dob,
     })
     showToast(
       tToast('updateProfileSuccess', 'Cập nhật thông tin cá nhân thành công'),
     )
     router.back()
-  }, [userInfo, firstName, lastName, address, dob, setUserInfo, router, tToast])
+  }, [userInfo, dob, setUserInfo, router, tToast])
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor="transparent"
-        translucent
-      />
-
       {/* Header: Huỷ bỏ | Tiêu đề | Xác nhận */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
@@ -250,28 +290,22 @@ function ProfileEditForm({ userInfo }: { userInfo: IUserInfo }) {
           Thông tin cơ bản
         </Text>
         <View style={[styles.section, { backgroundColor: theme.card }]}>
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>
-              {t('lastName', 'Họ')}
-            </Text>
-            <Input
-              value={lastName}
-              onChangeText={setLastName}
-              placeholder={t('enterLastName', 'Nhập họ')}
-              autoCapitalize="words"
-            />
-          </View>
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>
-              {t('firstName', 'Tên')}
-            </Text>
-            <Input
-              value={firstName}
-              onChangeText={setFirstName}
-              placeholder={t('enterFirstName', 'Nhập tên')}
-              autoCapitalize="words"
-            />
-          </View>
+          <FormField
+            label={t('lastName', 'Họ')}
+            value={userInfo.lastName ?? ''}
+            onChangeRef={lastNameRef}
+            placeholder={t('enterLastName', 'Nhập họ')}
+            labelColor={theme.textMuted}
+            autoCapitalize="words"
+          />
+          <FormField
+            label={t('firstName', 'Tên')}
+            value={userInfo.firstName ?? ''}
+            onChangeRef={firstNameRef}
+            placeholder={t('enterFirstName', 'Nhập tên')}
+            labelColor={theme.textMuted}
+            autoCapitalize="words"
+          />
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textMuted }]}>
               {t('dob', 'Ngày sinh')}
@@ -317,16 +351,13 @@ function ProfileEditForm({ userInfo }: { userInfo: IUserInfo }) {
           {t('addressInfo', 'Thông tin địa chỉ')}
         </Text>
         <View style={[styles.section, { backgroundColor: theme.card }]}>
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textMuted }]}>
-              {t('contactInfo.address', 'Địa chỉ')}
-            </Text>
-            <Input
-              value={address}
-              onChangeText={setAddress}
-              placeholder={t('enterAddress', 'Nhập địa chỉ')}
-            />
-          </View>
+          <FormField
+            label={t('contactInfo.address', 'Địa chỉ')}
+            value={userInfo.address ?? ''}
+            onChangeRef={addressRef}
+            placeholder={t('enterAddress', 'Nhập địa chỉ')}
+            labelColor={theme.textMuted}
+          />
         </View>
       </ScrollView>
 

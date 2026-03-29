@@ -7,16 +7,25 @@ import { useOrderFlowCartItemCount } from '@/stores/selectors'
 
 import { NativeGesturePressable } from './native-gesture-pressable'
 
-type Props = { primaryColor: string }
+type Props = {
+  primaryColor: string
+  /** Override cart route (e.g. perf cart) */
+  href?: string
+  /** Override badge count (e.g. perf cart count) */
+  countOverride?: number
+}
 
 const FloatingCartButton = React.memo(function FloatingCartButton({
   primaryColor,
+  href,
+  countOverride,
 }: Props) {
-  const cartItemCount = useOrderFlowCartItemCount()
+  const orderFlowCount = useOrderFlowCartItemCount()
+  const cartItemCount = countOverride ?? orderFlowCount
 
   return (
     <NativeGesturePressable
-      navigation={{ type: 'replace', href: TAB_ROUTES.CART }}
+      navigation={{ type: 'push', href: href ?? TAB_ROUTES.CART }}
       style={{
         width: 64,
         height: 64,

@@ -1,3 +1,27 @@
+const integerFormatter = new Intl.NumberFormat('vi-VN', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})
+
+const currencyFormatterCache = new Map<string, Intl.NumberFormat>()
+
+const clampNegative = (value: number) => (value < 0 ? 0 : value)
+
+const getCurrencyFormatter = (currency: string) => {
+  if (!currencyFormatterCache.has(currency)) {
+    currencyFormatterCache.set(
+      currency,
+      new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }),
+    )
+  }
+  return currencyFormatterCache.get(currency)!
+}
+
 /**
  * Format currency value to Vietnamese format
  * @param value - Number to format
@@ -5,11 +29,8 @@
  * @returns Formatted string (e.g., "100.000 đ")
  */
 export function formatCurrency(value: number, currency = 'đ'): string {
-  const safeValue = value < 0 ? 0 : value
-  const formatted = new Intl.NumberFormat('vi-VN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(safeValue)
+  const safeValue = clampNegative(value)
+  const formatted = integerFormatter.format(safeValue)
   return `${formatted} ${currency}`
 }
 
@@ -20,11 +41,8 @@ export function formatCurrency(value: number, currency = 'đ'): string {
  * @returns Formatted string (e.g., "100.000 ₫" or "100.000")
  */
 export const formatCurrencyWithSymbol = (value: number, withSymbol = true): string => {
-  const safeValue = value < 0 ? 0 : value
-  const formatted = new Intl.NumberFormat('vi-VN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(safeValue)
+  const safeValue = clampNegative(value)
+  const formatted = integerFormatter.format(safeValue)
   return withSymbol ? `${formatted} ₫` : formatted
 }
 
@@ -35,19 +53,14 @@ export const formatCurrencyWithSymbol = (value: number, withSymbol = true): stri
  * @returns Formatted string
  */
 export function formatShortCurrency(value: number, currency = 'VND'): string {
-  const safeValue = value < 0 ? 0 : value
+  const safeValue = clampNegative(value)
   if (safeValue >= 1000000) {
     return `${(safeValue / 1000000).toFixed(1).replace(/\.0$/, '')}M`
   }
   if (safeValue >= 1000) {
     return `${(safeValue / 1000).toFixed(1).replace(/\.0$/, '')}K`
   }
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(safeValue)
+  return getCurrencyFormatter(currency).format(safeValue)
 }
 
 /**
@@ -56,9 +69,6 @@ export function formatShortCurrency(value: number, currency = 'VND'): string {
  * @returns Formatted string (e.g., "100.000")
  */
 export function formatPoints(value: number): string {
-  const safeValue = value < 0 ? 0 : value
-  return new Intl.NumberFormat('vi-VN', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(safeValue)
+  const safeValue = clampNegative(value)
+  return integerFormatter.format(safeValue)
 }

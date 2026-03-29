@@ -1,18 +1,7 @@
 import Constants from 'expo-constants'
 import { useEffect } from 'react'
-import { AppState, NativeModules, Platform } from 'react-native'
-
-interface NavigationBarColorModule {
-  changeNavigationBarColor: (
-    backgroundColor: string,
-    light: boolean,
-    animated: boolean,
-  ) => Promise<{ success: boolean }>
-}
-
-const { NavigationBarColor } = NativeModules as {
-  NavigationBarColor?: NavigationBarColorModule
-}
+import { AppState, Platform } from 'react-native'
+import NavigationBarColorModule from 'navigation-bar-color'
 
 const isExpoGo = Constants.executionEnvironment === 'storeClient'
 
@@ -27,7 +16,8 @@ export function useNavigationBarFixed(
     }
 
     // Expo Go không hỗ trợ native modules tùy chỉnh
-    if (isExpoGo || !NavigationBarColor) {
+    const module = NavigationBarColorModule
+    if (isExpoGo || !module) {
       if (__DEV__ && isExpoGo) {
         // eslint-disable-next-line no-console
         console.warn(
@@ -51,7 +41,7 @@ export function useNavigationBarFixed(
           return
         }
 
-        await NavigationBarColor.changeNavigationBarColor(
+        await module.changeNavigationBarColor(
           backgroundColor,
           light,
           animated,
@@ -98,7 +88,7 @@ export const setNavigationBarColorFixed = async (
   }
 
   // Expo Go không hỗ trợ native modules tùy chỉnh
-  if (isExpoGo || !NavigationBarColor) {
+  if (isExpoGo || !NavigationBarColorModule) {
     return { success: false }
   }
 
@@ -115,7 +105,7 @@ export const setNavigationBarColorFixed = async (
       return { success: false }
     }
 
-    const result = await NavigationBarColor.changeNavigationBarColor(
+    const result = await NavigationBarColorModule.changeNavigationBarColor(
       backgroundColor,
       light,
       animated,

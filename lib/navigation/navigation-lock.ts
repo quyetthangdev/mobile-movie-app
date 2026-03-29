@@ -6,7 +6,7 @@
  */
 import { InteractionManager } from 'react-native'
 
-import { TRANSITION_DURATION_MS } from './constants'
+import { STACK_TRANSITION_DURATION_MS } from './constants'
 import { isLockedShared } from './navigation-lock-shared'
 
 import type { Href } from 'expo-router'
@@ -61,8 +61,8 @@ export const cancelScheduledUnlockTimers = () => {
   clearUnlockTimeouts()
 }
 
-const EARLY_UNLOCK_MS = TRANSITION_DURATION_MS + 100
-const FAILSAFE_UNLOCK_MS = TRANSITION_DURATION_MS + 350
+const EARLY_UNLOCK_MS = STACK_TRANSITION_DURATION_MS + 100
+const FAILSAFE_UNLOCK_MS = STACK_TRANSITION_DURATION_MS + 350
 
 /**
  * Triple unlock: PRIMARY transitionEnd, SECONDARY runAfterInteractions, FAILSAFE setTimeout.

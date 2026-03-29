@@ -32,6 +32,7 @@ export {
   requestMediaLibraryPermission,
 } from './download-image'
 export * from './permission'
+export { computeProductDetailTotal } from './product-detail-calc'
 export * from './priceRange'
 // export * from './printer'
 export * from './toast'

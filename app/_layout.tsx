@@ -4,23 +4,30 @@ import * as SplashScreen from 'expo-splash-screen'
 import * as SystemUI from 'expo-system-ui'
 
 import { NativeStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
-import { MasterTransitionProvider } from '@/lib/navigation/master-transition-provider'
 import { useBeVietnamProFont } from '@/lib/fonts/be-vietnam-pro'
+import { MasterTransitionProvider } from '@/lib/navigation/master-transition-provider'
+import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
 import { InteractionManager, Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import LogoutSheetPortal from '@/components/profile/logout-sheet-portal'
+import { useBackHandlerForExit } from '@/hooks'
+import {
+  setNavigationBarColorFixed,
+  useNavigationBarFixed,
+} from '@/hooks/use-navigation-bar-fixed'
+import '@/lib/http-setup'
 import { GhostMountProvider, NavigationEngineProvider } from '@/lib/navigation'
 import { SharedElementProvider } from '@/lib/shared-element'
-import { useBackHandlerForExit } from '@/hooks'
-import { setNavigationBarColorFixed, useNavigationBarFixed } from '@/hooks/use-navigation-bar-fixed'
-import '@/lib/http-setup'
 import '@/lib/store-sync-setup'
 import { AppToastProvider, I18nProvider } from '@/providers'
+import { NotificationProvider } from '@/providers/notification-provider'
 
 import './global.css'
+
+import { resetReactProfilerStats } from '@/lib/qa/react-profiler-logger'
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
 
@@ -33,14 +40,16 @@ if (__DEV__ && typeof ErrorUtils !== 'undefined') {
   const originalErrorHandler = ErrorUtils.getGlobalHandler()
   ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
     const errorMessage = error?.message || String(error)
-    
+
     // Suppress lỗi keep awake - không ảnh hưởng đến chức năng
-    if (errorMessage.includes('Unable to activate keep awake') || 
-        errorMessage.includes('keep awake')) {
+    if (
+      errorMessage.includes('Unable to activate keep awake') ||
+      errorMessage.includes('keep awake')
+    ) {
       // Silently ignore - không cần thiết cho app này
       return
     }
-    
+
     // Gọi original handler cho các lỗi khác
     if (originalErrorHandler) {
       originalErrorHandler(error, isFatal)
@@ -50,21 +59,23 @@ if (__DEV__ && typeof ErrorUtils !== 'undefined') {
 
 // Unhandled promise rejections
 if (typeof global !== 'undefined' && !global.onunhandledrejection) {
-  global.onunhandledrejection = function(event: PromiseRejectionEvent) {
+  global.onunhandledrejection = function (event: PromiseRejectionEvent) {
     const error = event?.reason as Error | undefined
     const errorMessage = error?.message || String(error || '')
-    
+
     // Suppress lỗi keep awake - không ảnh hưởng đến chức năng
-    if (typeof errorMessage === 'string' && 
-        (errorMessage.includes('Unable to activate keep awake') || 
-         errorMessage.includes('keep awake'))) {
+    if (
+      typeof errorMessage === 'string' &&
+      (errorMessage.includes('Unable to activate keep awake') ||
+        errorMessage.includes('keep awake'))
+    ) {
       // Prevent default error logging
       if (event?.preventDefault) {
         event.preventDefault()
       }
       return
     }
-    
+
     // Log other rejections (dev only)
     if (__DEV__) {
       // eslint-disable-next-line no-console
@@ -92,6 +103,18 @@ function AppContent() {
   const ready = fontsLoaded || fontError
 
   useEffect(() => {
+    const profilerGlobal = globalThis as {
+      __ENABLE_REACT_PROFILER?: boolean
+    }
+    if (typeof profilerGlobal.__ENABLE_REACT_PROFILER !== 'boolean') {
+      profilerGlobal.__ENABLE_REACT_PROFILER = false
+    }
+    if (profilerGlobal.__ENABLE_REACT_PROFILER) {
+      resetReactProfilerStats()
+    }
+  }, [])
+
+  useEffect(() => {
     if (ready) {
       SplashScreen.hideAsync().catch(() => {})
     }
@@ -115,6 +138,7 @@ function AppContent() {
         <QueryClientProvider client={queryClient}>
           <BottomSheetModalProvider>
             <LogoutSheetPortal />
+            <NotificationProvider />
             <I18nProvider>
               <GhostMountProvider>
                 <NavigationEngineProvider>
@@ -152,5 +176,12 @@ export default function RootLayout() {
     return () => task.cancel()
   }, [])
 
-  return <AppContent />
+  return (
+    <>
+      {/* Global edge-to-edge: Android enters translucent mode at app startup,
+          so no screen ever sees a layout shift when statusBarTranslucent toggles. */}
+      <StatusBar style="dark" translucent backgroundColor="transparent" />
+      <AppContent />
+    </>
+  )
 }

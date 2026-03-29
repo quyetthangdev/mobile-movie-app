@@ -1,11 +1,13 @@
 /**
  * Shell nhẹ trong lúc transition Product Detail → Cart.
- * Header blur + skeleton — đồng bộ với CartContentFull.
+ * Header blur + skeleton — đồng bộ với CartContentFull (Skeleton-First, Logic-Later).
+ * hideFooter: Content hiện footer thật ngay (Tầng 1) → không cần skeleton footer trùng.
  */
 import { colors } from '@/constants'
 import React from 'react'
 import { View } from 'react-native'
-import { CartHeaderBlur, CartSkeleton } from '@/components/cart'
+
+import { CART_HEADER_CONTENT_HEIGHT, CartHeaderBlur, CartSkeleton } from '@/components/cart'
 import { cn } from '@/utils/cn'
 
 type CartTransitionShellProps = {
@@ -21,6 +23,7 @@ export function CartTransitionShell({
   insets = { top: 0, bottom: 0 },
 }: CartTransitionShellProps) {
   const bgClass = isDark ? 'bg-gray-900' : colors.background.light
+  const headerHeight = insets.top + CART_HEADER_CONTENT_HEIGHT
 
   return (
     <View
@@ -28,7 +31,9 @@ export function CartTransitionShell({
       className={cn('flex-1', bgClass)}
     >
       <CartHeaderBlur onBack={onBack} orderCount={0} isDark={isDark} />
-      <CartSkeleton isDark={isDark} />
+      <View style={{ flex: 1, paddingTop: headerHeight }}>
+        <CartSkeleton isDark={isDark} insets={insets} hideFooter />
+      </View>
     </View>
   )
 }

@@ -2,6 +2,8 @@
  * T10: Tách subscriptions — mỗi hook subscribe 1 store, compose trong useMenuScreenState.
  * Atomic selectors: mỗi field subscribe riêng → không cascade khi field khác đổi.
  */
+import { useMemo } from 'react'
+
 import {
   useAuthStore,
   useBranchStore,
@@ -26,10 +28,15 @@ export function useMenuFilterState() {
   const maxPrice = useMenuFilterStore((s) => s.menuFilter.maxPrice)
   const menu = useMenuFilterStore((s) => s.menuFilter.menu)
   const setMenuFilter = useMenuFilterStore((s) => s.setMenuFilter)
-  return {
-    menuFilter: { date, branch, catalog, productName, minPrice, maxPrice, menu },
-    setMenuFilter,
-  }
+
+  // Stable reference — chỉ tạo object mới khi giá trị thực sự thay đổi.
+  // Tránh menuRequest useMemo recompute mỗi render do object reference mới.
+  const menuFilter = useMemo(
+    () => ({ date, branch, catalog, productName, minPrice, maxPrice, menu }),
+    [date, branch, catalog, productName, minPrice, maxPrice, menu],
+  )
+
+  return { menuFilter, setMenuFilter }
 }
 
 /** Chỉ subscribe BranchStore — atomic selectors. */

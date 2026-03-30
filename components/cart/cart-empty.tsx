@@ -2,7 +2,7 @@ import { colors } from '@/constants'
 import { ShoppingCart } from 'lucide-react-native'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-export function PerfCartEmpty({ isDark, onBrowse, browseLabel }: {
+export function CartEmpty({ isDark, onBrowse, browseLabel }: {
   isDark: boolean
   onBrowse: () => void
   browseLabel: string

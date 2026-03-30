@@ -32,7 +32,7 @@ import { useRunAfterTransition } from '@/hooks'
 import { useOrderFlowStore } from '@/stores'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
 
-const CartContent = lazy(() => import('@/components/cart/cart-content-perf'))
+const CartContent = lazy(() => import('@/components/cart/cart-content'))
 
 // ─── Clear Confirmation Sheet ────────────────────────────────────────────────
 
@@ -116,7 +116,7 @@ function ClearCartSheet({
         >
           <View style={[confirmStyles.content, { paddingBottom: insets.bottom + 16 }]}>
             <View style={confirmStyles.body}>
-              <Trash2 size={32} color="#ef4444" />
+              <Trash2 size={32} color={colors.destructive.light} />
               <Text style={[confirmStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
                 Xoá giỏ hàng?
               </Text>
@@ -262,7 +262,7 @@ function CartHeader({
             hitSlop={8}
             style={[headerStyles.circleBtn, headerStyles.deleteBtnBg, headerStyles.shadow]}
           >
-            <Trash2 size={16} color="#ffffff" />
+            <Trash2 size={16} color={colors.white.light} />
           </Pressable>
         ) : (
           <View style={headerStyles.circleBtn} />

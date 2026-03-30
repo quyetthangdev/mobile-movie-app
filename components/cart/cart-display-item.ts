@@ -1,6 +1,6 @@
 /**
  * CartDisplayItem — flat display-ready type adapted from IOrderItem.
- * Shared between cart-item-row, cart-content-perf, cart-footer, etc.
+ * Shared between cart-item-row, cart-content, cart-footer, etc.
  */
 import type { IOrderItem } from '@/types'
 import { getProductImageUrl } from '@/utils/product-image-url'

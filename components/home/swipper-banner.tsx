@@ -168,6 +168,8 @@ const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBann
               contentFit="cover"
               style={{ opacity: 0.3 }}
               blurRadius={20}
+              cachePolicy="memory-disk"
+              transition={0}
             />
           </View>
 
@@ -177,6 +179,8 @@ const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBann
               source={imageSource}
               className="w-full h-full"
               contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={0}
             />
           </View>
         </View>

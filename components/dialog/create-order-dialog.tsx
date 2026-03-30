@@ -1,11 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  Clock,
   Loader2,
-  MapPin,
-  Notebook,
-  Phone,
-  Receipt,
   ShoppingCart
 } from 'lucide-react-native'
 import { useEffect, useMemo, useState } from 'react'
@@ -13,7 +8,9 @@ import { useTranslation } from 'react-i18next'
 import { Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 
 import { getOrderBySlug } from '@/api/order'
-import { Badge, Button, Dialog, ScrollArea } from '@/components/ui'
+import { OrderInfoSection } from '@/components/dialog/order-info-section'
+import { OrderItemsList } from '@/components/dialog/order-items-list'
+import { Button, Dialog, ScrollArea } from '@/components/ui'
 
 import { colors, PHONE_NUMBER_REGEX, Role, ROUTE } from '@/constants'
 import {
@@ -34,7 +31,6 @@ import { useOrderFlowCreateOrderDialog } from '@/stores/selectors'
 import { ICreateOrderRequest, OrderTypeEnum } from '@/types'
 import {
   calculateCartDisplayAndTotals,
-  formatCurrency,
   parseKm,
   showErrorToast,
   showToast,
@@ -323,203 +319,26 @@ export default function PlaceOrderDialog({
             <ScrollArea.Viewport>
               <View className="flex-col gap-4 py-4">
                 {/* Order Info */}
-                <View className="flex-col gap-2">
-                  <View className="flex-row items-center justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
-                    <View className="flex-row items-center gap-2">
-                      <Receipt size={16} color="#6b7280" />
-                      <Text className="text-gray-600 dark:text-gray-400">
-                        {t('order.orderType')}
-                      </Text>
-                    </View>
-                    <Badge
-                      className={`shadow-none ${order?.type === OrderTypeEnum.AT_TABLE ? '' : 'bg-blue-500/20'}`}
-                    >
-                      <Text
-                        className={
-                          order?.type !== OrderTypeEnum.AT_TABLE
-                            ? 'text-blue-500'
-                            : ''
-                        }
-                      >
-                        {order?.type === OrderTypeEnum.AT_TABLE
-                          ? t('menu.dineIn')
-                          : order?.type === OrderTypeEnum.DELIVERY
-                            ? t('menu.delivery')
-                            : t('menu.takeAway')}
-                      </Text>
-                    </Badge>
-                  </View>
-                  {order?.timeLeftTakeOut !== undefined && (
-                    <View className="flex-row justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
-                      <View className="flex-row items-center gap-2">
-                        <Clock size={16} color="#6b7280" />
-                        <Text className="text-gray-600 dark:text-gray-400">
-                          {t('menu.pickupTime')}
-                        </Text>
-                      </View>
-                      <Badge>
-                        <Text className="font-medium">
-                          {order.timeLeftTakeOut === 0
-                            ? t('menu.immediately')
-                            : `${order.timeLeftTakeOut} ${t('menu.minutes')}`}
-                        </Text>
-                      </Badge>
-                    </View>
-                  )}
-                  {order?.tableName && (
-                    <View className="flex-row justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
-                      <View className="flex-row items-center gap-2">
-                        <MapPin size={16} color="#6b7280" />
-                        <Text className="text-gray-600 dark:text-gray-400">
-                          {t('menu.tableName')}
-                        </Text>
-                      </View>
-                      <Text className="font-medium">{order.tableName}</Text>
-                    </View>
-                  )}
-                  {order?.type === OrderTypeEnum.DELIVERY &&
-                    order?.deliveryAddress && (
-                      <View className="flex-row justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
-                        <View className="flex-row items-center gap-2">
-                          <MapPin size={16} color="#6b7280" />
-                          <Text className="text-gray-600 dark:text-gray-400">
-                            {t('menu.deliveryAddress')}
-                          </Text>
-                        </View>
-                        <Text className="max-w-[70%] text-right font-medium">
-                          {order.deliveryAddress}
-                        </Text>
-                      </View>
-                    )}
-                  {order?.type === OrderTypeEnum.DELIVERY &&
-                    order?.deliveryPhone && (
-                      <View className="flex-row justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
-                        <View className="flex-row items-center gap-2">
-                          <Phone size={16} color="#6b7280" />
-                          <Text className="text-gray-600 dark:text-gray-400">
-                            {t('menu.deliveryPhone')}
-                          </Text>
-                        </View>
-                        <Text className="font-medium">
-                          {order.deliveryPhone}
-                        </Text>
-                      </View>
-                    )}
-                  {order?.description && (
-                    <View className="flex-row justify-between rounded-md border bg-gray-100 px-2 py-3 text-sm dark:bg-gray-900">
-                      <View className="flex-row items-center gap-2">
-                        <Notebook size={16} color="#6b7280" />
-                        <Text className="text-gray-600 dark:text-gray-400">
-                          {t('order.note')}
-                        </Text>
-                      </View>
-                      <Text className="font-medium">{order.description}</Text>
-                    </View>
-                  )}
-                </View>
-                <View className="mt-6 flex-col gap-4 border-t border-dashed border-gray-300 px-2 py-4 dark:border-gray-600">
-                  {order?.orderItems.map((item) => (
-                    <View
-                      key={item.id}
-                      className="flex-row items-center justify-between"
-                    >
-                      <View className="flex-1 flex-col gap-2">
-                        <Text className="font-bold">{item.name}</Text>
-                        <View className="flex-row gap-2">
-                          <Badge className="w-fit text-xs" variant="outline">
-                            <Text className="text-gray-600 dark:text-gray-400">
-                              Size {item.size.toUpperCase()}
-                            </Text>
-                          </Badge>
-                          <Text className="text-sm text-gray-600 dark:text-gray-400">
-                            x{item.quantity}
-                          </Text>
-                        </View>
-                      </View>
-                      {(() => {
-                        const finalPrice =
-                          (displayItemsBySlug.get(item.slug ?? '')?.finalPrice ??
-                            0) * item.quantity
-                        const original =
-                          (item.originalPrice ?? item.originalPrice ?? 0) *
-                          item.quantity
-
-                        const hasDiscount = original > finalPrice
-
-                        return (
-                          <View className="flex-row items-center gap-1">
-                            {hasDiscount ? (
-                              <>
-                                <Text className="mr-1 text-gray-400 line-through">
-                                  {formatCurrency(original)}
-                                </Text>
-                                <Text className="font-bold text-primary dark:text-primary">
-                                  {formatCurrency(finalPrice)}
-                                </Text>
-                              </>
-                            ) : (
-                              <Text className="font-bold text-primary dark:text-primary">
-                                {formatCurrency(finalPrice)}
-                              </Text>
-                            )}
-                          </View>
-                        )
-                      })()}
-                    </View>
-                  ))}
-                </View>
+                <OrderInfoSection order={order} />
+                <OrderItemsList
+                  order={order}
+                  displayItemsBySlug={displayItemsBySlug}
+                  cartTotals={cartTotals}
+                  deliveryFee={deliveryFee?.deliveryFee || 0}
+                />
               </View>
             </ScrollArea.Viewport>
           </ScrollArea>
           <Dialog.Footer className="p-4">
             {/* Total Amount */}
             <View className="w-full flex-col items-start justify-start gap-1">
-              <View className="w-full flex-row items-center justify-between gap-2">
-                <Text className="text-sm text-gray-600 dark:text-gray-400">
-                  {t('order.subtotal')}:{' '}
-                </Text>
-                <Text className="text-sm text-gray-600 dark:text-gray-400">
-                  {formatCurrency(cartTotals.subTotalBeforeDiscount)}
-                </Text>
-              </View>
-              {cartTotals.promotionDiscount > 0 && (
-                <View className="w-full flex-row items-center justify-between gap-2">
-                  <Text className="text-sm italic text-yellow-600">
-                    {t('order.promotionDiscount')}:
-                  </Text>
-                  <Text className="text-sm italic text-yellow-600">
-                    -{formatCurrency(cartTotals.promotionDiscount)}
-                  </Text>
-                </View>
-              )}
-              <View className="w-full flex-row items-center justify-between gap-2">
-                <Text className="text-sm italic text-green-500">
-                  {t('order.voucher')}:
-                </Text>
-                <Text className="text-sm italic text-green-500">
-                  -{formatCurrency(cartTotals.voucherDiscount)}
-                </Text>
-              </View>
-              {order?.type === OrderTypeEnum.DELIVERY && (
-                <View className="w-full flex-row items-center justify-between gap-2">
-                  <Text className="text-sm italic text-gray-600 dark:text-gray-400">
-                    {t('order.deliveryFee')}:
-                  </Text>
-                  <Text className="text-sm italic text-gray-600 dark:text-gray-400">
-                    {formatCurrency(deliveryFee?.deliveryFee || 0)}
-                  </Text>
-                </View>
-              )}
-              <View className="mt-4 w-full flex-row items-center justify-between gap-2 border-t border-gray-200 pt-2 dark:border-gray-700">
-                <Text className="text-base font-semibold">
-                  {t('order.totalPayment')}:{' '}
-                </Text>
-                <Text className="text-2xl font-extrabold text-primary">
-                  {formatCurrency(
-                    cartTotals.finalTotal + (deliveryFee?.deliveryFee || 0),
-                  )}
-                </Text>
-              </View>
+              <OrderItemsList
+                order={order}
+                displayItemsBySlug={displayItemsBySlug}
+                cartTotals={cartTotals}
+                deliveryFee={deliveryFee?.deliveryFee || 0}
+                pricingSummaryOnly
+              />
               <View className="mt-4 w-full flex-row justify-end gap-2">
                 <Button
                   variant="outline"

@@ -148,6 +148,10 @@ export const useOrderFlowCartList = () =>
 export const useOrderFlowOrderType = () =>
   useOrderFlowStore((s) => s.orderingData?.type)
 
+/** Chỉ subscribe tableName — cart footer chỉ re-render khi tableName đổi */
+export const useOrderFlowTableName = () =>
+  useOrderFlowStore((s) => s.orderingData?.tableName)
+
 /** Chỉ subscribe deliveryDistance — cho useCalculateDeliveryFee */
 export const useOrderFlowDeliveryDistance = () =>
   useOrderFlowStore((s) => s.orderingData?.deliveryDistance)

@@ -1,5 +1,6 @@
 import { PressableWithFeedback } from '@/components/navigation'
 import { cn } from '@/utils/cn'
+import { colors } from '@/constants'
 import { cva, type VariantProps } from 'class-variance-authority'
 import * as React from 'react'
 import { ActivityIndicator, Text } from 'react-native'
@@ -78,9 +79,9 @@ export const Button = React.forwardRef<
   const content = loading ? (
     <ActivityIndicator
       color={
-        variant === 'secondary' ? '#000' :
-        variant === 'ghost' ? '#111827' :
-        '#fff'
+        variant === 'secondary' ? colors.gray[900] :
+        variant === 'ghost' ? colors.gray[900] :
+        colors.white.light
       }
     />
   ) : typeof children === 'function' ? (

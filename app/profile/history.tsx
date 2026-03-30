@@ -2,10 +2,9 @@ import { ScreenContainer } from '@/components/layout'
 import { FlashList } from '@shopify/flash-list'
 import { useQueryClient } from '@tanstack/react-query'
 import { BlurView } from 'expo-blur'
-import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { ChevronLeft, Package } from 'lucide-react-native'
-import React, { memo, useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Platform,
@@ -19,347 +18,24 @@ import {
 } from 'react-native'
 
 import { getOrderBySlug } from '@/api'
-import { Images } from '@/assets/images'
-import { CancelOrderDialog } from '@/components/dialog'
 import { Skeleton } from '@/components/ui'
 import {
-  APPLICABILITY_RULE,
   colors,
-  publicFileURL,
   ROUTE,
-  VOUCHER_TYPE,
 } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useOrders, useRunAfterTransition } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
 import { useUpdateOrderStore, useUserStore } from '@/stores'
-import type { IOrder, IOrderItems } from '@/types'
-import { OrderStatus, OrderTypeEnum } from '@/types'
+import type { IOrder } from '@/types'
+import { OrderStatus } from '@/types'
 import {
   calculateOrderDisplayAndTotals,
-  capitalizeFirstLetter,
-  formatCurrency,
-  formatDateTime,
   showErrorToast,
 } from '@/utils'
 
-// ─── Status helpers (module-level, zero hook overhead) ──────────────────────
-
-type StatusBadgeColors = { bg: string; text: string }
-
-function getStatusBadgeColors(status: OrderStatus): StatusBadgeColors {
-  switch (status) {
-    case OrderStatus.PENDING:
-      return { bg: '#eab308', text: '#fff' }
-    case OrderStatus.SHIPPING:
-      return { bg: '#3b82f6', text: '#fff' }
-    case OrderStatus.COMPLETED:
-    case OrderStatus.PAID:
-      return { bg: '#22c55e', text: '#fff' }
-    case OrderStatus.FAILED:
-      return { bg: '#ef4444', text: '#fff' }
-    default:
-      return { bg: '#6b7280', text: '#fff' }
-  }
-}
-
-// ─── Pre-computed display data type ─────────────────────────────────────────
-
-type OrderDisplayData = {
-  displayItemMap: Map<string, ReturnType<typeof calculateOrderDisplayAndTotals>['displayItems'][number]>
-  cartTotals: ReturnType<typeof calculateOrderDisplayAndTotals>['cartTotals']
-}
-
-// ─── OrderProductItem (memo'd) ──────────────────────────────────────────────
-
-const OrderProductItem = memo(function OrderProductItem({
-  product,
-  displayData,
-  voucher,
-  primaryColor,
-  isDark,
-  isLast,
-}: {
-  product: IOrderItems
-  displayData: OrderDisplayData | null
-  voucher: IOrder['voucher']
-  primaryColor: string
-  isDark: boolean
-  isLast: boolean
-}) {
-  const displayItem = displayData?.displayItemMap.get(product.slug) ?? null
-  const original = product.variant?.price || 0
-  const priceAfterPromotion = displayItem?.priceAfterPromotion || 0
-  const finalPrice = displayItem?.finalPrice || 0
-
-  const isSamePriceVoucher =
-    voucher?.type === VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
-    voucher?.voucherProducts?.some(
-      (vp) => vp.product?.slug === product.variant?.product?.slug,
-    )
-  const isAtLeastOneVoucher =
-    voucher?.applicabilityRule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
-    voucher?.voucherProducts?.some(
-      (vp) => vp.product?.slug === product.variant?.product?.slug,
-    )
-  const hasVoucherDiscount = (displayItem?.voucherDiscount ?? 0) > 0
-  const hasPromotionDiscount = (displayItem?.promotionDiscount ?? 0) > 0
-
-  const displayPrice = isSamePriceVoucher
-    ? finalPrice
-    : isAtLeastOneVoucher && hasVoucherDiscount
-      ? original - (displayItem?.voucherDiscount || 0)
-      : hasPromotionDiscount
-        ? priceAfterPromotion
-        : original
-
-  const shouldShowLineThrough =
-    (isSamePriceVoucher || hasPromotionDiscount || hasVoucherDiscount) &&
-    original > displayPrice
-
-  return (
-    <View style={[cardStyles.productRow, !isLast && cardStyles.productRowBorder]}>
-      <View style={cardStyles.productImageWrap}>
-        <Image
-          source={
-            product.variant?.product?.image
-              ? { uri: `${publicFileURL}/${product.variant.product.image}` }
-              : Images.Food.ProductImage as unknown as number
-          }
-          style={cardStyles.productImage}
-          contentFit="cover"
-          cachePolicy="disk"
-        />
-        <View style={[cardStyles.qtyBadge, { backgroundColor: primaryColor }]}>
-          <Text style={cardStyles.qtyText}>x{product.quantity}</Text>
-        </View>
-      </View>
-
-      <View style={cardStyles.productInfo}>
-        <Text
-          style={[cardStyles.productName, { color: isDark ? colors.gray[50] : colors.gray[900] }]}
-          numberOfLines={2}
-        >
-          {capitalizeFirstLetter(product.variant?.product?.name || '')}
-        </Text>
-        <View style={[cardStyles.sizeBadge, { borderColor: primaryColor, backgroundColor: isDark ? colors.gray[800] : `${primaryColor}18` }]}>
-          <Text style={[cardStyles.sizeText, { color: primaryColor }]}>
-            {capitalizeFirstLetter(product.variant?.size?.name || '')}
-          </Text>
-        </View>
-        <View style={cardStyles.priceRow}>
-          {shouldShowLineThrough && (
-            <Text style={cardStyles.priceStrike}>
-              {formatCurrency(original * product.quantity)}
-            </Text>
-          )}
-          <Text style={[cardStyles.priceMain, { color: primaryColor }]}>
-            {formatCurrency(displayPrice * product.quantity)}
-          </Text>
-        </View>
-      </View>
-    </View>
-  )
-})
-
-// ─── OrderCard (memo'd) ─────────────────────────────────────────────────────
-
-const OrderCard = memo(function OrderCard({
-  order,
-  displayData,
-  primaryColor,
-  isDark,
-  statusLabel,
-  onViewDetail,
-  onUpdateOrder,
-  onPayment,
-  labels,
-}: {
-  order: IOrder
-  displayData: OrderDisplayData | null
-  primaryColor: string
-  isDark: boolean
-  statusLabel: string
-  onViewDetail: (slug: string) => void
-  onUpdateOrder: (order: IOrder) => void
-  onPayment: (slug: string) => void
-  labels: {
-    subtotal: string
-    promotionDiscount: string
-    voucher: string
-    loyaltyPoint: string
-    deliveryFee: string
-    totalPayment: string
-    moreItems: string
-    viewDetail: string
-    updateOrder: string
-    payment: string
-  }
-}) {
-  const orderItems = order.orderItems || []
-  const voucher = order.voucher || null
-  const cartTotals = displayData?.cartTotals ?? null
-  const statusColors = getStatusBadgeColors(order.status)
-  const isPending = order.status === OrderStatus.PENDING
-
-  const handleViewDetail = useCallback(() => onViewDetail(order.slug), [order.slug, onViewDetail])
-  const handleUpdate = useCallback(() => onUpdateOrder(order), [order, onUpdateOrder])
-  const handlePayment = useCallback(() => onPayment(order.slug), [order.slug, onPayment])
-
-  return (
-    <View style={[cardStyles.card, { backgroundColor: isDark ? colors.gray[800] : '#fff', borderColor: isDark ? colors.gray[700] : colors.gray[100] }]}>
-      {/* Header */}
-      <View style={[cardStyles.cardHeader, { backgroundColor: `${primaryColor}15`, borderBottomColor: `${primaryColor}30` }]}>
-        <Text style={[cardStyles.dateText, { color: isDark ? colors.gray[400] : colors.gray[600] }]}>
-          {formatDateTime(order.createdAt)}
-        </Text>
-        <View style={[cardStyles.statusBadge, { backgroundColor: statusColors.bg }]}>
-          <Text style={[cardStyles.statusText, { color: statusColors.text }]}>
-            {capitalizeFirstLetter(statusLabel)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Products */}
-      <View style={cardStyles.body}>
-        {orderItems.slice(0, 3).map((product, index) => (
-          <OrderProductItem
-            key={product.slug || index}
-            product={product}
-            displayData={displayData}
-            voucher={voucher}
-            primaryColor={primaryColor}
-            isDark={isDark}
-            isLast={index === Math.min(orderItems.length - 1, 2)}
-          />
-        ))}
-
-        {orderItems.length > 3 && (
-          <Text style={[cardStyles.moreText, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-            +{orderItems.length - 3} {labels.moreItems}
-          </Text>
-        )}
-
-        {/* Summary */}
-        <View style={[cardStyles.summarySection, { borderTopColor: isDark ? colors.gray[700] : colors.gray[100] }]}>
-          {cartTotals && (
-            <>
-              <View style={cardStyles.summaryRow}>
-                <Text style={[cardStyles.summaryLabel, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{labels.subtotal}</Text>
-                <Text style={[cardStyles.summaryValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{formatCurrency(cartTotals.subTotalBeforeDiscount)}</Text>
-              </View>
-              <View style={cardStyles.summaryRow}>
-                <Text style={[cardStyles.summaryLabelMuted, { color: isDark ? colors.gray[600] : colors.gray[600] }]}>{labels.promotionDiscount}</Text>
-                <Text style={[cardStyles.summaryValueMuted, { color: colors.gray[400] }]}>
-                  -{formatCurrency(cartTotals.promotionDiscount)}
-                </Text>
-              </View>
-              <View style={cardStyles.summaryRow}>
-                <Text style={[cardStyles.summaryLabelMuted, { color: '#22c55e' }]}>{labels.voucher}</Text>
-                <Text style={[cardStyles.summaryValueMuted, { color: primaryColor }]}>
-                  -{formatCurrency(cartTotals.voucherDiscount)}
-                </Text>
-              </View>
-            </>
-          )}
-          <View style={cardStyles.summaryRow}>
-            <Text style={[cardStyles.summaryLabelMuted, { color: primaryColor }]}>{labels.loyaltyPoint}</Text>
-            <Text style={[cardStyles.summaryValueMuted, { color: primaryColor }]}>
-              -{formatCurrency(order.accumulatedPointsToUse || 0)}
-            </Text>
-          </View>
-          {order.type === OrderTypeEnum.DELIVERY && order.deliveryFee > 0 && (
-            <View style={cardStyles.summaryRow}>
-              <Text style={[cardStyles.summaryLabelMuted, { color: colors.gray[400] }]}>{labels.deliveryFee}</Text>
-              <Text style={[cardStyles.summaryValueMuted, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{formatCurrency(order.deliveryFee)}</Text>
-            </View>
-          )}
-          <View style={[cardStyles.totalRow, { borderTopColor: isDark ? colors.gray[700] : colors.gray[100] }]}>
-            <Text style={[cardStyles.totalLabel, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{labels.totalPayment}</Text>
-            <Text style={[cardStyles.totalValue, { color: primaryColor }]}>{formatCurrency(order.subtotal || 0)}</Text>
-          </View>
-        </View>
-
-        {/* Actions */}
-        <View style={cardStyles.actionsWrap}>
-          {/* Row 1: primary actions */}
-          <View style={cardStyles.actionsRow}>
-            <Pressable onPress={handleViewDetail} style={[cardStyles.actionBtnOutline, { borderColor: isDark ? colors.gray[600] : colors.gray[300] }]}>
-              <Text style={[cardStyles.actionBtnOutlineText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>{labels.viewDetail}</Text>
-            </Pressable>
-            {isPending && (
-              <Pressable onPress={handlePayment} style={[cardStyles.actionBtn, { backgroundColor: primaryColor }]}>
-                <Text style={cardStyles.actionBtnText}>{labels.payment}</Text>
-              </Pressable>
-            )}
-          </View>
-          {/* Row 2: secondary actions (pending only) */}
-          {isPending && (
-            <View style={cardStyles.actionsRow}>
-              <Pressable onPress={handleUpdate} style={[cardStyles.actionBtnOutline, { borderColor: '#f97316' }]}>
-                <Text style={[cardStyles.actionBtnOutlineText, { color: '#f97316' }]}>{labels.updateOrder}</Text>
-              </Pressable>
-              <CancelOrderDialog order={order} />
-            </View>
-          )}
-        </View>
-      </View>
-    </View>
-  )
-}, (prev, next) =>
-  prev.order.slug === next.order.slug &&
-  prev.order.status === next.order.status &&
-  prev.order.subtotal === next.order.subtotal &&
-  prev.displayData === next.displayData &&
-  prev.primaryColor === next.primaryColor &&
-  prev.isDark === next.isDark &&
-  prev.statusLabel === next.statusLabel &&
-  prev.onViewDetail === next.onViewDetail &&
-  prev.onUpdateOrder === next.onUpdateOrder &&
-  prev.onPayment === next.onPayment,
-)
-
-const cardStyles = StyleSheet.create({
-  card: { marginBottom: 16, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  dateText: { fontSize: 12 },
-  statusBadge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  statusText: { fontSize: 12, fontWeight: '500' },
-  body: { padding: 16 },
-  productRow: { flexDirection: 'row', gap: 12 },
-  productRowBorder: { marginBottom: 12, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' },
-  productImageWrap: { position: 'relative' },
-  productImage: { width: 64, height: 64, borderRadius: 8 },
-  qtyBadge: { position: 'absolute', bottom: -2, right: -8, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  qtyText: { fontSize: 10, fontWeight: '700', color: '#fff' },
-  productInfo: { flex: 1, gap: 4 },
-  productName: { fontSize: 14, fontWeight: '600' },
-  sizeBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  sizeText: { fontSize: 12, fontWeight: '500' },
-  priceRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end', gap: 4 },
-  priceStrike: { fontSize: 12, color: '#9ca3af', textDecorationLine: 'line-through' },
-  priceMain: { fontSize: 14, fontWeight: '700' },
-  moreText: { marginTop: 8, textAlign: 'center', fontSize: 12 },
-  summarySection: { marginTop: 16, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryLabel: { fontSize: 14, fontWeight: '500' },
-  summaryValue: { fontSize: 14, fontWeight: '500' },
-  summaryLabelMuted: { fontSize: 12, fontStyle: 'italic' },
-  summaryValueMuted: { fontSize: 12, fontWeight: '500', fontStyle: 'italic' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
-  totalLabel: { fontSize: 16, fontWeight: '700' },
-  totalValue: { fontSize: 18, fontWeight: '700' },
-  actionsWrap: { marginTop: 16, gap: 8 },
-  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  // actions: { marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  actionBtnOutline: { flex: 1, height: 44, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  actionBtnOutlineText: { fontSize: 14, fontWeight: '600' },
-  actionBtn: { height: 44, borderRadius: 8, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  actionBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
-  // pendingActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  // updateBtn: { height: 44, borderRadius: 8, borderWidth: 1, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  // updateBtnText: { fontSize: 14, fontWeight: '500', color: '#f97316' },
-})
+import OrderCard from './order-card'
+import type { OrderDisplayData } from './order-card'
 
 function OrderHistoryPage() {
   const { t } = useTranslation('menu')
@@ -395,10 +71,7 @@ function OrderHistoryPage() {
 
   // Pre-compute display data once when orders change — O(1) lookup in renderItem
   const orderDisplayMap = useMemo(() => {
-    const map = new Map<string, {
-      displayItemMap: Map<string, ReturnType<typeof calculateOrderDisplayAndTotals>['displayItems'][number]>
-      cartTotals: ReturnType<typeof calculateOrderDisplayAndTotals>['cartTotals']
-    }>()
+    const map = new Map<string, OrderDisplayData>()
     for (const order of orders) {
       const items = order.orderItems || []
       const voucher = order.voucher || null

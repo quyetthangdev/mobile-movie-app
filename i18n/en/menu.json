@@ -104,7 +104,7 @@
     "updateMenuItemDescription": "Modify details to update menu item",
     "selectBranchPrompt": "Please select a branch to view menu.",
     "loadingMenu": "Loading menu...",
-    "noMenuData": "No menu data.",
+    "noMenuData": "No menu data. Please select a different branch or try again later.",
     "searchNotFound": "No results for \"{{keyword}}\"",
     "addedToCart": "Added {{name}} to cart",
     "allPrices": "All prices",

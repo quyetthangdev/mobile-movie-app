@@ -11,9 +11,42 @@ import React, { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
 import type { CartDisplayItem } from './cart-display-item'
-import { PerfSwipeable } from './cart-swipeable'
+import { CartSwipeable } from './cart-swipeable'
 
 const DEBOUNCE_QTY_MS = 200
+
+// Module-level theme constants — zero allocation per render
+const THEME_LIGHT = {
+  cardBg: { backgroundColor: colors.white.light },
+  nameColor: { color: colors.gray[900] },
+  chipBorder: { borderColor: colors.gray[300] },
+  chipTextColor: { color: colors.gray[600] },
+  chipArrowColor: { color: colors.gray[400] },
+  origPriceColor: { color: colors.gray[400] },
+  qtyBtnBorder: { borderColor: colors.gray[300] },
+  qtyBtnTextColor: { color: colors.gray[700] },
+  qtyTextColor: { color: colors.gray[900] },
+  noteRowTheme: { borderColor: colors.gray[200], backgroundColor: colors.gray[50] },
+  noteInputColor: { color: colors.gray[700] },
+  noteIconColor: colors.gray[400],
+  notePlaceholderColor: colors.gray[400],
+} as const
+
+const THEME_DARK = {
+  cardBg: { backgroundColor: colors.gray[800] },
+  nameColor: { color: colors.gray[50] },
+  chipBorder: { borderColor: colors.gray[600] },
+  chipTextColor: { color: colors.gray[300] },
+  chipArrowColor: { color: colors.gray[500] },
+  origPriceColor: { color: colors.gray[500] },
+  qtyBtnBorder: { borderColor: colors.gray[700] },
+  qtyBtnTextColor: { color: colors.gray[300] },
+  qtyTextColor: { color: colors.gray[50] },
+  noteRowTheme: { borderColor: colors.gray[700], backgroundColor: colors.gray[900] },
+  noteInputColor: { color: colors.gray[200] },
+  noteIconColor: colors.gray[500],
+  notePlaceholderColor: colors.gray[600],
+} as const
 
 /** Compute per-unit voucher discount for a single item — O(1), no loop */
 export function calcItemVoucherDiscount(
@@ -42,21 +75,21 @@ export function calcItemVoucherDiscount(
   return 0
 }
 
-export const CartDisplayItemRow = memo(
-  function CartDisplayItemRow({
+export const CartItemRow = memo(
+  function CartItemRow({
     item,
     primaryColor,
     isDark,
     onDelete,
     onSizePress,
-    voucher,
+    voucherDiscountPerUnit,
   }: {
     item: CartDisplayItem
     primaryColor: string
     isDark: boolean
     onDelete: (cartKey?: string) => void
     onSizePress?: (cartKey: string) => void
-    voucher: { type: string; value: number; voucherProducts?: { product?: { slug?: string } }[] } | null
+    voucherDiscountPerUnit: number
   }) {
     const updateQuantity = cartActions.updateQuantity
 
@@ -91,11 +124,6 @@ export const CartDisplayItemRow = memo(
       scheduleSync(next)
     }, [displayQty, scheduleSync])
 
-    const voucherDiscountPerUnit = useMemo(
-      () => calcItemVoucherDiscount(item, voucher),
-      [item, voucher],
-    )
-
     const hasPromotion = item.promotionValue > 0
     const hasVoucherDiscount = voucherDiscountPerUnit > 0
     const priceAfterVoucher = item.price - voucherDiscountPerUnit
@@ -114,9 +142,21 @@ export const CartDisplayItemRow = memo(
       }, 400)
     }, [item.cartKey])
 
+    const handleSizePress = useCallback(() => {
+      onSizePress?.(item.cartKey)
+    }, [onSizePress, item.cartKey])
+
+    // Module-level constants — zero allocation, stable refs across renders
+    const themeStyles = isDark ? THEME_DARK : THEME_LIGHT
+
+    const priceStyle = useMemo(
+      () => [rowStyles.price, { color: primaryColor }],
+      [primaryColor],
+    )
+
     return (
-      <PerfSwipeable itemId={item.cartKey} onDelete={onDelete}>
-        <View style={[rowStyles.card, { backgroundColor: isDark ? colors.gray[800] : colors.white.light }]}>
+      <CartSwipeable itemId={item.cartKey} onDelete={onDelete}>
+        <View style={[rowStyles.card, themeStyles.cardBg]}>
           {/* Top row: image + info */}
           <View style={rowStyles.topRow}>
             {item.imageUrl ? (
@@ -136,7 +176,7 @@ export const CartDisplayItemRow = memo(
 
             <View style={rowStyles.info}>
               <Text
-                style={[rowStyles.name, { color: isDark ? colors.gray[50] : colors.gray[900] }]}
+                style={[rowStyles.name, themeStyles.nameColor]}
                 numberOfLines={1}
               >
                 {capitalizeFirst(item.name)}
@@ -144,20 +184,17 @@ export const CartDisplayItemRow = memo(
               {item.sizeName ? (
                 <View style={rowStyles.sizeChipWrap}>
                   <Pressable
-                    onPress={() => onSizePress?.(item.cartKey)}
+                    onPress={handleSizePress}
                     hitSlop={4}
-                    style={[
-                      rowStyles.sizeChip,
-                      { borderColor: isDark ? colors.gray[600] : colors.gray[300] },
-                    ]}
+                    style={[rowStyles.sizeChip, themeStyles.chipBorder]}
                   >
                     <Text
-                      style={[rowStyles.sizeChipText, { color: isDark ? colors.gray[300] : colors.gray[600] }]}
+                      style={[rowStyles.sizeChipText, themeStyles.chipTextColor]}
                       numberOfLines={1}
                     >
                       {capitalizeFirst(item.sizeName)}
                     </Text>
-                    <Text style={[rowStyles.sizeChipArrow, { color: isDark ? colors.gray[500] : colors.gray[400] }]}>
+                    <Text style={[rowStyles.sizeChipArrow, themeStyles.chipArrowColor]}>
                       ▾
                     </Text>
                   </Pressable>
@@ -166,11 +203,11 @@ export const CartDisplayItemRow = memo(
 
               <View style={rowStyles.bottomRow}>
                 <View style={rowStyles.priceCol}>
-                  <Text style={[rowStyles.price, { color: primaryColor }]}>
+                  <Text style={priceStyle}>
                     {formatCurrencyNative(lineTotal)}
                   </Text>
                   {(hasPromotion || hasVoucherDiscount) && (
-                    <Text style={[rowStyles.originalPrice, { color: isDark ? colors.gray[500] : colors.gray[400] }]}>
+                    <Text style={[rowStyles.originalPrice, themeStyles.origPriceColor]}>
                       {formatCurrencyNative(hasVoucherDiscount ? lineTotalBeforeVoucher : item.originalPrice * displayQty)}
                     </Text>
                   )}
@@ -182,22 +219,22 @@ export const CartDisplayItemRow = memo(
                     disabled={displayQty <= 1}
                     style={[
                       rowStyles.qtyBtn,
-                      { borderColor: isDark ? colors.gray[700] : colors.gray[300] },
-                      displayQty <= 1 && { opacity: 0.3 },
+                      themeStyles.qtyBtnBorder,
+                      displayQty <= 1 && rowStyles.qtyBtnDisabled,
                     ]}
                   >
-                    <Text style={[rowStyles.qtyBtnText, { color: isDark ? colors.gray[300] : colors.gray[700] }]}>
+                    <Text style={[rowStyles.qtyBtnText, themeStyles.qtyBtnTextColor]}>
                       −
                     </Text>
                   </Pressable>
-                  <Text style={[rowStyles.qtyText, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
+                  <Text style={[rowStyles.qtyText, themeStyles.qtyTextColor]}>
                     {displayQty}
                   </Text>
                   <Pressable
                     onPress={handleIncrease}
-                    style={[rowStyles.qtyBtn, { borderColor: isDark ? colors.gray[700] : colors.gray[300] }]}
+                    style={[rowStyles.qtyBtn, themeStyles.qtyBtnBorder]}
                   >
-                    <Text style={[rowStyles.qtyBtnText, { color: isDark ? colors.gray[300] : colors.gray[700] }]}>
+                    <Text style={[rowStyles.qtyBtnText, themeStyles.qtyBtnTextColor]}>
                       +
                     </Text>
                   </Pressable>
@@ -207,26 +244,23 @@ export const CartDisplayItemRow = memo(
           </View>
 
           {/* Note input — full width bottom */}
-          <View style={[rowStyles.noteRow, {
-            borderColor: isDark ? colors.gray[700] : colors.gray[200],
-            backgroundColor: isDark ? colors.gray[900] : colors.gray[50],
-          }]}>
-            <View style={{ marginTop: 1 }}>
-              <NotebookText size={12} color={isDark ? colors.gray[500] : colors.gray[400]} />
+          <View style={[rowStyles.noteRow, themeStyles.noteRowTheme]}>
+            <View style={rowStyles.noteIconWrap}>
+              <NotebookText size={12} color={themeStyles.noteIconColor} />
             </View>
             <TextInput
               value={localNote}
               onChangeText={handleNoteChange}
               placeholder="Ghi chú món..."
-              placeholderTextColor={isDark ? colors.gray[600] : colors.gray[400]}
-              style={[rowStyles.noteInput, { color: isDark ? colors.gray[200] : colors.gray[700] }]}
+              placeholderTextColor={themeStyles.notePlaceholderColor}
+              style={[rowStyles.noteInput, themeStyles.noteInputColor]}
               multiline
               numberOfLines={2}
               textAlignVertical="top"
             />
           </View>
         </View>
-      </PerfSwipeable>
+      </CartSwipeable>
     )
   },
   (prev, next) =>
@@ -235,7 +269,7 @@ export const CartDisplayItemRow = memo(
     prev.isDark === next.isDark &&
     prev.onDelete === next.onDelete &&
     prev.onSizePress === next.onSizePress &&
-    prev.voucher === next.voucher,
+    prev.voucherDiscountPerUnit === next.voucherDiscountPerUnit,
 )
 
 const rowStyles = StyleSheet.create({
@@ -323,6 +357,9 @@ const rowStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  qtyBtnDisabled: {
+    opacity: 0.3,
+  },
   qtyBtnText: {
     fontSize: 16,
     fontWeight: '600',
@@ -333,6 +370,9 @@ const rowStyles = StyleSheet.create({
     fontWeight: '600',
     minWidth: 16,
     textAlign: 'center',
+  },
+  noteIconWrap: {
+    marginTop: 1,
   },
   noteRow: {
     flexDirection: 'row',

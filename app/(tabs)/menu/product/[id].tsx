@@ -3,11 +3,10 @@
  * UI & logic ported from perf/product/[id].tsx, store bridged to order-flow.
  */
 import { useFocusEffect, useIsFocused } from '@react-navigation/native'
-import dayjs from 'dayjs'
 import { Image } from 'expo-image'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
-import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AppState, RefreshControl, StyleSheet, View, useColorScheme } from 'react-native'
 import Animated, {
   useAnimatedScrollHandler,
@@ -16,28 +15,29 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated'
 
+import SliderRelatedProducts from '@/components/menu/slider-related-products'
 import {
   ProductDetailHeaderAnimated,
   ProductDetailHeaderSimple,
 } from '@/components/product/product-detail-header'
-import { ProductHeroImage } from '@/components/product/product-hero-image'
-import { ProductInfoCard } from '@/components/product/product-info-card'
 import {
   DeferredOptionsSection,
   ProductDetailOptionsSection,
 } from '@/components/product/product-detail-options-section'
-import { PerfPriceFooter } from '@/components/product/product-price-footer'
+import { ProductHeroImage } from '@/components/product/product-hero-image'
+import { ProductInfoCard } from '@/components/product/product-info-card'
+import { ProductPriceFooter } from '@/components/product/product-price-footer'
+import { OrderFlowStep } from '@/constants'
 import { useSpecificMenuItem } from '@/hooks'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
-import { OrderFlowStep } from '@/constants'
 import { useOrderFlowStore, useUserStore } from '@/stores'
+import { useProductDetailSelectionStore } from '@/stores/product-detail-selection.store'
 import {
   useDetailResetForProduct,
   useDetailSetProductPromotion,
   useDetailSetSelection,
   useOrderFlowCartItemCount,
 } from '@/stores/selectors'
-import { useProductDetailSelectionStore } from '@/stores/product-detail-selection.store'
 import { IOrderItem } from '@/types'
 import { showToast } from '@/utils'
 
@@ -106,16 +106,8 @@ function ProductDetailContent() {
   const setProductPromotion = useDetailSetProductPromotion()
   const setSelection = useDetailSetSelection()
 
-  const product = useMemo(() => {
-    const basePriceRaw = Number.parseInt(basePrice ?? '', 10)
-    const promotionRaw = Number.parseInt(promotionValue ?? '', 10)
-    return {
-      id: id ?? 'unknown',
-      name: name ?? `Món ${id ?? ''}`,
-      basePrice: Number.isFinite(basePriceRaw) ? Math.max(0, basePriceRaw) : 59000,
-      promotionValue: Number.isFinite(promotionRaw) ? Math.max(0, promotionRaw) : 0,
-    }
-  }, [id, name, basePrice, promotionValue])
+  // Params-only product — used for API fetch key and initial display
+  const productId = id ?? 'unknown'
 
   const heroImageUrls = useMemo(() => {
     if (!imageUrls) return []
@@ -129,14 +121,35 @@ function ProductDetailContent() {
   }, [imageUrls])
 
   // Fetch full product data for variants
-  const { data: menuItemRes, refetch: refetchMenuItem } = useSpecificMenuItem(product.id)
+  const { data: menuItemRes, refetch: refetchMenuItem } = useSpecificMenuItem(productId)
   const menuItem = useMemo(() => menuItemRes?.result, [menuItemRes?.result])
+
+  // Enriched product — prefers API data over route params
+  const product = useMemo(() => {
+    const basePriceRaw = Number.parseInt(basePrice ?? '', 10)
+    const promotionRaw = Number.parseInt(promotionValue ?? '', 10)
+
+    const apiName = menuItem?.product?.name
+    const apiVariants = menuItem?.product?.variants ?? []
+    const apiMinPrice = apiVariants.length > 0
+      ? Math.min(...apiVariants.map((v) => v.price))
+      : undefined
+    const apiPromotion = menuItem?.promotion?.value
+
+    return {
+      id: productId,
+      name: apiName || name || '',
+      basePrice: apiMinPrice ?? (Number.isFinite(basePriceRaw) ? Math.max(0, basePriceRaw) : 0),
+      promotionValue: apiPromotion ?? (Number.isFinite(promotionRaw) ? Math.max(0, promotionRaw) : 0),
+    }
+  }, [productId, name, basePrice, promotionValue, menuItem])
   const variants = useMemo(() => menuItem?.product?.variants ?? [], [menuItem])
   const smallestVariant = useMemo(
     () => variants.length > 0 ? variants.reduce((p, c) => (p.price < c.price ? p : c)) : null,
     [variants],
   )
   const description = menuItem?.product?.description ?? ''
+  const catalogSlug = menuItem?.product?.catalog?.slug ?? ''
   const isLocked = menuItem?.isLocked ?? false
   const isLimit = menuItem?.product?.isLimit ?? false
   const currentStock = menuItem?.currentStock ?? 0
@@ -144,14 +157,12 @@ function ProductDetailContent() {
 
   // Init store on product change
   useEffect(() => {
-    resetForProduct(product.id)
-  }, [product.id, resetForProduct])
+    resetForProduct(productId)
+  }, [productId, resetForProduct])
 
-  // Set promotion discount when data available
+  // Always sync promotion — including 0 to clear previous product's discount
   useEffect(() => {
-    if (product.promotionValue > 0) {
-      setProductPromotion(product.promotionValue)
-    }
+    setProductPromotion(product.promotionValue)
   }, [product.promotionValue, setProductPromotion])
 
   // Initialize ordering flow — read via getState() to avoid re-render deps
@@ -191,10 +202,8 @@ function ProductDetailContent() {
   })
 
   const headerStyle = useAnimatedStyle(() => {
-    const y = Math.max(-140, scrollY.value)
     return {
       transform: [
-        { translateY: y * 0.45 },
         { scale: scrollY.value < 0 ? 1.1 : 1 },
       ],
     }
@@ -244,7 +253,7 @@ function ProductDetailContent() {
     }
 
     const orderItem: IOrderItem = {
-      id: `item_${dayjs().valueOf()}_${Math.random().toString(36).substring(2, 11)}`,
+      id: `item_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       slug: menuItem?.product?.slug || product.id,
       image: menuItem?.product?.image || '',
       name: menuItem?.product?.name || product.name,
@@ -348,7 +357,18 @@ function ProductDetailContent() {
               noDescriptionLabel={t('menu.noDescription')}
             />
           </DeferredOptionsSection>
+
         </View>
+
+        {/* Related products — outside bodySection for edge-to-edge scroll */}
+        {catalogSlug ? (
+          <View style={detailStyles.relatedSection}>
+            <SliderRelatedProducts
+              currentProduct={product.id}
+              catalog={catalogSlug}
+            />
+          </View>
+        ) : null}
       </Animated.ScrollView>
 
       {/* Layer 2: Header overlay */}
@@ -360,7 +380,7 @@ function ProductDetailContent() {
       />
 
       {/* Layer 3: Price footer — absolute bottom */}
-      <PerfPriceFooter
+      <ProductPriceFooter
         totalPriceLabel={t('menu.totalAmount')}
         chooseSizeLabel={t('menu.chooseSize')}
         addToCartLabel={t('menu.addToCart')}
@@ -398,5 +418,8 @@ const detailStyles = StyleSheet.create({
   bodySection: {
     padding: 16,
     gap: 16,
+  },
+  relatedSection: {
+    paddingLeft: 16,
   },
 })

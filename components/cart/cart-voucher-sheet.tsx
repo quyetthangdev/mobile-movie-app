@@ -1,4 +1,6 @@
 import { processVoucherList } from '@/components/sheet/voucher-validation'
+import { VoucherCard } from './voucher-card'
+import { VoucherConditionModal } from './voucher-condition-modal'
 import { colors, Role } from '@/constants'
 import {
   usePublicVouchersForOrder,
@@ -23,255 +25,18 @@ import BottomSheet, {
   BottomSheetScrollView,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet'
-import { formatCurrencyNative } from 'cart-price-calc'
-import dayjs from 'dayjs'
-import * as Clipboard from 'expo-clipboard'
-import { Copy, Search, Ticket } from 'lucide-react-native'
+import { Search, Ticket } from 'lucide-react-native'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-// ─── Voucher Section ─────────────────────────────────────────────────────────
-
-// ─── Voucher Card (matches main app design: left strip + dashed separator + content + checkbox) ─
-
-export const PerfVoucherCard = memo(function PerfVoucherCard({
-  voucher,
-  isSelected,
-  primaryColor,
-  isDark,
-  onSelect,
-  onViewCondition,
-  errorMessage,
-  discountLabel,
-  expiryText,
-  minOrderText,
-  usagePercent,
-}: {
-  voucher: IVoucher
-  isSelected: boolean
-  primaryColor: string
-  isDark: boolean
-  onSelect: (slug: string) => void
-  onViewCondition?: (voucher: IVoucher) => void
-  errorMessage?: string
-  /** Pre-computed from processVoucherList — 0 compute in card */
-  discountLabel?: string
-  expiryText?: string
-  minOrderText?: string
-  usagePercent?: number
-}) {
-  const discount = discountLabel ?? ''
-  const expiry = expiryText ?? ''
-  const minOrder = minOrderText ?? ''
-  const usage = usagePercent ?? 0
-
-  const handlePress = useCallback(() => onSelect(voucher.slug), [onSelect, voucher.slug])
-
-  return (
-    <Pressable onPress={handlePress} style={[
-      vcStyles.card,
-      { borderColor: isSelected ? primaryColor : isDark ? colors.gray[700] : colors.gray[200] },
-      isSelected && { backgroundColor: isDark ? `${primaryColor}20` : `${primaryColor}10` },
-    ]}>
-      <View style={vcStyles.row}>
-        {/* Left strip */}
-        <View style={[vcStyles.strip, { backgroundColor: primaryColor }]}>
-          <Ticket size={28} color={colors.white.light} />
-        </View>
-
-        {/* Dashed separator */}
-        <View style={[vcStyles.dashed, { borderColor: isDark ? colors.gray[700] : colors.gray[200] }]} />
-
-        {/* Content */}
-        <View style={vcStyles.content}>
-          <Text style={[vcStyles.cardTitle, { color: isDark ? colors.gray[50] : colors.gray[900] }]} numberOfLines={2}>
-            {voucher.title}
-          </Text>
-          <Text style={[vcStyles.discountLabel, { color: primaryColor }]}>
-            {discount}
-          </Text>
-          <Text style={[vcStyles.minOrder, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-            Giá trị đơn hàng tối thiểu: {minOrder}
-          </Text>
-          {errorMessage ? (
-            <Text style={vcStyles.errorText}>{errorMessage}</Text>
-          ) : null}
-
-          {/* Payment method tags */}
-          {voucher.voucherPaymentMethods?.length > 0 && (
-            <View style={vcStyles.pmRow}>
-              {voucher.voucherPaymentMethods.map((pm) => (
-                <View key={pm.slug} style={[vcStyles.pmTag, { borderColor: primaryColor, backgroundColor: `${primaryColor}08` }]}>
-                  <Text style={[vcStyles.pmTagText, { color: primaryColor }]}>
-                    {pm.paymentMethod === 'cash' ? 'Tiền mặt' : pm.paymentMethod === 'bank-transfer' ? 'CK' : pm.paymentMethod === 'point' ? 'Điểm' : 'Thẻ'}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Usage progress */}
-          {voucher.remainingUsage > 0 && (
-            <View style={vcStyles.progressWrap}>
-              <Text style={[vcStyles.progressLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-                Số lượng còn lại: {Math.round(usage)}%
-              </Text>
-              <View style={[vcStyles.progressTrack, { backgroundColor: isDark ? colors.gray[700] : colors.gray[200] }]}>
-                <View style={[vcStyles.progressFill, { width: `${usage}%`, backgroundColor: primaryColor }]} />
-              </View>
-            </View>
-          )}
-
-          {/* Expiry + conditions */}
-          <View style={vcStyles.bottomRow}>
-            <View style={[vcStyles.expiryBadge, { borderColor: primaryColor }]}>
-              <Text style={[vcStyles.expiryText, { color: primaryColor }]}>{expiry}</Text>
-            </View>
-            <Pressable onPress={() => onViewCondition?.(voucher)} hitSlop={8}>
-              <Text style={[vcStyles.conditionLink, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-                Điều kiện
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Checkbox circle */}
-        <View style={vcStyles.checkWrap}>
-          <View style={[
-            vcStyles.checkCircle,
-            { borderColor: isSelected ? primaryColor : isDark ? colors.gray[600] : colors.gray[300] },
-            isSelected && { backgroundColor: primaryColor },
-          ]}>
-            {isSelected && <View style={vcStyles.checkDot} />}
-          </View>
-        </View>
-      </View>
-    </Pressable>
-  )
-})
-
-const vcStyles = StyleSheet.create({
-  card: {
-    marginTop: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  strip: {
-    width: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dashed: {
-    width: 1,
-    borderStyle: 'dashed',
-    borderLeftWidth: 1.5,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 4,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  discountLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  minOrder: {
-    fontSize: 12,
-  },
-  progressWrap: {
-    marginTop: 4,
-    gap: 4,
-  },
-  progressLabel: {
-    fontSize: 11,
-  },
-  progressTrack: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  expiryBadge: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  expiryText: {
-    fontSize: 11,
-  },
-  conditionLink: {
-    fontSize: 11,
-  },
-  errorText: {
-    fontSize: 12,
-    color: colors.destructive.light,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  pmRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 4,
-  },
-  pmTag: {
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 1,
-  },
-  pmTagText: {
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  checkWrap: {
-    justifyContent: 'center',
-    paddingRight: 12,
-  },
-  checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.white.light,
-  },
-})
-
 // ─── Voucher Sheet ───────────────────────────────────────────────────────────
 
 const VOUCHER_SHEET_SNAP = ['90%']
-const CONDITION_SHEET_SNAP = ['60%']
 
-export const PerfVoucherSheet = memo(function PerfVoucherSheet({
+export const VoucherSheet = memo(function VoucherSheet({
   visible,
   onClose,
   isDark,
@@ -327,8 +92,6 @@ export const PerfVoucherSheet = memo(function PerfVoucherSheet({
   const total = useCartTotal()
 
   const { t: tVoucher } = useTranslation(['voucher'])
-  const tVoucherRef = useRef(tVoucher)
-  tVoucherRef.current = tVoucher
 
   // E4 — Pre-compute fetched voucher display fields
   const processedFetched = useMemo(() => {
@@ -338,10 +101,10 @@ export const PerfVoucherSheet = memo(function PerfVoucherSheet({
       subTotalAfterPromotion: total,
       userSlug,
       isCustomerOwner,
-      t: tVoucherRef.current,
+      t: tVoucher,
     })
     return result[0] ?? null
-  }, [fetchedVoucher, items, total, userSlug, isCustomerOwner])
+  }, [fetchedVoucher, items, total, userSlug, isCustomerOwner, tVoucher])
   const listRequestItems = useMemo(
     () => items.map((item) => ({
       quantity: item.quantity,
@@ -425,10 +188,9 @@ export const PerfVoucherSheet = memo(function PerfVoucherSheet({
       subTotalAfterPromotion: total,
       userSlug,
       isCustomerOwner,
-      t: tVoucherRef.current,
+      t: tVoucher,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tVoucherRef stable, language change triggers full re-render anyway
-    [rawEligibleVouchers, cartProductSlugs, total],
+    [rawEligibleVouchers, cartProductSlugs, total, userSlug, isCustomerOwner, tVoucher],
   )
   const { validVouchers, invalidVouchers } = useMemo(() => {
     const valid: typeof processed = []
@@ -630,7 +392,7 @@ export const PerfVoucherSheet = memo(function PerfVoucherSheet({
             )}
 
             {!isFetching && fetchedVoucher && processedFetched && (
-              <PerfVoucherCard
+              <VoucherCard
                 voucher={fetchedVoucher}
                 isSelected={selectedVoucher?.slug === fetchedVoucher.slug}
                 primaryColor={primaryColor}
@@ -656,7 +418,7 @@ export const PerfVoucherSheet = memo(function PerfVoucherSheet({
               </View>
             )}
             {validVouchers.slice(0, 10).map((p) => (
-              <PerfVoucherCard
+              <VoucherCard
                 key={p.voucher.slug}
                 voucher={p.voucher}
                 isSelected={selectedVoucher?.slug === p.voucher.slug}
@@ -681,7 +443,7 @@ export const PerfVoucherSheet = memo(function PerfVoucherSheet({
             )}
             {invalidVouchers.slice(0, 5).map((p) => (
               <View key={p.voucher.slug} style={{ opacity: 0.5 }}>
-                <PerfVoucherCard
+                <VoucherCard
                   voucher={p.voucher}
                   isSelected={false}
                   primaryColor={primaryColor}
@@ -739,71 +501,15 @@ export const PerfVoucherSheet = memo(function PerfVoucherSheet({
           </View>
         </BottomSheet>
 
-        {/* Condition overlay sheet */}
-        {conditionVoucher && (
-          <BottomSheet
-            index={0}
-            snapPoints={CONDITION_SHEET_SNAP}
-            enablePanDownToClose
-            enableContentPanningGesture={false}
-            enableHandlePanningGesture
-            enableDynamicSizing={false}
-            backgroundStyle={bgStyle}
-            handleIndicatorStyle={indicatorStyle}
-            onChange={(i) => { if (i === -1) setConditionVoucher(null) }}
-            backdropComponent={(props) => (
-              <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.3} pressBehavior="close" />
-            )}
-          >
-            <View style={[condStyles.content, { paddingBottom: insets.bottom + 16 }]}>
-              <Text style={[condStyles.header, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-                Điều kiện voucher
-              </Text>
-
-              <View style={[condStyles.codeRow, { borderColor: `${primaryColor}30`, backgroundColor: `${primaryColor}08` }]}>
-                <Text style={[condStyles.codeLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>Mã giảm giá</Text>
-                <View style={condStyles.codeRight}>
-                  <Text style={[condStyles.codeValue, { color: primaryColor }]}>{conditionVoucher.code}</Text>
-                  <Pressable
-                    hitSlop={8}
-                    onPress={() => {
-                      Clipboard.setStringAsync(conditionVoucher.code)
-                      showToast('Đã sao chép mã')
-                    }}
-                  >
-                    <Copy size={14} color={isDark ? colors.gray[400] : colors.gray[500]} />
-                  </Pressable>
-                </View>
-              </View>
-
-
-              <View style={[condStyles.dateRow, { borderColor: isDark ? colors.gray[700] : colors.gray[200] }]}>
-                <Text style={[condStyles.codeLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>HSD</Text>
-                <Text style={[condStyles.dateValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-                  {dayjs(conditionVoucher.endDate).format('HH:mm DD/MM/YYYY')}
-                </Text>
-              </View>
-
-              <Text style={[condStyles.condTitle, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>Điều kiện</Text>
-              <View style={condStyles.condList}>
-                <Text style={[condStyles.condItem, { color: isDark ? colors.gray[300] : colors.gray[700] }]}>
-                  • Giá trị đơn hàng tối thiểu: {formatCurrencyNative(conditionVoucher.minOrderValue)}
-                </Text>
-                <Text style={[condStyles.condItem, { color: isDark ? colors.gray[300] : colors.gray[700] }]}>
-                  • {conditionVoucher.isVerificationIdentity ? 'Đã có tài khoản trên hệ thống.' : 'Không yêu cầu tài khoản.'}
-                </Text>
-                <Text style={[condStyles.condItem, { color: isDark ? colors.gray[300] : colors.gray[700] }]}>
-                  • Số lượng sử dụng tối đa trên 1 tài khoản: {conditionVoucher.numberOfUsagePerUser || 'Không giới hạn'}
-                </Text>
-                {conditionVoucher.voucherProducts?.length > 0 && (
-                  <Text style={[condStyles.condItem, { color: isDark ? colors.gray[300] : colors.gray[700] }]}>
-                    • Sản phẩm áp dụng: {conditionVoucher.voucherProducts.map(vp => vp.product?.name || vp.slug).join(', ')}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </BottomSheet>
-        )}
+        <VoucherConditionModal
+          voucher={conditionVoucher}
+          onClose={() => setConditionVoucher(null)}
+          isDark={isDark}
+          primaryColor={primaryColor}
+          bgStyle={bgStyle}
+          indicatorStyle={indicatorStyle}
+          bottomInset={insets.bottom}
+        />
       </GestureHandlerRootView>
     </Modal>
   )
@@ -921,71 +627,5 @@ const voucherSheetStyles = StyleSheet.create({
   footerBtnText: {
     fontSize: 15,
     fontWeight: '700',
-  },
-})
-
-const condStyles = StyleSheet.create({
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  header: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 14,
-  },
-  codeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 10,
-  },
-  codeLabel: {
-    fontSize: 13,
-  },
-  codeRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  codeValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  // note: {
-  //   fontSize: 12,
-  //   fontStyle: 'italic',
-  //   marginBottom: 12,
-  // },
-  dateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 14,
-  },
-  dateValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  condTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  condList: {
-    gap: 6,
-  },
-  condItem: {
-    fontSize: 13,
-    lineHeight: 20,
   },
 })

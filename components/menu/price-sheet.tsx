@@ -27,7 +27,7 @@ const PRICE_PRESETS = [
 
 const SNAP_POINTS = [420]
 
-export type PerfPriceSheetLabels = {
+export type PriceFilterSheetLabels = {
   title: string
   reset: string
   from: string
@@ -37,7 +37,7 @@ export type PerfPriceSheetLabels = {
   allPrices: string
 }
 
-export const PerfPriceSheet = memo(function PerfPriceSheet({
+export const PriceFilterSheet = memo(function PriceFilterSheet({
   visible,
   onClose,
   currentMin,
@@ -54,7 +54,7 @@ export const PerfPriceSheet = memo(function PerfPriceSheet({
   primaryColor: string
   isDark: boolean
   onSelect: (min: number, max: number) => void
-  labels: PerfPriceSheetLabels
+  labels: PriceFilterSheetLabels
 }) {
   const insets = useSafeAreaInsets()
   const sheetRef = useRef<BottomSheet>(null)

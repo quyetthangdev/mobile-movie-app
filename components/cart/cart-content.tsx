@@ -14,11 +14,11 @@ import { StyleSheet, useColorScheme, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 
 import { type CartDisplayItem, toDisplayItem } from './cart-display-item'
-import { CartDisplayItemRow } from './cart-item-row'
+import { calcItemVoucherDiscount, CartItemRow } from './cart-item-row'
 
-import { PerfCartEmpty } from './cart-empty'
+import { CartEmpty } from './cart-empty'
 
-import { PerfCartFooter } from './cart-footer-perf'
+import { CartFooter } from './cart-footer'
 import { CartOrderNote } from './cart-order-note'
 import { CartSizeSheet } from './cart-size-sheet'
 
@@ -29,7 +29,7 @@ const ItemSeparator = () => <View style={listStyles.separator} />
 
 const listStyles = StyleSheet.create({
   root: { flex: 1 },
-  content: { paddingTop: 80, paddingBottom: 120 },
+  content: { paddingTop: 80, paddingBottom: 200 },
   separator: { height: 10 },
 })
 
@@ -72,6 +72,16 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perfVoucher, voucherProductSet, cartSlugKey])
 
+  // Pre-compute voucher discount per item — single subscription in parent, not N in children
+  const voucherDiscountMap = useMemo(() => {
+    const map = new Map<string, number>()
+    if (!perfVoucher) return map
+    for (const di of items) {
+      map.set(di.cartKey, calcItemVoucherDiscount(di, perfVoucher))
+    }
+    return map
+  }, [items, perfVoucher])
+
   const [sizeSheetItemId, setSizeSheetItemId] = useState<string | null>(null)
   const handleSizePress = useCallback((cartKey: string) => setSizeSheetItemId(cartKey), [])
   const handleSizeClose = useCallback(() => setSizeSheetItemId(null), [])
@@ -97,23 +107,23 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
 
   const renderItem = useCallback(
     ({ item }: { item: CartDisplayItem }) => (
-      <CartDisplayItemRow
+      <CartItemRow
         item={item}
         primaryColor={primaryColor}
         isDark={isDark}
         onDelete={handleDelete}
         onSizePress={handleSizePress}
-        voucher={perfVoucher}
+        voucherDiscountPerUnit={voucherDiscountMap.get(item.cartKey) ?? 0}
       />
     ),
-    [primaryColor, isDark, handleDelete, handleSizePress, perfVoucher],
+    [primaryColor, isDark, handleDelete, handleSizePress, voucherDiscountMap],
   )
 
   const keyExtractor = useCallback((item: CartDisplayItem) => item.cartKey, [])
 
   if (items.length === 0) {
     return (
-      <PerfCartEmpty
+      <CartEmpty
         isDark={isDark}
         onBrowse={handleBrowse}
         browseLabel={t('menu.viewDetails')}
@@ -134,7 +144,7 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
         ItemSeparatorComponent={ItemSeparator}
         ListFooterComponent={<CartOrderNote isDark={isDark} />}
       />
-      <PerfCartFooter
+      <CartFooter
         primaryColor={primaryColor}
         isDark={isDark}
       />

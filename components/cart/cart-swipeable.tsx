@@ -22,7 +22,7 @@ const returnTrue = () => true
 const SLIDE_OUT_DURATION = 180
 const COLLAPSE_DURATION = 200
 
-function PerfSwipeableBase({
+function CartSwipeableBase({
   itemId,
   onDelete,
   children,
@@ -119,7 +119,7 @@ function PerfSwipeableBase({
   )
 }
 
-export const PerfSwipeable = memo(PerfSwipeableBase)
+export const CartSwipeable = memo(CartSwipeableBase)
 
 const swipeStyles = StyleSheet.create({
   deleteBox: {

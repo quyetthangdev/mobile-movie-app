@@ -4,7 +4,7 @@ import { InteractionManager, Text, TouchableOpacity, View } from 'react-native'
 
 import { useRunAfterTransition } from '@/hooks'
 
-const CartContent = lazy(() => import('@/components/cart/cart-content-perf'))
+const CartContent = lazy(() => import('@/components/cart/cart-content'))
 
 function CartShell({ onBack }: { onBack: () => void }) {
   return (

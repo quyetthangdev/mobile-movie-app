@@ -3,6 +3,7 @@
  * Tránh re-render khi field khác (vd: productName) thay đổi nhưng branch/date không đổi.
  * Dùng các hook này thay vì useShallow trên object menuFilter để tránh re-render khi setMenuFilter tạo object mới.
  */
+import { useMemo } from 'react'
 import { useBranchStore } from '../branch.store'
 import { useMenuFilterStore } from '../menu-filter.store'
 
@@ -24,7 +25,7 @@ export const useMenuSlugFilter = () =>
 export const useSetMenuFilter = () =>
   useMenuFilterStore((s) => s.setMenuFilter)
 
-/** Các field cần cho ISpecificMenuRequest — atomic selectors. Dùng cho SliderRelatedProducts, Menu */
+/** Các field cần cho ISpecificMenuRequest — atomic selectors + useMemo for stable ref */
 export const useMenuFilterForRequest = (catalogOverride?: string) => {
   const date = useMenuFilterStore((s) => s.menuFilter.date)
   const branch = useMenuFilterStore((s) => s.menuFilter.branch)
@@ -33,15 +34,16 @@ export const useMenuFilterForRequest = (catalogOverride?: string) => {
   const minPrice = useMenuFilterStore((s) => s.menuFilter.minPrice)
   const maxPrice = useMenuFilterStore((s) => s.menuFilter.maxPrice)
   const slug = useMenuFilterStore((s) => s.menuFilter.menu)
-  return {
+  const resolvedCatalog = catalogOverride ?? catalog
+  return useMemo(() => ({
     date,
     branch,
-    catalog: catalogOverride ?? catalog,
+    catalog: resolvedCatalog,
     productName,
     minPrice,
     maxPrice,
     slug,
-  }
+  }), [date, branch, resolvedCatalog, productName, minPrice, maxPrice, slug])
 }
 
 /** Branch slug — atomic selector */

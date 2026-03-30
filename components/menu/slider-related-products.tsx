@@ -1,11 +1,10 @@
-import dayjs from 'dayjs'
 import { Image } from 'expo-image'
 import type { TFunction } from 'i18next'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Plus } from 'lucide-react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Dimensions,
-  FlatList,
   Image as RNImage,
   InteractionManager,
   Pressable,
@@ -15,22 +14,21 @@ import {
 } from 'react-native'
 
 import { Images } from '@/assets/images'
-import { ROUTE, publicFileURL } from '@/constants'
+import { OrderFlowStep, ROUTE, publicFileURL } from '@/constants'
+import { usePrimaryColor } from '@/hooks/use-primary-color'
 import {
   usePressInPrefetchMenuItem,
   usePublicSpecificMenu,
   useSpecificMenu,
 } from '@/hooks'
 import { navigateNative, useGhostMount } from '@/lib/navigation'
-import { useBranchStore, useUserStore } from '@/stores'
-import { IMenuItem } from '@/types'
-import { formatCurrency } from '@/utils'
+import { useOrderFlowStore, useBranchStore, useUserStore } from '@/stores'
+import type { IMenuItem, IOrderItem } from '@/types'
+import { formatCurrency, showToast } from '@/utils'
 
 /** Ngày cố định trong session — thay useRef vì linter cấm đọc ref trong render */
-const SESSION_DATE_STR = dayjs().format('YYYY-MM-DD')
+const SESSION_DATE_STR = new Date().toISOString().split('T')[0]
 
-/** ScrollView + map thay FlatList khi items ≤ 20 — tránh nested FlatList-in-ScrollView gây tụt FPS */
-const USE_SCROLLVIEW_THRESHOLD = 20
 
 interface SliderRelatedProductsProps {
   currentProduct: string
@@ -44,6 +42,8 @@ const RelatedProductItem = React.memo(
     itemSpacing,
     onPress,
     onPressIn,
+    onAddToCart,
+    primaryColor,
     t,
   }: {
     item: import('@/types').IMenuItem
@@ -51,8 +51,11 @@ const RelatedProductItem = React.memo(
     itemSpacing: number
     onPress: (slug: string) => void
     onPressIn: (slug: string) => void
+    onAddToCart: (slug: string) => void
+    primaryColor: string
     t: TFunction<'menu'>
   }) {
+    const handleAdd = useCallback(() => onAddToCart(item.slug), [onAddToCart, item.slug])
     const imageUrl = useMemo(() => {
       const imagePath = item?.product.image?.trim()
       if (!imagePath) return null
@@ -78,88 +81,85 @@ const RelatedProductItem = React.memo(
       <Pressable
         onPressIn={() => onPressIn(item.slug)}
         onPress={() => onPress(item.slug)}
-        className="min-h-[210px] w-full flex-col active:opacity-80"
+        className="active:opacity-80"
         style={{ width: itemWidth, marginRight: itemSpacing }}
         {...({ unstable_pressDelay: 0 } as object)}
       >
-        <View
-          className="relative mb-2 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800"
-          style={{ width: itemWidth, height: 120 }}
-        >
-          {hasProductImage ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={{ width: itemWidth, height: 120, borderRadius: 12 }}
-              contentFit="cover"
-              recyclingKey={item.slug}
-              placeholder={(Images.Food.DefaultProductImage as unknown as number)}
-              placeholderContentFit="cover"
-              cachePolicy="disk"
-              priority="low"
-            />
-          ) : (
-            <RNImage
-              source={Images.Food.DefaultProductImage as number}
-              resizeMode="cover"
-              style={{ width: '100%', height: '100%', borderRadius: 12 }}
-            />
-          )}
-          {hasPromotion && (
-            <View className="absolute right-2 top-2 rounded-md bg-red-500 px-2 py-1">
-              <Text className="text-[11px] font-semibold uppercase tracking-wide text-white">
-                {t('menu.discount', 'Giảm')} {item.promotion?.value}%
-              </Text>
-            </View>
-          )}
-        </View>
-        <View
-          className={`flex-1 flex-col pt-2 ${item.product.isLimit ? 'justify-between' : 'justify-start'} gap-1.5`}
-        >
-          <Text
-            className="text-sm font-bold capitalize text-gray-900 dark:text-white"
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.product.name}
-          </Text>
-          {hasPromotion ? (
-            <>
-              <View className="flex-row items-center gap-2">
-                <Text className="text-xs text-gray-400 line-through">
-                  {priceRange
-                    ? formatCurrency(priceRange.min)
-                    : formatCurrency(0)}
-                </Text>
-                <Text className="text-base font-semibold text-primary dark:text-primary">
-                  {priceRange
-                    ? formatCurrency(
-                        priceRange.min *
-                          (1 - (item.promotion?.value || 0) / 100),
-                      )
-                    : formatCurrency(0)}
-                </Text>
-              </View>
-              {item.product.isLimit && (
-                <View className="self-start rounded-full bg-primary/10 px-3 py-1">
-                  <Text className="text-[11px] font-medium text-primary dark:text-primary">
-                    {t('menu.amount', 'Số lượng')} {item.currentStock}/
-                    {item.defaultStock}
+        <View className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+          {/* Image — padded for breathing room */}
+          <View className="p-2 pb-0">
+            <View className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: 4 / 3 }}>
+              {hasProductImage ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                  recyclingKey={item.slug}
+                  placeholder={(Images.Food.DefaultProductImage as unknown as number)}
+                  placeholderContentFit="cover"
+                  cachePolicy="disk"
+                  priority="low"
+                />
+              ) : (
+                <RNImage
+                  source={Images.Food.DefaultProductImage as number}
+                  resizeMode="cover"
+                  style={{ width: '100%', height: '100%' }}
+                />
+              )}
+              {hasPromotion && (
+                <View className="absolute right-1.5 top-1.5 rounded-md bg-red-500 px-1.5 py-0.5">
+                  <Text className="text-[10px] font-semibold text-white">
+                    -{item.promotion?.value}%
                   </Text>
                 </View>
               )}
-            </>
-          ) : (
-            <Text className="text-base font-semibold text-primary dark:text-primary">
-              {priceRange
-                ? formatCurrency(priceRange.min)
-                : t('menu.contactForPrice', 'Liên hệ')}
+            </View>
+          </View>
+
+          {/* Content — below image */}
+          <View className="gap-1 px-2.5 pb-2.5 pt-2">
+            <Text
+              className="text-[13px] font-bold capitalize text-gray-900 dark:text-white"
+              numberOfLines={1}
+            >
+              {item.product.name}
             </Text>
-          )}
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                {hasPromotion ? (
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-xs text-gray-400 line-through">
+                      {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
+                    </Text>
+                    <Text className="text-[13px] font-semibold text-primary">
+                      {priceRange
+                        ? formatCurrency(priceRange.min * (1 - (item.promotion?.value || 0) / 100))
+                        : formatCurrency(0)}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text className="text-[13px] font-semibold text-primary">
+                    {priceRange ? formatCurrency(priceRange.min) : t('menu.contactForPrice', 'Liên hệ')}
+                  </Text>
+                )}
+              </View>
+              <Pressable
+                onPress={handleAdd}
+                hitSlop={6}
+                style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: primaryColor, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Plus size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+          </View>
         </View>
       </Pressable>
     )
   },
-  (prev, next) => prev.item.slug === next.item.slug,
+  (prev, next) =>
+    prev.item.slug === next.item.slug &&
+    prev.primaryColor === next.primaryColor,
 )
 
 export default function SliderRelatedProducts({
@@ -167,10 +167,13 @@ export default function SliderRelatedProducts({
   catalog,
 }: SliderRelatedProductsProps) {
   const { t } = useTranslation('menu')
+  const primaryColor = usePrimaryColor()
   const prefetchMenuItem = usePressInPrefetchMenuItem()
   const { preload } = useGhostMount()
   const branchSlug = useBranchStore((s) => s.branch?.slug)
   const userSlug = useUserStore((s) => s.userInfo?.slug)
+  // Ref for O(1) lookup — avoids closing over relatedProductsData in callbacks
+  const itemsMapRef = useRef<Map<string, IMenuItem>>(new Map())
 
   const filters = useMemo(
     () => ({
@@ -218,23 +221,55 @@ export default function SliderRelatedProducts({
     currentProduct,
   ])
 
+  // Keep O(1) lookup map in sync
+  useEffect(() => {
+    const m = new Map<string, IMenuItem>()
+    for (const item of relatedProductsData) m.set(item.slug, item)
+    itemsMapRef.current = m
+  }, [relatedProductsData])
+
   const isLoading = hasUser ? isPending : isPendingPublicSpecificMenu
 
-  const { itemWidth, itemSpacing, itemLength } = useMemo(() => {
+  // 2 items visible, padding synced with body section (16px)
+  const { itemWidth, itemSpacing } = useMemo(() => {
     const w = Dimensions.get('window').width
-    const width = w * 0.45
-    const spacing = 12
-    return {
-      itemWidth: width,
-      itemSpacing: spacing,
-      itemLength: width + spacing,
-    }
+    const padding = 16
+    const gap = 10
+    const width = (w - padding * 2 - gap) / 2
+    return { itemWidth: width, itemSpacing: gap }
   }, [])
 
   const handleItemPress = useCallback((slug: string) => {
+    const mi = itemsMapRef.current.get(slug)
+    if (!mi) {
+      navigateNative.push({ pathname: ROUTE.CLIENT_PRODUCT_DETAIL, params: { id: slug } })
+      return
+    }
+    const variants = mi.product?.variants ?? []
+    const minPrice = variants.length > 0
+      ? Math.min(...variants.map((v) => v.price))
+      : 0
+    const heroImages = [mi.product?.image, ...(mi.product?.images ?? [])]
+      .filter((v): v is string => !!v)
+    const heroImageUrls = heroImages
+      .map((p) => {
+        if (!p?.trim()) return null
+        if (/^https?:\/\//i.test(p)) return p
+        const base = publicFileURL ?? ''
+        return base ? `${base.replace(/\/$/, '')}/${p.replace(/^\//, '')}` : null
+      })
+      .filter((u): u is string => !!u)
+
     navigateNative.push({
       pathname: ROUTE.CLIENT_PRODUCT_DETAIL,
-      params: { id: slug },
+      params: {
+        id: mi.slug,
+        name: mi.product?.name ?? '',
+        basePrice: String(minPrice),
+        promotionValue: String(mi.promotion?.value ?? 0),
+        imageUrl: heroImageUrls[0] ?? '',
+        imageUrls: JSON.stringify(heroImageUrls),
+      },
     })
   }, [])
 
@@ -246,56 +281,76 @@ export default function SliderRelatedProducts({
     [prefetchMenuItem, preload],
   )
 
-  const renderItem = useCallback(
-    ({ item }: { item: IMenuItem }) => (
-      <RelatedProductItem
-        item={item}
-        itemWidth={itemWidth}
-        itemSpacing={itemSpacing}
-        onPress={handleItemPress}
-        onPressIn={handlePressIn}
-        t={t}
-      />
-    ),
-    [itemWidth, itemSpacing, handleItemPress, handlePressIn, t],
+  const handleAdd = useCallback(
+    (slug: string) => {
+      const mi = itemsMapRef.current.get(slug)
+      if (!mi) return
+      const variants = mi.product?.variants ?? []
+      if (variants.length === 0) return
+      // Find cheapest variant
+      let cheapest = variants[0]
+      for (let i = 1; i < variants.length; i++) {
+        if (variants[i].price < cheapest.price) cheapest = variants[i]
+      }
+      // Read store at call time — no subscription
+      const store = useOrderFlowStore.getState()
+      if (!store.isHydrated) return
+      if (store.currentStep !== OrderFlowStep.ORDERING) store.setCurrentStep(OrderFlowStep.ORDERING)
+      if (!store.orderingData) store.initializeOrdering()
+      const uSlug = useUserStore.getState().userInfo?.slug
+      if (uSlug && !store.orderingData?.owner?.trim()) store.initializeOrdering()
+
+      const orderItem: IOrderItem = {
+        id: `item_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        slug: mi.product?.slug || '',
+        image: mi.product?.image || '',
+        name: mi.product?.name || '',
+        quantity: 1,
+        size: cheapest.size?.name || '',
+        allVariants: variants,
+        variant: cheapest,
+        originalPrice: cheapest.price,
+        productSlug: mi.product?.slug || '',
+        description: mi.product?.description || '',
+        isLimit: mi.product?.isLimit || false,
+        isGift: mi.product?.isGift || false,
+        promotion: mi.promotion ?? null,
+        promotionValue: mi.promotion?.value ?? 0,
+        note: '',
+      }
+      store.addOrderingItem(orderItem)
+      showToast(t('menu.addedToCart', { name: mi.product?.name }))
+    },
+    [t],
   )
 
-  const getItemLayout = useCallback(
-    (_: ArrayLike<IMenuItem> | null | undefined, index: number) => ({
-      length: itemLength,
-      offset: itemLength * index,
-      index,
-    }),
-    [itemLength],
-  )
 
-  const useScrollView = relatedProductsData.length <= USE_SCROLLVIEW_THRESHOLD
 
   if (!relatedProductsData || relatedProductsData.length === 0) {
     if (isLoading) {
-      const skeletonCount = 6
       return (
-        <View className="mt-4 w-full px-4">
-          <Text className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
+        <View style={{ marginTop: 16 }}>
+          <Text className="mb-3 text-base font-bold text-gray-900 dark:text-white">
             {t('menu.relatedProducts', 'Sản phẩm liên quan')}
           </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 4 }}
+            contentContainerStyle={{ paddingRight: 16 }}
           >
-            {Array.from({ length: skeletonCount }, (_, index) => index).map((index) => (
+            {[0, 1, 2, 3].map((i) => (
               <View
-                key={`skeleton-${index}`}
-                className="min-h-[210px] w-full flex-col"
+                key={`skel-${i}`}
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
                 style={{ width: itemWidth, marginRight: itemSpacing }}
               >
-                <View
-                  className="mb-2 w-full rounded-xl bg-gray-200 dark:bg-gray-700"
-                  style={{ height: 120 }}
-                />
-                <View className="mb-2 h-4 rounded bg-gray-200 dark:bg-gray-700" />
-                <View className="h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
+                <View className="p-2 pb-0">
+                  <View className="rounded-xl bg-gray-200 dark:bg-gray-700" style={{ aspectRatio: 4 / 3 }} />
+                </View>
+                <View className="gap-2 px-2.5 pb-2.5 pt-2">
+                  <View className="h-3.5 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
+                  <View className="h-3 w-1/2 rounded bg-gray-200 dark:bg-gray-700" />
+                </View>
               </View>
             ))}
           </ScrollView>
@@ -305,46 +360,30 @@ export default function SliderRelatedProducts({
     return null
   }
 
-  const listContent = useScrollView ? (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 4 }}
-    >
-      {relatedProductsData.map((item) => (
-        <RelatedProductItem
-          key={item.slug}
-          item={item}
-          itemWidth={itemWidth}
-          itemSpacing={itemSpacing}
-          onPress={handleItemPress}
-          onPressIn={handlePressIn}
-          t={t}
-        />
-      ))}
-    </ScrollView>
-  ) : (
-    <FlatList
-      data={relatedProductsData}
-      horizontal
-      initialNumToRender={2}
-      maxToRenderPerBatch={1}
-      windowSize={3}
-      removeClippedSubviews={true}
-      getItemLayout={getItemLayout}
-      showsHorizontalScrollIndicator={false}
-      keyExtractor={(item) => item.slug}
-      renderItem={renderItem}
-      contentContainerStyle={{ paddingHorizontal: 4 }}
-    />
-  )
-
   return (
-    <View className="mt-4 w-full px-4">
-      <Text className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
+    <View style={{ marginTop: 16 }}>
+      <Text className="mb-3 text-base font-bold text-gray-900 dark:text-white">
         {t('menu.relatedProducts', 'Sản phẩm liên quan')}
       </Text>
-      {listContent}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingRight: 16 }}
+      >
+        {relatedProductsData.map((item) => (
+          <RelatedProductItem
+            key={item.slug}
+            item={item}
+            itemWidth={itemWidth}
+            itemSpacing={itemSpacing}
+            onPress={handleItemPress}
+            onPressIn={handlePressIn}
+            onAddToCart={handleAdd}
+            primaryColor={primaryColor}
+            t={t}
+          />
+        ))}
+      </ScrollView>
     </View>
   )
 }

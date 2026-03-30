@@ -34,7 +34,7 @@ import { useRunAfterTransition } from '@/hooks'
 import { useOrderFlowStore } from '@/stores'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
 
-const CartContent = lazy(() => import('@/components/cart/cart-content-perf'))
+const CartContent = lazy(() => import('@/components/cart/cart-content'))
 
 // ─── Clear Confirmation Sheet ────────────────────────────────────────────────
 

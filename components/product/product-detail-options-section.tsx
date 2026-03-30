@@ -14,7 +14,7 @@ import NonPropQuantitySelector from '@/components/button/non-prop-quantity-selec
 import { StaticText } from '@/components/ui'
 import { colors } from '@/constants'
 import type { IProductVariant } from '@/types'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Pressable,
   StyleSheet,
@@ -25,7 +25,6 @@ import {
 import { HIT_SLOP_ICON } from '@/lib/navigation'
 import {
   useDetailQuantity,
-  useDetailSelectedVariant,
   useDetailSetQuantity,
   useDetailSetSelection,
   useDetailSize,
@@ -52,20 +51,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary.dark,
   },
   variantChipUnselectedLight: {
-    borderColor: '#9ca3af',
+    borderColor: colors.gray[400],
     backgroundColor: 'transparent',
   },
   variantChipUnselectedDark: {
-    borderColor: '#6b7280',
+    borderColor: colors.gray[500],
     backgroundColor: 'transparent',
   },
   variantChipText: {
     fontSize: 12,
     fontWeight: '600',
   },
-  variantChipTextSelected: { color: '#ffffff' },
-  variantChipTextUnselectedLight: { color: '#374151' },
-  variantChipTextUnselectedDark: { color: '#d1d5db' },
+  variantChipTextSelected: { color: colors.white.light },
+  variantChipTextUnselectedLight: { color: colors.gray[700] },
+  variantChipTextUnselectedDark: { color: colors.gray[300] },
 })
 
 /** Chip đơn — subscribe atomic useDetailSize → chỉ re-render khi size thay đổi */
@@ -133,6 +132,7 @@ export interface ProductDetailOptionsSectionProps {
 
 export const ProductDetailOptionsSection = React.memo(
   function ProductDetailOptionsSection({
+    productSlug,
     variants,
     description,
     isLimit,
@@ -151,7 +151,6 @@ export const ProductDetailOptionsSection = React.memo(
     const setSelection = useDetailSetSelection()
     const quantity = useDetailQuantity()
     const setQuantity = useDetailSetQuantity()
-    const selectedVariant = useDetailSelectedVariant()
 
     const handleSizeChange = useCallback(
       (variant: IProductVariant) => {
@@ -173,21 +172,26 @@ export const ProductDetailOptionsSection = React.memo(
       return null
     }, [variants])
 
+    // Auto-select cheapest variant when product or variants change
+    const lastAutoSelectedRef = useRef<string | null>(null)
     useEffect(() => {
-      if (!initialVariant || selectedVariant) return
+      if (!initialVariant) return
+      const key = `${productSlug}:${initialVariant.slug}`
+      if (lastAutoSelectedRef.current === key) return
+      lastAutoSelectedRef.current = key
       setSelection({
         variant: initialVariant,
         size: initialVariant.size.name,
         price: initialVariant.price,
         quantity: 1,
       })
-    }, [initialVariant, selectedVariant, setSelection])
+    }, [productSlug, initialVariant, setSelection])
 
     return (
       <View style={{ flexDirection: 'column', gap: 16 }}>
         {variants.length > 0 && (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? '#f9fafb' : '#111827' }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? colors.gray[50] : colors.gray[900] }}>
               {selectSizeLabel}
             </Text>
             <View style={styles.variantRow}>
@@ -200,7 +204,7 @@ export const ProductDetailOptionsSection = React.memo(
 
         {variants.length > 0 && (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 8 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? '#f9fafb' : '#111827' }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? colors.gray[50] : colors.gray[900] }}>
               {selectQuantityLabel}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -212,7 +216,7 @@ export const ProductDetailOptionsSection = React.memo(
                 currentQuantity={currentStock}
               />
               {isLimit && (
-                <Text style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280' }}>
+                <Text style={{ fontSize: 12, color: isDark ? colors.gray[400] : colors.gray[500] }}>
                   {currentStock}/{defaultStock} {inStockLabel}
                 </Text>
               )}
@@ -223,12 +227,12 @@ export const ProductDetailOptionsSection = React.memo(
         <View
           style={{
             borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: isDark ? '#374151' : '#e5e7eb',
+            borderTopColor: isDark ? colors.gray[700] : colors.gray[200],
             marginTop: 4,
           }}
         />
         <View style={{ gap: 4, paddingTop: 4 }}>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: isDark ? '#f9fafb' : '#111827' }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: isDark ? colors.gray[50] : colors.gray[900] }}>
             {descriptionLabel}
           </Text>
           <StaticText
@@ -263,7 +267,7 @@ export const ProductDetailOptionsSection = React.memo(
             >
               {promotionSpecialLabel}
             </Text>
-            <Text style={{ fontSize: 14, color: '#1f2937' }}>
+            <Text style={{ fontSize: 14, color: colors.gray[800] }}>
               {promotionDescription}
             </Text>
           </View>
@@ -291,7 +295,7 @@ export function DeferredOptionsSection({
   if (!ready) {
     return (
       fallback ?? (
-        <View style={{ minHeight: 120, backgroundColor: '#e5e7eb', borderRadius: 12, marginHorizontal: 16 }} />
+        <View style={{ minHeight: 120, backgroundColor: colors.gray[200], borderRadius: 12, marginHorizontal: 16 }} />
       )
     )
   }

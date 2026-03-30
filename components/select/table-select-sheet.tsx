@@ -1,15 +1,14 @@
 import BottomSheet, { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFlatList } from '@gorhom/bottom-sheet'
-import { Check, Circle } from 'lucide-react-native'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 
 import { TableStatus } from '@/constants'
-import { colors } from '@/constants/colors.constant'
 import { useTables } from '@/hooks'
-import { cn } from '@/lib/utils'
 import { useOrderFlowStore } from '@/stores'
 import { ITable } from '@/types'
+
+import { TableItem } from './table-item'
 
 let sheetRef: BottomSheet | null = null
 let openCallback: (() => void) | null = null
@@ -234,86 +233,25 @@ function TableSelectSheet({
     []
   )
 
-  const renderItem = useCallback(
-    ({ item }: { item: ITable }) => {
-      const statusLabel = statusLabelMap[item.status]
-      const isSelected = selectedTableId === item.slug
-      const isReserved = item.status === TableStatus.RESERVED
-      const isAvailable = item.status === TableStatus.AVAILABLE
-
-      return (
-        <TouchableOpacity
-          onPress={() => {
-            addTable(item)
-            bottomSheetRef.current?.close()
-          }}
-          className={cn(
-            'mx-3 my-2 flex-row items-center gap-3 rounded-xl p-4',
-            isSelected
-              ? 'border border-primary/60 bg-primary/5'
-              : 'border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900',
-          )}
-        >
-          <View
-            className={cn(
-              'h-6 w-6 items-center justify-center rounded-full',
-              isSelected ? 'bg-primary/10' : 'bg-gray-100 dark:bg-gray-800',
-            )}
-          >
-            <Circle
-              size={10}
-              color={
-                isReserved
-                  ? '#ef4444'
-                  : isAvailable
-                    ? '#22c55e'
-                    : colors.mutedForeground.light
-              }
-              fill={
-                isReserved
-                  ? '#ef4444'
-                  : isAvailable
-                    ? '#22c55e'
-                    : 'transparent'
-              }
-            />
-          </View>
-
-          <View className="flex-1 flex-row items-center gap-2">
-            <Text
-              numberOfLines={1}
-              className={cn(
-                'flex-shrink text-base font-semibold',
-                'text-gray-900 dark:text-gray-50',
-              )}
-            >
-              {item.name}
-            </Text>
-            <Text className="text-sm text-gray-400 dark:text-gray-500">-</Text>
-            <Text
-              numberOfLines={1}
-              className={cn(
-                'flex-1 text-sm font-medium',
-                isReserved
-                  ? 'text-red-600 dark:text-red-400'
-                  : isAvailable
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-gray-500 dark:text-gray-400',
-              )}
-            >
-              {statusLabel || item.status}
-            </Text>
-          </View>
-
-          {isSelected && (
-            <View className="ml-2 h-6 items-center justify-center rounded-full bg-primary/10 px-3">
-              <Check size={14} color={colors.primary.light} />
-            </View>
-          )}
-        </TouchableOpacity>
-      )
+  const handleSelectTable = useCallback(
+    (table: ITable) => {
+      addTable(table)
+      bottomSheetRef.current?.close()
     },
-    [addTable, selectedTableId, statusLabelMap],
+    [addTable],
+  )
+
+  const renderItem = useCallback(
+    ({ item }: { item: ITable }) => (
+      <TableItem
+        table={item}
+        isSelected={selectedTableId === item.slug}
+        isDark={isDark}
+        statusLabel={statusLabelMap[item.status]}
+        onSelect={handleSelectTable}
+      />
+    ),
+    [handleSelectTable, isDark, selectedTableId, statusLabelMap],
   )
 
   const renderFooter = useCallback(() => {

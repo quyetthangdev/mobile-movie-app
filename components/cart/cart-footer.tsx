@@ -1,217 +1,358 @@
 /**
- * CartFooter — subscribe useOrderFlowCartFooterData + useCartDisplayStore.
- * P1: Lấy finalTotal từ cart-display store — không re-render vì là child khi parent đổi orderItems.
+ * Cart Footer — order type, table, voucher trigger, total + checkout button.
  */
-import { PHONE_NUMBER_REGEX } from '@/constants'
-import { useBranchSlug } from '@/stores/selectors'
-import { OrderTypeEnum } from '@/types'
-import { ChevronRight, Tag } from 'lucide-react-native'
-import React, { lazy, Suspense, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  Alert,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useShallow } from 'zustand/react/shallow'
-
 import { colors } from '@/constants'
-import {
-  OrderTypeSelect,
-  TableSelect,
-} from '@/components/select'
-import { Skeleton } from '@/components/ui'
-import { printReactProfilerStats } from '@/lib/qa/react-profiler-logger'
-import { formatCurrency } from '@/utils'
+import type { IVoucher } from '@/types'
+import { cartActions, useCartItemCount, useCartItems, useCartTotal, useCartVoucher } from '@/stores/cart.store'
+import { useOrderFlowOrderType, useOrderFlowTableName } from '@/stores/selectors/order-flow.selectors'
+import { showToast } from '@/utils'
+import { formatCurrencyNative } from 'cart-price-calc'
+import { ChevronRight, ShoppingBag, Ticket } from 'lucide-react-native'
+import React, { memo, useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { useCartDisplayStore } from '@/stores'
-import { useOrderFlowCartFooterData } from '@/stores/selectors'
+import { toDisplayItem } from './cart-display-item'
+import { calcItemVoucherDiscount } from './cart-item-row'
+import { SimpleOrderTypeSheet } from './cart-order-type-sheet'
+import { SimpleTableSheet } from './cart-table-sheet'
+import { ConfirmOrderSheet } from './cart-confirm-order-sheet'
+import { VoucherSheet } from './cart-voucher-sheet'
 
-const LazyCreateOrderDialog = lazy(() =>
-  import('@/components/dialog/create-order-dialog').then((m) => ({
-    default: m.default,
-  })),
-)
-
-export type CartFooterProps = {
-  /** Phí giao hàng — từ useCalculateDeliveryFee của parent */
-  deliveryFee?: number
-  voucherDisplayText: string
-  footerContentReady: boolean
-  footerBarReady: boolean
-  fetchOrderTypeEnabled: boolean
-  onBeforeOpenOrderType: () => void
-  onBeforeOpenTable: () => void
-  onVoucherPress: () => void
-  /** true = sheet mở bằng openOnMount (lazy load), không import sheet từ trigger */
-  useMountOpenForSheets?: boolean
-}
-
-export const CartFooter = React.memo(function CartFooter({
-  deliveryFee = 0,
-  voucherDisplayText,
-  footerContentReady,
-  footerBarReady,
-  fetchOrderTypeEnabled,
-  onBeforeOpenOrderType,
-  onBeforeOpenTable,
-  onVoucherPress,
-  useMountOpenForSheets = false,
-}: CartFooterProps) {
+export const CartFooter = memo(function CartFooter({
+  primaryColor,
+  isDark,
+}: {
+  primaryColor: string
+  isDark: boolean
+}) {
   const { t } = useTranslation('menu')
-  const insets = useSafeAreaInsets()
-  const isDark = useColorScheme() === 'dark'
-  const primaryColor = isDark ? colors.primary.dark : colors.primary.light
+  const total = useCartTotal()
+  const itemCount = useCartItemCount()
+  const voucher = useCartVoucher()
+  const orderType = useOrderFlowOrderType()
+  const tableName = useOrderFlowTableName()
+  const [orderTypeSheetVisible, setOrderTypeSheetVisible] = useState(false)
+  const [tableSheetVisible, setTableSheetVisible] = useState(false)
+  const [voucherSheetOpen, setVoucherSheetOpen] = useState(false)
 
-  const { rawSubTotal, cartTotals } = useCartDisplayStore(
-    useShallow((s) => ({
-      rawSubTotal: s.rawSubTotal,
-      cartTotals: s.cartTotals,
-    })),
-  )
-  const finalTotal = useMemo(
-    () => (cartTotals?.finalTotal ?? rawSubTotal) + deliveryFee,
-    [cartTotals?.finalTotal, rawSubTotal, deliveryFee],
-  )
-
-  const {
-    type: orderType,
-    table: orderTable,
-    deliveryPhone: orderDeliveryPhone,
-    deliveryAddress: orderDeliveryAddress,
-    orderItemsLength,
-  } = useOrderFlowCartFooterData()
-  const branchSlug = useBranchSlug()
-  const [mountCreateDialog, setMountCreateDialog] = useState(false)
-
-  const isOrderReady = useMemo(() => {
-    if (orderItemsLength === 0) return false
-    if (!branchSlug) return false
-
-    if (orderType === OrderTypeEnum.AT_TABLE) {
-      return !!orderTable
+  const rawItems = useCartItems()
+  const voucherDiscount = useMemo(() => {
+    if (!voucher || total <= 0 || rawItems.length === 0) return 0
+    let discount = 0
+    for (const item of rawItems) {
+      const displayItem = toDisplayItem(item)
+      discount += calcItemVoucherDiscount(displayItem, voucher) * item.quantity
     }
+    return discount
+  }, [voucher, total, rawItems])
+  const finalTotal = total - voucherDiscount
 
-    if (orderType === OrderTypeEnum.DELIVERY) {
-      const phoneOk =
-        !!orderDeliveryPhone && PHONE_NUMBER_REGEX.test(orderDeliveryPhone)
-      return !!orderDeliveryAddress && phoneOk
-    }
+  const [confirmSheetVisible, setConfirmSheetVisible] = useState(false)
 
-    return true
-  }, [
-    orderItemsLength,
-    orderType,
-    orderTable,
-    orderDeliveryPhone,
-    orderDeliveryAddress,
-    branchSlug,
-  ])
+  const closeConfirmSheet = useCallback(() => setConfirmSheetVisible(false), [])
+  const closeOrderTypeSheet = useCallback(() => setOrderTypeSheetVisible(false), [])
+  const closeTableSheet = useCallback(() => setTableSheetVisible(false), [])
+  const closeVoucherSheet = useCallback(() => setVoucherSheetOpen(false), [])
+  const handleApplyVoucher = useCallback((v: IVoucher) => {
+    cartActions.setVoucher(v)
+    showToast(`Áp dụng: ${v.title}`)
+    setVoucherSheetOpen(false)
+  }, [])
 
-  const footerStyle = {
-    paddingBottom: Math.max(insets.bottom, 16) + 8,
-    paddingTop: 12,
-  }
+  const showTableSelect = orderType === 'at-table'
+  const orderTypeLabel = orderType === 'take-out' ? t('menu.takeAway') : orderType === 'delivery' ? t('menu.delivery') : t('menu.dineIn')
+  const tableLabel = tableName || t('menu.selectTable', 'Chọn bàn')
+  const isOrderDisabled = showTableSelect && !tableName
+  const orderBtnLabel = isOrderDisabled ? t('menu.selectTable', 'Chọn bàn') : t('menu.placeOrder', 'Đặt hàng')
 
-  const handlePrintProfilerStats = () => {
-    printReactProfilerStats()
-    Alert.alert('Profiler', 'Da in React Profiler stats ra log.')
-  }
+  const openOrderTypeSheet = useCallback(() => setOrderTypeSheetVisible(true), [])
+  const openTableSheet = useCallback(() => setTableSheetVisible(true), [])
+  const openVoucherSheet = useCallback(() => setVoucherSheetOpen(true), [])
+  const openConfirmSheet = useCallback(() => {
+    if (!isOrderDisabled) setConfirmSheetVisible(true)
+  }, [isOrderDisabled])
 
-  if (!footerBarReady) return null
+  // Memoize isDark/primaryColor-dependent styles
+  const ft = useMemo(() => ({
+    containerBg: { backgroundColor: isDark ? colors.gray[900] : colors.white.light },
+    selectBtnBorder: { borderColor: isDark ? colors.gray[700] : colors.gray[200] },
+    selectBtnTextColor: { color: isDark ? colors.gray[50] : colors.gray[900] },
+    iconColor: isDark ? '#9ca3af' : '#6b7280',
+    mutedColor: { color: isDark ? colors.gray[400] : colors.gray[500] },
+    mutedColorAlt: { color: isDark ? colors.gray[500] : colors.gray[400] },
+    chevronColor: isDark ? colors.gray[500] : colors.gray[400],
+    primaryColorStyle: { color: primaryColor },
+    primaryBorderStyle: { borderColor: primaryColor },
+    disabledBtnBg: { backgroundColor: isDark ? colors.gray[700] : colors.gray[300] },
+    disabledTextColor: { color: isDark ? colors.gray[400] : colors.gray[500] },
+    disabledIconColor: isDark ? colors.gray[400] : colors.gray[500],
+  }), [isDark, primaryColor])
+
+  const tableBtnBorder = useMemo(
+    () => ({
+      borderColor: tableName
+        ? isDark ? colors.gray[700] : colors.gray[200]
+        : isDark ? '#7f1d1d' : '#fca5a5',
+    }),
+    [tableName, isDark],
+  )
+
+  const tableBtnTextColor = useMemo(
+    () => ({
+      color: tableName
+        ? (isDark ? colors.gray[50] : colors.gray[900])
+        : (isDark ? colors.gray[400] : colors.gray[500]),
+    }),
+    [tableName, isDark],
+  )
+
+  const voucherBorderStyle = useMemo(
+    () => ({ borderColor: voucher ? primaryColor : isDark ? colors.gray[600] : colors.gray[300] }),
+    [voucher, primaryColor, isDark],
+  )
+
+  const checkoutBtnBg = useMemo(
+    () => ({ backgroundColor: isOrderDisabled ? (isDark ? colors.gray[700] : colors.gray[300]) : primaryColor }),
+    [isOrderDisabled, isDark, primaryColor],
+  )
 
   return (
-    <View
-      className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-gray-800"
-      style={footerStyle}
-    >
-      <View className="mb-3 flex-row gap-3">
-        {footerContentReady ? (
-          <>
-            <View className="min-w-0 flex-1">
-              <OrderTypeSelect
-                fetchEnabled={fetchOrderTypeEnabled}
-                onBeforeOpen={onBeforeOpenOrderType}
-                useMountOpen={useMountOpenForSheets}
-              />
-            </View>
-            {orderType === OrderTypeEnum.AT_TABLE && (
-              <View className="min-w-0 flex-1">
-                <TableSelect
-                  onBeforeOpen={onBeforeOpenTable}
-                  useMountOpen={useMountOpenForSheets}
-                />
-              </View>
-            )}
-          </>
-        ) : (
-          <>
-            <Skeleton className="h-11 flex-1 rounded-md" />
-            {orderType === OrderTypeEnum.AT_TABLE && (
-              <Skeleton className="h-11 flex-1 rounded-md" />
-            )}
-          </>
-        )}
-      </View>
-
-      <TouchableOpacity
-        onPress={onVoucherPress}
-        className="flex-row items-center justify-between rounded-xl border border-dashed border-gray-300 bg-white px-4 py-3 active:bg-gray-50"
-        activeOpacity={0.9}
-      >
-        <View className="flex-row items-center gap-2">
-          <Tag size={20} color={primaryColor} />
-          <Text className="text-sm font-medium text-gray-900 dark:text-white">
-            {voucherDisplayText}
-          </Text>
-        </View>
-        <ChevronRight size={20} color="#9ca3af" />
-      </TouchableOpacity>
-
-      <View className="mt-3 flex-row items-center justify-between">
-        <TouchableOpacity
-          className="flex-col"
-          activeOpacity={0.9}
-          delayLongPress={250}
-          onLongPress={handlePrintProfilerStats}
-        >
-          <Text className="text-xs text-gray-500">
-            {t('order.totalPayment')}
-          </Text>
-          <Text className="text-xl font-bold text-gray-900 dark:text-white" numberOfLines={1}>
-            {formatCurrency(finalTotal)}
-          </Text>
-        </TouchableOpacity>
-
-        <View className="ml-4">
-          {mountCreateDialog ? (
-            <Suspense fallback={<Skeleton className="h-12 w-28 rounded-full" />}>
-              <LazyCreateOrderDialog
-                disabled={!isOrderReady}
-                fullWidthButton={false}
-                lightButton
-                autoOpenOnMount
-              />
-            </Suspense>
-          ) : (
-            <TouchableOpacity
-              disabled={!isOrderReady}
-              onPress={() => setMountCreateDialog(true)}
-              activeOpacity={0.8}
-              className={`flex flex-row items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm ${
-                !isOrderReady ? 'opacity-50' : ''
-              }`}
+    <>
+      <View style={[footerStyles.container, ft.containerBg]}>
+        {/* Order Type + Table row */}
+        <View style={footerStyles.selectRow}>
+          <Pressable
+            onPress={openOrderTypeSheet}
+            style={[footerStyles.selectBtn, ft.selectBtnBorder]}
+          >
+            <ShoppingBag size={14} color={ft.iconColor} />
+            <Text
+              style={[footerStyles.selectBtnText, ft.selectBtnTextColor]}
+              numberOfLines={1}
             >
-              <Text className="font-medium text-white">
-                {t('order.create')}
+              {orderTypeLabel}
+            </Text>
+          </Pressable>
+          {showTableSelect && (
+            <Pressable
+              onPress={openTableSheet}
+              style={[footerStyles.selectBtn, tableBtnBorder]}
+            >
+              <Text
+                style={[footerStyles.selectBtnText, tableBtnTextColor]}
+                numberOfLines={1}
+              >
+                {tableLabel}
               </Text>
-            </TouchableOpacity>
+              <ChevronRight size={14} color={ft.iconColor} />
+            </Pressable>
           )}
         </View>
+
+        {/* Voucher trigger */}
+        <Pressable
+          onPress={openVoucherSheet}
+          style={[footerStyles.voucherTrigger, voucherBorderStyle]}
+        >
+          <Ticket size={14} color={ft.chevronColor} />
+          <Text style={[footerStyles.voucherLabel, footerStyles.voucherLabelFlex, ft.mutedColor]}>
+            Mã giảm giá
+          </Text>
+          {voucher && (
+            <View style={footerStyles.voucherRight}>
+              {voucherDiscount > 0 && (
+                <View style={[footerStyles.discountBadge, ft.primaryBorderStyle]}>
+                  <Text style={[footerStyles.discountBadgeText, ft.primaryColorStyle]}>
+                    -{formatCurrencyNative(voucherDiscount)}
+                  </Text>
+                </View>
+              )}
+              <Text
+                style={[footerStyles.voucherName, ft.primaryColorStyle]}
+                numberOfLines={1}
+              >
+                {voucher.title}
+              </Text>
+            </View>
+          )}
+          <ChevronRight size={16} color={ft.chevronColor} />
+        </Pressable>
+
+        {/* Total + checkout row */}
+        <View style={footerStyles.bottomRow}>
+          <View style={footerStyles.totalCol}>
+            <Text style={[footerStyles.totalLabel, ft.mutedColor]}>
+              Tổng cộng ({itemCount})
+            </Text>
+            <View style={footerStyles.totalRow}>
+              {voucherDiscount > 0 && (
+                <Text style={[footerStyles.totalOriginal, ft.mutedColorAlt]}>
+                  {formatCurrencyNative(total)}
+                </Text>
+              )}
+              <Text style={[footerStyles.totalValue, ft.primaryColorStyle]}>
+                {formatCurrencyNative(finalTotal)}
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={openConfirmSheet}
+            disabled={isOrderDisabled}
+            style={[
+              footerStyles.checkoutBtn,
+              checkoutBtnBg,
+              isOrderDisabled && footerStyles.checkoutBtnDisabled,
+            ]}
+          >
+            <ShoppingBag size={18} color={isOrderDisabled ? ft.disabledIconColor : colors.white.light} />
+            <Text style={[footerStyles.checkoutText, isOrderDisabled && ft.disabledTextColor]}>
+              {orderBtnLabel}
+            </Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
+
+      <ConfirmOrderSheet
+        visible={confirmSheetVisible}
+        onClose={closeConfirmSheet}
+        isDark={isDark}
+        primaryColor={primaryColor}
+      />
+
+      <SimpleOrderTypeSheet
+        visible={orderTypeSheetVisible}
+        onClose={closeOrderTypeSheet}
+        isDark={isDark}
+        primaryColor={primaryColor}
+      />
+
+      <SimpleTableSheet
+        visible={tableSheetVisible}
+        onClose={closeTableSheet}
+        isDark={isDark}
+        primaryColor={primaryColor}
+      />
+
+      <VoucherSheet
+        visible={voucherSheetOpen}
+        onClose={closeVoucherSheet}
+        isDark={isDark}
+        primaryColor={primaryColor}
+        onApply={handleApplyVoucher}
+      />
+    </>
   )
+})
+
+const footerStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
+    gap: 10,
+  },
+  selectRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  selectBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  selectBtnText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  voucherTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 8,
+  },
+  voucherLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  voucherLabelFlex: {
+    flex: 1,
+  },
+  voucherRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  voucherName: {
+    fontSize: 13,
+    fontWeight: '600',
+    maxWidth: 120,
+  },
+  discountBadge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  discountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  totalCol: {
+    flex: 1,
+  },
+  totalLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginTop: 1,
+  },
+  totalOriginal: {
+    fontSize: 14,
+    textDecorationLine: 'line-through',
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  checkoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 9999,
+    paddingHorizontal: 20,
+  },
+  checkoutBtnDisabled: {
+    paddingHorizontal: 14,
+  },
+  checkoutText: {
+    color: colors.white.light,
+    fontSize: 15,
+    fontWeight: '700',
+  },
 })

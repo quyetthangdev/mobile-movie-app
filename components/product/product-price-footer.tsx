@@ -16,7 +16,7 @@ import {
 } from '@/stores/selectors'
 import { formatCurrency } from '@/utils'
 
-export interface PerfPriceFooterProps {
+export interface ProductPriceFooterProps {
   totalPriceLabel: string
   chooseSizeLabel: string
   addToCartLabel: string
@@ -25,14 +25,14 @@ export interface PerfPriceFooterProps {
   onAddToCart: () => void
 }
 
-export const PerfPriceFooter = React.memo(function PerfPriceFooter({
+export const ProductPriceFooter = React.memo(function ProductPriceFooter({
   totalPriceLabel,
   chooseSizeLabel,
   addToCartLabel,
   outOfStockLabel,
   isLocked,
   onAddToCart,
-}: PerfPriceFooterProps) {
+}: ProductPriceFooterProps) {
   const insets = useSafeAreaInsets()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()

@@ -9,7 +9,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated'
 
-const RelatedProducts = lazy(() => import('@/components/menu/related-products-perf'))
+const RelatedProducts = lazy(() => import('@/components/menu/related-products'))
 
 export default function ProductDetailPage() {
   const router = useRouter()

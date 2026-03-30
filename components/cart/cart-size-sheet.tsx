@@ -14,6 +14,7 @@ import BottomSheet, {
   BottomSheetFlatList,
 } from '@gorhom/bottom-sheet'
 import { memo, useCallback, useMemo, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -41,25 +42,16 @@ export const CartSizeSheet = memo(function CartSizeSheet({
   const sheetRef = useRef<BottomSheet>(null)
   const { t } = useTranslation('product')
 
-  const variants = useOrderFlowStore(
-    useCallback(
-      (s) => {
-        if (!itemId) return EMPTY_VARIANTS
-        const item = s.orderingData?.orderItems?.find((i) => i.id === itemId)
-        return (item?.allVariants || EMPTY_VARIANTS) as IProductVariant[]
-      },
-      [itemId],
-    ),
-  )
-  const selectedSlug = useOrderFlowStore(
-    useCallback(
-      (s) => {
-        if (!itemId) return ''
-        const item = s.orderingData?.orderItems?.find((i) => i.id === itemId)
-        return item?.variant?.slug ?? ''
-      },
-      [itemId],
-    ),
+  // Single selector — one .find() instead of two, useShallow for stable ref
+  const { variants, selectedSlug } = useOrderFlowStore(
+    useShallow((s) => {
+      if (!itemId) return { variants: EMPTY_VARIANTS, selectedSlug: '' }
+      const item = s.orderingData?.orderItems?.find((i) => i.id === itemId)
+      return {
+        variants: (item?.allVariants || EMPTY_VARIANTS) as IProductVariant[],
+        selectedSlug: item?.variant?.slug ?? '',
+      }
+    }),
   )
 
   const bgStyle = useMemo(
@@ -88,17 +80,18 @@ export const CartSizeSheet = memo(function CartSizeSheet({
     [itemId],
   )
 
+  // renderItem stable — selectedSlug passed via extraData, SizeOption handles isSelected
   const renderItem = useCallback(
-    ({ item }: { item: IProductVariant }) => (
+    ({ item, extraData }: { item: IProductVariant; extraData?: string }) => (
       <SizeOption
         variant={item}
-        isSelected={item.slug === selectedSlug}
+        isSelected={item.slug === extraData}
         isDark={isDark}
         primaryColor={primaryColor}
         onSelect={handleSelect}
       />
     ),
-    [selectedSlug, isDark, primaryColor, handleSelect],
+    [isDark, primaryColor, handleSelect],
   )
 
   const keyExtractor = useCallback((item: IProductVariant) => item.slug, [])
@@ -131,6 +124,7 @@ export const CartSizeSheet = memo(function CartSizeSheet({
               data={variants}
               keyExtractor={keyExtractor}
               renderItem={renderItem}
+              extraData={selectedSlug}
               initialNumToRender={6}
               windowSize={3}
               maxToRenderPerBatch={6}

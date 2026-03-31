@@ -5,7 +5,7 @@
 import React from 'react'
 import { View } from 'react-native'
 
-import { ScreenContainer } from '@/components/layout'
+import { ScreenContainer } from '@/components/layout/screen-container'
 import { Skeleton } from '@/components/ui'
 
 export function ScreenShell() {

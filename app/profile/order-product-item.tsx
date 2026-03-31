@@ -19,16 +19,16 @@ export type StatusBadgeColors = { bg: string; text: string }
 export function getStatusBadgeColors(status: OrderStatus): StatusBadgeColors {
   switch (status) {
     case OrderStatus.PENDING:
-      return { bg: '#eab308', text: '#fff' }
+      return { bg: '#eab308', text: colors.white.light }
     case OrderStatus.SHIPPING:
-      return { bg: '#3b82f6', text: '#fff' }
+      return { bg: '#3b82f6', text: colors.white.light }
     case OrderStatus.COMPLETED:
     case OrderStatus.PAID:
-      return { bg: '#22c55e', text: '#fff' }
+      return { bg: colors.success.light, text: colors.white.light }
     case OrderStatus.FAILED:
-      return { bg: '#ef4444', text: '#fff' }
+      return { bg: colors.destructive.light, text: colors.white.light }
     default:
-      return { bg: '#6b7280', text: '#fff' }
+      return { bg: colors.gray[500], text: colors.white.light }
   }
 }
 
@@ -131,17 +131,17 @@ const OrderProductItem = memo(function OrderProductItem({
 
 export const productStyles = StyleSheet.create({
   productRow: { flexDirection: 'row', gap: 12 },
-  productRowBorder: { marginBottom: 12, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' },
+  productRowBorder: { marginBottom: 12, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border.light },
   productImageWrap: { position: 'relative' },
   productImage: { width: 64, height: 64, borderRadius: 8 },
   qtyBadge: { position: 'absolute', bottom: -2, right: -8, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  qtyText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+  qtyText: { fontSize: 10, fontWeight: '700', color: colors.white.light },
   productInfo: { flex: 1, gap: 4 },
   productName: { fontSize: 14, fontWeight: '600' },
   sizeBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   sizeText: { fontSize: 12, fontWeight: '500' },
   priceRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'flex-end', gap: 4 },
-  priceStrike: { fontSize: 12, color: '#9ca3af', textDecorationLine: 'line-through' },
+  priceStrike: { fontSize: 12, color: colors.mutedForeground.dark, textDecorationLine: 'line-through' },
   priceMain: { fontSize: 14, fontWeight: '700' },
 })
 

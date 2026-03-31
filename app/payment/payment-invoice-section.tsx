@@ -75,12 +75,12 @@ export const InvoiceSection = React.memo(function InvoiceSection({
         </View>
       )}
       {fileName && !isDownloading && !isExportingInvoice && (
-        <View style={[invoiceStyles.successCard, { backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : '#f0fdf4', borderColor: isDark ? '#166534' : '#bbf7d0' }]}>
+        <View style={[invoiceStyles.successCard, { backgroundColor: isDark ? 'rgba(20, 83, 45, 0.2)' : colors.success.bgLight, borderColor: isDark ? colors.success.borderDark : colors.success.borderLight }]}>
           <View style={invoiceStyles.downloadRow}>
-            <CheckCircle2 size={24} color="#10b981" />
+            <CheckCircle2 size={24} color={isDark ? colors.success.dark : colors.success.light} />
             <View style={invoiceStyles.flex1}>
-              <Text style={[invoiceStyles.smSemibold, { color: isDark ? '#86efac' : '#166534' }]}>{tCommon('common.downloadSuccess', 'Đã tải xuống thành công')}</Text>
-              <Text style={[invoiceStyles.xsText, { color: isDark ? '#86efac' : '#15803d', marginTop: 2 }]}>
+              <Text style={[invoiceStyles.smSemibold, { color: isDark ? colors.success.dark : colors.success.borderDark }]}>{tCommon('common.downloadSuccess', 'Đã tải xuống thành công')}</Text>
+              <Text style={[invoiceStyles.xsText, { color: isDark ? colors.success.dark : colors.success.iconBgLight, marginTop: 2 }]}>
                 {Platform.OS === 'android' ? tCommon('common.fileSavedToDownloads', 'File đã lưu vào thư mục Downloads') : tCommon('common.fileSavedToFilesApp', 'File đã lưu vào Files app')}
               </Text>
             </View>
@@ -88,7 +88,7 @@ export const InvoiceSection = React.memo(function InvoiceSection({
         </View>
       )}
       <Pressable onPress={handleDownload} disabled={isExportingInvoice || isDownloading} style={[invoiceStyles.downloadBtn, { backgroundColor: (isExportingInvoice || isDownloading) ? colors.gray[400] : primaryColor }]}>
-        <FileDown size={18} color="#fff" />
+        <FileDown size={18} color={colors.white.light} />
         <Text style={invoiceStyles.downloadBtnText}>{(isExportingInvoice || isDownloading) ? tCommon('common.downloading', 'Đang tải...') : tCommon('common.downloadPDF', 'Tải xuống PDF')}</Text>
       </Pressable>
     </View>
@@ -111,5 +111,5 @@ export const invoiceStyles = StyleSheet.create({
   processingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 16 },
   successCard: { marginBottom: 16, padding: 16, borderRadius: 12, borderWidth: 1 },
   downloadBtn: { height: 48, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  downloadBtnText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  downloadBtnText: { fontSize: 15, fontWeight: '600', color: colors.white.light },
 })

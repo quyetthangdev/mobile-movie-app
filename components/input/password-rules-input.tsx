@@ -61,6 +61,7 @@ export function PasswordRulesInput({
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           editable={!disabled}
+          style={{ fontFamily: 'BeVietnamPro_400Regular' }}
         />
         <TouchableOpacity
           className="absolute right-4 top-0 bottom-0 justify-center"

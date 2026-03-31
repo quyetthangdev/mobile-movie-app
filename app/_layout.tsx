@@ -1,5 +1,5 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as SplashScreen from 'expo-splash-screen'
 import * as SystemUI from 'expo-system-ui'
 
@@ -23,6 +23,7 @@ import { GhostMountProvider, NavigationEngineProvider } from '@/lib/navigation'
 import { SharedElementProvider } from '@/lib/shared-element'
 import '@/lib/store-sync-setup'
 import { AppToastProvider, I18nProvider } from '@/providers'
+import { showErrorToast } from '@/utils/toast'
 import { NotificationProvider } from '@/providers/notification-provider'
 
 import './global.css'
@@ -84,7 +85,26 @@ if (typeof global !== 'undefined' && !global.onunhandledrejection) {
   }
 }
 
+function extractStatusCode(error: unknown): number | null {
+  const err = error as { response?: { data?: { statusCode?: number; code?: number } } }
+  return err?.response?.data?.statusCode ?? err?.response?.data?.code ?? null
+}
+
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      if (query.meta?.skipGlobalError) return
+      const code = extractStatusCode(error)
+      if (code) showErrorToast(code)
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      if (mutation.options.onError) return
+      const code = extractStatusCode(error)
+      if (code) showErrorToast(code)
+    },
+  }),
   defaultOptions: {
     queries: {
       // Performance optimizations: stale time 30s, cache 5min

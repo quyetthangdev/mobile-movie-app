@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Role, SystemLockFeatureChild, SystemLockFeatureGroup, SystemLockFeatureType } from '@/constants'
+import { SystemLockFeatureChild, SystemLockFeatureGroup, SystemLockFeatureType } from '@/constants'
 import { useGetSystemFeatureFlagsByGroup } from '@/hooks'
-import { useOrderFlowStore } from '@/stores'
+import { useOrderFlowStore, useUserStore } from '@/stores'
 import { OrderTypeEnum } from '@/types'
+import { useShallow } from 'zustand/react/shallow'
 
 export interface OrderTypeOption {
   label: string
@@ -27,14 +28,13 @@ export function useOrderTypeOptions(options?: UseOrderTypeOptionsOptions) {
   )
 
   const cartItems = getCartItems()
-  // Check if user is logged in (either real user or cart owner is logged in customer)top
+  // Check if user is logged in
+  const userInfo = useUserStore(
+    useShallow((s) => s.userInfo)
+  )
   const isUserLoggedIn = useMemo(() => {
-    // User có slug và role là CUSTOMER
-    const isOwnerLoggedInAndRoleCustomer =
-      cartItems?.ownerRole === Role.CUSTOMER && cartItems?.ownerPhoneNumber !== 'default-customer'
-    // Hoặc cart owner là customer đã đăng nhập
-    return isOwnerLoggedInAndRoleCustomer || isOwnerLoggedInAndRoleCustomer
-  }, [cartItems?.ownerRole, cartItems?.ownerPhoneNumber])
+    return !!userInfo
+  }, [userInfo])
 
   // Wrap featureFlags in useMemo to avoid changing dependencies
   const featureFlags = useMemo(

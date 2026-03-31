@@ -32,6 +32,8 @@ config.resolver = {
 };
 
 // Optimize transformer for faster builds
+// Set ANALYZE_BUNDLE=true to enable source maps for bundle analysis (dev only)
+const ANALYZE_BUNDLE = process.env.ANALYZE_BUNDLE === 'true';
 config.transformer = {
   ...config.transformer,
   minifierConfig: {
@@ -41,6 +43,8 @@ config.transformer = {
   },
   // Enable inline requires for faster startup
   inlineRequires: true,
+  // Source maps only when analyzing — no impact on production builds
+  ...(ANALYZE_BUNDLE ? { sourceMapInline: true } : {}),
 };
 
 // Increase max workers for faster bundling

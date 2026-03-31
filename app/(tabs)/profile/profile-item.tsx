@@ -6,6 +6,7 @@ import { ChevronRight, type LucideIcon } from 'lucide-react-native'
 import React, { useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import { colors } from '@/constants'
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -71,13 +72,13 @@ export const ProfileItem = React.memo(function ProfileItem({
       <GestureDetector gesture={tapGesture}>
         <Animated.View style={[styles.row, animatedStyle]}>
           <View style={styles.iconWrap}>
-            <Icon size={22} color="#6b7280" />
+            <Icon size={22} color={colors.gray[500]} />
           </View>
           <Text style={styles.label} numberOfLines={1}>
             {label}
           </Text>
           <View style={styles.chevronWrap}>
-            <ChevronRight size={20} color="#9ca3af" />
+            <ChevronRight size={20} color={colors.mutedForeground.dark} />
           </View>
         </Animated.View>
       </GestureDetector>
@@ -91,9 +92,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white.light,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border.light,
   },
   iconWrap: {
     width: 40,
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
-    color: '#111827',
+    color: colors.gray[900],
     marginLeft: 12,
   },
   chevronWrap: {

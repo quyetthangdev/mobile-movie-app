@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { colors } from '@/constants'
 import { ComponentProps, forwardRef } from 'react'
 import { TextInput, useColorScheme } from 'react-native'
 
@@ -21,7 +22,8 @@ export const Input = forwardRef<TextInput, InputProps>(
           'placeholder:text-gray-500 dark:placeholder:text-gray-400',
           className
         )}
-        placeholderTextColor={colorScheme === 'dark' ? '#9ca3af' : '#6b7280'}
+        style={{ fontFamily: 'BeVietnamPro_400Regular' }}
+        placeholderTextColor={colorScheme === 'dark' ? colors.mutedForeground.dark : colors.mutedForeground.light}
         {...props}
       />
     )

@@ -50,7 +50,7 @@ export function ForgotPasswordByEmailForm({ onSubmit, isLoading = false }: Forgo
 
       <View className="flex-row items-center justify-between mt-2">
         <TouchableOpacity onPress={() => navigateNative.push(ROUTE.FORGOT_PASSWORD)} disabled={isLoading}>
-          <Text className="text-primary text-sm font-medium">
+          <Text className="text-primary text-sm font-sans-medium">
             {t('forgotPassword.backButton')}
           </Text>
         </TouchableOpacity>
@@ -63,7 +63,7 @@ export function ForgotPasswordByEmailForm({ onSubmit, isLoading = false }: Forgo
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-sm font-semibold text-white">{t('forgotPassword.send')}</Text>
+            <Text className="text-sm font-sans-semibold text-primary-foreground">{t('forgotPassword.send')}</Text>
           )}
         </Button>
       </View>

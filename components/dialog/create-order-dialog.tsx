@@ -121,7 +121,7 @@ export default function PlaceOrderDialog({
   const deliveryFee = useCalculateDeliveryFee(
     parseKm(order?.deliveryDistance) || 0,
     branchSlug || '',
-    { enabled: hasOpened },
+    { enabled: hasOpened && hasUser },
   )
 
   const handleSubmit = (orderParam: IOrderingData) => {

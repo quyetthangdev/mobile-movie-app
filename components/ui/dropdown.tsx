@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { SPRING_CONFIGS } from '@/constants/motion'
+import { colors } from '@/constants'
 import { Check, ChevronRight } from 'lucide-react-native'
 import React, { ComponentProps, useEffect, useMemo, useRef } from 'react'
 import {
@@ -579,7 +580,7 @@ function DropdownSubTrigger({
     >
       {children}
       <View className="ml-auto">
-        <ChevronRight size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+        <ChevronRight size={16} color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />
       </View>
     </TouchableOpacity>
   )

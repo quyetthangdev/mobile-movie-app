@@ -14,7 +14,7 @@ import { ScrollView, useWindowDimensions, View } from 'react-native'
 import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated'
 
 import { MENU_ITEM_DETAIL_LAYOUT } from '@/constants/menu-item-detail-layout'
-import { ScreenContainer } from '@/components/layout'
+import { ScreenContainer } from '@/components/layout/screen-container'
 import { Skeleton } from '@/components/ui'
 import { useParallaxDriverOptional } from '@/lib/transitions'
 

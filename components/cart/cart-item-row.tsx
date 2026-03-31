@@ -2,7 +2,7 @@
  * Cart Item Row — swipeable card with image, quantity controls, price display.
  */
 import { colors } from '@/constants'
-import { cartActions } from '@/stores/cart.store'
+import { cartActions, useCartItemVoucherDiscount } from '@/stores/cart.store'
 import { capitalizeFirst } from '@/utils'
 import { formatCurrencyNative } from 'cart-price-calc'
 import { Image } from 'expo-image'
@@ -48,32 +48,7 @@ const THEME_DARK = {
   notePlaceholderColor: colors.gray[600],
 } as const
 
-/** Compute per-unit voucher discount for a single item — O(1), no loop */
-export function calcItemVoucherDiscount(
-  item: CartDisplayItem,
-  voucher: { type: string; value: number; voucherProducts?: { product?: { slug?: string } }[] } | null,
-): number {
-  if (!voucher) return 0
-  const vpSet = voucher.voucherProducts
-  const eligible =
-    !vpSet || vpSet.length === 0 ||
-    vpSet.some((vp) => vp.product?.slug === item.productId)
-  if (!eligible) return 0
-
-  if (voucher.type === 'same_price_product') {
-    const newPrice = voucher.value <= 1
-      ? Math.round(item.originalPrice * (1 - voucher.value))
-      : Math.min(item.originalPrice, voucher.value)
-    return item.originalPrice - newPrice
-  }
-  if (voucher.type === 'percent_order') {
-    return Math.round(item.originalPrice * (voucher.value / 100))
-  }
-  if (voucher.type === 'fixed_value') {
-    return Math.min(item.originalPrice, voucher.value)
-  }
-  return 0
-}
+export { calcItemVoucherDiscount } from './cart-display-item'
 
 export const CartItemRow = memo(
   function CartItemRow({
@@ -82,15 +57,14 @@ export const CartItemRow = memo(
     isDark,
     onDelete,
     onSizePress,
-    voucherDiscountPerUnit,
   }: {
     item: CartDisplayItem
     primaryColor: string
     isDark: boolean
     onDelete: (cartKey?: string) => void
     onSizePress?: (cartKey: string) => void
-    voucherDiscountPerUnit: number
   }) {
+    const voucherDiscountPerUnit = useCartItemVoucherDiscount(item.cartKey)
     const updateQuantity = cartActions.updateQuantity
 
     const [pendingQty, setPendingQty] = useState<number | null>(null)
@@ -268,8 +242,7 @@ export const CartItemRow = memo(
     prev.primaryColor === next.primaryColor &&
     prev.isDark === next.isDark &&
     prev.onDelete === next.onDelete &&
-    prev.onSizePress === next.onSizePress &&
-    prev.voucherDiscountPerUnit === next.voucherDiscountPerUnit,
+    prev.onSizePress === next.onSizePress,
 )
 
 const rowStyles = StyleSheet.create({
@@ -389,5 +362,6 @@ const rowStyles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     padding: 0,
+    fontFamily: 'BeVietnamPro_400Regular',
   },
 })

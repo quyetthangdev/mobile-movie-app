@@ -1,5 +1,6 @@
 import { ArrowLeft } from 'lucide-react-native'
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ScrollView, Text, View, useColorScheme } from 'react-native'
 import { ScreenContainer } from '@/components/layout'
 
@@ -10,6 +11,7 @@ import { useUserStore } from '@/stores'
 import { showToast } from '@/utils'
 
 function EditProfileScreen() {
+  const { t } = useTranslation('profile')
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
@@ -40,10 +42,10 @@ function EditProfileScreen() {
           className="mr-2 px-0 min-h-0 h-10 w-10 rounded-full justify-center items-center"
           onPress={() => navigateNative.back()}
         >
-          <ArrowLeft size={22} color={isDark ? '#9ca3af' : '#6b7280'} />
+          <ArrowLeft size={22} color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />
         </Button>
         <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-          Chỉnh sửa thông tin
+          {t('contactInfo.edit')}
         </Text>
       </View>
 
@@ -54,38 +56,38 @@ function EditProfileScreen() {
       >
         <View className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
           <View className="mb-4">
-            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">Họ</Text>
+            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">{t('lastName')}</Text>
             <Input
               value={firstName}
               onChangeText={setFirstName}
-              placeholder="Nhập họ"
+              placeholder={t('enterLastName')}
               autoCapitalize="words"
             />
           </View>
 
           <View className="mb-4">
-            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">Tên</Text>
+            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">{t('firstName')}</Text>
             <Input
               value={lastName}
               onChangeText={setLastName}
-              placeholder="Nhập tên"
+              placeholder={t('enterFirstName')}
               autoCapitalize="words"
             />
           </View>
 
           <View className="mb-4">
-            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">Địa chỉ</Text>
+            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">{t('address')}</Text>
             <Input
               value={address}
               onChangeText={setAddress}
-              placeholder="Nhập địa chỉ"
+              placeholder={t('enterAddress')}
             />
           </View>
 
           {/* Email / số điện thoại có thể để readonly vì liên quan xác minh & đăng nhập */}
           <View className="mb-4">
             <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">
-              Số điện thoại (không chỉnh sửa tại đây)
+              {t('phoneNoEdit')}
             </Text>
             <Input
               value={userInfo.phonenumber}
@@ -96,7 +98,7 @@ function EditProfileScreen() {
 
           <View className="mb-4">
             <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">
-              Email (không chỉnh sửa tại đây)
+              {t('emailNoEdit')}
             </Text>
             <Input
               value={userInfo.email}
@@ -112,7 +114,7 @@ function EditProfileScreen() {
             style={{ backgroundColor: primaryColor }}
             onPress={handleSave}
           >
-            <Text className="text-sm font-semibold text-white">Lưu thay đổi</Text>
+            <Text className="text-sm font-semibold text-white">{t('saveChanges')}</Text>
           </Button>
         </View>
       </ScrollView>

@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, Tag, TrendingUp } from 'lucide-react-native'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Pressable,
@@ -21,7 +21,7 @@ import {
   Label,
 } from '@/components/ui'
 import { DataTable } from '@/components/ui/data-table'
-import { LoyaltyPointHistoryType } from '@/constants'
+import { LoyaltyPointHistoryType, colors } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
 import { useLoyaltyPointHistory, useLoyaltyPoints } from '@/hooks'
 import { cn } from '@/lib/utils'
@@ -45,7 +45,7 @@ export default function LoyaltyPointScreen() {
   const userInfo = useUserStore((s) => s.userInfo)
   const slug = userInfo?.slug ?? ''
   const isDark = useColorScheme() === 'dark'
-  const iconColor = isDark ? '#9ca3af' : '#6b7280'
+  const iconColor = isDark ? colors.mutedForeground.dark : colors.mutedForeground.light
 
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -84,6 +84,15 @@ export default function LoyaltyPointScreen() {
 
   const isLoading = loadingTotal || loadingHistory
 
+  const typeOptionItems = useMemo(
+    () => TYPE_OPTIONS.map((opt, index) => ({
+      ...opt,
+      isSelected: typeFilter === opt.value,
+      isLast: index === TYPE_OPTIONS.length - 1,
+    })),
+    [typeFilter],
+  )
+
   return (
     <ScreenContainer
       edges={['top']}
@@ -92,7 +101,7 @@ export default function LoyaltyPointScreen() {
       {/* Header */}
       <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
         <Pressable onPress={handleBack} className="mr-3 p-1 active:opacity-70">
-          <ArrowLeft size={24} color="#374151" />
+          <ArrowLeft size={24} color={colors.gray[700]} />
         </Pressable>
         <Text className="flex-1 text-lg font-semibold text-gray-900 dark:text-white">
           {t('profile.points.pointsHistory')}
@@ -109,7 +118,7 @@ export default function LoyaltyPointScreen() {
           <View className="mb-4 rounded-lg bg-primary/10 px-3 py-2 dark:bg-primary/20">
             <Label className="flex-row items-center gap-2 text-primary">
               <View className="rounded-full bg-primary/20 p-1 dark:bg-primary/30">
-                <Tag size={16} color="#D68910" />
+                <Tag size={16} color={colors.primary.dark} />
               </View>
               {t('profile.points.pointsHistory')}
             </Label>
@@ -126,7 +135,7 @@ export default function LoyaltyPointScreen() {
                       {t('profile.totalEarned')}
                     </Text>
                     <View className="flex-row items-center gap-1">
-                      <TrendingUp size={18} color="#D68910" />
+                      <TrendingUp size={18} color={colors.primary.dark} />
                       <Text className="text-xl font-bold text-primary">
                         {formatPoints(Math.abs(totalPoints))}{' '}
                         {t('profile.points.point')}
@@ -172,40 +181,35 @@ export default function LoyaltyPointScreen() {
                 </Text>
               </View>
               <View className="max-h-[400px]">
-                {TYPE_OPTIONS.map((opt, index) => {
-                  const isSelected = typeFilter === opt.value
-                  const isLast = index === TYPE_OPTIONS.length - 1
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      onPress={() => setTypeFilter(opt.value)}
-                      className={cn(
-                        'flex-row items-center gap-3 px-4 py-3 active:bg-gray-100 dark:active:bg-gray-700',
-                        !isLast &&
-                          'border-b border-gray-100 dark:border-gray-800',
-                        isSelected && 'bg-gray-50 dark:bg-gray-800/50',
-                      )}
-                    >
-                      <View className="mt-0.5">
-                        <Tag size={18} color={iconColor} />
-                      </View>
-                      <View className="flex-1 flex-row items-center gap-2">
-                        <Text
-                          className={cn(
-                            'flex-1 text-sm font-medium',
-                            isSelected
-                              ? 'text-primary dark:text-primary'
-                              : 'text-gray-900 dark:text-gray-50',
-                          )}
-                          numberOfLines={1}
-                        >
-                          {t(opt.labelKey)}
-                        </Text>
-                        {isSelected && <Check size={16} color={iconColor} />}
-                      </View>
-                    </TouchableOpacity>
-                  )
-                })}
+                {typeOptionItems.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => setTypeFilter(opt.value)}
+                    className={cn(
+                      'flex-row items-center gap-3 px-4 py-3 active:bg-gray-100 dark:active:bg-gray-700',
+                      !opt.isLast && 'border-b border-gray-100 dark:border-gray-800',
+                      opt.isSelected && 'bg-gray-50 dark:bg-gray-800/50',
+                    )}
+                  >
+                    <View className="mt-0.5">
+                      <Tag size={18} color={iconColor} />
+                    </View>
+                    <View className="flex-1 flex-row items-center gap-2">
+                      <Text
+                        className={cn(
+                          'flex-1 text-sm font-medium',
+                          opt.isSelected
+                            ? 'text-primary dark:text-primary'
+                            : 'text-gray-900 dark:text-gray-50',
+                        )}
+                        numberOfLines={1}
+                      >
+                        {t(opt.labelKey)}
+                      </Text>
+                      {opt.isSelected && <Check size={16} color={iconColor} />}
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             </DropdownMenuContent>
           </DropdownMenu>

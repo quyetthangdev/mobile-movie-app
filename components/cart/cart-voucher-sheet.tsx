@@ -22,6 +22,8 @@ import { showToast } from '@/utils'
 import BottomSheet, {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetFooter,
+  type BottomSheetFooterProps,
   BottomSheetScrollView,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet'
@@ -68,13 +70,13 @@ export const VoucherSheet = memo(function VoucherSheet({
   const { mutate: validatePublic } = useValidatePublicVoucher()
   const validateVoucher = isCustomerOwner ? validatePrivate : validatePublic
 
-  // Pre-fill with applied voucher when sheet opens
+  // Pre-select applied voucher when sheet opens (but don't fill input)
   const prevVisible = useRef(false)
   useEffect(() => {
-    if (visible && !prevVisible.current && currentVoucher) {
-      setCode(currentVoucher.code)
-      setSearchCode(currentVoucher.code)
-      setSelectedVoucher(currentVoucher)
+    if (visible && !prevVisible.current) {
+      if (currentVoucher) {
+        setSelectedVoucher(currentVoucher)
+      }
     }
     prevVisible.current = visible
   }, [visible, currentVoucher])
@@ -114,6 +116,7 @@ export const VoucherSheet = memo(function VoucherSheet({
     })),
     [items],
   )
+
   const voucherRequestParams = useMemo(() => visible ? {
     hasPaging: true,
     page: 1,
@@ -121,7 +124,15 @@ export const VoucherSheet = memo(function VoucherSheet({
     minOrderValue: total,
     orderItems: listRequestItems,
     ...(isCustomerOwner && userSlug ? { user: userSlug } : {}),
-  } : undefined, [visible, total, listRequestItems, isCustomerOwner, userSlug])
+  } : undefined, [visible, total, isCustomerOwner, userSlug, listRequestItems])
+
+  // Delay enabling list query until sheet animation settles (~150ms)
+  const [queryReady, setQueryReady] = useState(false)
+  useEffect(() => {
+    if (!visible) { setQueryReady(false); return }
+    const t = setTimeout(() => setQueryReady(true), 150)
+    return () => clearTimeout(t)
+  }, [visible])
 
   // 4.2 — Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -136,7 +147,7 @@ export const VoucherSheet = memo(function VoucherSheet({
   const listFetch = isCustomerOwner ? useVouchersForOrder : usePublicVouchersForOrder
   const { data: eligibleRes, isLoading: isLoadingList } = listFetch(
     paginatedParams,
-    visible && items.length > 0,
+    queryReady && items.length > 0,
   )
 
   const hasMore = eligibleRes?.result?.hasNext ?? false
@@ -178,7 +189,13 @@ export const VoucherSheet = memo(function VoucherSheet({
     if (hasMore && !isLoadingList) setCurrentPage((p) => p + 1)
   }, [hasMore, isLoadingList])
 
-  const rawEligibleVouchers = allVouchers
+  // Merge applied voucher into raw list so it always appears in processed results
+  const rawEligibleVouchers = useMemo(() => {
+    if (currentVoucher && !allVouchers.some((v) => v.slug === currentVoucher.slug)) {
+      return [currentVoucher, ...allVouchers]
+    }
+    return allVouchers
+  }, [allVouchers, currentVoucher])
 
   // 3.1 + 3.2 — Classify valid/invalid + error messages
   const cartProductSlugs = useMemo(() => items.map((i: IOrderItem) => i.productSlug || i.slug || '').filter(Boolean), [items])
@@ -232,14 +249,18 @@ export const VoucherSheet = memo(function VoucherSheet({
     setSearchCode(trimmed)
   }, [code])
 
-  // F1 — Single stable callback for all cards. Looks up voucher by slug.
+  // F1 — Merge fetched + current applied voucher into available pool
   const allAvailable = useMemo(() => {
     const list = [...rawEligibleVouchers]
     if (fetchedVoucher && !list.some((v) => v.slug === fetchedVoucher.slug)) {
       list.unshift(fetchedVoucher)
     }
+    // Include current applied voucher so it's always selectable on reopen
+    if (currentVoucher && !list.some((v) => v.slug === currentVoucher.slug)) {
+      list.unshift(currentVoucher)
+    }
     return list
-  }, [rawEligibleVouchers, fetchedVoucher])
+  }, [rawEligibleVouchers, fetchedVoucher, currentVoucher])
 
   const handleSelectBySlug = useCallback((slug: string) => {
     setSelectedVoucher((prev) => {
@@ -291,6 +312,41 @@ export const VoucherSheet = memo(function VoucherSheet({
     setConditionVoucher(v)
   }, [])
 
+  // ─── Footer component pinned at bottom via BottomSheetFooter ────────────────
+  const renderFooter = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <BottomSheetFooter {...props} bottomInset={insets.bottom}>
+        <View style={[voucherSheetStyles.footer, { backgroundColor: isDark ? colors.gray[900] : colors.white.light }]}>
+          <Pressable
+            onPress={handleFooterPress}
+            style={[
+              voucherSheetStyles.footerBtn,
+              {
+                backgroundColor: isCurrentApplied
+                  ? colors.destructive.light
+                  : isNewSelection
+                    ? primaryColor
+                    : isDark ? colors.gray[700] : colors.gray[200],
+              },
+            ]}
+          >
+            <Text style={[
+              voucherSheetStyles.footerBtnText,
+              {
+                color: isCurrentApplied || isNewSelection
+                  ? colors.white.light
+                  : isDark ? colors.gray[300] : colors.gray[600],
+              },
+            ]}>
+              {isCurrentApplied ? 'Gỡ mã' : isNewSelection ? 'Áp dụng' : 'Đóng'}
+            </Text>
+          </Pressable>
+        </View>
+      </BottomSheetFooter>
+    ),
+    [isDark, primaryColor, isCurrentApplied, isNewSelection, handleFooterPress, insets.bottom],
+  )
+
   if (!visible) return null
 
   return (
@@ -310,6 +366,7 @@ export const VoucherSheet = memo(function VoucherSheet({
           backgroundStyle={bgStyle}
           handleIndicatorStyle={indicatorStyle}
           onChange={handleChange}
+          footerComponent={renderFooter}
           android_keyboardInputMode="adjustResize"
         >
           {/* Fixed header */}
@@ -350,51 +407,41 @@ export const VoucherSheet = memo(function VoucherSheet({
                 <Search size={18} color={code.trim() ? colors.white.light : isDark ? colors.gray[500] : colors.gray[400]} />
               </Pressable>
             </View>
-            <Text style={[voucherSheetStyles.note, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-              Áp dụng tối đa 1 mã / đơn hàng
-            </Text>
+            {currentVoucher ? (
+              <View style={voucherSheetStyles.appliedRow}>
+                <Ticket size={14} color={primaryColor} />
+                <Text style={[voucherSheetStyles.appliedText, { color: primaryColor }]} numberOfLines={1}>
+                  Đang dùng: {currentVoucher.title}
+                </Text>
+              </View>
+            ) : (
+              <Text style={[voucherSheetStyles.note, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
+                Áp dụng tối đa 1 mã / đơn hàng
+              </Text>
+            )}
           </View>
 
           {/* Scrollable voucher list */}
-          <BottomSheetScrollView contentContainerStyle={voucherSheetStyles.scrollContent} style={voucherSheetStyles.scrollView} showsVerticalScrollIndicator={false}>
-            {/* Debug request */}
-            {__DEV__ && (
-              <View style={{ marginBottom: 12, padding: 10, borderRadius: 8, backgroundColor: isDark ? '#1a1a2e' : '#f0f4f8', borderWidth: 1, borderColor: isDark ? '#2d2d44' : '#dbeafe', borderStyle: 'dashed' }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#94a3b8' : '#64748b', marginBottom: 6 }}>
-                  REQUEST · {isCustomerOwner ? 'Private' : 'Public'} · user: {userSlug ?? 'N/A'}
-                </Text>
-                <Text selectable style={{ fontSize: 10, fontFamily: 'monospace', color: isDark ? '#a5d6ff' : '#1e40af' }}>
-                  {paginatedParams ? JSON.stringify(paginatedParams, null, 2) : 'Not fetching'}
-                </Text>
-                {eligibleRes && (
-                  <Text style={{ fontSize: 10, color: isDark ? '#86efac' : '#16a34a', marginTop: 6 }}>
-                    Response: {eligibleRes.result?.items?.length ?? 0} items · page {eligibleRes.result?.page ?? '-'} · hasNext: {String(eligibleRes.result?.hasNext ?? false)}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {/* Result */}
+          <BottomSheetScrollView
+            style={voucherSheetStyles.scrollView}
+            contentContainerStyle={voucherSheetStyles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Search result area */}
             {isFetching && searchCode.length > 0 && (
               <View style={voucherSheetStyles.resultRow}>
-                <Text style={{ color: isDark ? colors.gray[400] : colors.gray[500], fontSize: 13 }}>
-                  Đang tìm...
-                </Text>
+                <Text style={{ color: isDark ? colors.gray[400] : colors.gray[500], fontSize: 13 }}>Đang tìm...</Text>
               </View>
             )}
-
             {!isFetching && searchCode.length > 0 && !fetchedVoucher && (
               <View style={voucherSheetStyles.resultRow}>
-                <Text style={{ color: colors.destructive.light, fontSize: 13 }}>
-                  Không tìm thấy mã "{searchCode}"
-                </Text>
+                <Text style={{ color: colors.destructive.light, fontSize: 13 }}>Không tìm thấy mã &quot;{searchCode}&quot;</Text>
               </View>
             )}
-
             {!isFetching && fetchedVoucher && processedFetched && (
               <VoucherCard
-                voucher={fetchedVoucher}
-                isSelected={selectedVoucher?.slug === fetchedVoucher.slug}
+                voucher={processedFetched.voucher}
+                isSelected={selectedVoucher?.slug === processedFetched.voucher.slug}
                 primaryColor={primaryColor}
                 isDark={isDark}
                 onSelect={handleSelectBySlug}
@@ -406,99 +453,69 @@ export const VoucherSheet = memo(function VoucherSheet({
               />
             )}
 
-            {/* 3.1 — Valid vouchers */}
+            {/* Valid vouchers */}
             {validVouchers.length > 0 && (
-              <View style={voucherSheetStyles.listHeader}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? colors.gray[50] : colors.gray[900] }}>
-                  Voucher khả dụng
-                </Text>
-                <Text style={{ fontSize: 12, color: isDark ? colors.gray[400] : colors.gray[500] }}>
-                  Tối đa: 1
-                </Text>
-              </View>
+              <>
+                <View style={voucherSheetStyles.listHeader}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? colors.gray[50] : colors.gray[900] }}>Voucher khả dụng</Text>
+                  <Text style={{ fontSize: 12, color: isDark ? colors.gray[400] : colors.gray[500] }}>Tối đa: 1</Text>
+                </View>
+                {validVouchers.map((p) => (
+                  <VoucherCard
+                    key={p.voucher.slug}
+                    voucher={p.voucher}
+                    isSelected={selectedVoucher?.slug === p.voucher.slug}
+                    primaryColor={primaryColor}
+                    isDark={isDark}
+                    onSelect={handleSelectBySlug}
+                    onViewCondition={handleViewCondition}
+                    discountLabel={p.discountLabel}
+                    expiryText={p.expiryText}
+                    minOrderText={p.minOrderText}
+                    usagePercent={p.usagePercent}
+                  />
+                ))}
+              </>
             )}
-            {validVouchers.slice(0, 10).map((p) => (
-              <VoucherCard
-                key={p.voucher.slug}
-                voucher={p.voucher}
-                isSelected={selectedVoucher?.slug === p.voucher.slug}
-                primaryColor={primaryColor}
-                isDark={isDark}
-                onSelect={handleSelectBySlug}
-                onViewCondition={handleViewCondition}
-                discountLabel={p.discountLabel}
-                expiryText={p.expiryText}
-                minOrderText={p.minOrderText}
-                usagePercent={p.usagePercent}
-              />
-            ))}
 
-            {/* 3.2 — Invalid vouchers (mờ + error message, max 5 initially) */}
+            {/* Invalid vouchers */}
             {invalidVouchers.length > 0 && (
-              <View style={voucherSheetStyles.listHeader}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? colors.gray[400] : colors.gray[500] }}>
-                  Không khả dụng
-                </Text>
-              </View>
+              <>
+                <View style={voucherSheetStyles.listHeader}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: isDark ? colors.gray[400] : colors.gray[500] }}>Không khả dụng</Text>
+                </View>
+                {invalidVouchers.slice(0, 5).map((p) => (
+                  <View key={p.voucher.slug} style={{ opacity: 0.5 }}>
+                    <VoucherCard
+                      voucher={p.voucher}
+                      isSelected={false}
+                      primaryColor={primaryColor}
+                      isDark={isDark}
+                      onSelect={handleSelectBySlug}
+                      onViewCondition={handleViewCondition}
+                      errorMessage={p.errorMessage}
+                      discountLabel={p.discountLabel}
+                      expiryText={p.expiryText}
+                      minOrderText={p.minOrderText}
+                      usagePercent={p.usagePercent}
+                    />
+                  </View>
+                ))}
+              </>
             )}
-            {invalidVouchers.slice(0, 5).map((p) => (
-              <View key={p.voucher.slug} style={{ opacity: 0.5 }}>
-                <VoucherCard
-                  voucher={p.voucher}
-                  isSelected={false}
-                  primaryColor={primaryColor}
-                  isDark={isDark}
-                  onSelect={handleSelectBySlug}
-                  onViewCondition={handleViewCondition}
-                  errorMessage={p.errorMessage}
-                  discountLabel={p.discountLabel}
-                  expiryText={p.expiryText}
-                  minOrderText={p.minOrderText}
-                  usagePercent={p.usagePercent}
-                />
-              </View>
-            ))}
+
+            {/* Loading / load more */}
             {isLoadingList && (
               <Text style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: isDark ? colors.gray[400] : colors.gray[500] }}>
                 Đang tải voucher...
               </Text>
             )}
-            {hasMore && !isLoadingList && (
+            {!isLoadingList && hasMore && (
               <Pressable onPress={handleLoadMore} style={voucherSheetStyles.loadMoreBtn}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: primaryColor }}>
-                  Tải thêm
-                </Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: primaryColor }}>Tải thêm</Text>
               </Pressable>
             )}
           </BottomSheetScrollView>
-
-          {/* Footer button — marginTop auto pushes to bottom */}
-          <View style={voucherSheetStyles.footer}>
-            <Pressable
-              onPress={handleFooterPress}
-              style={[
-                voucherSheetStyles.footerBtn,
-                {
-                  backgroundColor: isCurrentApplied
-                    ? colors.destructive.light
-                    : isNewSelection
-                      ? primaryColor
-                      : isDark ? colors.gray[700] : colors.gray[200],
-                },
-              ]}
-            >
-              <Text style={[
-                voucherSheetStyles.footerBtnText,
-                {
-                  color: isCurrentApplied || isNewSelection
-                    ? colors.white.light
-                    : isDark ? colors.gray[300] : colors.gray[600],
-                },
-              ]}>
-                {isCurrentApplied ? 'Gỡ mã' : isNewSelection ? 'Áp dụng' : 'Đóng'}
-              </Text>
-            </Pressable>
-          </View>
         </BottomSheet>
 
         <VoucherConditionModal
@@ -524,7 +541,7 @@ const voucherSheetStyles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.gray[200],
   },
   // content: {
   //   flex: 1,
@@ -532,10 +549,11 @@ const voucherSheetStyles = StyleSheet.create({
   //   paddingTop: 8,
   // },
   scrollView: {
-    paddingHorizontal: 20,
+    flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 80,
   },
   title: {
     fontSize: 17,
@@ -577,6 +595,17 @@ const voucherSheetStyles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 8,
   },
+  appliedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  appliedText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   resultRow: {
     marginTop: 14,
   },
@@ -614,9 +643,11 @@ const voucherSheetStyles = StyleSheet.create({
   //   borderRadius: 10,
   // },
   footer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 4,
+    paddingBottom: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.gray[200],
   },
   footerBtn: {
     height: 48,

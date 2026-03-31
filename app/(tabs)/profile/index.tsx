@@ -1,10 +1,14 @@
 import { LoginForm } from '@/components/auth'
-import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
 import { Skeleton } from '@/components/ui'
+import { colors } from '@/constants/colors.constant'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useLoyaltyPoints, useRunAfterTransition } from '@/hooks'
 import { useAuthStore, useUserStore } from '@/stores'
+import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
+import { showToast } from '@/utils'
 import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import {
   Bell,
@@ -16,12 +20,14 @@ import {
   LayoutGrid,
   Settings,
   Trophy,
-  User,
+  User
 } from 'lucide-react-native'
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AppState,
+  Platform,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -29,7 +35,6 @@ import {
   useColorScheme,
   useWindowDimensions,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureDetector, ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 import Animated, {
   useAnimatedScrollHandler,
@@ -37,18 +42,22 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated'
-import { colors } from '@/constants/colors.constant'
-import { showToast } from '@/utils'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { useProfileAnimation } from './use-profile-animation'
 
 const AnimatedGestureScrollView = Animated.createAnimatedComponent(GestureScrollView)
 
 const HEADER_HEIGHT = 280
-const TOOLBAR_HEIGHT = 56
 const AVATAR_SIZE = 100
 const AVATAR_TOP = 60
 const SCROLL_RANGE = 140
+// nameTravel: distance the name text slides up to dock at the header toolbar.
+// Derivation: nameCenterY - headerNameY
+//   = (insets.top + AVATAR_TOP + AVATAR_SIZE + 24) - (insets.top + 28)
+//   = AVATAR_TOP + AVATAR_SIZE + 24 - 28 = 156 → travel = -156 (upward)
+// insets.top cancels, so this is a fixed constant regardless of device safe-area.
+const NAME_TRAVEL = -(AVATAR_TOP + AVATAR_SIZE + 24 - 28) // -156
 
 const PROFILE_THEME = {
   light: {
@@ -141,6 +150,112 @@ const MenuItem = React.memo(function MenuItem({
   )
 })
 
+// ─── Profile Header — copied 100% from CartHeader, 2 buttons changed ────────
+
+const ProfileHeader = React.memo(function ProfileHeader({
+  onMenu,
+  onEdit,
+  isDark,
+}: {
+  onMenu: () => void
+  onEdit: () => void
+  isDark: boolean
+}) {
+  const { t } = useTranslation('profile')
+  const pageBg = isDark ? colors.background.dark : colors.background.light
+  const gradientColors = useMemo(
+    () => [`${pageBg}F0`, `${pageBg}AA`, `${pageBg}00`] as const,
+    [pageBg],
+  )
+  return (
+    <View style={phStyles.container} pointerEvents="box-none">
+      {Platform.OS === 'ios' ? (
+        <BlurView
+          intensity={20}
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      <LinearGradient
+        colors={gradientColors}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[phStyles.row, { paddingTop: STATIC_TOP_INSET + 10 }]} pointerEvents="auto">
+        <Pressable
+          onPress={onMenu}
+          hitSlop={8}
+          style={[
+            phStyles.circleBtn,
+            { backgroundColor: isDark ? colors.gray[800] : colors.white.light },
+            phStyles.shadow,
+          ]}
+        >
+          <LayoutGrid size={20} color={isDark ? colors.gray[50] : colors.gray[900]} />
+        </Pressable>
+        <View style={phStyles.circleBtn} />
+        <Pressable
+          onPress={onEdit}
+          hitSlop={8}
+          style={[
+            phStyles.editPill,
+            { backgroundColor: isDark ? colors.gray[800] : colors.white.light },
+            phStyles.shadow,
+          ]}
+        >
+          <Text style={phStyles.editText}>
+            {t('profile.generalInfo.edit', 'Sửa')}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+})
+
+const phStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    paddingBottom: 24,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  circleBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editPill: {
+    height: 42,
+    borderRadius: 21,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 24,
+    elevation: 2,
+  },
+  editText: {
+    fontSize: 15,
+    fontWeight: '400',
+  },
+})
+
+// ─── Profile Screen ───────────────────────────────────────────────────────────
+
 const ProfileTest = () => {
   const { width: screenWidth } = useWindowDimensions()
   const colorScheme = useColorScheme()
@@ -148,14 +263,7 @@ const ProfileTest = () => {
   const theme = PROFILE_THEME[isDark ? 'dark' : 'light']
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const routerRef = useRef(router)
-  routerRef.current = router
   const scrollY = useSharedValue(0)
-  const insetsTop = useSharedValue(insets.top)
-
-  useEffect(() => {
-    insetsTop.value = insets.top
-  }, [insets.top, insetsTop])
 
   const handleScroll = useAnimatedScrollHandler({
     onScroll: (e) => {
@@ -166,31 +274,20 @@ const ProfileTest = () => {
 
   const avatarTop = insets.top + AVATAR_TOP
   const nameTop = avatarTop + AVATAR_SIZE + 12
-  const headerNameY = insets.top + 28
-  const nameCenterY = nameTop + 12
-  const nameTravel = -(nameCenterY - headerNameY)
 
-  // Single derived progress 0→1 — computed once on UI thread, shared across all styles
+  // Single derived progress 0→1
   const progress = useDerivedValue(() => {
     'worklet'
     const p = scrollY.value / SCROLL_RANGE
     return p < 0 ? 0 : p > 1 ? 1 : p
   })
 
-  // Toolbar blur progress (starts at 50% scroll)
-  const blurProgress = useDerivedValue(() => {
-    'worklet'
-    const p = (scrollY.value - SCROLL_RANGE * 0.5) / (SCROLL_RANGE * 0.5)
-    return p < 0 ? 0 : p > 1 ? 1 : p
-  })
-
-  // Avatar + phone: fade out + translate up (merged — 1 style instead of 2)
+  // Avatar + phone: fade out + translate up — same linear driver as nameStyle for sync
   const avatarPhoneStyle = useAnimatedStyle(() => {
     'worklet'
-    const p = progress.value
     return {
-      opacity: 1 - p,
-      transform: [{ translateY: -scrollY.value * p }],
+      opacity: 1 - progress.value,
+      transform: [{ translateY: NAME_TRAVEL * progress.value }],
     }
   })
 
@@ -198,32 +295,12 @@ const ProfileTest = () => {
   const nameStyle = useAnimatedStyle(() => {
     'worklet'
     return {
-      transform: [{ translateY: nameTravel * progress.value }],
+      transform: [{ translateY: NAME_TRAVEL * progress.value }],
     }
   })
 
-  // Header section: collapse height
-  const headerHeightStyle = useAnimatedStyle(() => {
-    'worklet'
-    const top = insetsTop.value
-    const expanded = HEADER_HEIGHT + top
-    const collapsed = top + TOOLBAR_HEIGHT
-    return { height: expanded - (expanded - collapsed) * progress.value }
-  })
-
-  // Toolbar blur + header bg: inverse pair (1 style each, read from shared blurProgress)
-  const toolbarBlurStyle = useAnimatedStyle(() => {
-    'worklet'
-    return { opacity: blurProgress.value }
-  })
-
-  const headerBgStyle = useAnimatedStyle(() => {
-    'worklet'
-    return { opacity: 1 - blurProgress.value }
-  })
-
   const { t } = useTranslation('profile')
-  const handleBack = useCallback(() => routerRef.current.back(), [])
+  const handleBack = useCallback(() => router.back(), [router])
   const { animatedStyle, closeProfile, panGesture } =
     useProfileAnimation(handleBack)
   const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
@@ -235,55 +312,49 @@ const ProfileTest = () => {
   const openLogoutSheet = useLogoutSheetStore((s) => s.open)
   useRunAfterTransition(() => setAllowFetch(true), [])
 
-  const shouldClearCacheRef = useRef(false)
   useEffect(() => {
-    const sub = AppState.addEventListener(
-      'memoryWarning',
-      () => { shouldClearCacheRef.current = true },
-    )
-    return () => {
-      sub.remove()
-      if (shouldClearCacheRef.current) Image.clearMemoryCache()
-    }
+    const sub = AppState.addEventListener('memoryWarning', () => {
+      Image.clearMemoryCache()
+    })
+    return () => { sub.remove() }
   }, [])
 
   const initials = useMemo(() => {
-    if (!userInfo) return ''
-    const first = userInfo.firstName?.charAt(0) || ''
-    const last = userInfo.lastName?.charAt(0) || ''
+    const first = userInfo?.firstName?.charAt(0) || ''
+    const last = userInfo?.lastName?.charAt(0) || ''
     return `${first}${last}`.toUpperCase()
-  }, [userInfo])
+  }, [userInfo?.firstName, userInfo?.lastName])
 
   const { totalPoints: loyaltyPoints, isLoading: loyaltyLoading } =
     useLoyaltyPoints(userInfo?.slug, allowFetch)
 
   const openEdit = useCallback(() => {
-    routerRef.current.push('/(tabs)/profile/edit')
-  }, [])
+    router.push('/(tabs)/profile/edit')
+  }, [router])
 
   const openGeneralInfo = useCallback(() => {
-    routerRef.current.push('/(tabs)/profile/general-info-placeholder')
-  }, [])
+    router.push('/(tabs)/profile/general-info')
+  }, [router])
 
   const openPoints = useCallback(() => {
-    routerRef.current.push('/(tabs)/profile/points-placeholder')
-  }, [])
+    router.push('/(tabs)/profile/points-placeholder')
+  }, [router])
 
   const openCoins = useCallback(() => {
-    routerRef.current.push('/(tabs)/profile/coins-placeholder')
-  }, [])
+    router.push('/(tabs)/profile/coins-placeholder')
+  }, [router])
 
   const openOrdersHistory = useCallback(() => {
-    routerRef.current.push('/(tabs)/profile/orders-history-placeholder')
-  }, [])
+    router.push('/(tabs)/profile/orders-history-placeholder')
+  }, [router])
 
   const openAccountSettings = useCallback(() => {
-    routerRef.current.push('/(tabs)/profile/account-settings-placeholder')
-  }, [])
+    router.push('/(tabs)/profile/account-settings-placeholder')
+  }, [router])
 
   const openGiftCard = useCallback(() => {
-    routerRef.current.push('/(tabs)/gift-card' as never)
-  }, [])
+    router.push('/(tabs)/gift-card' as never)
+  }, [router])
 
   const { t: tToast } = useTranslation('toast')
 
@@ -292,9 +363,9 @@ const ProfileTest = () => {
     import('@/lib/fcm-token-manager').then((m) => m.cleanupTokenOnLogout())
     setLogout()
     removeUserInfo()
-    routerRef.current.replace('/(tabs)/home' as never)
+    router.replace('/(tabs)/home' as never)
     showToast(tToast('logoutSuccess', 'Đăng xuất thành công'))
-  }, [removeUserInfo, setLogout, tToast])
+  }, [removeUserInfo, setLogout, tToast, router])
 
   const handleLogoutPress = useCallback(() => {
     openLogoutSheet(handleLogoutConfirm)
@@ -311,74 +382,33 @@ const ProfileTest = () => {
           style={[styles.profileCard, { backgroundColor: theme.bg }, animatedStyle]}
           renderToHardwareTextureAndroid
         >
-          {/* Header: overlay, collapse khi cuộn. Avatar+SĐT mờ, tên dừng ở header. Khi cuộn xong: header blur, khoảng avatar thành không gian hiển thị. */}
+          {/* Avatar — absolutely positioned, fades + moves up on scroll */}
           <Animated.View
             style={[
-              styles.headerSection,
-              { paddingTop: insets.top },
-              headerHeightStyle,
+              styles.avatarWrap,
+              {
+                width: AVATAR_SIZE,
+                height: AVATAR_SIZE,
+                left: (screenWidth - AVATAR_SIZE) / 2,
+                top: avatarTop,
+              },
+              avatarPhoneStyle,
             ]}
           >
-            <Animated.View
-              style={[StyleSheet.absoluteFill, { backgroundColor: theme.bg }, headerBgStyle]}
-              pointerEvents="none"
-            />
-            <Animated.View
-              style={[StyleSheet.absoluteFill, styles.toolbarBlurWrap, toolbarBlurStyle]}
-              pointerEvents="none"
-            >
-              <BlurView
-                intensity={80}
-                tint={isDark ? 'dark' : 'light'}
-                style={StyleSheet.absoluteFill}
+            {userInfo?.image ? (
+              <Image
+                source={{ uri: userInfo.image, width: AVATAR_SIZE * 2, height: AVATAR_SIZE * 2 }}
+                style={styles.avatarImage}
+                contentFit="cover"
+                cachePolicy="disk"
               />
-            </Animated.View>
-            <View style={[styles.topNav, { paddingTop: 8 }]}>
-              <View style={styles.topNavContent}>
-                <TouchableOpacity
-                  style={[styles.headerBtn, { backgroundColor: theme.editBtn }]}
-                  onPress={() => closeProfile()}
-                >
-                  <LayoutGrid size={22} color={theme.text} />
-                </TouchableOpacity>
-                <View style={styles.headerCenter} />
-                <TouchableOpacity
-                  style={[styles.editBtn, { backgroundColor: theme.editBtn }]}
-                  onPress={openEdit}
-                >
-                  <Text style={[styles.editBtnText, { color: theme.text }]}>Sửa</Text>
-                </TouchableOpacity>
+            ) : (
+              <View style={[styles.avatarFallback, { backgroundColor: theme.avatarFallback }]}>
+                <Text style={[styles.avatarFallbackText, { color: theme.textMuted }]}>
+                  {initials || 'U'}
+                </Text>
               </View>
-            </View>
-            {/* Avatar tròn giữa - mờ và di chuyển lên khi cuộn */}
-            {/* Avatar — fades + translates up with scroll */}
-            <Animated.View
-              style={[
-                styles.avatarWrap,
-                {
-                  width: AVATAR_SIZE,
-                  height: AVATAR_SIZE,
-                  left: (screenWidth - AVATAR_SIZE) / 2,
-                  top: avatarTop,
-                },
-                avatarPhoneStyle,
-              ]}
-            >
-              {userInfo?.image ? (
-                <Image
-                  source={{ uri: userInfo.image, width: AVATAR_SIZE * 2, height: AVATAR_SIZE * 2 }}
-                  style={styles.avatarImage}
-                  contentFit="cover"
-                  cachePolicy="disk"
-                />
-              ) : (
-                <View style={[styles.avatarFallback, { backgroundColor: theme.avatarFallback }]}>
-                  <Text style={[styles.avatarFallbackText, { color: theme.textMuted }]}>
-                    {initials || 'U'}
-                  </Text>
-                </View>
-              )}
-            </Animated.View>
+            )}
           </Animated.View>
           {/* Tên + SĐT: overlay riêng, tên dừng ở header, SĐT mờ cùng avatar */}
           <View style={[styles.namePhoneWrap, { top: nameTop }]} pointerEvents="none">
@@ -520,6 +550,9 @@ const ProfileTest = () => {
               </Text>
             </TouchableOpacity>
           </AnimatedGestureScrollView>
+
+          {/* ProfileHeader — 100% CartHeader structure, LayoutGrid + Pencil buttons */}
+          <ProfileHeader onMenu={closeProfile} onEdit={openEdit} isDark={isDark} />
         </Animated.View>
       </GestureDetector>
 
@@ -533,53 +566,8 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: 'visible',
   },
-  topNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    minHeight: 56,
-  },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  editBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 120 },
-  headerSection: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    overflow: 'hidden',
-  },
-  toolbarBlurWrap: {
-    overflow: 'hidden',
-  },
-  topNavContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    flex: 1,
-    zIndex: 1,
-  },
-  headerCenter: {
-    flex: 1,
-    minWidth: 0,
-  },
   avatarWrap: {
     position: 'absolute',
     borderRadius: 999,

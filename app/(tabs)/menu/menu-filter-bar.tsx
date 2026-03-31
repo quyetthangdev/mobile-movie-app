@@ -9,7 +9,83 @@ import {
   View,
 } from 'react-native'
 
+import { colors } from '@/constants/colors.constant'
+
 export type CatalogChipData = { slug: string; name: string }
+
+// Chips extracted as memo — won't re-render when searchText changes
+const CatalogChips = memo(function CatalogChips({
+  catalogs,
+  selectedCatalog,
+  primaryColor,
+  chipBg,
+  chipColor,
+  allLabel,
+  onCatalogSelect,
+}: {
+  catalogs: CatalogChipData[]
+  selectedCatalog: string | undefined
+  primaryColor: string
+  chipBg: string
+  chipColor: string
+  allLabel: string
+  onCatalogSelect: (slug: string | undefined) => void
+}) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={filterStyles.chipScroll}
+      keyboardShouldPersistTaps="always"
+    >
+      <Pressable
+        onPress={() => onCatalogSelect(undefined)}
+        style={[
+          filterStyles.chip,
+          !selectedCatalog
+            ? { backgroundColor: primaryColor }
+            : { backgroundColor: chipBg },
+        ]}
+      >
+        <Text
+          style={[
+            filterStyles.chipText,
+            !selectedCatalog
+              ? filterStyles.chipTextActive
+              : { color: chipColor },
+          ]}
+        >
+          {allLabel}
+        </Text>
+      </Pressable>
+      {catalogs.map((c) => {
+        const sel = selectedCatalog === c.slug
+        return (
+          <Pressable
+            key={c.slug}
+            onPress={() => onCatalogSelect(c.slug)}
+            style={[
+              filterStyles.chip,
+              sel
+                ? { backgroundColor: primaryColor }
+                : { backgroundColor: chipBg },
+            ]}
+          >
+            <Text
+              style={[
+                filterStyles.chipText,
+                sel ? filterStyles.chipTextActive : { color: chipColor },
+              ]}
+              numberOfLines={1}
+            >
+              {c.name.charAt(0).toUpperCase() + c.name.slice(1)}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </ScrollView>
+  )
+})
 
 export const MenuFilterBar = memo(function MenuFilterBar({
   searchText,
@@ -40,8 +116,8 @@ export const MenuFilterBar = memo(function MenuFilterBar({
   searchPlaceholder: string
   allLabel: string
 }) {
-  const chipBg = isDark ? '#1f2937' : '#f3f4f6'
-  const chipColor = isDark ? '#d1d5db' : '#4b5563'
+  const chipBg = isDark ? colors.gray[800] : colors.gray[100]
+  const chipColor = isDark ? colors.gray[300] : colors.gray[600]
   const hasPriceFilter =
     currentMinPrice > 0 || currentMaxPrice < 300_000
 
@@ -51,19 +127,20 @@ export const MenuFilterBar = memo(function MenuFilterBar({
       <View style={filterStyles.searchRow}>
         <View style={filterStyles.searchWrap}>
           <View style={filterStyles.searchIconWrap}>
-            <Search size={15} color={isDark ? '#9ca3af' : '#6b7280'} />
+            <Search size={15} color={isDark ? colors.gray[400] : colors.gray[500]} />
           </View>
           <TextInput
             value={searchText}
             onChangeText={onSearchChange}
             placeholder={searchPlaceholder}
-            placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
+            placeholderTextColor={isDark ? colors.gray[500] : colors.gray[400]}
             style={[
               filterStyles.searchInput,
               {
-                backgroundColor: isDark ? '#1f2937' : '#f3f4f6',
-                color: isDark ? '#f9fafb' : '#111827',
+                backgroundColor: isDark ? colors.gray[800] : colors.gray[100],
+                color: isDark ? colors.gray[50] : colors.gray[900],
                 paddingRight: searchText ? 36 : 12,
+                fontFamily: 'BeVietnamPro_400Regular',
               },
             ]}
             returnKeyType="search"
@@ -75,7 +152,7 @@ export const MenuFilterBar = memo(function MenuFilterBar({
               style={filterStyles.clearBtn}
               hitSlop={8}
             >
-              <X size={15} color={isDark ? '#9ca3af' : '#6b7280'} />
+              <X size={15} color={isDark ? colors.gray[400] : colors.gray[500]} />
             </Pressable>
           )}
         </View>
@@ -85,13 +162,13 @@ export const MenuFilterBar = memo(function MenuFilterBar({
           onPress={onOpenPriceSheet}
           style={[
             filterStyles.filterBtn,
-            { backgroundColor: isDark ? '#1f2937' : '#f3f4f6' },
+            { backgroundColor: isDark ? colors.gray[800] : colors.gray[100] },
             hasPriceFilter && { borderColor: primaryColor, borderWidth: 1.5 },
           ]}
         >
           <SlidersHorizontal
             size={16}
-            color={hasPriceFilter ? primaryColor : isDark ? '#9ca3af' : '#6b7280'}
+            color={hasPriceFilter ? primaryColor : isDark ? colors.gray[400] : colors.gray[500]}
           />
           {hasPriceFilter && (
             <View style={[filterStyles.activeDot, { backgroundColor: primaryColor }]} />
@@ -99,59 +176,16 @@ export const MenuFilterBar = memo(function MenuFilterBar({
         </Pressable>
       </View>
 
-      {/* Row 2 — catalog chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={filterStyles.chipScroll}
-        keyboardShouldPersistTaps="always"
-      >
-        <Pressable
-          onPress={() => onCatalogSelect(undefined)}
-          style={[
-            filterStyles.chip,
-            !selectedCatalog
-              ? { backgroundColor: primaryColor }
-              : { backgroundColor: chipBg },
-          ]}
-        >
-          <Text
-            style={[
-              filterStyles.chipText,
-              !selectedCatalog
-                ? filterStyles.chipTextActive
-                : { color: chipColor },
-            ]}
-          >
-            {allLabel}
-          </Text>
-        </Pressable>
-        {catalogs.map((c) => {
-          const sel = selectedCatalog === c.slug
-          return (
-            <Pressable
-              key={c.slug}
-              onPress={() => onCatalogSelect(c.slug)}
-              style={[
-                filterStyles.chip,
-                sel
-                  ? { backgroundColor: primaryColor }
-                  : { backgroundColor: chipBg },
-              ]}
-            >
-              <Text
-                style={[
-                  filterStyles.chipText,
-                  sel ? filterStyles.chipTextActive : { color: chipColor },
-                ]}
-                numberOfLines={1}
-              >
-                {c.name.charAt(0).toUpperCase() + c.name.slice(1)}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </ScrollView>
+      {/* Row 2 — catalog chips (memo: won't rebuild on searchText change) */}
+      <CatalogChips
+        catalogs={catalogs}
+        selectedCatalog={selectedCatalog}
+        primaryColor={primaryColor}
+        chipBg={chipBg}
+        chipColor={chipColor}
+        allLabel={allLabel}
+        onCatalogSelect={onCatalogSelect}
+      />
     </View>
   )
 })
@@ -223,7 +257,7 @@ const filterStyles = StyleSheet.create({
     fontSize: 13,
   },
   chipTextActive: {
-    color: '#ffffff',
+    color: colors.white.light,
     fontWeight: '600',
   },
 })

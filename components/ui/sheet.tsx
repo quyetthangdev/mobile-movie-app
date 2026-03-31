@@ -15,7 +15,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 
-import { SPRING_CONFIGS } from '@/constants'
+import { SPRING_CONFIGS, colors } from '@/constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface SheetProps {
@@ -259,7 +259,7 @@ function SheetContent({ children, className, onClose, open, direction = 'right' 
         style={[
           {
             position: 'absolute',
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            backgroundColor: isDark ? colors.gray[800] : colors.white.light,
             shadowColor: '#000',
             shadowOffset: {
               width: 0,

@@ -1,4 +1,5 @@
 import { cn } from '@/utils/cn'
+import { colors } from '@/constants'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Dimensions, FlatList, ScrollView, TouchableOpacity, View } from 'react-native'
@@ -273,7 +274,7 @@ function CarouselPrevious({ className, variant: _variant = 'outline', size = 'de
         className
       )}
     >
-      <ChevronLeft size={16} color="#374151" />
+      <ChevronLeft size={16} color={colors.gray[700]} />
     </TouchableOpacity>
   )
 }
@@ -299,7 +300,7 @@ function CarouselNext({ className, variant: _variant = 'outline', size = 'defaul
         className
       )}
     >
-      <ChevronRight size={16} color="#374151" />
+      <ChevronRight size={16} color={colors.gray[700]} />
     </TouchableOpacity>
   )
 }

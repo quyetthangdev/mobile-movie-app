@@ -118,5 +118,5 @@ export const pItemStyles = StyleSheet.create({
   priceStrike: { fontSize: 14, color: '#9ca3af', textDecorationLine: 'line-through', marginBottom: 2 },
   priceMain: { fontSize: 14, fontWeight: '600' },
   noteWrap: { marginTop: 8, borderRadius: 8 },
-  noteInput: { width: '100%', fontSize: 12, padding: 8 },
+  noteInput: { width: '100%', fontSize: 12, padding: 8, fontFamily: 'BeVietnamPro_400Regular' },
 })

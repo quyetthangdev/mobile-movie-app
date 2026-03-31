@@ -86,5 +86,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     minHeight: 60,
+    fontFamily: 'BeVietnamPro_400Regular',
   },
 })

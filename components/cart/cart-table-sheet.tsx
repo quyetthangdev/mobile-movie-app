@@ -10,8 +10,11 @@ import BottomSheet, {
 import { CheckCircle } from 'lucide-react-native'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native'
+import {
+  GestureHandlerRootView,
+  TouchableOpacity,
+} from 'react-native-gesture-handler'
 
 const TABLE_SHEET_SNAP = ['50%']
 const TABLE_PAGE_SIZE = 12
@@ -110,7 +113,7 @@ export const SimpleTableSheet = memo(function SimpleTableSheet({
                 const isAvailable = table.status === 'available'
                 const statusColor = isAvailable ? '#22c55e' : '#ef4444'
                 return (
-                  <Pressable
+                  <TouchableOpacity activeOpacity={0.7}
                     key={table.slug}
                     onPress={() => handleSelect(table)}
                     style={[
@@ -136,17 +139,17 @@ export const SimpleTableSheet = memo(function SimpleTableSheet({
                     {selected && (
                       <CheckCircle size={16} color={primaryColor} />
                     )}
-                  </Pressable>
+                  </TouchableOpacity>
                 )
               })}
             </View>
 
             {hasMore && (
-              <Pressable onPress={handleLoadMore} style={tableSheetStyles.loadMoreBtn}>
+              <TouchableOpacity activeOpacity={0.7} onPress={handleLoadMore} style={tableSheetStyles.loadMoreBtn}>
                 <Text style={{ fontSize: 13, fontWeight: '600', color: primaryColor }}>
                   Tải thêm
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             )}
 
             <View style={{ height: 20 }} />

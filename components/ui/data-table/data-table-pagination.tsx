@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import { useDataTableContext } from './data-table-context'
 import { Select } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { colors } from '@/constants'
 
 const PAGE_SIZES = [10, 20, 30, 50, 100]
 
@@ -57,14 +58,14 @@ export function DataTablePagination() {
           disabled={!canPreviousPage}
           className={cn('h-8 w-8 items-center justify-center rounded', canPreviousPage ? 'active:opacity-70' : 'opacity-40')}
         >
-          <ChevronLeft size={18} color="#374151" />
+          <ChevronLeft size={18} color={colors.gray[700]} />
         </Pressable>
         <Pressable
           onPress={nextPage}
           disabled={!canNextPage}
           className={cn('h-8 w-8 items-center justify-center rounded', canNextPage ? 'active:opacity-70' : 'opacity-40')}
         >
-          <ChevronRight size={18} color="#374151" />
+          <ChevronRight size={18} color={colors.gray[700]} />
         </Pressable>
       </View>
     </View>

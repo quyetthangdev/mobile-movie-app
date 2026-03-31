@@ -1,6 +1,8 @@
 import React, { useRef } from 'react'
 import { Dimensions, PanResponder, Text, useColorScheme, View } from 'react-native'
 
+import { colors } from '@/constants/colors.constant'
+
 interface DualRangeSliderProps {
   min: number
   max: number
@@ -24,10 +26,7 @@ export default function DualRangeSlider({
 }: DualRangeSliderProps) {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
-  // Primary color from CSS variables
-  // Light: hsl(35, 93%, 55%) = #F7A737
-  // Dark: hsl(35, 70%, 53%) = #D68910
-  const primaryColor = isDark ? '#D68910' : '#F7A737'
+  const primaryColor = isDark ? colors.primary.dark : colors.primary.light
   const sliderWidth = Dimensions.get('window').width - 64 // Account for padding
   const trackRef = useRef<View>(null)
   const [minVal, maxVal] = value
@@ -83,7 +82,7 @@ export default function DualRangeSlider({
         ref={trackRef}
         style={{
           height: 8,
-          backgroundColor: isDark ? '#374151' : '#e5e7eb',
+          backgroundColor: isDark ? colors.gray[700] : colors.gray[200],
           borderRadius: 4,
           position: 'relative',
           marginVertical: 20,
@@ -109,7 +108,7 @@ export default function DualRangeSlider({
             left: `${minPosition}%`,
             width: 24,
             height: 24,
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            backgroundColor: isDark ? colors.gray[800] : colors.white.light,
             borderWidth: 2,
             borderColor: primaryColor,
             borderRadius: 12,
@@ -131,7 +130,7 @@ export default function DualRangeSlider({
             left: `${maxPosition}%`,
             width: 24,
             height: 24,
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            backgroundColor: isDark ? colors.gray[800] : colors.white.light,
             borderWidth: 2,
             borderColor: primaryColor,
             borderRadius: 12,
@@ -155,10 +154,10 @@ export default function DualRangeSlider({
             marginTop: 8,
           }}
         >
-          <Text style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: 12 }}>
+          <Text style={{ color: isDark ? colors.gray[400] : colors.gray[500], fontSize: 12 }}>
             {formatValue(min)}
           </Text>
-          <Text style={{ color: isDark ? '#9ca3af' : '#6b7280', fontSize: 12 }}>
+          <Text style={{ color: isDark ? colors.gray[400] : colors.gray[500], fontSize: 12 }}>
             {formatValue(max)}
           </Text>
         </View>

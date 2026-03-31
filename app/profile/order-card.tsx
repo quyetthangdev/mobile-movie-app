@@ -65,7 +65,7 @@ const OrderCard = memo(function OrderCard({
   const handlePayment = useCallback(() => onPayment(order.slug), [order.slug, onPayment])
 
   return (
-    <View style={[cardStyles.card, { backgroundColor: isDark ? colors.gray[800] : '#fff', borderColor: isDark ? colors.gray[700] : colors.gray[100] }]}>
+    <View style={[cardStyles.card, { backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderColor: isDark ? colors.gray[700] : colors.gray[100] }]}>
       {/* Header */}
       <View style={[cardStyles.cardHeader, { backgroundColor: `${primaryColor}15`, borderBottomColor: `${primaryColor}30` }]}>
         <Text style={[cardStyles.dateText, { color: isDark ? colors.gray[400] : colors.gray[600] }]}>
@@ -113,7 +113,7 @@ const OrderCard = memo(function OrderCard({
                 </Text>
               </View>
               <View style={cardStyles.summaryRow}>
-                <Text style={[cardStyles.summaryLabelMuted, { color: '#22c55e' }]}>{labels.voucher}</Text>
+                <Text style={[cardStyles.summaryLabelMuted, { color: colors.success.light }]}>{labels.voucher}</Text>
                 <Text style={[cardStyles.summaryValueMuted, { color: primaryColor }]}>
                   -{formatCurrency(cartTotals.voucherDiscount)}
                 </Text>
@@ -174,7 +174,8 @@ const OrderCard = memo(function OrderCard({
   prev.statusLabel === next.statusLabel &&
   prev.onViewDetail === next.onViewDetail &&
   prev.onUpdateOrder === next.onUpdateOrder &&
-  prev.onPayment === next.onPayment,
+  prev.onPayment === next.onPayment &&
+  prev.labels === next.labels,
 )
 
 export const cardStyles = StyleSheet.create({
@@ -199,7 +200,7 @@ export const cardStyles = StyleSheet.create({
   actionBtnOutline: { flex: 1, height: 44, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   actionBtnOutlineText: { fontSize: 14, fontWeight: '600' },
   actionBtn: { height: 44, borderRadius: 8, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  actionBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
+  actionBtnText: { fontSize: 14, fontWeight: '600', color: colors.white.light },
 })
 
 export default OrderCard

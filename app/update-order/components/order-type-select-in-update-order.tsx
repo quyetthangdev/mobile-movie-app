@@ -2,6 +2,7 @@ import { Check, ShoppingBag } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { Text, TouchableOpacity, View, useColorScheme } from 'react-native'
 
+import { colors } from '@/constants'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui'
 import { useOrderTypeOptionsForUpdateOrder } from '@/hooks/use-order-type-options-for-update-order'
 import { cn } from '@/lib/utils'
@@ -30,7 +31,7 @@ export default function OrderTypeSelectInUpdateOrder({
             'active:bg-gray-100/50 dark:active:bg-gray-700/50',
           )}
         >
-          <ShoppingBag size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+          <ShoppingBag size={16} color={isDark ? colors.gray[400] : colors.gray[500]} />
           <Text
             className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-50"
             numberOfLines={1}
@@ -62,7 +63,7 @@ export default function OrderTypeSelectInUpdateOrder({
                 )}
               >
                 <View className="mt-0.5">
-                  <ShoppingBag size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
+                  <ShoppingBag size={18} color={isDark ? colors.gray[400] : colors.gray[500]} />
                 </View>
                 <View className="flex-1 flex-row items-center gap-2">
                   <Text
@@ -74,7 +75,7 @@ export default function OrderTypeSelectInUpdateOrder({
                   >
                     {type.label}
                   </Text>
-                  {isSelected && <Check size={16} color={isDark ? '#9ca3af' : '#6b7280'} />}
+                  {isSelected && <Check size={16} color={isDark ? colors.gray[400] : colors.gray[500]} />}
                 </View>
               </TouchableOpacity>
             )

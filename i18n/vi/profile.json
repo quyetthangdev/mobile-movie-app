@@ -11,7 +11,12 @@
       "title": "Thành viên và khuyến mãi"
     },
     "generalInfo": {
-      "title": "Thông tin cá nhân"
+      "title": "Thông tin cá nhân",
+      "description": "Quản lý thông tin cá nhân của bạn để trải nghiệm tốt hơn",
+      "edit": "Sửa",
+      "basicInfo": "Thông tin cơ bản",
+      "contactInfo": "Thông tin liên hệ",
+      "addressInfo":"Thông tin địa chỉ"
     },
     "verifyEmailScreen": {
       "title": "Xác minh email",
@@ -39,10 +44,26 @@
       "title": "Xác minh email"
     },
     "verifyPhone": {
-      "title": "Xác minh số điện thoại"
+      "title": "Xác minh số điện thoại",
+      "otpSent": "Đã gửi mã xác minh đến số điện thoại của bạn.",
+      "otpInvalid": "Mã OTP không hợp lệ",
+      "success": "Xác minh số điện thoại thành công",
+      "otpResent": "Đã gửi lại mã OTP, vui lòng kiểm tra Zalo / SMS.",
+      "sendTo": "Mã OTP sẽ được gửi tới số điện thoại:",
+      "enterOtp": "Nhập mã OTP gồm 6 chữ số đã được gửi tới số điện thoại của bạn.",
+      "sending": "Đang gửi...",
+      "verifying": "Đang xác minh...",
+      "resending": "Đang gửi lại..."
     },
     "changePassword": {
-      "title": "Đổi mật khẩu"
+      "title": "Đổi mật khẩu",
+      "fillRequired": "Vui lòng điền đầy đủ thông tin.",
+      "passwordMismatch": "Mật khẩu mới và xác nhận mật khẩu không khớp.",
+      "success": "Cập nhật mật khẩu thành công.",
+      "error": "Cập nhật mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.",
+      "passwordHint": "Mật khẩu nên có tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.",
+      "updating": "Đang cập nhật...",
+      "save": "Lưu mật khẩu mới"
     },
     "logout": {
       "title": "Đăng xuất"
@@ -296,6 +317,14 @@
     "verifyPhoneNumberSuccessfully": "Số điện thoại đã được xác minh thành công!",
     "verifyingEmail": "Bấm lại 'Xác minh email' để nhập OTP.",
     "verifyingPhoneNumber": "Bấm lại 'Xác minh số điện thoại' để nhập OTP.",
-    "viewOrderDetail": "Xem chi tiết"
+    "viewOrderDetail": "Xem chi tiết",
+    "saveChanges": "Lưu thay đổi",
+    "phoneNoEdit": "Số điện thoại (không chỉnh sửa tại đây)",
+    "emailNoEdit": "Email (không chỉnh sửa tại đây)",
+    "generalInfoLabel": "Thông tin chung",
+    "myCoins": "Xu của tôi",
+    "accountSettings": "Cài đặt tài khoản",
+    "subtitle": "Quản lý tài khoản, đơn hàng và ưu đãi của bạn.",
+    "settings": "Cài đặt"
   }
 }

@@ -8,7 +8,7 @@ import Animated, {
     withSpring,
 } from 'react-native-reanimated'
 
-import { SPRING_CONFIGS } from '@/constants'
+import { colors, SPRING_CONFIGS } from '@/constants'
 
 interface CheckboxProps {
   checked?: boolean
@@ -60,16 +60,16 @@ function Checkbox({
       )}
       style={{
         borderColor: checked
-          ? (checkedBorderColor || (isDark ? '#60a5fa' : '#3b82f6'))
-          : (isDark ? '#4b5563' : '#d1d5db'),
+          ? (checkedBorderColor || '#3b82f6')
+          : (isDark ? colors.gray[600] : colors.gray[300]),
         backgroundColor: checked
-          ? (checkedBackgroundColor || (isDark ? '#60a5fa' : '#3b82f6'))
+          ? (checkedBackgroundColor || '#3b82f6')
           : 'transparent',
       }}
     >
       {checked && (
         <Animated.View style={iconAnimatedStyle}>
-          <Check size={14} color={checkedIconColor || '#ffffff'} />
+          <Check size={14} color={checkedIconColor || colors.white.light} />
         </Animated.View>
       )}
     </Pressable>

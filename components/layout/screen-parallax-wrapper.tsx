@@ -12,7 +12,7 @@ import { useIsFocused } from '@react-navigation/native'
 import { StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 
-import { TransitionProgressSyncer } from '@/lib/navigation'
+import { TransitionProgressSyncer } from '@/lib/navigation/transition-progress-sync'
 import {
   useParallaxDriverOptional,
   useBackgroundParallaxStyle,

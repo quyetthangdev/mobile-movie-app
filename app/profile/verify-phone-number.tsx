@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react-native'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Text, View, useColorScheme } from 'react-native'
 import { ScreenContainer } from '@/components/layout'
 
@@ -34,6 +35,7 @@ function VerifyPhoneNumberSkeleton() {
 }
 
 function VerifyPhoneNumberContent() {
+  const { t } = useTranslation('profile')
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
@@ -61,29 +63,31 @@ function VerifyPhoneNumberContent() {
     [phoneNumberVerificationStatus?.expiresAt],
   )
 
-  if (!userInfo) {
-    navigateNative.back()
-    return null
-  }
+  useEffect(() => {
+    if (!userInfo) navigateNative.back()
+  }, [userInfo])
+
+  if (!userInfo) return null
 
   const handleSendCode = () => {
     verifyPhoneNumber(undefined, {
       onSuccess: (response) => {
         queryClient.invalidateQueries({
           queryKey: [QUERYKEY.profile],
+          exact: true,
         })
         setPhoneNumberVerificationStatus({
           expiresAt: response.result.expiresAt,
         })
         setOtpValue('')
-        showToast('Đã gửi mã xác minh đến số điện thoại của bạn.')
+        showToast(t('verifyPhone.otpSent'))
       },
     })
   }
 
   const handleVerifyOtp = () => {
     if (otpValue.length !== 6) {
-      showToast('Mã OTP không hợp lệ')
+      showToast(t('verifyPhone.otpInvalid'))
       return
     }
 
@@ -92,8 +96,9 @@ function VerifyPhoneNumberContent() {
       onSuccess: () => {
         queryClient.invalidateQueries({
           queryKey: [QUERYKEY.profile],
+          exact: true,
         })
-        showToast('Xác minh số điện thoại thành công')
+        showToast(t('verifyPhone.success'))
         setPhoneNumberVerificationStatus(null)
         setOtpValue('')
         navigateNative.back()
@@ -111,7 +116,7 @@ function VerifyPhoneNumberContent() {
           expiresAt: response.result.expiresAt,
         })
         setOtpValue('')
-        showToast('Đã gửi lại mã OTP, vui lòng kiểm tra Zalo / SMS.')
+        showToast(t('verifyPhone.otpResent'))
       },
     })
   }
@@ -125,10 +130,10 @@ function VerifyPhoneNumberContent() {
           className="mr-2 px-0 min-h-0 h-10 w-10 rounded-full justify-center items-center"
           onPress={() => navigateNative.back()}
         >
-          <ArrowLeft size={22} color={isDark ? '#9ca3af' : '#6b7280'} />
+          <ArrowLeft size={22} color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />
         </Button>
         <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-          Xác minh số điện thoại
+          {t('verifyPhone.title')}
         </Text>
       </View>
 
@@ -136,7 +141,7 @@ function VerifyPhoneNumberContent() {
         {!showOtpStep ? (
           <>
             <Text className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              Mã OTP sẽ được gửi tới số điện thoại:
+              {t('verifyPhone.sendTo')}
             </Text>
 
             <Text className="text-base font-semibold text-gray-900 dark:text-gray-50 mb-6">
@@ -151,23 +156,23 @@ function VerifyPhoneNumberContent() {
             >
               <Text className="text-sm font-semibold text-white">
                 {isConfirmingPhoneNumberVerification || isResendingPhoneNumberVerification
-                  ? 'Đang gửi...'
-                  : 'Gửi mã xác minh'}
+                  ? t('verifyPhone.sending')
+                  : t('sendVerifyPhoneNumber')}
               </Text>
             </Button>
           </>
         ) : (
           <>
             <Text className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              Nhập mã OTP gồm 6 chữ số đã được gửi tới số điện thoại của bạn.
+              {t('verifyPhone.enterOtp')}
             </Text>
 
             <View className="mb-4">
-              <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">Mã OTP</Text>
+              <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">{t('otpCode')}</Text>
               <Input
                 value={otpValue}
                 onChangeText={setOtpValue}
-                placeholder="Nhập 6 số OTP"
+                placeholder={t('enterOtpCode')}
                 keyboardType="number-pad"
                 maxLength={6}
               />
@@ -181,8 +186,8 @@ function VerifyPhoneNumberContent() {
             >
               <Text className="text-sm font-semibold text-white">
                 {isVerifyingOtp || isConfirmingPhoneNumberVerification
-                  ? 'Đang xác minh...'
-                  : 'Xác minh'}
+                  ? t('verifyPhone.verifying')
+                  : t('verify')}
               </Text>
             </Button>
 
@@ -193,7 +198,7 @@ function VerifyPhoneNumberContent() {
               onPress={handleResendOtp}
             >
               <Text className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-                {isResendingPhoneNumberVerification ? 'Đang gửi lại...' : 'Gửi lại mã OTP'}
+                {isResendingPhoneNumberVerification ? t('verifyPhone.resending') : t('resendVerificationPhoneNumber')}
               </Text>
             </Button>
           </>

@@ -3,17 +3,17 @@
  */
 import { colors } from '@/constants'
 import type { IVoucher } from '@/types'
-import { cartActions, useCartItemCount, useCartItems, useCartTotal, useCartVoucher } from '@/stores/cart.store'
+import { useOrderFlowStore } from '@/stores'
+import { cartActions, useCartItemCount, useCartTotal, useCartVoucher, useCartVoucherDiscount } from '@/stores/cart.store'
 import { useOrderFlowOrderType, useOrderFlowTableName } from '@/stores/selectors/order-flow.selectors'
 import { showToast } from '@/utils'
 import { formatCurrencyNative } from 'cart-price-calc'
 import { ChevronRight, ShoppingBag, Ticket } from 'lucide-react-native'
+import { useCartValidation } from '@/hooks/use-cart-validation'
 import React, { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { toDisplayItem } from './cart-display-item'
-import { calcItemVoucherDiscount } from './cart-item-row'
 import { SimpleOrderTypeSheet } from './cart-order-type-sheet'
 import { SimpleTableSheet } from './cart-table-sheet'
 import { ConfirmOrderSheet } from './cart-confirm-order-sheet'
@@ -36,19 +36,11 @@ export const CartFooter = memo(function CartFooter({
   const [tableSheetVisible, setTableSheetVisible] = useState(false)
   const [voucherSheetOpen, setVoucherSheetOpen] = useState(false)
 
-  const rawItems = useCartItems()
-  const voucherDiscount = useMemo(() => {
-    if (!voucher || total <= 0 || rawItems.length === 0) return 0
-    let discount = 0
-    for (const item of rawItems) {
-      const displayItem = toDisplayItem(item)
-      discount += calcItemVoucherDiscount(displayItem, voucher) * item.quantity
-    }
-    return discount
-  }, [voucher, total, rawItems])
+  const voucherDiscount = useCartVoucherDiscount()
   const finalTotal = total - voucherDiscount
 
   const [confirmSheetVisible, setConfirmSheetVisible] = useState(false)
+  const { validate } = useCartValidation()
 
   const closeConfirmSheet = useCallback(() => setConfirmSheetVisible(false), [])
   const closeOrderTypeSheet = useCallback(() => setOrderTypeSheetVisible(false), [])
@@ -69,16 +61,21 @@ export const CartFooter = memo(function CartFooter({
   const openOrderTypeSheet = useCallback(() => setOrderTypeSheetVisible(true), [])
   const openTableSheet = useCallback(() => setTableSheetVisible(true), [])
   const openVoucherSheet = useCallback(() => setVoucherSheetOpen(true), [])
-  const openConfirmSheet = useCallback(() => {
-    if (!isOrderDisabled) setConfirmSheetVisible(true)
-  }, [isOrderDisabled])
+  const openConfirmSheet = useCallback(async () => {
+    if (isOrderDisabled) return
+    await validate(true)
+    // After validation, check if cart still has items
+    const remaining = useOrderFlowStore.getState().orderingData?.orderItems
+    if (!remaining || remaining.length === 0) return
+    setConfirmSheetVisible(true)
+  }, [isOrderDisabled, validate])
 
   // Memoize isDark/primaryColor-dependent styles
   const ft = useMemo(() => ({
     containerBg: { backgroundColor: isDark ? colors.gray[900] : colors.white.light },
     selectBtnBorder: { borderColor: isDark ? colors.gray[700] : colors.gray[200] },
     selectBtnTextColor: { color: isDark ? colors.gray[50] : colors.gray[900] },
-    iconColor: isDark ? '#9ca3af' : '#6b7280',
+    iconColor: isDark ? colors.mutedForeground.dark : colors.mutedForeground.light,
     mutedColor: { color: isDark ? colors.gray[400] : colors.gray[500] },
     mutedColorAlt: { color: isDark ? colors.gray[500] : colors.gray[400] },
     chevronColor: isDark ? colors.gray[500] : colors.gray[400],
@@ -93,7 +90,7 @@ export const CartFooter = memo(function CartFooter({
     () => ({
       borderColor: tableName
         ? isDark ? colors.gray[700] : colors.gray[200]
-        : isDark ? '#7f1d1d' : '#fca5a5',
+        : isDark ? colors.destructive.dark : '#fca5a5',
     }),
     [tableName, isDark],
   )

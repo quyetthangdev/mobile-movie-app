@@ -55,6 +55,7 @@ export default function ProductNameSearch() {
           paddingRight: inputValue ? 36 : 12,
           paddingVertical: 0,
           fontSize: 15,
+          fontFamily: 'BeVietnamPro_400Regular',
         }}
       />
 

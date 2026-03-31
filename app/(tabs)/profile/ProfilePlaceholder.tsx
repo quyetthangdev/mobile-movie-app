@@ -10,6 +10,7 @@ import React, { useCallback, useMemo } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { ScreenContainer } from '@/components/layout'
+import { colors } from '@/constants'
 
 import { ProfileItem } from './profile-item'
 
@@ -95,18 +96,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 8,
-    color: '#111827',
+    color: colors.gray[900],
   },
   subtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.gray[500],
     marginBottom: 24,
   },
   list: {
     overflow: 'hidden',
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white.light,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border.light,
   },
 })

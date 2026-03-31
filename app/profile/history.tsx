@@ -37,6 +37,54 @@ import {
 import OrderCard from './order-card'
 import type { OrderDisplayData } from './order-card'
 
+// ─── Filter bar ───────────────────────────────────────────────────────────────
+
+const FilterBar = React.memo(function FilterBar({
+  status,
+  isPending,
+  primaryColor,
+  isDark,
+  onSelect,
+  labels,
+}: {
+  status: OrderStatus
+  isPending: boolean
+  primaryColor: string
+  isDark: boolean
+  onSelect: (s: OrderStatus) => void
+  labels: { all: string; pending: string; shipping: string; completed: string }
+}) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={pageStyles.filterScroll}>
+      {STATUS_FILTER_OPTIONS.map((opt) => {
+        const sel = status === opt.value
+        const label =
+          opt.labelKey === 'all' ? labels.all
+          : opt.labelKey === 'pending' ? labels.pending
+          : opt.labelKey === 'shipping' ? labels.shipping
+          : labels.completed
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={isPending ? undefined : () => onSelect(opt.value)}
+            style={[
+              pageStyles.filterChip,
+              sel
+                ? { borderColor: primaryColor, backgroundColor: primaryColor }
+                : { borderColor: isDark ? colors.gray[700] : colors.gray[200], backgroundColor: isDark ? colors.gray[800] : colors.white.light },
+              isPending && !sel && { opacity: 0.5 },
+            ]}
+          >
+            <Text style={[pageStyles.filterChipText, { color: sel ? colors.white.light : (isDark ? colors.gray[300] : colors.gray[700]) }]}>
+              {label}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </ScrollView>
+  )
+})
+
 function OrderHistoryPage() {
   const { t } = useTranslation('menu')
   const { t: tProfile } = useTranslation('profile')
@@ -167,6 +215,18 @@ function OrderHistoryPage() {
     payment: t('order.payment', 'Thanh toán'),
   }), [t])
 
+  const filterBarLabels = useMemo(() => ({
+    all: tProfile('profile.all', 'Tất cả'),
+    pending: t('order.pending', 'Chờ xử lý'),
+    shipping: tProfile('profile.shipping', 'Đang giao'),
+    completed: tProfile('profile.completed', 'Hoàn thành'),
+  }), [t, tProfile])
+
+  const handleFilterSelect = useCallback((s: OrderStatus) => {
+    setStatus(s)
+    setPage(1)
+  }, [])
+
   const renderOrderItem = useCallback(
     ({ item: orderItem }: { item: IOrder }) => (
       <OrderCard
@@ -193,7 +253,7 @@ function OrderHistoryPage() {
         <Pressable
           onPress={() => setPage(page - 1)}
           disabled={!hasPrevious}
-          style={[pageStyles.pageBtn, { backgroundColor: isDark ? colors.gray[800] : '#fff', borderColor: isDark ? colors.gray[700] : colors.gray[200] }, !hasPrevious && { opacity: 0.5 }]}
+          style={[pageStyles.pageBtn, { backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderColor: isDark ? colors.gray[700] : colors.gray[200] }, !hasPrevious && { opacity: 0.5 }]}
         >
           <Text style={[pageStyles.pageBtnText, { color: hasPrevious ? (isDark ? colors.gray[50] : colors.gray[900]) : colors.gray[400] }]}>
             {t('order.previous', 'Trước')}
@@ -205,7 +265,7 @@ function OrderHistoryPage() {
         <Pressable
           onPress={() => setPage(page + 1)}
           disabled={!hasNext}
-          style={[pageStyles.pageBtn, { backgroundColor: isDark ? colors.gray[800] : '#fff', borderColor: isDark ? colors.gray[700] : colors.gray[200] }, !hasNext && { opacity: 0.5 }]}
+          style={[pageStyles.pageBtn, { backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderColor: isDark ? colors.gray[700] : colors.gray[200] }, !hasNext && { opacity: 0.5 }]}
         >
           <Text style={[pageStyles.pageBtnText, { color: hasNext ? (isDark ? colors.gray[50] : colors.gray[900]) : colors.gray[400] }]}>
             {t('order.next', 'Sau')}
@@ -218,7 +278,7 @@ function OrderHistoryPage() {
   const ListEmptyComponent = useMemo(
     () => (
       <View style={pageStyles.emptyWrap}>
-        <Package size={64} color={isDark ? '#9ca3af' : '#6b7280'} />
+        <Package size={64} color={isDark ? colors.gray[400] : colors.gray[500]} />
         <Text style={[pageStyles.emptyTitle, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
           {t('order.noOrders', 'Chưa có đơn hàng')}
         </Text>
@@ -231,7 +291,7 @@ function OrderHistoryPage() {
   )
 
   const screenBg = isDark ? colors.background.dark : colors.background.light
-  const headerBg = isDark ? colors.gray[800] : '#fff'
+  const headerBg = isDark ? colors.gray[800] : colors.white.light
   const headerBorder = isDark ? colors.gray[700] : colors.gray[200]
   const gradientColors = useMemo(
     () => [`${screenBg}F0`, `${screenBg}AA`, `${screenBg}00`] as const,
@@ -286,7 +346,7 @@ function OrderHistoryPage() {
           data={orders}
           renderItem={renderOrderItem}
           keyExtractor={keyExtractor}
-          ListFooterComponent={ListFooterComponent}
+ListFooterComponent={ListFooterComponent}
           ListEmptyComponent={ListEmptyComponent}
           contentContainerStyle={pageStyles.listPadding}
           refreshControl={
@@ -328,31 +388,14 @@ function OrderHistoryPage() {
 
           {/* Filter chips */}
           <View style={pageStyles.filterRow} pointerEvents="auto">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={pageStyles.filterScroll}>
-              {STATUS_FILTER_OPTIONS.map((opt) => {
-                const sel = status === opt.value
-                const label = opt.labelKey === 'all' ? tProfile('profile.all', 'Tất cả')
-                  : opt.labelKey === 'pending' ? t('order.pending', 'Chờ xử lý')
-                  : opt.labelKey === 'shipping' ? tProfile('profile.shipping', 'Đang giao')
-                  : tProfile('profile.completed', 'Hoàn thành')
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => { setStatus(opt.value); setPage(1) }}
-                    style={[
-                      pageStyles.filterChip,
-                      sel
-                        ? { borderColor: primaryColor, backgroundColor: primaryColor }
-                        : { borderColor: isDark ? colors.gray[700] : colors.gray[200], backgroundColor: isDark ? colors.gray[800] : '#ffffff' },
-                    ]}
-                  >
-                    <Text style={[pageStyles.filterChipText, { color: sel ? '#fff' : (isDark ? colors.gray[300] : colors.gray[700]) }]}>
-                      {label}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </ScrollView>
+            <FilterBar
+              status={status}
+              isPending={isPending}
+              primaryColor={primaryColor}
+              isDark={isDark}
+              onSelect={handleFilterSelect}
+              labels={filterBarLabels}
+            />
           </View>
         </View>
       </ScreenContainer>
@@ -377,7 +420,7 @@ const pageStyles = StyleSheet.create({
   floatingHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, paddingBottom: 24 },
   headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
-  circleBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  circleBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   shadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 24, elevation: 2 },
   headerTitle: { fontSize: 17, fontWeight: '700' },
   filterRow: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },

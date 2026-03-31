@@ -81,15 +81,18 @@ export const useVouchers = (params?: IGetAllVoucherRequest) => {
 }
 
 // Vouchers for order
+// staleTime: 2min — params includes orderItems+minOrderValue so key auto-invalidates on cart change
 export const useVouchersForOrder = (
   params?: IGetAllVoucherRequest,
   enabled?: boolean,
 ) => {
   return useQuery({
-    queryKey: [QUERYKEY.vouchersForOrder, params], // 💡 Include params để tự động refetch khi params thay đổi
+    queryKey: [QUERYKEY.vouchersForOrder, params],
     queryFn: () => getVouchersForOrder(params),
     placeholderData: keepPreviousData,
     enabled: !!params && !!enabled,
+    staleTime: 2 * 60_000,
+    gcTime: 5 * 60_000,
   })
 }
 export const usePublicVouchersForOrder = (
@@ -97,10 +100,12 @@ export const usePublicVouchersForOrder = (
   enabled?: boolean,
 ) => {
   return useQuery({
-    queryKey: [QUERYKEY.publicVouchersForOrder, params], // Keep public order vouchers cache isolated
+    queryKey: [QUERYKEY.publicVouchersForOrder, params],
     queryFn: () => getPublicVouchersForOrder(params),
     placeholderData: keepPreviousData,
     enabled: !!params && !!enabled,
+    staleTime: 2 * 60_000,
+    gcTime: 5 * 60_000,
   })
 }
 export const useSpecificVoucher = (

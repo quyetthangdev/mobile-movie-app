@@ -1,5 +1,7 @@
+import { BlurView } from 'expo-blur'
+import { LinearGradient } from 'expo-linear-gradient'
 import {
-  ArrowLeft,
+  ChevronLeft,
   Mail,
   MapPin,
   Phone,
@@ -7,20 +9,145 @@ import {
   SquarePen,
   User as UserIcon,
 } from 'lucide-react-native'
-import React, { useMemo } from 'react'
-import { Image, ScrollView, Text, View, useColorScheme } from 'react-native'
-import { ScreenContainer } from '@/components/layout'
+import { Image } from 'expo-image'
+import React, { useEffect, useMemo } from 'react'
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui'
 import { ROUTE, colors } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { navigateNative } from '@/lib/navigation'
 import { useUserStore } from '@/stores'
 import { useTranslation } from 'react-i18next'
+
+function InfoHeader({
+  title,
+  onBack,
+  onEdit,
+  isDark,
+}: {
+  title: string
+  onBack: () => void
+  onEdit: () => void
+  isDark: boolean
+}) {
+  const pageBg = isDark ? colors.background.dark : colors.background.light
+  const gradientColors = useMemo(
+    () => [`${pageBg}F0`, `${pageBg}AA`, `${pageBg}00`] as const,
+    [pageBg],
+  )
+
+  return (
+    <View style={phStyles.container} pointerEvents="box-none">
+      {Platform.OS === 'ios' ? (
+        <BlurView
+          intensity={20}
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      <LinearGradient
+        colors={gradientColors}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View
+        style={[phStyles.row, { paddingTop: STATIC_TOP_INSET + 10 }]}
+        pointerEvents="auto"
+      >
+        <Pressable
+          onPress={onBack}
+          hitSlop={8}
+          style={[
+            phStyles.circleBtn,
+            { backgroundColor: isDark ? colors.gray[800] : colors.white.light },
+            phStyles.shadow,
+          ]}
+        >
+          <ChevronLeft
+            size={20}
+            color={isDark ? colors.gray[50] : colors.gray[900]}
+          />
+        </Pressable>
+
+        <Text
+          style={[
+            phStyles.title,
+            { color: isDark ? colors.gray[50] : colors.gray[900] },
+          ]}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+
+        <Pressable
+          onPress={onEdit}
+          hitSlop={8}
+          style={[
+            phStyles.circleBtn,
+            { backgroundColor: isDark ? colors.gray[800] : colors.white.light },
+            phStyles.shadow,
+          ]}
+        >
+          <SquarePen
+            size={20}
+            color={isDark ? colors.gray[50] : colors.gray[900]}
+          />
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
+const phStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    paddingBottom: 24,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  circleBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 24,
+    elevation: 2,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+})
 
 function ProfileInfoScreen() {
   const { t } = useTranslation('profile')
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
+  const insets = useSafeAreaInsets()
 
   const userInfo = useUserStore((state) => state.userInfo)
 
@@ -31,38 +158,24 @@ function ProfileInfoScreen() {
     return `${first}${last}`.toUpperCase()
   }, [userInfo])
 
-  if (!userInfo) {
-    // Nếu chưa có thông tin user (chưa đăng nhập) thì quay lại màn Profile chính
-    navigateNative.back()
-    return null
-  }
+  useEffect(() => {
+    if (!userInfo) navigateNative.back()
+  }, [userInfo])
+
+  if (!userInfo) return null
 
   const isVerified = userInfo.isVerifiedEmail || userInfo.isVerifiedPhonenumber
   const successColor = isDark ? colors.success.dark : colors.success.light
 
   return (
-    <ScreenContainer
-      edges={['top', 'bottom']}
-      className="flex-1 bg-gray-50 dark:bg-gray-900"
-    >
-      {/* Header */}
-      <View className="flex-row items-center border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
-        <Button
-          variant="ghost"
-          className="mr-2 h-10 min-h-0 w-10 items-center justify-center rounded-full px-0"
-          onPress={() => navigateNative.back()}
-        >
-          <ArrowLeft size={22} color={isDark ? '#9ca3af' : '#6b7280'} />
-        </Button>
-        <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-          {t('profile.generalInfo.title')}
-        </Text>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: isDark ? colors.background.dark : colors.background.light }}>
       <ScrollView
-        className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        contentContainerStyle={{
+          padding: 16,
+          paddingTop: STATIC_TOP_INSET + 76,
+          paddingBottom: insets.bottom + 32,
+        }}
       >
         {/* Thông tin cơ bản */}
         <View className="mb-6 flex-row items-center rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
@@ -101,7 +214,7 @@ function ProfileInfoScreen() {
             className="h-10 min-h-0 w-10 items-center justify-center rounded-full px-0"
             onPress={() => navigateNative.push(ROUTE.CLIENT_PROFILE_EDIT)}
           >
-            <SquarePen size={18} color={isDark ? '#9ca3af' : '#6b7280'} />
+            <SquarePen size={18} color={isDark ? colors.gray[400] : colors.gray[500]} />
           </Button>
         </View>
 
@@ -114,7 +227,7 @@ function ProfileInfoScreen() {
           <View className="gap-6">
             <View className="flex-row items-center gap-3">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-                <UserIcon size={18} color={isDark ? '#e5e7eb' : '#4b5563'} />
+                <UserIcon size={18} color={isDark ? colors.gray[200] : colors.gray[600]} />
               </View>
               <View className="flex-1">
                 <Text className="text-xs text-gray-500 dark:text-gray-400">
@@ -128,7 +241,7 @@ function ProfileInfoScreen() {
 
             <View className="flex-row items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/40">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-                <Phone size={18} color={isDark ? '#e5e7eb' : '#4b5563'} />
+                <Phone size={18} color={isDark ? colors.gray[200] : colors.gray[600]} />
               </View>
               <View className="flex-1">
                 <View className="flex-row items-center gap-1.5">
@@ -171,7 +284,7 @@ function ProfileInfoScreen() {
 
             <View className="flex-row items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-                <Mail size={18} color={isDark ? '#e5e7eb' : '#4b5563'} />
+                <Mail size={18} color={isDark ? colors.gray[200] : colors.gray[600]} />
               </View>
 
               <View className="flex-1">
@@ -209,7 +322,7 @@ function ProfileInfoScreen() {
 
             <View className="flex-row items-center gap-3">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-                <MapPin size={18} color={isDark ? '#e5e7eb' : '#4b5563'} />
+                <MapPin size={18} color={isDark ? colors.gray[200] : colors.gray[600]} />
               </View>
               <View className="flex-1">
                 <Text className="text-xs text-gray-500 dark:text-gray-400">
@@ -238,7 +351,14 @@ function ProfileInfoScreen() {
           </View>
         )}
       </ScrollView>
-    </ScreenContainer>
+
+      <InfoHeader
+        title={t('profile.generalInfo.title')}
+        onBack={() => navigateNative.back()}
+        onEdit={() => navigateNative.push(ROUTE.CLIENT_PROFILE_EDIT)}
+        isDark={isDark}
+      />
+    </View>
   )
 }
 

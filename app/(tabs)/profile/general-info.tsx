@@ -2,10 +2,13 @@
  * Thông tin cá nhân — UI giống Profile: avatar, 2 nút header, các trường thông tin bên dưới.
  */
 import { colors } from '@/constants/colors.constant'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
 import { showToast } from '@/utils'
+import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import {
   ChevronLeft,
@@ -18,6 +21,8 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -58,7 +63,117 @@ const ICON_COLORS = {
   green: '#4CAF50',
 }
 
-function InfoRow({
+// ─── Header — cart style ──────────────────────────────────────────────────────
+
+function GIHeader({
+  onBack,
+  onEdit,
+  isDark,
+  pageBg,
+}: {
+  onBack: () => void
+  onEdit: () => void
+  isDark: boolean
+  pageBg: string
+}) {
+  const { t } = useTranslation('profile')
+  const gradientColors = useMemo(
+    () => [`${pageBg}F0`, `${pageBg}AA`, `${pageBg}00`] as const,
+    [pageBg],
+  )
+  return (
+    <View style={hStyles.container} pointerEvents="box-none">
+      {Platform.OS === 'ios' ? (
+        <BlurView
+          intensity={20}
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      <LinearGradient
+        colors={gradientColors}
+        locations={[0, 0.5, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View
+        style={[hStyles.row, { paddingTop: STATIC_TOP_INSET + 10 }]}
+        pointerEvents="auto"
+      >
+        <Pressable
+          onPress={onBack}
+          hitSlop={8}
+          style={[
+            hStyles.circleBtn,
+            { backgroundColor: isDark ? colors.gray[800] : colors.white.light },
+            hStyles.shadow,
+          ]}
+        >
+          <ChevronLeft size={20} color={isDark ? colors.gray[50] : colors.gray[900]} />
+        </Pressable>
+        <View style={hStyles.circleBtn} />
+        <Pressable
+          onPress={onEdit}
+          hitSlop={8}
+          style={[
+            hStyles.editPill,
+            { backgroundColor: isDark ? colors.gray[800] : colors.white.light },
+            hStyles.shadow,
+          ]}
+        >
+          <Text style={[hStyles.editText, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
+            {t('profile.edit', 'Sửa')}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
+const hStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    paddingBottom: 24,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  circleBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editPill: {
+    height: 42,
+    borderRadius: 21,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  shadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 24,
+    elevation: 2,
+  },
+})
+
+// ─── Info row ─────────────────────────────────────────────────────────────────
+
+const InfoRow = React.memo(function InfoRow({
   icon: Icon,
   iconColor,
   label,
@@ -89,9 +204,9 @@ function InfoRow({
       </View>
     </View>
   )
-}
+})
 
-export default function GeneralInfoPlaceholder() {
+export default function GeneralInfo() {
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -125,11 +240,10 @@ export default function GeneralInfoPlaceholder() {
   }, [openLogoutSheet, handleLogoutConfirm])
 
   const initials = useMemo(() => {
-    if (!userInfo) return ''
-    const first = userInfo.firstName?.charAt(0) || ''
-    const last = userInfo.lastName?.charAt(0) || ''
+    const first = userInfo?.firstName?.charAt(0) || ''
+    const last = userInfo?.lastName?.charAt(0) || ''
     return `${first}${last}`.toUpperCase()
-  }, [userInfo])
+  }, [userInfo?.firstName, userInfo?.lastName])
 
   useEffect(() => {
     // Khi đăng xuất, handleLogoutConfirm đã gọi router.replace — không gọi back() để tránh lỗi "GO_BACK was not handled"
@@ -146,108 +260,71 @@ export default function GeneralInfoPlaceholder() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      {/* Header: 2 nút giống Profile */}
+      {/* Avatar tròn giữa */}
       <View
         style={[
-          styles.headerSection,
+          styles.avatarWrap,
           {
-            height: HEADER_HEIGHT + insets.top,
-            paddingTop: insets.top,
+            width: AVATAR_SIZE,
+            height: AVATAR_SIZE,
+            left: (screenWidth - AVATAR_SIZE) / 2,
+            top: insets.top + 60,
           },
         ]}
       >
-        <View style={[styles.topNav, { paddingTop: 8 }]}>
-          <View style={styles.topNavContent}>
-            <TouchableOpacity
-              style={[styles.headerBtn, { backgroundColor: theme.editBtn }]}
-              onPress={handleBack}
-            >
-              <ChevronLeft size={22} color={theme.text} />
-            </TouchableOpacity>
-            <View style={styles.headerCenter} pointerEvents="none">
-              <Text
-                style={[styles.headerTitle, { color: theme.text }]}
-                numberOfLines={1}
-              >
-                {t('profile.generalInfo.title', 'Thông tin cá nhân')}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.editBtn, { backgroundColor: theme.editBtn }]}
-              onPress={handleEdit}
-            >
-              <Text style={[styles.editBtnText, { color: theme.text }]}>
-                Sửa
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Avatar tròn giữa */}
-        <View
-          style={[
-            styles.avatarWrap,
-            {
-              width: AVATAR_SIZE,
-              height: AVATAR_SIZE,
-              left: (screenWidth - AVATAR_SIZE) / 2,
-              top: insets.top + 60,
-            },
-          ]}
-        >
-          {userInfo.image ? (
-            <Image
-              source={{
-                uri: userInfo.image,
-                width: AVATAR_SIZE * 2,
-                height: AVATAR_SIZE * 2,
-              }}
-              style={styles.avatarImage}
-              contentFit="cover"
-              cachePolicy="disk"
-            />
-          ) : (
-            <View
-              style={[
-                styles.avatarFallback,
-                { backgroundColor: theme.avatarFallback },
-              ]}
-            >
-              <Text
-                style={[styles.avatarFallbackText, { color: theme.textMuted }]}
-              >
-                {initials || 'U'}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Tên và SĐT dưới avatar */}
-        <View
-          style={[
-            styles.namePhoneWrap,
-            { top: insets.top + 60 + AVATAR_SIZE + 12 },
-          ]}
-        >
-          <View style={styles.nameRow}>
+        {userInfo.image ? (
+          <Image
+            source={{
+              uri: userInfo.image,
+              width: AVATAR_SIZE * 2,
+              height: AVATAR_SIZE * 2,
+            }}
+            style={styles.avatarImage}
+            contentFit="cover"
+            cachePolicy="disk"
+          />
+        ) : (
+          <View
+            style={[
+              styles.avatarFallback,
+              { backgroundColor: theme.avatarFallback },
+            ]}
+          >
             <Text
-              style={[styles.nameText, { color: theme.text }]}
-              numberOfLines={1}
+              style={[styles.avatarFallbackText, { color: theme.textMuted }]}
             >
-              {userInfo.firstName} {userInfo.lastName}
+              {initials || 'U'}
             </Text>
-            {(userInfo.isVerifiedEmail || userInfo.isVerifiedPhonenumber) && (
-              <Shield size={16} color={successColor} fill={successColor} />
-            )}
           </View>
+        )}
+      </View>
+
+      {/* Tên và SĐT dưới avatar */}
+      <View
+        style={[
+          styles.namePhoneWrap,
+          { top: insets.top + 60 + AVATAR_SIZE + 12 },
+        ]}
+        pointerEvents="none"
+      >
+        <View style={styles.nameRow}>
           <Text
-            style={[styles.phoneText, { color: theme.textMuted }]}
+            style={[styles.nameText, { color: theme.text }]}
             numberOfLines={1}
           >
-            {userInfo.phonenumber ||
-              t('profile.contactInfo.noPhone', 'Chưa cập nhật số điện thoại')}
+            {userInfo.firstName} {userInfo.lastName}
           </Text>
+          {(userInfo.isVerifiedEmail || userInfo.isVerifiedPhonenumber) && (
+            <Shield size={16} color={successColor} fill={successColor} />
+          )}
         </View>
+        <Text
+          style={[styles.phoneText, { color: theme.textMuted }]}
+          numberOfLines={1}
+        >
+          {userInfo.phonenumber ||
+            t('profile.contactInfo.noPhone', 'Chưa cập nhật số điện thoại')}
+        </Text>
       </View>
 
       {/* Các trường thông tin cá nhân */}
@@ -256,7 +333,7 @@ export default function GeneralInfoPlaceholder() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: 12, paddingBottom: 40 },
+          { paddingTop: HEADER_HEIGHT + insets.top + 12, paddingBottom: insets.bottom + 40 },
         ]}
       >
         <View style={[styles.card, { backgroundColor: theme.card }]}>
@@ -340,55 +417,19 @@ export default function GeneralInfoPlaceholder() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <GIHeader
+        onBack={handleBack}
+        onEdit={handleEdit}
+        isDark={isDark}
+        pageBg={theme.bg}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerSection: {
-    backgroundColor: 'transparent',
-  },
-  topNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 56,
-  },
-  topNavContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    flex: 1,
-    position: 'relative',
-  },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  editBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  headerCenter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
   avatarWrap: {
     position: 'absolute',
     borderRadius: 999,
@@ -475,7 +516,6 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginTop: 24,
-    marginHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',

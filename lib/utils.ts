@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { colors } from '@/constants'
 
 /**
  * Utility function to merge Tailwind CSS classes
@@ -52,40 +53,13 @@ export type ThemeColors = {
  */
 export function getThemeColor(isDark: boolean): ThemeColors {
   return {
-    // Primary color from --primary CSS variable
-    // Light: hsl(35, 93%, 55%) = #F7A737
-    // Dark: hsl(35, 70%, 53%) = #D68910
-    primary: isDark ? '#D68910' : '#F7A737',
-    
-    // Background color from --background CSS variable (app/global.css)
-    // Light: hsl(210, 16%, 96%) = #f2f4f6
-    // Dark: hsl(220, 12%, 7%) = #111318
+    primary: isDark ? colors.primary.dark : colors.primary.light,
     background: isDark ? '#111318' : '#f2f4f6',
-    
-    // Foreground color from --foreground CSS variable
-    // Light: hsl(20, 14.3%, 4.1%) = #0a0a0a
-    // Dark: hsl(60, 9.1%, 97.8%) = #fafafa
-    foreground: isDark ? '#fafafa' : '#0a0a0a',
-    
-    // Muted foreground color from --muted-foreground CSS variable
-    // Light: hsl(25, 5.3%, 44.7%) = #6b7280
-    // Dark: hsl(24, 5.4%, 63.9%) = #9ca3af
-    mutedForeground: isDark ? '#9ca3af' : '#6b7280',
-    
-    // Border color from --border CSS variable
-    // Light: hsl(20, 5.9%, 90%) = #e5e7eb
-    // Dark: hsl(0, 0%, 18%) = #2e2e2e
-    border: isDark ? '#2e2e2e' : '#e5e7eb',
-    
-    // Secondary color from --secondary CSS variable
-    // Light: hsl(60, 4.8%, 95.9%) = #f5f5f4
-    // Dark: hsl(0, 0%, 18%) = #2e2e2e
-    secondary: isDark ? '#2e2e2e' : '#f5f5f4',
-    
-    // Indicator background - using muted color from CSS variables
-    // Light: hsl(20, 5.9%, 90%) = #e5e7eb (same as border)
-    // Dark: hsl(0, 0%, 18%) = #2e2e2e, but using #374151 for better contrast
-    indicatorBackground: isDark ? '#374151' : '#e5e7eb',
+    foreground: isDark ? colors.foreground.dark : colors.foreground.light,
+    mutedForeground: isDark ? colors.mutedForeground.dark : colors.mutedForeground.light,
+    border: isDark ? colors.border.dark : colors.border.light,
+    secondary: isDark ? colors.border.dark : '#f5f5f4',
+    indicatorBackground: isDark ? colors.gray[700] : colors.border.light,
   }
 }
 

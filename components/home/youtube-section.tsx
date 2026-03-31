@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Dimensions, Image, Linking, Pressable, Text, useColorScheme, View } from 'react-native'
+import { colors } from '@/constants'
 
 interface YouTubeVideoSectionProps {
   /**
@@ -89,7 +90,7 @@ export const YouTubeVideoSection: React.FC<YouTubeVideoSectionProps> = ({
             {/* Loading indicator */}
             {isLoading && (
               <View className="absolute inset-0 justify-center items-center bg-gray-200 dark:bg-gray-800">
-                <ActivityIndicator size="large" color={isDark ? '#9ca3af' : '#6b7280'} />
+                <ActivityIndicator size="large" color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />
               </View>
             )}
 

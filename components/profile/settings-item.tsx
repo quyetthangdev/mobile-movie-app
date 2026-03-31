@@ -2,6 +2,7 @@ import { ChevronRight } from 'lucide-react-native'
 import React from 'react'
 import { Text, View, useColorScheme } from 'react-native'
 
+import { colors } from '@/constants/colors.constant'
 import { NativeGesturePressable, type NativeGesturePressableProps } from '@/components/navigation/native-gesture-pressable'
 
 interface SettingsItemProps {
@@ -38,14 +39,14 @@ export function SettingsItem({
     ? iconBackgroundColor
     : destructive
       ? isDark
-        ? '#4b5563'
+        ? colors.gray[600]
         : '#fee2e2'
       : isDark
-        ? '#111827'
-        : '#4b5563'
+        ? colors.gray[900]
+        : colors.gray[600]
 
-  const iconColor = destructive ? '#dc2626' : '#ffffff'
-  const textColor = destructive ? '#ef4444' : isDark ? '#ffffff' : '#000000'
+  const iconColor = destructive ? colors.destructive.dark : colors.white.light
+  const textColor = destructive ? colors.destructive.light : isDark ? colors.white.light : '#000000'
 
   const content = (
     <View className="min-h-[44px] flex-row items-center px-4 py-3">
@@ -67,7 +68,7 @@ export function SettingsItem({
             <Text
               className="mt-0.5 text-sm"
               style={{
-                color: subtitleColor ?? (isDark ? '#9ca3af' : '#6b7280'),
+                color: subtitleColor ?? (isDark ? colors.gray[400] : colors.gray[500]),
               }}
             >
               {subtitle}
@@ -78,7 +79,7 @@ export function SettingsItem({
         {value && (
           <Text
             className="mr-2 text-sm"
-            style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
+            style={{ color: isDark ? colors.gray[400] : colors.gray[500] }}
           >
             {value}
           </Text>
@@ -88,7 +89,7 @@ export function SettingsItem({
           <ChevronRight
             size={20}
             color={
-              destructive ? '#dc2626' : isDark ? '#6b7280' : '#9ca3af'
+              destructive ? colors.destructive.dark : isDark ? colors.gray[500] : colors.gray[400]
             }
           />
         )}
@@ -122,7 +123,7 @@ export function SettingsSection({ children, header }: SettingsSectionProps) {
         <View className="px-4 py-2">
           <Text
             className="text-xs font-semibold uppercase tracking-wide"
-            style={{ color: isDark ? '#9ca3af' : '#6b7280' }}
+            style={{ color: isDark ? colors.gray[400] : colors.gray[500] }}
           >
             {header}
           </Text>
@@ -139,7 +140,7 @@ export function SettingsSection({ children, header }: SettingsSectionProps) {
                 <View
                   className="ml-16 mr-10 h-px"
                   style={{
-                    backgroundColor: isDark ? '#374151' : '#e5e7eb',
+                    backgroundColor: isDark ? colors.gray[700] : colors.gray[200],
                     opacity: isDark ? 0.35 : 0.5,
                   }}
                 />

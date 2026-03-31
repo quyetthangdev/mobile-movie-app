@@ -16,7 +16,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 
-import { SPRING_CONFIGS } from '@/constants'
+import { SPRING_CONFIGS, colors } from '@/constants'
 
 /* ------------------------------------------------------------------ */
 /* Context */
@@ -92,7 +92,7 @@ function SelectTrigger({
       )}
     >
       {children}
-      <ChevronDown size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+      <ChevronDown size={16} color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />
     </Pressable>
   )
 }

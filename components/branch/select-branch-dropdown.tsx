@@ -10,6 +10,7 @@ import {
   useColorScheme,
 } from 'react-native'
 
+import { colors } from '@/constants'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +41,7 @@ const BranchRow = React.memo(function BranchRow({
 }) {
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
-  const pinColor = isDark ? '#9ca3af' : '#6b7280'
+  const pinColor = isDark ? colors.gray[400] : colors.gray[500]
 
   const handlePress = useCallback(
     () => onSelect(item.slug),
@@ -122,7 +123,7 @@ function SelectBranchDropdown() {
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <TouchableOpacity style={styles.trigger} activeOpacity={0.7}>
-          <MapPin size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+          <MapPin size={16} color={isDark ? colors.gray[400] : colors.gray[500]} />
           <Text
             style={[
               styles.triggerText,
@@ -184,22 +185,22 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: '#111827',
+    color: colors.gray[900],
   },
   triggerPlaceholder: {
-    color: '#6b7280',
+    color: colors.gray[500],
     fontWeight: '400',
   },
   contentHeader: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.gray[200],
   },
   contentHeaderText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.gray[900],
   },
   branchList: {
     maxHeight: 400,
@@ -213,10 +214,10 @@ const styles = StyleSheet.create({
   },
   branchRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.gray[100],
   },
   branchRowSelected: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.gray[50],
   },
   pinWrap: {
     marginTop: 2,
@@ -234,11 +235,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: '#111827',
+    color: colors.gray[900],
   },
   branchAddress: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.gray[500],
     lineHeight: 16,
   },
   emptyState: {
@@ -248,6 +249,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.gray[500],
   },
 })

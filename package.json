@@ -21,7 +21,11 @@
     "android:release": "npm run clean:android-assets && expo run:android --variant release",
     "clean:android-assets": "rm -rf android/app/build/generated/res/createBundleReleaseJsAndAssets android/app/build/generated/res/createBundleDebugJsAndAssets 2>/dev/null; echo 'Cleaned Android asset cache'",
     "ios": "expo run:ios",
-    "qa:transition-perf": "bash scripts/qa-transition-perf.sh"
+    "qa:transition-perf": "bash scripts/qa-transition-perf.sh",
+    "analyze:bundle-size": "ls -lh dist/_expo/static/js/web/*.js 2>/dev/null | awk '{print $5, $9}' || echo 'No web build found. Run: npm run build'",
+    "analyze:web": "ANALYZE_BUNDLE=true npx expo export --platform web && source-map-explorer 'dist/_expo/static/js/web/*.js'",
+    "check-bundle": "node scripts/check-bundle-size.js",
+    "update-bundle-baseline": "node scripts/check-bundle-size.js --update"
   },
   "dependencies": {
     "@expo-google-fonts/be-vietnam-pro": "^0.4.1",
@@ -117,6 +121,7 @@
     "postinstall-postinstall": "^2.1.0",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "source-map-explorer": "^2.5.3",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.50.0"
   },

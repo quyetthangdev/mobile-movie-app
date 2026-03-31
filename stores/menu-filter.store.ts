@@ -47,6 +47,14 @@ export const useMenuFilterStore = create<IMenuFilterStore>()(
     {
       name: 'menu-filter-store',
       storage: createJSONStorage(() => createSafeStorage()),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const today = dayjs().format('YYYY-MM-DD')
+          if (state.menuFilter.date !== today) {
+            state.setMenuFilter((prev) => ({ ...prev, date: today }))
+          }
+        }
+      },
     },
   ),
 )

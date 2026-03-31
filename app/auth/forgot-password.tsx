@@ -1,23 +1,25 @@
 import { Redirect } from 'expo-router'
 import { ArrowRight, Mail, Phone } from 'lucide-react-native'
-import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import { ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'
 import { ScreenContainer } from '@/components/layout'
 
-import { ROUTE, VerificationMethod } from '@/constants'
+import { ROUTE, VerificationMethod, colors } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
 import { useAuthStore, useForgotPasswordStore } from '@/stores'
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation('auth')
+  const isDark = useColorScheme() === 'dark'
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated())
   const { setVerificationMethod, setStep } = useForgotPasswordStore()
 
-  // Nếu đã đăng nhập, redirect về home
   if (isAuthenticated) {
     return <Redirect href="/(tabs)/home" />
   }
+
+  const iconColor = isDark ? colors.primary.dark : colors.primary.light
+  const arrowColor = isDark ? colors.mutedForeground.dark : colors.mutedForeground.light
 
   const handleMethodSelect = (method: VerificationMethod) => {
     setVerificationMethod(method)
@@ -33,10 +35,10 @@ export default function ForgotPasswordScreen() {
     <ScreenContainer edges={['top']} className="flex-1">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="flex-1 px-6 pt-8">
-          <Text className="text-gray-900 dark:text-white text-3xl font-bold mb-2">
+          <Text className="mb-2 text-3xl font-sans-bold text-foreground">
             {t('forgotPassword.title')}
           </Text>
-          <Text className="text-gray-600 dark:text-gray-400 text-base mb-8">
+          <Text className="mb-8 text-base font-sans text-muted-foreground">
             Chọn phương thức để đặt lại mật khẩu
           </Text>
 
@@ -44,43 +46,43 @@ export default function ForgotPasswordScreen() {
             {/* Email Option */}
             <TouchableOpacity
               onPress={() => handleMethodSelect(VerificationMethod.EMAIL)}
-              className="flex-row items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 active:opacity-80"
+              className="flex-row items-center justify-between rounded-lg border border-border bg-card p-4 active:opacity-80"
             >
-              <View className="flex-row items-center gap-3 flex-1">
-                <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-                  <Mail size={20} color="#e50914" />
+              <View className="flex-1 flex-row items-center gap-3">
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Mail size={20} color={iconColor} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-gray-900 dark:text-white text-base font-medium">
+                  <Text className="text-base font-sans-medium text-foreground">
                     {t('forgotPassword.useEmail')}
                   </Text>
-                  <Text className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                  <Text className="mt-1 text-sm font-sans text-muted-foreground">
                     {t('forgotPassword.useEmailDescription')}
                   </Text>
                 </View>
               </View>
-              <ArrowRight size={20} color="#6b7280" />
+              <ArrowRight size={20} color={arrowColor} />
             </TouchableOpacity>
 
             {/* Phone Option */}
             <TouchableOpacity
               onPress={() => handleMethodSelect(VerificationMethod.PHONE_NUMBER)}
-              className="flex-row items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 active:opacity-80"
+              className="flex-row items-center justify-between rounded-lg border border-border bg-card p-4 active:opacity-80"
             >
-              <View className="flex-row items-center gap-3 flex-1">
-                <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-                  <Phone size={20} color="#e50914" />
+              <View className="flex-1 flex-row items-center gap-3">
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Phone size={20} color={iconColor} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-gray-900 dark:text-white text-base font-medium">
+                  <Text className="text-base font-sans-medium text-foreground">
                     {t('forgotPassword.usePhoneNumber')}
                   </Text>
-                  <Text className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                  <Text className="mt-1 text-sm font-sans text-muted-foreground">
                     {t('forgotPassword.usePhoneNumberDescription')}
                   </Text>
                 </View>
               </View>
-              <ArrowRight size={20} color="#6b7280" />
+              <ArrowRight size={20} color={arrowColor} />
             </TouchableOpacity>
           </View>
 
@@ -89,7 +91,7 @@ export default function ForgotPasswordScreen() {
             onPress={() => navigateNative.push(ROUTE.LOGIN)}
             className="mt-6"
           >
-            <Text className="text-primary text-sm font-medium text-center">
+            <Text className="text-center text-sm font-sans-medium text-primary">
               {t('forgotPassword.backToLogin')}
             </Text>
           </TouchableOpacity>
@@ -98,4 +100,3 @@ export default function ForgotPasswordScreen() {
     </ScreenContainer>
   )
 }
-

@@ -13,9 +13,44 @@ import {
   IVoucher,
   OrderTypeEnum,
 } from '@/types'
-import { setupAutoClearCart } from '@/utils/cart'
-import { createSafeStorage } from '@/utils/storage'
+import { asyncStorage, createSafeStorage } from '@/utils/storage'
 import { showToast } from '@/utils/toast'
+
+/** Setup auto clear cart based on expiration time — kept internal to avoid circular dep */
+const setupAutoClearCart = async (): Promise<void> => {
+  const { clearCart, getCartItems } = useCartItemStore.getState()
+  const cartItems = getCartItems()
+  if (!cartItems) return
+  try {
+    const expirationTime = await asyncStorage.getItem('cart-expiration-time')
+    if (expirationTime && dayjs().valueOf() > parseInt(expirationTime)) {
+      clearCart()
+      await asyncStorage.removeItem('cart-expiration-time')
+      return
+    }
+    if (!expirationTime) {
+      const tomorrow = dayjs().add(1, 'day').startOf('day')
+      await asyncStorage.setItem(
+        'cart-expiration-time',
+        tomorrow.valueOf().toString(),
+      )
+    }
+    const timeUntilExpiration =
+      parseInt(expirationTime || '0') - dayjs().valueOf()
+    if (timeUntilExpiration > 0) {
+      setTimeout(async () => {
+        try {
+          clearCart()
+          await asyncStorage.removeItem('cart-expiration-time')
+        } catch (error) {
+          throw new Error(`Error clearing cart expiration: ${error}`)
+        }
+      }, timeUntilExpiration)
+    }
+  } catch (error) {
+    throw new Error(`Error setting up auto clear cart: ${error}`)
+  }
+}
 
 export const useCartItemStore = create<ICartItemStore>()(
   persist(

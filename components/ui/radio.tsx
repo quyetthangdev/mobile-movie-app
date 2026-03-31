@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 
-import { SPRING_CONFIGS } from '@/constants'
+import { colors, SPRING_CONFIGS } from '@/constants'
 
 interface RadioGroupContextType {
   value?: string
@@ -88,8 +88,8 @@ function RadioGroupItem({ value, disabled = false, className, onPress }: RadioGr
       )}
       style={{
         borderColor: isSelected
-          ? (isDark ? '#60a5fa' : '#3b82f6')
-          : (isDark ? '#4b5563' : '#d1d5db'),
+          ? '#3b82f6'
+          : (isDark ? colors.gray[600] : colors.gray[300]),
       }}
     >
       {isSelected && (
@@ -100,7 +100,7 @@ function RadioGroupItem({ value, disabled = false, className, onPress }: RadioGr
               width: 8,
               height: 8,
               borderRadius: 4,
-              backgroundColor: isDark ? '#60a5fa' : '#3b82f6',
+              backgroundColor: '#3b82f6',
             },
           ]}
         />

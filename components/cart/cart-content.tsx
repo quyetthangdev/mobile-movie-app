@@ -1,4 +1,5 @@
 import { shouldAutoRemoveVoucher } from '@/components/sheet/voucher-validation'
+import { useCartValidation } from '@/hooks/use-cart-validation'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import {
   cartActions,
@@ -14,7 +15,7 @@ import { StyleSheet, useColorScheme, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 
 import { type CartDisplayItem, toDisplayItem } from './cart-display-item'
-import { calcItemVoucherDiscount, CartItemRow } from './cart-item-row'
+import { CartItemRow } from './cart-item-row'
 
 import { CartEmpty } from './cart-empty'
 
@@ -72,15 +73,14 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perfVoucher, voucherProductSet, cartSlugKey])
 
-  // Pre-compute voucher discount per item — single subscription in parent, not N in children
-  const voucherDiscountMap = useMemo(() => {
-    const map = new Map<string, number>()
-    if (!perfVoucher) return map
-    for (const di of items) {
-      map.set(di.cartKey, calcItemVoucherDiscount(di, perfVoucher))
-    }
-    return map
-  }, [items, perfVoucher])
+  // ── Cart validation against today's menu (auto, once per day) ──
+  const { validate } = useCartValidation()
+  const didAutoValidateRef = useRef(false)
+  useEffect(() => {
+    if (didAutoValidateRef.current || rawItems.length === 0) return
+    didAutoValidateRef.current = true
+    validate()
+  }, [validate, rawItems.length])
 
   const [sizeSheetItemId, setSizeSheetItemId] = useState<string | null>(null)
   const handleSizePress = useCallback((cartKey: string) => setSizeSheetItemId(cartKey), [])
@@ -113,10 +113,9 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
         isDark={isDark}
         onDelete={handleDelete}
         onSizePress={handleSizePress}
-        voucherDiscountPerUnit={voucherDiscountMap.get(item.cartKey) ?? 0}
       />
     ),
-    [primaryColor, isDark, handleDelete, handleSizePress, voucherDiscountMap],
+    [primaryColor, isDark, handleDelete, handleSizePress],
   )
 
   const keyExtractor = useCallback((item: CartDisplayItem) => item.cartKey, [])
@@ -137,6 +136,7 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
         data={items}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        getItemType={() => 'cartItem'}
         onScroll={handleScroll}
         scrollEventThrottle={32}
         contentContainerStyle={listStyles.content}

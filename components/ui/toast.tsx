@@ -11,7 +11,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 
-import { SPRING_CONFIGS } from '@/constants'
+import { SPRING_CONFIGS, colors } from '@/constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ToastData {
@@ -92,13 +92,13 @@ const ToastItem = React.memo(function ToastItem({ toast, onHide }: ToastItemProp
   const getIcon = () => {
     switch (toast.type) {
       case 'error':
-        return <XCircle size={20} color="#dc2626" />
+        return <XCircle size={20} color={colors.destructive.dark} fill={`${colors.destructive.dark}20`} />
       case 'success':
-        return <CheckCircle size={20} color="#16a34a" />
+        return <CheckCircle size={20} color="#16a34a" fill="#16a34a20" />
       case 'warning':
-        return <AlertCircle size={20} color="#ca8a04" />
+        return <AlertCircle size={20} color="#ca8a04" fill="#ca8a0420" />
       default:
-        return <Info size={20} color="#2563eb" />
+        return <Info size={20} color="#2563eb" fill="#2563eb20" />
     }
   }
 

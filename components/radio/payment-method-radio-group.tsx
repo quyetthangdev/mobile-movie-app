@@ -24,6 +24,7 @@ interface PaymentMethodRadioGroupProps {
   disabledMethods?: PaymentMethod[]
   disabledReasons?: Record<PaymentMethod, string>
   onSubmit?: (paymentMethod: PaymentMethod, transactionId?: string) => void
+  onSelect?: (paymentMethod: PaymentMethod, transactionId?: string) => void
 }
 
 export default function PaymentMethodRadioGroup({
@@ -32,6 +33,7 @@ export default function PaymentMethodRadioGroup({
   disabledMethods,
   disabledReasons,
   onSubmit,
+  onSelect,
 }: PaymentMethodRadioGroupProps) {
   const { t } = useTranslation('menu')
   const { t: tProfile } = useTranslation('profile')
@@ -181,6 +183,9 @@ export default function PaymentMethodRadioGroup({
       const paymentMethod = value as PaymentMethod
       setSelectedPaymentMethod(paymentMethod)
 
+      if (onSelect) {
+        onSelect(paymentMethod, paymentMethod === PaymentMethod.CREDIT_CARD ? creditCardTransactionId : undefined)
+      }
       if (onSubmit) {
         if (paymentMethod === PaymentMethod.CREDIT_CARD) {
           onSubmit(paymentMethod, creditCardTransactionId)
@@ -189,20 +194,18 @@ export default function PaymentMethodRadioGroup({
         }
       }
     },
-    [onSubmit, creditCardTransactionId],
+    [onSubmit, onSelect, creditCardTransactionId],
   )
 
   const handleTransactionIdChange = useCallback(
     (transactionId: string) => {
       setCreditCardTransactionId(transactionId)
-      if (
-        selectedPaymentMethod === PaymentMethod.CREDIT_CARD &&
-        onSubmit
-      ) {
-        onSubmit(PaymentMethod.CREDIT_CARD, transactionId)
+      if (selectedPaymentMethod === PaymentMethod.CREDIT_CARD) {
+        if (onSelect) onSelect(PaymentMethod.CREDIT_CARD, transactionId)
+        if (onSubmit) onSubmit(PaymentMethod.CREDIT_CARD, transactionId)
       }
     },
-    [selectedPaymentMethod, onSubmit],
+    [selectedPaymentMethod, onSubmit, onSelect],
   )
 
   const handleSelectMethod = useCallback(

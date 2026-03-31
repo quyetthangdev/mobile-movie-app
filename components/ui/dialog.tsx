@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { SPRING_CONFIGS } from '@/constants/motion'
+import { colors } from '@/constants'
 import { X } from 'lucide-react-native'
 import React, { ReactNode, useEffect } from 'react'
 import {
@@ -216,7 +217,7 @@ function DialogClose({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       className="absolute right-4 top-4 opacity-70 active:opacity-100"
     >
-      <X size={22} color={isDark ? '#fff' : '#111827'} />
+      <X size={22} color={isDark ? colors.white.light : colors.gray[900]} />
     </TouchableOpacity>
   )
 }

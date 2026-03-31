@@ -70,10 +70,8 @@ export function OTPInput({
               inputRefs.current[index] = ref
             }}
             className={cn(
-              'h-14 rounded-lg border text-center text-xl font-semibold',
-              'bg-white dark:bg-gray-800',
-              'text-gray-900 dark:text-white',
-              'border-gray-300 dark:border-gray-600',
+              'h-14 rounded-lg border text-center text-xl font-sans-semibold',
+              'bg-card text-foreground border-border',
               disabled && 'opacity-50'
             )}
             keyboardType={characterSet === 'numeric' ? 'number-pad' : 'default'}

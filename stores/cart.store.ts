@@ -17,6 +17,7 @@ import type {
 } from '@/types'
 import { useShallow } from 'zustand/react/shallow'
 
+import { calcItemVoucherDiscount, toDisplayItem } from '@/components/cart/cart-display-item'
 import { useOrderFlowStore } from './order-flow.store'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -54,6 +55,32 @@ export const useCartMinOrderValue = () =>
 /** Current voucher — null when no voucher applied */
 export const useCartVoucher = () =>
   useOrderFlowStore((s) => s.orderingData?.voucher ?? null)
+
+/** Per-item voucher discount — primitive number, re-renders only when THIS item's discount changes.
+ *  CartItemRow subscribes directly — removes voucherDiscountMap from renderItem deps entirely. */
+export const useCartItemVoucherDiscount = (cartKey: string): number =>
+  useOrderFlowStore((s) => {
+    const voucher = s.orderingData?.voucher
+    if (!voucher) return 0
+    const item = s.orderingData?.orderItems?.find((i) => i.id === cartKey)
+    if (!item) return 0
+    return calcItemVoucherDiscount(toDisplayItem(item), voucher)
+  })
+
+/** Voucher discount total — primitive number, re-renders only when discount changes.
+ *  Replaces useCartItems() + voucherDiscount useMemo in CartFooter to avoid
+ *  re-rendering the footer on every note/quantity change when discount is unchanged. */
+export const useCartVoucherDiscount = () =>
+  useOrderFlowStore((s) => {
+    const items = s.orderingData?.orderItems
+    const voucher = s.orderingData?.voucher
+    if (!voucher || !items || items.length === 0) return 0
+    let discount = 0
+    for (const item of items) {
+      discount += calcItemVoucherDiscount(toDisplayItem(item), voucher) * (item.quantity || 0)
+    }
+    return discount
+  })
 
 /** Hydration flag — true after persisted state is restored */
 export const useCartIsHydrated = () =>

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Text, View, useColorScheme } from 'react-native'
 import { Dropdown } from 'react-native-element-dropdown'
 
+import { colors } from '@/constants'
 import { useOrderTypeOptions, type OrderTypeOption } from '@/hooks'
 
 export default function OrderTypeDropdown() {
@@ -25,7 +26,9 @@ export default function OrderTypeDropdown() {
           className={`absolute left-3 top-2 z-10 px-2 text-xs ${
             isFocus ? 'text-blue-500' : 'text-gray-600 dark:text-gray-400'
           }`}
-          style={{ backgroundColor: isDark ? '#111827' : '#ffffff' }}
+          style={{
+            backgroundColor: isDark ? colors.gray[900] : colors.white.light,
+          }}
         >
           {t('menu.selectOrderType')}
         </Text>
@@ -40,25 +43,29 @@ export default function OrderTypeDropdown() {
       <Dropdown
         style={{
           height: 50,
-          borderColor: isFocus ? '#3b82f6' : isDark ? '#374151' : '#d1d5db',
+          borderColor: isFocus
+            ? '#3b82f6'
+            : isDark
+              ? colors.gray[700]
+              : colors.gray[300],
           borderWidth: 0.5,
           borderRadius: 8,
           paddingHorizontal: 8,
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
+          backgroundColor: isDark ? colors.gray[800] : colors.white.light,
         }}
         placeholderStyle={{
           fontSize: 16,
-          color: isDark ? '#9ca3af' : '#6b7280',
+          color: isDark ? colors.gray[400] : colors.gray[500],
         }}
         selectedTextStyle={{
           fontSize: 16,
-          color: isDark ? '#ffffff' : '#111827',
+          color: isDark ? colors.white.light : colors.gray[900],
         }}
         inputSearchStyle={{
           height: 40,
           fontSize: 16,
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          color: isDark ? '#ffffff' : '#111827',
+          backgroundColor: isDark ? colors.gray[800] : colors.white.light,
+          color: isDark ? colors.white.light : colors.gray[900],
           borderRadius: 8,
         }}
         iconStyle={{
@@ -79,17 +86,23 @@ export default function OrderTypeDropdown() {
           <View className="mr-2">
             <ChevronDown
               size={20}
-              color={isFocus ? '#3b82f6' : isDark ? '#9ca3af' : '#6b7280'}
+              color={
+                isFocus
+                  ? '#3b82f6'
+                  : isDark
+                    ? colors.gray[400]
+                    : colors.gray[500]
+              }
             />
           </View>
         )}
         containerStyle={{
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
+          backgroundColor: isDark ? colors.gray[800] : colors.white.light,
         }}
         itemTextStyle={{
-          color: isDark ? '#ffffff' : '#111827',
+          color: isDark ? colors.white.light : colors.gray[900],
         }}
-        activeColor={isDark ? '#374151' : '#f3f4f6'}
+        activeColor={isDark ? colors.gray[700] : colors.gray[100]}
       />
     </View>
   )

@@ -1,4 +1,4 @@
-import { PressableWithFeedback } from '@/components/navigation'
+import { PressableWithFeedback } from '@/components/navigation/pressable-with-feedback'
 import { cn } from '@/utils/cn'
 import { colors } from '@/constants'
 import { cva, type VariantProps } from 'class-variance-authority'

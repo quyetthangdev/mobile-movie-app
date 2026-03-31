@@ -7,9 +7,8 @@ import { Images } from '@/assets/images'
 import { SelectBranchDropdown } from '@/components/branch'
 import { PriceFilterSheet } from '@/components/menu/price-sheet'
 import { NotificationBell } from '@/components/notification/notification-bell'
-import { colors } from '@/constants'
+import { colors, OrderFlowStep } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
-import { OrderFlowStep } from '@/constants'
 import { useCatalog } from '@/hooks/use-catalog'
 import { useMenuScreenState } from '@/hooks/use-menu-screen-state'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -24,7 +23,7 @@ import { FlashList } from '@shopify/flash-list'
 import { useQuery } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AppState,
@@ -41,18 +40,35 @@ import type { CatalogChipData } from './menu-filter-bar'
 import { MenuFilterBar } from './menu-filter-bar'
 import type { MenuDisplayItem } from './menu-item-row'
 import {
+  MenuImagePhaseContext,
   MenuItemRow,
-  menuKeyExtractor,
-  menuOverrideItemLayout,
   menuViewabilityConfig,
 } from './menu-item-row'
+
+type FlatItem =
+  | { _kind: 'header'; key: string; name: string }
+  | { _kind: 'item'; data: MenuDisplayItem }
 
 const MENU_IMAGE_PREFETCH_AHEAD_COUNT = 2
 const MENU_IMAGE_PREFETCH_DEBOUNCE_MS = 220
 const MENU_ENTRY_FETCH_DELAY_MS = 120
 const MENU_ENTRY_IMAGE_DELAY_MS = 160
-const ENABLE_SCROLL_PREFETCH = false
+const ENABLE_SCROLL_PREFETCH = true
 const SEARCH_DEBOUNCE_MS = 300
+const PREFETCH_URL_CACHE_MAX = 256
+
+/** Tiny LRU: evicts oldest entry when capacity exceeded — prevents unbounded growth */
+function makeLruSet(max: number) {
+  const map = new Map<string, true>()
+  return {
+    has: (key: string) => map.has(key),
+    add: (key: string) => {
+      if (map.has(key)) return
+      if (map.size >= max) map.delete(map.keys().next().value as string)
+      map.set(key, true)
+    },
+  }
+}
 
 export default function MenuPage() {
   const router = useRouter()
@@ -92,10 +108,11 @@ export default function MenuPage() {
 
   // Stable ref map — handlers read from here instead of closing over itemsRaw.
   const itemsMapRef = React.useRef<Map<string, MenuDisplayItem>>(new Map())
+  const itemsRawRef = React.useRef<MenuDisplayItem[]>([])
   const shouldClearMemoryCacheOnBlurRef = React.useRef(false)
   const hasUserStartedScrollRef = React.useRef(false)
   const hasLoadedImagesOnceRef = React.useRef(false)
-  const prefetchedImageUrlsRef = React.useRef<Record<string, true>>({})
+  const prefetchedImageUrlsRef = React.useRef(makeLruSet(PREFETCH_URL_CACHE_MAX))
   const prefetchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
@@ -110,11 +127,13 @@ export default function MenuPage() {
       const task = InteractionManager.runAfterInteractions(() => {
         // Single timeout: batch fetch + image enable to reduce re-renders
         timer = setTimeout(() => {
-          setAllowFetch(true)
-          if (isFirstLoad) {
-            setImagePhaseReady(true)
-            hasLoadedImagesOnceRef.current = true
-          }
+          startTransition(() => {
+            setAllowFetch(true)
+            if (isFirstLoad) {
+              setImagePhaseReady(true)
+              hasLoadedImagesOnceRef.current = true
+            }
+          })
         }, isFirstLoad ? MENU_ENTRY_IMAGE_DELAY_MS : MENU_ENTRY_FETCH_DELAY_MS)
       })
 
@@ -216,6 +235,7 @@ export default function MenuPage() {
     queryFn: () => getSpecificMenu(request),
     enabled: hasBranch && hasUser && allowFetch,
     staleTime: 60_000,
+    gcTime: 10 * 60_000,
     refetchOnMount: false,
   })
   const {
@@ -227,6 +247,7 @@ export default function MenuPage() {
     queryFn: () => getPublicSpecificMenu(request),
     enabled: hasBranch && !hasUser && allowFetch,
     staleTime: 60_000,
+    gcTime: 10 * 60_000,
     refetchOnMount: false,
   })
   const isFetching = hasUser ? isPrivateFetching : isPublicFetching
@@ -280,11 +301,12 @@ export default function MenuPage() {
     })
   }, [menuData?.result?.menuItems])
 
-  // Keep O(1) lookup map in sync with latest items
+  // Keep O(1) lookup map and raw ref in sync with latest items
   useEffect(() => {
     const m = new Map<string, MenuDisplayItem>()
     for (const item of itemsRaw) m.set(item.id, item)
     itemsMapRef.current = m
+    itemsRawRef.current = itemsRaw
   }, [itemsRaw])
 
   // Client-side filter — no API round-trip, instant UI response.
@@ -294,6 +316,32 @@ export default function MenuPage() {
       item.name.toLowerCase().includes(searchKeyword),
     )
   }, [itemsRaw, searchKeyword])
+
+  // Flat list with catalog headers when "Tất cả" (no catalog filter, no search)
+  // O(n) single-pass with Map instead of O(catalogs × n) nested filter
+
+  const flatItems = useMemo<FlatItem[]>(() => {
+    if (menuCatalog || searchKeyword || catalogList.length === 0) {
+      return filteredItems.map((data) => ({ _kind: 'item' as const, data }))
+    }
+    const byCatalog = new Map<string, MenuDisplayItem[]>()
+    const uncategorized: MenuDisplayItem[] = []
+    for (const data of filteredItems) {
+      const slug = data.menuItem.product.catalog?.slug
+      if (!slug) { uncategorized.push(data); continue }
+      const bucket = byCatalog.get(slug)
+      if (bucket) { bucket.push(data) } else { byCatalog.set(slug, [data]) }
+    }
+    const result: FlatItem[] = []
+    for (const cat of catalogList) {
+      const items = byCatalog.get(cat.slug)
+      if (!items?.length) continue
+      result.push({ _kind: 'header', key: `header-${cat.slug}`, name: cat.name })
+      for (const data of items) result.push({ _kind: 'item', data })
+    }
+    for (const data of uncategorized) result.push({ _kind: 'item', data })
+    return result
+  }, [filteredItems, catalogList, menuCatalog, searchKeyword])
 
   const onViewableItemsChanged = useCallback(
     (info: { viewableItems: Array<{ index: number | null }> }) => {
@@ -317,7 +365,7 @@ export default function MenuPage() {
         const furthestVisibleIndex = Math.max(...visibleIndexes)
         const startIndex = furthestVisibleIndex + 1
         const endIndex = Math.min(
-          itemsRaw.length - 1,
+          itemsRawRef.current.length - 1,
           furthestVisibleIndex + MENU_IMAGE_PREFETCH_AHEAD_COUNT,
         )
 
@@ -328,9 +376,9 @@ export default function MenuPage() {
 
         const urlsToPrefetch: string[] = []
         for (let i = startIndex; i <= endIndex; i += 1) {
-          const imageUrl = itemsRaw[i]?.imageUrl
-          if (!imageUrl || prefetchedImageUrlsRef.current[imageUrl]) continue
-          prefetchedImageUrlsRef.current[imageUrl] = true
+          const imageUrl = itemsRawRef.current[i]?.imageUrl
+          if (!imageUrl || prefetchedImageUrlsRef.current.has(imageUrl)) continue
+          prefetchedImageUrlsRef.current.add(imageUrl)
           urlsToPrefetch.push(imageUrl)
         }
 
@@ -340,7 +388,7 @@ export default function MenuPage() {
         prefetchTimeoutRef.current = null
       }, MENU_IMAGE_PREFETCH_DEBOUNCE_MS)
     },
-    [itemsRaw],
+    [],
   )
 
   useEffect(
@@ -424,24 +472,33 @@ export default function MenuPage() {
     [t],
   )
 
-  const showImage = imagePhaseReady
+  const catalogHeaderColor = isDark ? colors.gray[400] : colors.gray[500]
 
   const renderItem = useCallback(
-    ({ item }: { item: MenuDisplayItem }) => (
-      <MenuItemRow
-        id={item.id}
-        name={item.name}
-        imageUrl={item.imageUrl}
-        listIndex={item.listIndex}
-        rawPrice={item.rawPrice}
-        promotionValue={item.promotionValue}
-        showImage={showImage}
-        primaryColor={primaryColor}
-        onDetail={handleOpenDetail}
-        onAddToCart={handleAddToCart}
-      />
-    ),
-    [handleOpenDetail, handleAddToCart, showImage, primaryColor],
+    ({ item }: { item: FlatItem }) => {
+      if (item._kind === 'header') {
+        return (
+          <Text style={[styles.catalogHeader, { color: catalogHeaderColor }]}>
+            {item.name}
+          </Text>
+        )
+      }
+      const { data } = item
+      return (
+        <MenuItemRow
+          id={data.id}
+          name={data.name}
+          imageUrl={data.imageUrl}
+          listIndex={data.listIndex}
+          rawPrice={data.rawPrice}
+          promotionValue={data.promotionValue}
+          primaryColor={primaryColor}
+          onDetail={handleOpenDetail}
+          onAddToCart={handleAddToCart}
+        />
+      )
+    },
+    [handleOpenDetail, handleAddToCart, primaryColor, catalogHeaderColor],
   )
 
   const pageBg = isDark ? colors.background.dark : colors.background.light
@@ -457,7 +514,7 @@ export default function MenuPage() {
             resizeMode="contain"
           />
           <View style={styles.headerRight}>
-            <NotificationBell color={isDark ? '#9ca3af' : '#6b7280'} />
+            <NotificationBell color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />
             <SelectBranchDropdown />
           </View>
         </View>
@@ -487,11 +544,17 @@ export default function MenuPage() {
           </Text>
         </View>
       ) : (
+        <MenuImagePhaseContext.Provider value={imagePhaseReady}>
         <FlashList
-          data={filteredItems}
+          data={flatItems}
           renderItem={renderItem}
-          keyExtractor={menuKeyExtractor}
-          overrideItemLayout={menuOverrideItemLayout}
+          keyExtractor={(item) =>
+            item._kind === 'header' ? item.key : item.data.id
+          }
+          getItemType={(item) => item._kind}
+          overrideItemLayout={(layout: { span?: number; size?: number }, item) => {
+            layout.size = item._kind === 'header' ? 40 : 116
+          }}
           drawDistance={300}
           keyboardDismissMode="on-drag"
           refreshControl={
@@ -523,6 +586,7 @@ export default function MenuPage() {
             </View>
           }
         />
+        </MenuImagePhaseContext.Provider>
       )}
 
       <PriceFilterSheet
@@ -555,7 +619,7 @@ const styles = StyleSheet.create({
   },
   header: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border.light,
   },
   headerRow: {
     flexDirection: 'row',
@@ -580,11 +644,19 @@ const styles = StyleSheet.create({
   emptyBox: {
     margin: 16,
     borderRadius: 12,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.gray[100],
     padding: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.gray[500],
+  },
+  catalogHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 6,
   },
 })

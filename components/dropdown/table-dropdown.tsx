@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Text, View, useColorScheme } from 'react-native'
 import { Dropdown } from 'react-native-element-dropdown'
 
-import { TableStatus } from '@/constants'
+import { TableStatus, colors } from '@/constants'
 import { useTables } from '@/hooks'
 import { useBranchStore, useOrderFlowStore, useUserStore } from '@/stores'
 import { ITable, OrderTypeEnum } from '@/types'
@@ -112,7 +112,7 @@ export default function TableDropdown({
           className={`absolute left-3 top-2 z-10 px-2 text-xs ${
             isFocus ? 'text-blue-500' : 'text-gray-600 dark:text-gray-400'
           }`}
-          style={{ backgroundColor: isDark ? '#111827' : '#ffffff' }}
+          style={{ backgroundColor: isDark ? colors.gray[900] : colors.white.light }}
         >
           {t('table.title')}
         </Text>
@@ -128,19 +128,19 @@ export default function TableDropdown({
         <Dropdown
           style={{
             height: 50,
-            borderColor: isFocus ? '#3b82f6' : isDark ? '#374151' : '#d1d5db',
+            borderColor: isFocus ? '#3b82f6' : isDark ? colors.gray[700] : colors.gray[300],
             borderWidth: 0.5,
             borderRadius: 8,
             paddingHorizontal: 8,
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            backgroundColor: isDark ? colors.gray[800] : colors.white.light,
           }}
           placeholderStyle={{
             fontSize: 16,
-            color: isDark ? '#9ca3af' : '#6b7280',
+            color: isDark ? colors.gray[400] : colors.gray[500],
           }}
           selectedTextStyle={{
             fontSize: 16,
-            color: isDark ? '#ffffff' : '#111827',
+            color: isDark ? colors.white.light : colors.gray[900],
           }}
           iconStyle={{
             width: 20,
@@ -160,17 +160,17 @@ export default function TableDropdown({
             <View className="mr-2">
               <ChevronDown
                 size={20}
-                color={isFocus ? '#3b82f6' : isDark ? '#9ca3af' : '#6b7280'}
+                color={isFocus ? '#3b82f6' : isDark ? colors.gray[400] : colors.gray[500]}
               />
             </View>
           )}
           containerStyle={{
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            backgroundColor: isDark ? colors.gray[800] : colors.white.light,
           }}
           itemTextStyle={{
-            color: isDark ? '#ffffff' : '#111827',
+            color: isDark ? colors.white.light : colors.gray[900],
           }}
-          activeColor={isDark ? '#374151' : '#f3f4f6'}
+          activeColor={isDark ? colors.gray[700] : colors.gray[100]}
         />
       </View>
 

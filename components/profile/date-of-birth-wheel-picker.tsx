@@ -20,6 +20,8 @@ import {
   useColorScheme,
 } from 'react-native'
 
+import { colors } from '@/constants'
+
 const ITEM_HEIGHT = 44
 const VISIBLE_ITEMS = 5
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS
@@ -148,9 +150,9 @@ export const DateOfBirthWheelPicker = forwardRef<DateOfBirthWheelPickerRef, Prop
       [],
     )
 
-    const textColor = isDark ? '#f3f4f6' : '#111827'
-    const mutedColor = isDark ? '#9ca3af' : '#6b7280'
-    const borderColor = isDark ? '#374151' : '#e5e7eb'
+    const textColor = isDark ? colors.gray[100] : colors.gray[900]
+    const mutedColor = isDark ? colors.gray[400] : colors.gray[500]
+    const borderColor = isDark ? colors.gray[700] : colors.gray[200]
 
     const renderWheel = (
       scrollRef: React.RefObject<ScrollView | null>,
@@ -195,7 +197,7 @@ export const DateOfBirthWheelPicker = forwardRef<DateOfBirthWheelPickerRef, Prop
         snapPoints={snapPoints}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: isDark ? '#1f2937' : '#ffffff' }}
+        backgroundStyle={{ backgroundColor: isDark ? colors.gray[800] : colors.white.light }}
         handleIndicatorStyle={{ backgroundColor: mutedColor }}
         containerStyle={{ zIndex: 99999, elevation: 99999 }}
       >
@@ -211,7 +213,7 @@ export const DateOfBirthWheelPicker = forwardRef<DateOfBirthWheelPickerRef, Prop
             {renderWheel(yearRef, YEARS, onScrollYear, year)}
           </View>
           <TouchableOpacity
-            style={[styles.confirmBtn, { backgroundColor: isDark ? '#D68910' : '#F7A737' }]}
+            style={[styles.confirmBtn, { backgroundColor: isDark ? colors.primary.dark : colors.primary.light }]}
             onPress={handleConfirm}
             activeOpacity={0.8}
           >
@@ -253,6 +255,6 @@ const styles = StyleSheet.create({
   confirmBtnText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.white.light,
   },
 })

@@ -5,7 +5,6 @@ import {
   IOrderItem,
   IOrderPayment,
   IOrderToUpdate,
-  IProductVariant,
   ITable,
   IUserInfo,
   IVoucher,
@@ -17,201 +16,28 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 import { useCartDisplayStore } from './cart-display.store'
+import {
+  calcMinOrderValue,
+  calcOrderItemTotalQuantity,
+  calcRawSubTotal,
+  generateOrderId,
+  generateOrderItemId,
+  OrderFlowStep,
+  type IOrderFlowStore,
+  type IOrderingData,
+} from './order-flow.types'
 import { usePaymentFlowStore } from './payment-flow.store'
+import { createOrderingDeliveryMethods } from './slices/ordering-delivery.slice'
+import { createOrderingItemsMethods } from './slices/ordering-items.slice'
 import { useUpdateOrderFlowStore } from './update-order-flow.store'
 import { useUserStore } from './user.store'
 
-// Re-export interfaces from standalone stores for backward compat
+// Re-export for backward compatibility
 export type { IPaymentData } from './payment-flow.store'
 export type { IUpdatingData } from './update-order-flow.store'
+export { OrderFlowStep, type IOrderFlowStore, type IOrderingData } from './order-flow.types'
 
-// Import types for internal use
 import type { IPaymentData } from './payment-flow.store'
-import type { IUpdatingData } from './update-order-flow.store'
-
-// Order Flow Steps
-export enum OrderFlowStep {
-  ORDERING = 'ordering',
-  PAYMENT = 'payment',
-  UPDATING = 'updating',
-}
-
-// Ordering Phase Data (tuong tu cart store)
-export interface IOrderingData {
-  id: string
-  slug: string
-  orderItems: IOrderItem[]
-  owner: string
-  ownerFullName: string
-  ownerPhoneNumber: string
-  ownerRole?: string
-  type: OrderTypeEnum
-  timeLeftTakeOut?: number
-  table?: string
-  tableName?: string
-  voucher: IVoucher | null
-  description?: string
-  approvalBy: string
-  paymentMethod?: string
-  payment?: IOrderPayment
-  // Delivery info
-  deliveryAddress?: string
-  deliveryDistance?: number
-  deliveryDuration?: number
-  deliveryPhone?: string
-  // New: Persisted delivery coordinates & placeId for map address selection
-  deliveryLat?: number
-  deliveryLng?: number
-  deliveryPlaceId?: string
-}
-
-// Main Order Flow State
-export interface IOrderFlowStore {
-  // Current flow state
-  currentStep: OrderFlowStep
-  isHydrated: boolean
-  lastModified: number
-
-  /** Tong quantity orderItems — derived, tranh reduce trong selector */
-  orderItemTotalQuantity: number
-  /** Tong tien truoc voucher — VoucherListDrawer subscribe, tranh re-render khi cart thay doi */
-  minOrderValue: number
-
-  // Flow data cho tung buoc
-  orderingData: IOrderingData | null
-  paymentData: IPaymentData | null
-  updatingData: IUpdatingData | null
-
-  // Actions for flow management
-  setCurrentStep: (step: OrderFlowStep) => void
-
-  // Ordering phase actions (tuong tu cart store)
-  initializeOrdering: () => void
-  setOrderingData: (data: IOrderingData) => void
-  addOrderingItem: (item: IOrderItem) => void
-  addOrderingProductVariant: (id: string) => void
-  updateOrderingItemVariant: (itemId: string, variant: IProductVariant) => void
-  addPickupTime: (time: number) => void
-  removePickupTime: () => void
-  updateOrderingItemQuantity: (itemId: string, quantity: number) => void
-  removeOrderingItem: (itemId: string) => void
-  addOrderingNote: (itemId: string, note: string) => void
-  updateOrderingCustomer: (customer: IUserInfo) => void
-  removeOrderingCustomer: () => void
-  setOrderingTable: (table: ITable) => void
-  removeOrderingTable: () => void
-  setOrderingVoucher: (voucher: IVoucher | null) => void
-  removeOrderingVoucher: () => void
-  setOrderingType: (type: OrderTypeEnum) => void
-  setOrderingDescription: (description: string) => void
-  setOrderingApprovalBy: (approvalBy: string) => void
-  clearOrderingData: () => void
-  // Delivery info actions
-  setDeliveryAddress: (address: string) => void
-  setDeliveryDistanceDuration: (distance: number, duration: number) => void
-  setDeliveryCoords: (lat: number, lng: number, placeId?: string) => void
-  setDeliveryPlaceId: (placeId: string) => void
-  setDeliveryPhone: (phone: string) => void
-  clearDeliveryInfo: () => void
-
-  // Payment phase actions (delegated to usePaymentFlowStore)
-  initializePayment: (orderSlug: string, paymentMethod: PaymentMethod) => void
-  setPaymentData: (data: Partial<IPaymentData>) => void
-  updatePaymentMethod: (method: PaymentMethod, transactionId?: string) => void
-  updateQrCode: (qrCode: string) => void
-  setOrderFromAPI: (order: IOrder) => void
-  setPaymentSlug: (slug: string) => void
-  clearPaymentData: () => void
-
-  // Updating phase actions (delegated to useUpdateOrderFlowStore)
-  initializeUpdating: (originalOrder: IOrder) => void
-  setUpdateDraft: (draft: IOrderToUpdate) => void
-  updateDraftItem: (itemId: string, changes: Partial<IOrderItem>) => void
-  updateDraftItemQuantity: (itemId: string, quantity: number) => void
-  addDraftPickupTime: (time: number) => void
-  removeDraftPickupTime: () => void
-  addDraftItem: (item: IOrderItem) => void
-  removeDraftItem: (itemId: string) => void
-  addDraftNote: (itemId: string, note: string) => void
-  updateDraftCustomer: (customer: IUserInfo) => void
-  removeDraftCustomer: () => void
-  setDraftTable: (table: ITable) => void
-  removeDraftTable: () => void
-  setDraftVoucher: (voucher: IVoucher | null) => void
-  removeDraftVoucher: () => void
-  setDraftType: (type: OrderTypeEnum) => void
-  setDraftDescription: (description: string) => void
-  setDraftApprovalBy: (approvalBy: string) => void
-  setDraftPaymentMethod: (method: string) => void
-  resetDraftToOriginal: () => void
-  // Delivery info actions
-  setDraftDeliveryAddress: (address: string) => void
-  setDraftDeliveryDistanceDuration: (distance: number, duration: number) => void
-  setDraftDeliveryCoords: (lat: number, lng: number, placeId?: string) => void
-  setDraftDeliveryPlaceId: (placeId: string) => void
-  setDraftDeliveryPhone: (phone: string) => void
-  clearDraftDeliveryInfo: () => void
-  clearUpdatingData: () => void
-
-  // Flow transition actions
-  transitionToPayment: (orderSlug: string) => void
-  transitionToUpdating: (originalOrder: IOrder) => void
-  transitionBackToOrdering: () => void
-
-  // Utility actions
-  clearAllData: () => void
-  getActiveData: () => IOrderingData | IPaymentData | IUpdatingData | null
-
-  // Compatibility methods for existing code
-  getCartItems: () => IOrderingData | null
-  getCartItemCount: () => number
-  getOrderItems: () => IUpdatingData | null
-  clearCart: () => void
-  clearStore: () => void
-  addCartItem: (item: ICartItem) => void
-  updateCartItemQuantity: (id: string, quantity: number) => void
-  addNote: (id: string, note: string) => void
-  addCustomerInfo: (owner: IUserInfo) => void
-  removeCustomerInfo: () => void
-  addTable: (table: ITable) => void
-  removeTable: () => void
-  addVoucher: (voucher: IVoucher) => void
-  removeVoucher: () => void
-  addApprovalBy: (approvalBy: string) => void
-  addOrderType: (orderType: OrderTypeEnum) => void
-  addOrderNote: (note: string) => void
-  setPaymentMethod: (method: PaymentMethod | string) => void
-  setQrCode: (qrCode: string) => void
-  setOrderSlug: (slug: string) => void
-  removeCartItem: (itemId: string) => void
-}
-
-const generateOrderId = () => {
-  return `order_${dayjs().valueOf()}_${Math.random().toString(36).substr(2, 9)}`
-}
-
-const generateOrderItemId = () => {
-  return `item_${dayjs().valueOf()}_${Math.random().toString(36).substr(2, 9)}`
-}
-
-/** Tong quantity cua orderItems — dung cho selector, tranh reduce trong component */
-const calcOrderItemTotalQuantity = (items: IOrderItem[] | undefined): number =>
-  items?.reduce((t, i) => t + (i.quantity || 0), 0) ?? 0
-
-/** Tong tien truoc voucher (cho minOrderValue) — VoucherListDrawer subscribe primitive */
-const calcMinOrderValue = (items: IOrderItem[] | undefined): number =>
-  items?.reduce((acc, item) => {
-    const original = item.originalPrice ?? 0
-    const promotionDiscount = item.promotionDiscount ?? 0
-    return acc + (original - promotionDiscount) * (item.quantity || 0)
-  }, 0) ?? 0
-
-/** Raw subtotal tai store: dung loop JS nhe, tranh serialize JSON + native bridge tren moi update. */
-const calcRawSubTotal = (items: IOrderItem[] | undefined): number =>
-  items?.reduce(
-    (sum, item) => sum + (item.originalPrice ?? 0) * (item.quantity || 0),
-    0,
-  ) ?? 0
 
 // Helper function to convert ICartItem to IOrderItem[]
 const convertCartItemToOrderItems = (cartItem: ICartItem): IOrderItem[] => {
@@ -311,193 +137,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         })
       },
 
-      addOrderingItem: (item: IOrderItem) => {
-        const { orderingData } = get()
-        if (!orderingData) {
-          const newOrderingData: IOrderingData = {
-            id: generateOrderId(),
-            slug: generateOrderId(),
-            orderItems: [
-              {
-                ...item,
-                id: generateOrderItemId(),
-                note: item.note || '',
-              },
-            ],
-            owner: '',
-            ownerFullName: '',
-            ownerPhoneNumber: '',
-            type: OrderTypeEnum.AT_TABLE,
-            timeLeftTakeOut: undefined,
-            table: '',
-            tableName: '',
-            voucher: null,
-            description: '',
-            approvalBy: '',
-          }
-          set({
-            currentStep: OrderFlowStep.ORDERING,
-            orderItemTotalQuantity: calcOrderItemTotalQuantity(newOrderingData.orderItems),
-            minOrderValue: calcMinOrderValue(newOrderingData.orderItems),
-            orderingData: newOrderingData,
-            paymentData: null,
-            updatingData: null,
-            lastModified: dayjs().valueOf(),
-          })
-          return
-        }
-
-        // According to old logic: don't merge, only add new item to array
-        const updatedItems = [
-          ...orderingData.orderItems,
-          {
-            ...item,
-            id: generateOrderItemId(),
-            note: item.note || '',
-          },
-        ]
-
-        set({
-          currentStep: OrderFlowStep.ORDERING,
-          orderItemTotalQuantity: calcOrderItemTotalQuantity(updatedItems),
-          minOrderValue: calcMinOrderValue(updatedItems),
-          orderingData: {
-            ...orderingData,
-            orderItems: updatedItems,
-          },
-          paymentData: null,
-          updatingData: null,
-          lastModified: dayjs().valueOf(),
-        })
-        useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
-        useCartDisplayStore.getState().clearDisplay()
-      },
-
-      addOrderingProductVariant: (id: string) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        const updatedItems = orderingData.orderItems.map((item) =>
-          item.id === id ? { ...item, variant: item.variant || [] } : item,
-        )
-
-        set({
-          orderingData: {
-            ...orderingData,
-            orderItems: updatedItems,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      updateOrderingItemVariant: (itemId: string, variant: IProductVariant) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        const updatedItems = orderingData.orderItems.map((item) =>
-          item.id === itemId
-            ? {
-                ...item,
-                variant,
-                size: variant.size?.name ?? item.size,
-                originalPrice: variant.price,
-              }
-            : item,
-        )
-
-        set({
-          minOrderValue: calcMinOrderValue(updatedItems),
-          orderingData: {
-            ...orderingData,
-            orderItems: updatedItems,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-        useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
-        useCartDisplayStore.getState().clearDisplay()
-      },
-
-      updateOrderingItemQuantity: (itemId: string, quantity: number) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        const updatedItems = orderingData.orderItems.map((item) =>
-          item.id === itemId ? { ...item, quantity } : item,
-        )
-
-        set({
-          orderItemTotalQuantity: calcOrderItemTotalQuantity(updatedItems),
-          minOrderValue: calcMinOrderValue(updatedItems),
-          orderingData: {
-            ...orderingData,
-            orderItems: updatedItems,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-        useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
-        useCartDisplayStore.getState().clearDisplay()
-      },
-
-      removeOrderingItem: (itemId: string) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        const updatedItems = orderingData.orderItems.filter(
-          (item) => item.id !== itemId,
-        )
-
-        set({
-          orderItemTotalQuantity: calcOrderItemTotalQuantity(updatedItems),
-          minOrderValue: calcMinOrderValue(updatedItems),
-          orderingData: {
-            ...orderingData,
-            orderItems: updatedItems,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-        useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
-        useCartDisplayStore.getState().clearDisplay()
-      },
-
-      addPickupTime: (time: number) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        set({
-          orderingData: {
-            ...orderingData,
-            timeLeftTakeOut: time,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      removePickupTime: () => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        set({
-          orderingData: { ...orderingData, timeLeftTakeOut: undefined },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      addOrderingNote: (itemId: string, note: string) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        const updatedItems = orderingData.orderItems.map((item) =>
-          item.id === itemId ? { ...item, note } : item,
-        )
-
-        set({
-          orderingData: {
-            ...orderingData,
-            orderItems: updatedItems,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
+      // Ordering items methods — extracted to slice
+      ...createOrderingItemsMethods(set, get),
 
       updateOrderingCustomer: (customer: IUserInfo) => {
         const { orderingData } = get()
@@ -677,105 +318,8 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
         })
       },
 
-      clearOrderingData: () => {
-        set({
-          orderItemTotalQuantity: 0,
-          minOrderValue: 0,
-          orderingData: null,
-          lastModified: dayjs().valueOf(),
-        })
-        useCartDisplayStore.getState().clearDisplay()
-        useCartDisplayStore.getState().setRawSubTotal(0)
-      },
-
-      // ===================
-      // DELIVERY INFO
-      // ===================
-      setDeliveryAddress: (address: string) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        set({
-          orderingData: {
-            ...orderingData,
-            deliveryAddress: address,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      setDeliveryDistanceDuration: (distance: number, duration: number) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        set({
-          orderingData: {
-            ...orderingData,
-            deliveryDistance: distance,
-            deliveryDuration: duration,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      setDeliveryPhone: (phone: string) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        set({
-          orderingData: {
-            ...orderingData,
-            deliveryPhone: phone,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      setDeliveryCoords: (lat: number, lng: number, placeId?: string) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        set({
-          orderingData: {
-            ...orderingData,
-            deliveryLat: lat,
-            deliveryLng: lng,
-            deliveryPlaceId: placeId || orderingData.deliveryPlaceId || '',
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      setDeliveryPlaceId: (placeId: string) => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        set({
-          orderingData: {
-            ...orderingData,
-            deliveryPlaceId: placeId,
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
-
-      clearDeliveryInfo: () => {
-        const { orderingData } = get()
-        if (!orderingData) return
-
-        set({
-          orderingData: {
-            ...orderingData,
-            deliveryAddress: '',
-            deliveryDistance: 0,
-            deliveryDuration: 0,
-            deliveryLat: undefined,
-            deliveryLng: undefined,
-            deliveryPlaceId: '',
-          },
-          lastModified: dayjs().valueOf(),
-        })
-      },
+      // Delivery info methods — extracted to slice
+      ...createOrderingDeliveryMethods(set, get),
 
       // ===================
       // PAYMENT PHASE (delegated to usePaymentFlowStore)

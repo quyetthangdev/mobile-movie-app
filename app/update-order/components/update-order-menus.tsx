@@ -1,37 +1,31 @@
 import { FlashList } from '@shopify/flash-list'
-import React, { useCallback, useMemo } from 'react'
+import dayjs from 'dayjs'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dimensions, Text, View } from 'react-native'
+import { StyleSheet, Text, useColorScheme, View } from 'react-native'
 
+import { colors } from '@/constants'
 import { useCatalog } from '@/hooks'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks/use-menu'
 import { useAuthStore, useOrderFlowStore } from '@/stores'
 import { IMenuItem } from '@/types'
-import dayjs from 'dayjs'
 
 import ClientMenuItemForUpdateOrder from './client-menu-item-for-update-order'
 
 interface UpdateOrderMenusProps {
   branchSlug: string
+  primaryColor: string
 }
 
-/**
- * Menu list cho Update Order - thêm món vào draft.
- * Dùng branch từ order, fetch menu theo branch + date hôm nay.
- */
-export default function UpdateOrderMenus({
-  branchSlug,
-}: UpdateOrderMenusProps) {
+export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrderMenusProps) {
   const { t } = useTranslation('menu')
+  const isDark = useColorScheme() === 'dark'
   const { data: catalogs, isPending: isLoadingCatalog } = useCatalog()
   const hasUpdatingData = useOrderFlowStore((s) => s.updatingData !== null)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
 
   const menuRequest = useMemo(
-    () => ({
-      branch: branchSlug,
-      date: dayjs().format('YYYY-MM-DD'),
-    }),
+    () => ({ branch: branchSlug, date: dayjs().format('YYYY-MM-DD') }),
     [branchSlug],
   )
 
@@ -42,67 +36,52 @@ export default function UpdateOrderMenus({
     menuRequest,
     shouldFetchAuth,
   )
-  const { data: publicMenuData, isPending: isLoadingPublicMenu } =
-    usePublicSpecificMenu(menuRequest, shouldFetchPublic)
+  const { data: publicMenuData, isPending: isLoadingPublicMenu } = usePublicSpecificMenu(
+    menuRequest,
+    shouldFetchPublic,
+  )
 
   const menuData = isAuthenticated ? authMenuData : publicMenuData
-  const isLoadingMenu = isAuthenticated
-    ? isLoadingAuthMenu
-    : isLoadingPublicMenu
+  const isLoadingMenu = isAuthenticated ? isLoadingAuthMenu : isLoadingPublicMenu
 
   const menuItems = useMemo(() => {
     const items = menuData?.result?.menuItems
     if (!items) return undefined
     return [...items].sort((a, b) => {
-      if (a.isLocked !== b.isLocked) {
-        return Number(a.isLocked) - Number(b.isLocked)
-      }
-      const aInStock =
-        (a.currentStock !== 0 && a.currentStock !== null) || !a.product.isLimit
-      const bInStock =
-        (b.currentStock !== 0 && b.currentStock !== null) || !b.product.isLimit
+      if (a.isLocked !== b.isLocked) return Number(a.isLocked) - Number(b.isLocked)
+      const aInStock = (a.currentStock !== 0 && a.currentStock !== null) || !a.product.isLimit
+      const bInStock = (b.currentStock !== 0 && b.currentStock !== null) || !b.product.isLimit
       return Number(bInStock) - Number(aInStock)
     })
   }, [menuData])
 
-  const { groupedItems, itemWidth, numColumns, gap } = useMemo(() => {
-    const screenWidth = Dimensions.get('window').width
-    const padding = 32
-    const gapValue = 16
-    const columns = 2
-    const width = (screenWidth - padding - (columns - 1) * gapValue) / columns
-
+  const groupedItems = useMemo(() => {
     const grouped =
       catalogs?.result?.map((catalog) => ({
         catalog,
-        items:
-          menuItems?.filter(
-            (mi) => mi.product.catalog?.slug === catalog.slug,
-          ) || [],
+        items: menuItems?.filter((mi) => mi.product.catalog?.slug === catalog.slug) || [],
       })) || []
     grouped.sort((a, b) => b.items.length - a.items.length)
-
-    return {
-      groupedItems: grouped,
-      itemWidth: width,
-      numColumns: columns,
-      gap: gapValue,
-    }
+    return grouped
   }, [catalogs?.result, menuItems])
+
+  // showImage phase gate — defer heavy decodes
+  const [showImage, setShowImage] = useState(false)
+  React.useEffect(() => {
+    const id = requestAnimationFrame(() => setShowImage(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   const renderItem = useCallback(
     ({ item, index }: { item: IMenuItem; index: number }) => (
-      <View
-        style={{
-          width: itemWidth,
-          marginBottom: 16,
-          ...(index % numColumns !== numColumns - 1 && { marginRight: gap }),
-        }}
-      >
-        <ClientMenuItemForUpdateOrder item={item} />
-      </View>
+      <ClientMenuItemForUpdateOrder
+        item={item}
+        listIndex={index}
+        showImage={showImage}
+        primaryColor={primaryColor}
+      />
     ),
-    [itemWidth, numColumns, gap],
+    [showImage, primaryColor],
   )
 
   const keyExtractor = useCallback((item: IMenuItem) => item.slug, [])
@@ -111,12 +90,9 @@ export default function UpdateOrderMenus({
 
   if (!branchSlug) {
     return (
-      <View className="items-center justify-center px-4 py-12">
-        <Text className="text-center text-gray-600 dark:text-gray-400">
-          {t(
-            'menu.noBranchForMenu',
-            'Không xác định được chi nhánh để tải thực đơn',
-          )}
+      <View style={s.center}>
+        <Text style={[s.grayText, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
+          {t('menu.noBranchForMenu', 'Không xác định được chi nhánh để tải thực đơn')}
         </Text>
       </View>
     )
@@ -124,11 +100,14 @@ export default function UpdateOrderMenus({
 
   if (isLoadingMenu || isLoadingCatalog) {
     return (
-      <View className="flex-row flex-wrap gap-3 p-4">
-        {Array.from({ length: 6 }).map((_, i) => (
+      <View style={s.skeletonList}>
+        {Array.from({ length: 5 }).map((_, i) => (
           <View
             key={i}
-            className="h-48 w-[47%] rounded-xl bg-gray-200 dark:bg-gray-700"
+            style={[
+              s.skeletonItem,
+              { backgroundColor: isDark ? colors.gray[700] : colors.gray[200] },
+            ]}
           />
         ))}
       </View>
@@ -137,36 +116,30 @@ export default function UpdateOrderMenus({
 
   if (!menuItems || menuItems.length === 0) {
     return (
-      <View className="items-center justify-center py-12">
-        <Text className="text-center text-gray-600 dark:text-gray-400">
+      <View style={s.center}>
+        <Text style={[s.grayText, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
           {t('menu.noData', 'Không có dữ liệu')}
         </Text>
       </View>
     )
   }
 
+  const grayColor = isDark ? colors.gray[400] : colors.gray[500]
+
   return (
-    <View className="px-4 pb-8">
-      <View className="mb-4 flex-row items-center gap-2">
-        <View className="h-1 w-8 rounded-full bg-primary" />
-        <Text className="text-lg font-bold uppercase text-primary">
-          {t('menu.addMoreItems', 'Thêm món')}
-        </Text>
-      </View>
+    <View style={s.container}>
       {groupedItems.map((group, index) => {
         if (group.items.length === 0) return null
         return (
-          <View key={`catalog-${group.catalog.slug || index}`} className="mb-8">
-            <Text className="mb-4 text-lg font-bold uppercase text-primary">
+          <View key={`catalog-${group.catalog.slug || index}`} style={s.catalogSection}>
+            <Text style={[s.catalogName, { color: grayColor }]}>
               {group.catalog.name}
             </Text>
             <FlashList
               data={group.items}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
-              numColumns={numColumns}
               scrollEnabled={false}
-              key={`flash-${group.catalog.slug}`}
             />
           </View>
         )
@@ -174,3 +147,24 @@ export default function UpdateOrderMenus({
     </View>
   )
 }
+
+const s = StyleSheet.create({
+  container: { paddingBottom: 32, paddingTop: 8 },
+  catalogSection: { marginBottom: 24 },
+  catalogName: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 48,
+  },
+  grayText: { textAlign: 'center' },
+  skeletonList: { padding: 16, gap: 12 },
+  skeletonItem: { height: 104, borderRadius: 16, marginHorizontal: 16 },
+})

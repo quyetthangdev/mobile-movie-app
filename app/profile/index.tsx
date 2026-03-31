@@ -1,13 +1,23 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
-import { History, Settings, User, Wallet } from 'lucide-react-native'
 import { useRouter } from 'expo-router'
+import { History, Settings, User, Wallet } from 'lucide-react-native'
 import React, { useCallback, useMemo } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import {
+  Animated,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native'
 
 import { LoginForm } from '@/components/auth'
 import { ScreenContainer } from '@/components/layout'
-import { useAuthStore, useUserStore } from '@/stores'
+import { AnimatedProfileHeader } from '@/components/profile/animated-profile-header'
+import { colors } from '@/constants'
 import { useLoyaltyPoints, useRunAfterTransition } from '@/hooks'
+import { useAuthStore, useUserStore } from '@/stores'
 import {
   ProfileItem,
   type ProfileItemProps,
@@ -19,41 +29,36 @@ interface ProfileSettingItem {
   icon: ProfileItemProps['icon']
 }
 
-const SETTINGS_ITEMS: readonly ProfileSettingItem[] = [
-  {
-    key: 'general-info',
-    label: 'Thông tin chung',
-    icon: User,
-  },
-  {
-    key: 'points',
-    label: 'Điểm tích lũy',
-    icon: History,
-  },
-  {
-    key: 'coins',
-    label: 'Xu của tôi',
-    icon: Wallet,
-  },
-  {
-    key: 'orders-history',
-    label: 'Lịch sử đơn hàng',
-    icon: History,
-  },
-  {
-    key: 'account-settings',
-    label: 'Cài đặt tài khoản',
-    icon: Settings,
-  },
-] as const
+const SETTINGS_ITEM_ICONS = {
+  'general-info': User,
+  'points': History,
+  'coins': Wallet,
+  'orders-history': History,
+  'account-settings': Settings,
+} as const
+
+// type SettingsItemKey = keyof typeof SETTINGS_ITEM_ICONS
+
+const HEADER_HEIGHT = 160
 
 export default function ProfilePlaceholderScreen() {
   const router = useRouter()
+  const { t } = useTranslation('profile')
+  const isDark = useColorScheme() === 'dark'
   const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
   const userInfo = useUserStore((state) => state.userInfo)
   const setLogout = useAuthStore((state) => state.setLogout)
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
 
+  const settingsItems = useMemo<ProfileSettingItem[]>(() => [
+    { key: 'general-info', label: t('generalInfoLabel'), icon: SETTINGS_ITEM_ICONS['general-info'] },
+    { key: 'points', label: t('points.title'), icon: SETTINGS_ITEM_ICONS['points'] },
+    { key: 'coins', label: t('myCoins'), icon: SETTINGS_ITEM_ICONS['coins'] },
+    { key: 'orders-history', label: t('orderHistory.title'), icon: SETTINGS_ITEM_ICONS['orders-history'] },
+    { key: 'account-settings', label: t('accountSettings'), icon: SETTINGS_ITEM_ICONS['account-settings'] },
+  ], [t])
+
+  const scrollY = useMemo(() => new Animated.Value(0), [])
   const [allowFetch, setAllowFetch] = React.useState(false)
   useRunAfterTransition(() => setAllowFetch(true), [])
 
@@ -65,6 +70,14 @@ export default function ProfilePlaceholderScreen() {
   }, [userInfo])
 
   const { totalPoints } = useLoyaltyPoints(userInfo?.slug, allowFetch)
+
+  const handleEditProfile = useCallback(() => {
+    router.push('/profile/info' as never)
+  }, [router])
+
+  const handleQRCode = useCallback(() => {
+    // console.log('QR Code pressed')
+  }, [])
 
   const handlePress = useCallback(
     (itemKey: string) => {
@@ -100,7 +113,7 @@ export default function ProfilePlaceholderScreen() {
   const renderItem: ListRenderItem<ProfileSettingItem> = useCallback(
     ({ item, index }) => {
       const extraLabel =
-        item.key === 'points' ? ` — ${totalPoints} điểm` : undefined
+        item.key === 'points' ? ` — ${totalPoints} ${t('points.point')}` : undefined
 
       return (
         <ProfileItem
@@ -111,7 +124,7 @@ export default function ProfilePlaceholderScreen() {
         />
       )
     },
-    [handlePress, totalPoints],
+    [handlePress, totalPoints, t],
   )
 
   if (needsUserInfo || !userInfo) {
@@ -124,105 +137,91 @@ export default function ProfilePlaceholderScreen() {
 
   return (
     <ScreenContainer edges={['top']} className="flex-1">
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{initials || 'U'}</Text>
-          </View>
-          <View style={styles.headerText}>
-            <Text style={styles.title}>
-              {userInfo.firstName} {userInfo.lastName}
-            </Text>
-            <Text style={styles.phone}>
-              {userInfo.phonenumber || 'Chưa cập nhật số điện thoại'}
-            </Text>
-          </View>
-        </View>
+      <View style={styles.root}>
+        {/* Scrollable List (beneath header) */}
+        <FlashList
+          data={settingsItems}
+          keyExtractor={(item) => item.key}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false },
+          )}
+          ListHeaderComponent={
+            <View style={{ height: HEADER_HEIGHT + 24 }}>
+              <Text
+                style={[
+                  styles.subtitle,
+                  {
+                    color: isDark ? colors.gray[300] : colors.gray[500],
+                    marginTop: 16,
+                  },
+                ]}
+              >
+                {t('subtitle')}
+              </Text>
+            </View>
+          }
+          ListFooterComponent={
+            <View style={{ paddingVertical: 24 }}>
+              <TouchableOpacity
+                style={[
+                  styles.logoutButton,
+                  {
+                    backgroundColor: isDark ? '#7f1d1d' : '#fee2e2',
+                  },
+                ]}
+                onPress={handleLogout}
+              >
+                <Text
+                  style={[
+                    styles.logoutText,
+                    {
+                      color: isDark ? '#fca5a5' : '#b91c1c',
+                    },
+                  ]}
+                >
+                  {t('logout.title')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          }
+        />
 
-        <Text style={styles.subtitle}>
-          Quản lý tài khoản, đơn hàng và ưu đãi của bạn.
-        </Text>
-
-        <View style={styles.listWrapper}>
-          <FlashList
-            data={SETTINGS_ITEMS}
-            keyExtractor={(item) => item.key}
-            renderItem={renderItem}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Đăng xuất</Text>
-        </TouchableOpacity>
+        {/* Floating Animated Header (absolutely positioned) */}
+        <AnimatedProfileHeader
+          firstName={userInfo.firstName || ''}
+          lastName={userInfo.lastName || ''}
+          phoneNumber={userInfo.phonenumber || ''}
+          initials={initials}
+          scrollY={scrollY}
+          onEditPress={handleEditProfile}
+          onQRPress={handleQRCode}
+        />
       </View>
     </ScreenContainer>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
   },
   subtitle: {
     fontSize: 14,
-    color: '#6b7280',
     marginBottom: 24,
   },
-  phone: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  listWrapper: {
-    flex: 1,
-    overflow: 'hidden',
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#e5e7eb',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fee2e2',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#b91c1c',
-  },
-  headerText: {
-    flex: 1,
-  },
   logoutButton: {
-    marginTop: 16,
     alignSelf: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: '#fee2e2',
   },
   logoutText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#b91c1c',
   },
 })

@@ -7,8 +7,11 @@ import BottomSheet, {
 import { Bike, PackageCheck, UtensilsCrossed } from 'lucide-react-native'
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Modal, StyleSheet, Text, View } from 'react-native'
+import {
+  GestureHandlerRootView,
+  TouchableOpacity,
+} from 'react-native-gesture-handler'
 
 const ORDER_TYPE_SHEET_SNAP = [280]
 
@@ -81,7 +84,7 @@ export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
               const iconColor = selected ? primaryColor : isDark ? colors.gray[400] : colors.gray[500]
               const Icon = opt.value === 'take-out' ? PackageCheck : opt.value === 'delivery' ? Bike : UtensilsCrossed
               return (
-                <Pressable
+                <TouchableOpacity activeOpacity={0.7}
                   key={opt.value}
                   onPress={() => handleSelect(opt.value)}
                   style={[
@@ -101,7 +104,7 @@ export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
                       <View style={orderTypeSheetStyles.radioDot} />
                     </View>
                   )}
-                </Pressable>
+                </TouchableOpacity>
               )
             })}
           </View>

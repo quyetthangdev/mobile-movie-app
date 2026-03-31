@@ -1,356 +1,537 @@
-import { useEffect } from 'react'
-import { ShoppingCartIcon } from 'lucide-react-native'
-import { useTranslation } from 'react-i18next'
-import type { ImageSourcePropType } from 'react-native'
-import { Dimensions, Image, ScrollView, Text, useColorScheme, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { FlashList } from '@shopify/flash-list'
+import { Image } from 'expo-image'
+import { NotebookText } from 'lucide-react-native'
+import React, { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
-import { Images } from '@/assets/images'
-import { Badge } from '@/components/ui'
-import {
-  APPLICABILITY_RULE,
-  colors,
-  publicFileURL,
-  VOUCHER_TYPE,
-} from '@/constants'
+import { APPLICABILITY_RULE, colors, publicFileURL, VOUCHER_TYPE } from '@/constants'
+import { scheduleStoreUpdate } from '@/lib/navigation'
+import { useOrderFlowStore } from '@/stores'
+import { IOrderItem } from '@/types'
 import {
   calculateOrderDisplayAndTotals,
-  capitalizeFirstLetter,
-  formatCurrency,
-  showErrorToastMessage,
+  capitalizeFirst,
   transformOrderItemToOrderDetail,
 } from '@/utils'
-import { IOrderItem, OrderStatus, OrderTypeEnum } from '@/types'
-import { useOrderFlowStore } from '@/stores'
+import { formatCurrencyNative } from 'cart-price-calc'
 
-import ConfirmUpdateOrderDialog from './confirm-update-order-dialog'
-import OrderItemNoteInUpdateOrderInput from './order-item-note-in-update-order-input'
 import OrderNoteInUpdateOrderInput from './order-note-in-update-order-input'
-import OrderTypeSelectInUpdateOrder from './order-type-select-in-update-order'
-import PickupTimeSelectInUpdateOrder from './pickup-time-select-in-update-order'
 import RemoveOrderItemInUpdateOrderDialog from './remove-order-item-in-update-order-dialog'
-import TableSelectInUpdateOrder from './table-select-in-update-order'
-import UpdateOrderQuantityNative from './update-order-quantity-native'
+
+// ─── Module-level theme constants (zero allocation per render) ────────────────
+
+const THEME_LIGHT = {
+  cardBg: { backgroundColor: colors.white.light },
+  nameColor: { color: colors.gray[900] },
+  chipBorder: { borderColor: colors.gray[300] },
+  chipTextColor: { color: colors.gray[600] },
+  origPriceColor: { color: colors.gray[400] },
+  qtyBtnBorder: { borderColor: colors.gray[300] },
+  qtyBtnTextColor: { color: colors.gray[700] },
+  qtyTextColor: { color: colors.gray[900] },
+  noteRowTheme: { borderColor: colors.gray[200], backgroundColor: colors.gray[50] },
+  noteInputColor: { color: colors.gray[700] },
+  noteIconColor: colors.gray[400],
+  notePlaceholderColor: colors.gray[400],
+} as const
+
+const THEME_DARK = {
+  cardBg: { backgroundColor: colors.gray[800] },
+  nameColor: { color: colors.gray[50] },
+  chipBorder: { borderColor: colors.gray[600] },
+  chipTextColor: { color: colors.gray[300] },
+  origPriceColor: { color: colors.gray[500] },
+  qtyBtnBorder: { borderColor: colors.gray[700] },
+  qtyBtnTextColor: { color: colors.gray[300] },
+  qtyTextColor: { color: colors.gray[50] },
+  noteRowTheme: { borderColor: colors.gray[700], backgroundColor: colors.gray[900] },
+  noteInputColor: { color: colors.gray[200] },
+  noteIconColor: colors.gray[500],
+  notePlaceholderColor: colors.gray[600],
+} as const
+
+const DEBOUNCE_QTY_MS = 200
+const DEBOUNCE_NOTE_MS = 400
+const BLURHASH = 'LKO2?U%2Tw=w]~RBVZRi};RPxuwH'
+
+// ─── Order Item Row ───────────────────────────────────────────────────────────
+
+interface OrderItemRowProps {
+  item: IOrderItem
+  displayItem:
+    | ReturnType<typeof calculateOrderDisplayAndTotals>['displayItems'][number]
+    | undefined
+  primaryColor: string
+  isDark: boolean
+  totalOrderItems: number
+  hasVoucherDiscount: (item: IOrderItem) => boolean
+  hasPromotionDiscount: (item: IOrderItem) => boolean
+  isSamePriceVoucher: (item: IOrderItem) => boolean
+  isAtLeastOneVoucher: (item: IOrderItem) => boolean
+  onQtyChange: (id: string, qty: number) => void
+  onNoteChange: (id: string, note: string) => void
+}
+
+const OrderItemRow = memo(
+  function OrderItemRow({
+    item,
+    displayItem,
+    primaryColor,
+    isDark,
+    totalOrderItems,
+    hasVoucherDiscount,
+    hasPromotionDiscount,
+    isSamePriceVoucher,
+    isAtLeastOneVoucher,
+    onQtyChange,
+    onNoteChange,
+  }: OrderItemRowProps) {
+    const themeStyles = isDark ? THEME_DARK : THEME_LIGHT
+    const priceStyle = useMemo(() => [row.price, { color: primaryColor }], [primaryColor])
+
+    // ── Optimistic qty ──────────────────────────────────────────────────────
+    const [pendingQty, setPendingQty] = useState<number | null>(null)
+    const qtyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const displayQty = pendingQty ?? item.quantity
+
+    const handleIncrease = useCallback(() => {
+      const next = displayQty + 1
+      setPendingQty(next)
+      if (qtyDebounceRef.current) clearTimeout(qtyDebounceRef.current)
+      qtyDebounceRef.current = setTimeout(() => {
+        onQtyChange(item.id!, next)
+        setPendingQty(null)
+        qtyDebounceRef.current = null
+      }, DEBOUNCE_QTY_MS)
+    }, [displayQty, item.id, onQtyChange])
+
+    const handleDecrease = useCallback(() => {
+      if (displayQty <= 1) return
+      const next = displayQty - 1
+      setPendingQty(next)
+      if (qtyDebounceRef.current) clearTimeout(qtyDebounceRef.current)
+      qtyDebounceRef.current = setTimeout(() => {
+        onQtyChange(item.id!, next)
+        setPendingQty(null)
+        qtyDebounceRef.current = null
+      }, DEBOUNCE_QTY_MS)
+    }, [displayQty, item.id, onQtyChange])
+
+    // ── Optimistic note ─────────────────────────────────────────────────────
+    const [localNote, setLocalNote] = useState(item.note || '')
+    const noteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    const handleNoteChange = useCallback(
+      (text: string) => {
+        setLocalNote(text)
+        if (noteDebounceRef.current) clearTimeout(noteDebounceRef.current)
+        noteDebounceRef.current = setTimeout(() => {
+          onNoteChange(item.id!, text)
+          noteDebounceRef.current = null
+        }, DEBOUNCE_NOTE_MS)
+      },
+      [item.id, onNoteChange],
+    )
+
+    // ── Price calculation ───────────────────────────────────────────────────
+    const original = item.originalPrice ?? 0
+    const priceAfterPromotion = displayItem?.priceAfterPromotion ?? 0
+    const finalPrice = displayItem?.finalPrice ?? 0
+
+    const _isSamePrice = isSamePriceVoucher(item)
+    const _isAtLeastOne = isAtLeastOneVoucher(item)
+    const _hasVoucher = hasVoucherDiscount(item)
+    const _hasPromotion = hasPromotionDiscount(item)
+
+    const displayUnitPrice = _isSamePrice
+      ? finalPrice
+      : _isAtLeastOne && _hasVoucher
+        ? original - (displayItem?.voucherDiscount ?? 0)
+        : _hasPromotion
+          ? priceAfterPromotion
+          : original
+
+    const showLineThrough =
+      (_isSamePrice || _hasPromotion || _hasVoucher) && original > displayUnitPrice
+
+    const lineTotal = displayUnitPrice * displayQty
+    const lineTotalOriginal = original * displayQty
+
+    const imageUrl = item.image ? `${publicFileURL}/${item.image}` : null
+
+    return (
+      <View style={[row.card, themeStyles.cardBg]}>
+        {/* Top row: image + info */}
+        <View style={row.topRow}>
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={row.image}
+              contentFit="cover"
+              recyclingKey={item.slug}
+              cachePolicy="disk"
+              placeholder={{ blurhash: BLURHASH }}
+              transition={0}
+              priority="high"
+            />
+          ) : (
+            <View style={[row.image, row.imagePlaceholder]} />
+          )}
+
+          <View style={row.info}>
+            <Text style={[row.name, themeStyles.nameColor]} numberOfLines={1}>
+              {capitalizeFirst(item.name)}
+            </Text>
+
+            {item.variant?.size?.name ? (
+              <View style={row.sizeChipWrap}>
+                <View style={[row.sizeChip, themeStyles.chipBorder]}>
+                  <Text style={[row.sizeChipText, themeStyles.chipTextColor]} numberOfLines={1}>
+                    {capitalizeFirst(item.variant.size.name)}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            <View style={row.bottomRow}>
+              <View style={row.priceCol}>
+                <Text style={priceStyle}>{formatCurrencyNative(lineTotal)}</Text>
+                {showLineThrough && (
+                  <Text style={[row.originalPrice, themeStyles.origPriceColor]}>
+                    {formatCurrencyNative(lineTotalOriginal)}
+                  </Text>
+                )}
+              </View>
+
+              <View style={row.qtyRow}>
+                <Pressable
+                  onPress={handleDecrease}
+                  disabled={displayQty <= 1}
+                  style={[
+                    row.qtyBtn,
+                    themeStyles.qtyBtnBorder,
+                    displayQty <= 1 && row.qtyBtnDisabled,
+                  ]}
+                >
+                  <Text style={[row.qtyBtnText, themeStyles.qtyBtnTextColor]}>−</Text>
+                </Pressable>
+                <Text style={[row.qtyText, themeStyles.qtyTextColor]}>{displayQty}</Text>
+                <Pressable onPress={handleIncrease} style={[row.qtyBtn, themeStyles.qtyBtnBorder]}>
+                  <Text style={[row.qtyBtnText, themeStyles.qtyBtnTextColor]}>+</Text>
+                </Pressable>
+                <RemoveOrderItemInUpdateOrderDialog
+                  orderItem={item}
+                  totalOrderItems={totalOrderItems}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Note input — full width bottom */}
+        <View style={[row.noteRow, themeStyles.noteRowTheme]}>
+          <View style={row.noteIconWrap}>
+            <NotebookText size={12} color={themeStyles.noteIconColor} />
+          </View>
+          <TextInput
+            value={localNote}
+            onChangeText={handleNoteChange}
+            placeholder="Ghi chú món..."
+            placeholderTextColor={themeStyles.notePlaceholderColor}
+            style={[row.noteInput, themeStyles.noteInputColor]}
+            multiline
+            numberOfLines={2}
+            textAlignVertical="top"
+          />
+        </View>
+      </View>
+    )
+  },
+  (prev, next) =>
+    prev.item === next.item &&
+    prev.displayItem === next.displayItem &&
+    prev.primaryColor === next.primaryColor &&
+    prev.isDark === next.isDark &&
+    prev.totalOrderItems === next.totalOrderItems &&
+    prev.onQtyChange === next.onQtyChange &&
+    prev.onNoteChange === next.onNoteChange,
+)
+
+// ─── Main Content ─────────────────────────────────────────────────────────────
 
 interface UpdateOrderContentNativeProps {
-  orderType: OrderTypeEnum
-  table: string
-  orderSlug: string
+  isDark: boolean
+  primaryColor: string
 }
 
 export default function UpdateOrderContentNative({
-  orderType,
-  table,
-  orderSlug,
+  isDark,
+  primaryColor,
 }: UpdateOrderContentNativeProps) {
-  const { t } = useTranslation('menu')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tVoucher } = useTranslation('voucher')
-  const isDark = useColorScheme() === 'dark'
-  const primaryColor = isDark ? colors.primary.dark : colors.primary.light
-  const insets = useSafeAreaInsets()
-
   const updatingData = useOrderFlowStore((s) => s.updatingData)
-  const removeDraftVoucher = useOrderFlowStore((s) => s.removeDraftVoucher)
-  const voucher = updatingData?.updateDraft?.voucher || null
-  const voucherSlug = voucher?.slug
-  const voucherMaxItems = voucher?.maxItems || 0
-  const orderItems = updatingData?.updateDraft?.orderItems || []
-  const cartItemQuantity = orderItems.reduce((total, item) => total + (item.quantity || 0), 0)
-  const deliveryFee = updatingData?.originalOrder?.deliveryFee || 0
-  const accumulatedPointsToUse = updatingData?.originalOrder?.accumulatedPointsToUse || 0
+  const updateDraftItemQuantity = useOrderFlowStore((s) => s.updateDraftItemQuantity)
+  const addDraftNote = useOrderFlowStore((s) => s.addDraftNote)
 
-  const transformedOrderItems = transformOrderItemToOrderDetail(orderItems)
-  const { displayItems, cartTotals } = calculateOrderDisplayAndTotals(transformedOrderItems, voucher)
-  const finalTotal =
-    (cartTotals?.finalTotal || 0) + deliveryFee - (accumulatedPointsToUse || 0)
+  const voucher = updatingData?.updateDraft?.voucher ?? null
+  const orderItems = useMemo(() => updatingData?.updateDraft?.orderItems ?? [], [updatingData])
 
-  useEffect(() => {
-    if (!voucherSlug || !voucherMaxItems) return
-    if (cartItemQuantity > voucherMaxItems) {
-      removeDraftVoucher()
-      showErrorToastMessage('toast.voucherMaxItemsExceeded')
-    }
-  }, [voucherSlug, voucherMaxItems, cartItemQuantity, removeDraftVoucher])
+  const { displayItems } = useMemo(
+    () =>
+      calculateOrderDisplayAndTotals(transformOrderItemToOrderDetail(orderItems), voucher),
+    [orderItems, voucher],
+  )
+  const displayItemMap = useMemo(() => {
+    const m = new Map<string, (typeof displayItems)[number]>()
+    for (const di of displayItems) m.set(di.slug, di)
+    return m
+  }, [displayItems])
+
+  const isSamePriceVoucher = useCallback(
+    (item: IOrderItem) =>
+      voucher?.type === VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
+      (voucher?.voucherProducts?.some((vp) => vp.product?.slug === item.productSlug) ?? false),
+    [voucher],
+  )
+  const isAtLeastOneVoucher = useCallback(
+    (item: IOrderItem) =>
+      voucher?.applicabilityRule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
+      (voucher?.voucherProducts?.some((vp) => vp.product?.slug === item.productSlug) ?? false),
+    [voucher],
+  )
+  const hasVoucherDiscount = useCallback(
+    (item: IOrderItem) => (displayItemMap.get(item.slug)?.voucherDiscount ?? 0) > 0,
+    [displayItemMap],
+  )
+  const hasPromotionDiscount = useCallback(
+    (item: IOrderItem) => (displayItemMap.get(item.slug)?.promotionDiscount ?? 0) > 0,
+    [displayItemMap],
+  )
+
+  const handleQtyChange = useCallback(
+    (id: string, qty: number) => {
+      scheduleStoreUpdate(() => updateDraftItemQuantity(id, qty))
+    },
+    [updateDraftItemQuantity],
+  )
+  const handleNoteChange = useCallback(
+    (id: string, note: string) => {
+      scheduleStoreUpdate(() => addDraftNote(id, note))
+    },
+    [addDraftNote],
+  )
+
+  const cardBg = isDark ? colors.gray[800] : colors.white.light
+  const cardBorder = isDark ? colors.gray[700] : colors.gray[100]
+  const dividerColor = isDark ? colors.gray[700] : colors.gray[100]
+  const labelColor = isDark ? colors.gray[400] : colors.gray[500]
+  const valueColor = isDark ? colors.gray[50] : colors.gray[900]
+
+  const renderItem = useCallback(
+    ({ item }: { item: IOrderItem }) => (
+      <View style={c.itemCard}>
+        <OrderItemRow
+          item={item}
+          displayItem={displayItemMap.get(item.slug)}
+          primaryColor={primaryColor}
+          isDark={isDark}
+          totalOrderItems={orderItems.length}
+          isSamePriceVoucher={isSamePriceVoucher}
+          isAtLeastOneVoucher={isAtLeastOneVoucher}
+          hasVoucherDiscount={hasVoucherDiscount}
+          hasPromotionDiscount={hasPromotionDiscount}
+          onQtyChange={handleQtyChange}
+          onNoteChange={handleNoteChange}
+        />
+      </View>
+    ),
+    [
+      displayItemMap, primaryColor, isDark, orderItems.length,
+      isSamePriceVoucher, isAtLeastOneVoucher, hasVoucherDiscount, hasPromotionDiscount,
+      handleQtyChange, handleNoteChange,
+    ],
+  )
+
+  const keyExtractor = useCallback(
+    (item: IOrderItem) => item.id ?? item.slug,
+    [],
+  )
+
+  const listHeader = useMemo(
+    () => (
+      <View style={c.listHeader}>
+        <Text style={[c.cardTitle, { color: valueColor }]}>Danh sách món</Text>
+        <Text style={[c.cardSub, { color: labelColor }]}>{orderItems.length} sản phẩm</Text>
+      </View>
+    ),
+    [valueColor, labelColor, orderItems.length],
+  )
+
+  const listFooter = useMemo(
+    () => (
+      <View style={[c.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <View style={[c.cardHeader, { borderBottomColor: dividerColor }]}>
+          <Text style={[c.cardTitle, { color: valueColor }]}>Ghi chú đơn hàng</Text>
+        </View>
+        <View style={c.cardBody}>
+          <OrderNoteInUpdateOrderInput order={updatingData?.updateDraft} />
+        </View>
+      </View>
+    ),
+    [cardBg, cardBorder, dividerColor, valueColor, updatingData?.updateDraft],
+  )
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-gray-900">
-      {/* Header: Order type + Bàn/Pickup cùng hàng */}
-      <View className="gap-2 border-b border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-        <View className="flex-row gap-2">
-          <View className="flex-1 min-w-0">
-            <OrderTypeSelectInUpdateOrder typeOrder={orderType} />
-          </View>
-          {orderType === OrderTypeEnum.AT_TABLE && (
-            <View className="flex-1 min-w-0">
-              <TableSelectInUpdateOrder
-                tableOrder={updatingData?.originalOrder?.table}
-                orderType={orderType}
-              />
-            </View>
-          )}
-          {orderType === OrderTypeEnum.TAKE_OUT && (
-            <View className="flex-1 min-w-0">
-              <PickupTimeSelectInUpdateOrder />
-            </View>
-          )}
-        </View>
-        {orderType === OrderTypeEnum.DELIVERY &&
-          updatingData?.updateDraft?.deliveryTo && (
-            <View className="mt-3 gap-1">
-              <Text className="text-sm font-bold text-gray-900 dark:text-gray-50">
-                {t('order.deliveryAddress')}:
-              </Text>
-              <Text className="text-sm text-gray-600 dark:text-gray-400">
-                {updatingData.updateDraft.deliveryTo.formattedAddress}
-              </Text>
-              <Text className="text-sm font-bold text-gray-900 dark:text-gray-50">
-                {t('order.deliveryPhone')}:
-              </Text>
-              <Text className="text-sm text-gray-600 dark:text-gray-400">
-                {updatingData.updateDraft.deliveryPhone}
-              </Text>
-            </View>
-          )}
-      </View>
-
-      {/* Order items - chiều cao cố định để scroll ổn định, tránh chập chờn */}
-      <ScrollView
-        style={{ maxHeight: Dimensions.get('window').height * 0.38 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 16 }}
-        showsVerticalScrollIndicator={true}
-        nestedScrollEnabled
-      >
-        {orderItems && orderItems.length > 0 ? (
-          <View className="gap-3">
-            <Text className="mb-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
-              {t('order.orderItems', 'Món đã chọn')} ({orderItems.length})
-            </Text>
-            {orderItems.map((item: IOrderItem) => {
-              const displayItem = displayItems.find((di) => di.slug === item.slug)
-              const original = item.originalPrice || 0
-              const priceAfterPromotion = displayItem?.priceAfterPromotion || 0
-              const finalPrice = displayItem?.finalPrice || 0
-
-              const isSamePriceVoucher =
-                voucher?.type === VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
-                voucher?.voucherProducts?.some(
-                  (vp) => vp.product?.slug === item.productSlug,
-                )
-              const isAtLeastOneVoucher =
-                voucher?.applicabilityRule ===
-                  APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
-                voucher?.voucherProducts?.some(
-                  (vp) => vp.product?.slug === item.productSlug,
-                )
-              const hasVoucherDiscount = (displayItem?.voucherDiscount ?? 0) > 0
-              const hasPromotionDiscount =
-                (displayItem?.promotionDiscount ?? 0) > 0
-
-              const displayPrice = isSamePriceVoucher
-                ? finalPrice
-                : isAtLeastOneVoucher && hasVoucherDiscount
-                  ? original - (displayItem?.voucherDiscount || 0)
-                  : hasPromotionDiscount
-                    ? priceAfterPromotion
-                    : original
-
-              const shouldShowLineThrough =
-                (isSamePriceVoucher ||
-                  hasPromotionDiscount ||
-                  hasVoucherDiscount) &&
-                original > displayPrice
-
-              return (
-                <View
-                  key={item.id || item.slug}
-                  className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
-                >
-                  <View className="flex-row gap-3 p-3">
-                    {/* Product image */}
-                    <View className="h-20 w-20 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700">
-                      <Image
-                        source={
-                          (item?.image
-                            ? { uri: `${publicFileURL}/${item.image}` }
-                            : Images.Food.ProductImage) as ImageSourcePropType
-                        }
-                        className="h-full w-full"
-                        resizeMode="cover"
-                      />
-                    </View>
-                    {/* Product info */}
-                    <View className="flex-1">
-                      <Text
-                        className="text-sm font-semibold text-gray-900 dark:text-gray-50"
-                        numberOfLines={2}
-                      >
-                        {item.name}
-                      </Text>
-                      <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                        {capitalizeFirstLetter(item.variant?.size?.name || '')}
-                      </Text>
-                      <View className="mt-2 flex-row items-center justify-between">
-                        <View className="flex-row items-center gap-1">
-                          {shouldShowLineThrough && (
-                            <Text className="text-xs text-gray-400 line-through">
-                              {formatCurrency(original)}
-                            </Text>
-                          )}
-                          <Text
-                            className="text-sm font-bold"
-                            style={{ color: primaryColor }}
-                          >
-                            {formatCurrency(displayPrice)}
-                          </Text>
-                        </View>
-                        <View className="flex-row items-center gap-2">
-                          <UpdateOrderQuantityNative orderItem={item} />
-                          <RemoveOrderItemInUpdateOrderDialog
-                            orderItem={item}
-                            totalOrderItems={orderItems.length}
-                          />
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                  <View className="border-t border-gray-100 px-3 pb-2 pt-1 dark:border-gray-700">
-                    <OrderItemNoteInUpdateOrderInput orderItem={item} />
-                  </View>
-                </View>
-              )
-            })}
-          </View>
-        ) : (
-          <View className="min-h-[12rem] items-center justify-center gap-2">
-            <View className="rounded-full bg-gray-200/50 p-2 dark:bg-gray-700/50">
-              <ShoppingCartIcon size={40} color="#9ca3af" />
-            </View>
-            <Text className="text-center font-medium text-gray-500 dark:text-gray-400">
-              {tCommon('common.noData')}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Footer: Note, voucher, totals, confirm - safe area bottom tránh chèn thanh điều hướng */}
-      {orderItems && orderItems.length > 0 && (
-        <View
-          className="border-t border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) + 16 }}
-        >
-          <View className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
-            <Text className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
-              {t('order.orderNote')}
-            </Text>
-            <OrderNoteInUpdateOrderInput order={updatingData?.updateDraft} />
-          </View>
-
-          {voucher && (
-            <View className="mt-2">
-              <Badge
-                variant="outline"
-                className="border-primary px-1 text-xs text-primary"
-              >
-                {(() => {
-                  const v = updatingData?.updateDraft?.voucher
-                  if (!v) return null
-                  const { type, value, applicabilityRule: rule } = v
-                  const discountValueText =
-                    type === VOUCHER_TYPE.PERCENT_ORDER
-                      ? tVoucher('voucher.percentDiscount', { value })
-                      : type === VOUCHER_TYPE.FIXED_VALUE
-                        ? tVoucher('voucher.fixedDiscount', {
-                            value: formatCurrency(value),
-                          })
-                        : type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                          ? tVoucher('voucher.samePriceProduct', {
-                              value: formatCurrency(value),
-                            })
-                          : ''
-                  const ruleText =
-                    rule === APPLICABILITY_RULE.ALL_REQUIRED
-                      ? tVoucher(
-                          type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                            ? 'voucher.requireAllSamePrice'
-                            : type === VOUCHER_TYPE.PERCENT_ORDER
-                              ? 'voucher.requireAllPercent'
-                              : 'voucher.requireAllFixed',
-                        )
-                      : rule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED
-                        ? tVoucher(
-                            type === VOUCHER_TYPE.SAME_PRICE_PRODUCT
-                              ? 'voucher.requireAtLeastOneSamePrice'
-                              : type === VOUCHER_TYPE.PERCENT_ORDER
-                                ? 'voucher.requireAtLeastOnePercent'
-                                : 'voucher.requireAtLeastOneFixed',
-                          )
-                        : ''
-                  return `${discountValueText} ${ruleText}`
-                })()}
-              </Badge>
-            </View>
-          )}
-
-          <View className="mt-4 gap-2 border-t border-gray-200 pt-4 dark:border-gray-700">
-            <Text className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
-              {t('order.orderSummary', 'Tóm tắt đơn hàng')}
-            </Text>
-            <View className="flex-row justify-between text-sm text-gray-600 dark:text-gray-400">
-              <Text>{t('order.subtotalBeforeDiscount')}</Text>
-              <Text>{formatCurrency(cartTotals?.subTotalBeforeDiscount || 0)}</Text>
-            </View>
-            {(cartTotals?.promotionDiscount || 0) > 0 && (
-              <View className="flex-row justify-between text-xs italic text-yellow-600">
-                <Text>{t('order.promotionDiscount')}</Text>
-                <Text>-{formatCurrency(cartTotals?.promotionDiscount || 0)}</Text>
-              </View>
-            )}
-            {(cartTotals?.voucherDiscount || 0) > 0 && (
-              <View className="flex-row justify-between text-xs italic text-green-600">
-                <Text>{t('order.voucherDiscount')}</Text>
-                <Text>-{formatCurrency(cartTotals?.voucherDiscount || 0)}</Text>
-              </View>
-            )}
-            {(accumulatedPointsToUse || 0) > 0 && (
-              <View className="flex-row justify-between text-xs italic text-primary">
-                <Text>{t('order.accumulatedPointsToUse')}</Text>
-                <Text>-{formatCurrency(accumulatedPointsToUse || 0)}</Text>
-              </View>
-            )}
-            {orderType === OrderTypeEnum.DELIVERY && (
-              <View className="flex-row justify-between text-xs italic text-gray-500 dark:text-gray-400">
-                <Text>{t('order.deliveryFee')}</Text>
-                <Text>{formatCurrency(deliveryFee)}</Text>
-              </View>
-            )}
-            <View className="flex-row items-center justify-between border-t border-gray-200 pt-2 dark:border-gray-700">
-              <Text className="text-base font-semibold text-gray-900 dark:text-gray-50">
-                {t('order.totalPayment')}
-              </Text>
-              <Text
-                className="text-2xl font-bold"
-                style={{ color: primaryColor }}
-              >
-                {formatCurrency(finalTotal)}
-              </Text>
-            </View>
-
-            {updatingData?.originalOrder?.status === OrderStatus.PENDING && (
-              <View className="mt-4">
-                <ConfirmUpdateOrderDialog
-                  orderSlug={orderSlug}
-                  disabled={
-                    (orderType === OrderTypeEnum.AT_TABLE && !table) ||
-                    (orderType === OrderTypeEnum.DELIVERY &&
-                      !updatingData?.updateDraft?.deliveryAddress)
-                  }
-                />
-              </View>
-            )}
-          </View>
-        </View>
-      )}
-    </View>
+    <FlashList
+      data={orderItems}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      overrideItemLayout={(layout: { span?: number; size?: number }) => { layout.size = 152 }}
+      ListHeaderComponent={listHeader}
+      ListFooterComponent={listFooter}
+      contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+    />
   )
 }
+
+// ─── Card styles ──────────────────────────────────────────────────────────────
+
+const c = StyleSheet.create({
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  itemCard: {
+    marginBottom: 10,
+  },
+  card: {
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  cardTitle: { fontSize: 15, fontWeight: '700' },
+  cardSub: { fontSize: 12 },
+  cardBody: { padding: 16 },
+})
+
+// ─── Row styles (matches cart-item-row exactly) ────────────────────────────────
+
+const row = StyleSheet.create({
+  card: {
+    marginHorizontal: 0,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  topRow: {
+    flexDirection: 'row',
+    padding: 8,
+    gap: 12,
+  },
+  image: {
+    width: 76,
+    height: 76,
+    borderRadius: 12,
+  },
+  imagePlaceholder: {
+    backgroundColor: colors.gray[200],
+  },
+  info: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 2,
+  },
+  name: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  sizeChipWrap: {
+    flexDirection: 'row',
+    marginTop: 2,
+  },
+  sizeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  sizeChipText: {
+    fontSize: 11,
+    fontWeight: '500',
+    flexShrink: 0,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  priceCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  price: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  originalPrice: {
+    fontSize: 12,
+    textDecorationLine: 'line-through',
+  },
+  qtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  qtyBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyBtnDisabled: { opacity: 0.3 },
+  qtyBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  qtyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    minWidth: 16,
+    textAlign: 'center',
+  },
+  noteIconWrap: { marginTop: 1 },
+  noteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginHorizontal: 8,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+  },
+  noteInput: {
+    flex: 1,
+    fontSize: 12,
+    padding: 0,
+    fontFamily: 'BeVietnamPro_400Regular',
+  },
+})

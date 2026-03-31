@@ -290,9 +290,9 @@ const headerStyles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   circleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
   },

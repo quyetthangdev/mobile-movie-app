@@ -5,21 +5,23 @@ import {
   useCreateOrder,
   useCreateOrderWithoutLogin,
 } from '@/hooks'
-import { navigateNative } from '@/lib/navigation'
+import { navigateNative } from '@/lib/navigation/navigation-engine'
 import { useBranchStore, useOrderFlowStore, useUpdateOrderStore, useUserStore } from '@/stores'
 import type { ICreateOrderRequest } from '@/types'
 import { calculateCartDisplayAndTotals, formatCurrency, parseKm, showErrorToast, showToast } from '@/utils'
-import { useQueryClient } from '@tanstack/react-query'
-import { useShallow } from 'zustand/react/shallow'
 import BottomSheet, {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetFooter,
+  type BottomSheetFooterProps,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
+import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useShallow } from 'zustand/react/shallow'
 
 const CONFIRM_ORDER_SNAP = ['65%']
 
@@ -71,7 +73,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
   const deliveryFee = useCalculateDeliveryFee(
     parseKm(order?.deliveryDistance) || 0,
     branchSlug || '',
-    { enabled: visible },
+    { enabled: visible && hasUser },
   )
 
   const isSubmitting = isPending || isPendingNoLogin
@@ -88,6 +90,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
         return
       }
     }
+    // console.log('Submitting order with data:', order)
 
     const req: ICreateOrderRequest = {
       type: order.type,
@@ -124,10 +127,23 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
       showToast(tToast('toast.createOrderSuccess'))
     }
 
+    const onError = (error: unknown) => {
+      onClose()
+      const err = error as { response?: { data?: { statusCode?: number; code?: number } } }
+      const code = err?.response?.data?.statusCode ?? err?.response?.data?.code
+      setTimeout(() => {
+        if (code) {
+          showErrorToast(code)
+        } else {
+          showToast(tToast('toast.createOrderFailed', 'Tạo đơn thất bại'))
+        }
+      }, 300)
+    }
+
     if (hasUser) {
-      createOrder(req, { onSuccess })
+      createOrder(req, { onSuccess, onError })
     } else {
-      createOrderWithoutLogin(req, { onSuccess })
+      createOrderWithoutLogin(req, { onSuccess, onError })
     }
   }, [order, branchSlug, hasUser, roleName, getUserInfo, transitionToPayment, clearUpdateOrderStore, createOrder, createOrderWithoutLogin, queryClient, onClose, tToast])
 
@@ -144,6 +160,34 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
   const handleChange = useCallback(
     (index: number) => { if (index === -1) onClose() },
     [onClose],
+  )
+
+  const renderFooter = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <BottomSheetFooter {...props} bottomInset={0}>
+        <View style={[confirmOrderStyles.footer, { backgroundColor: isDark ? colors.gray[900] : colors.white.light, borderTopColor: isDark ? colors.gray[700] : '#e5e7eb' }]}>
+          <Pressable
+            onPress={() => sheetRef.current?.close()}
+            disabled={isSubmitting}
+            style={[confirmOrderStyles.cancelBtn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], opacity: isSubmitting ? 0.5 : 1 }]}
+          >
+            <Text style={[confirmOrderStyles.cancelText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>{t('common.cancel', 'Huỷ')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+            style={[confirmOrderStyles.submitBtn, { backgroundColor: primaryColor, opacity: isSubmitting ? 0.7 : 1 }]}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={confirmOrderStyles.submitText}>{t('order.create', 'Đặt món')}</Text>
+            )}
+          </Pressable>
+        </View>
+      </BottomSheetFooter>
+    ),
+    [isDark, primaryColor, handleSubmit, isSubmitting, t],
   )
 
   if (!visible || !order) return null
@@ -164,6 +208,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
           backdropComponent={renderBackdrop}
           backgroundStyle={bgStyle}
           onChange={handleChange}
+          footerComponent={renderFooter}
         >
           {/* Header */}
           <View style={confirmOrderStyles.header}>
@@ -239,23 +284,6 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
               </View>
             </View>
           </BottomSheetScrollView>
-
-          {/* Footer buttons */}
-          <View style={[confirmOrderStyles.footer, { paddingBottom: 20 }]}>
-            <Pressable
-              onPress={() => sheetRef.current?.close()}
-              style={[confirmOrderStyles.cancelBtn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] }]}
-            >
-              <Text style={[confirmOrderStyles.cancelText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>{t('common.cancel', 'Huỷ')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              style={[confirmOrderStyles.submitBtn, { backgroundColor: primaryColor, opacity: isSubmitting ? 0.6 : 1 }]}
-            >
-              <Text style={confirmOrderStyles.submitText}>{isSubmitting ? '...' : t('order.create', 'Đặt món')}</Text>
-            </Pressable>
-          </View>
         </BottomSheet>
       </GestureHandlerRootView>
     </Modal>
@@ -276,7 +304,7 @@ const confirmOrderStyles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 80,
   },
   infoSection: {
     gap: 8,
@@ -346,6 +374,8 @@ const confirmOrderStyles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     paddingTop: 12,
+    paddingBottom: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   cancelBtn: {
     flex: 1,

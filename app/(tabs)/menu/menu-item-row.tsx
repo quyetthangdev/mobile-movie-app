@@ -1,10 +1,13 @@
 import { MenuItemImage } from '@/components/menu/menu-item-image'
 import type { IMenuItem } from '@/types'
 import { capitalizeFirst } from '@/utils'
+import { colors } from '@/constants'
 import { Plus } from 'lucide-react-native'
-import React, { memo, useCallback } from 'react'
+import React, { createContext, memo, useCallback, useContext } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { formatCurrencyNative } from 'cart-price-calc'
+
+export const MenuImagePhaseContext = createContext(false)
 
 export type MenuDisplayItem = {
   id: string
@@ -44,7 +47,6 @@ export const MenuItemRow = memo(
     listIndex,
     rawPrice,
     promotionValue,
-    showImage,
     primaryColor,
     onDetail,
     onAddToCart,
@@ -55,11 +57,11 @@ export const MenuItemRow = memo(
     listIndex: number
     rawPrice: number
     promotionValue: number
-    showImage: boolean
     primaryColor: string
     onDetail: (id: string) => void
     onAddToCart: (id: string) => void
   }) {
+    const showImage = useContext(MenuImagePhaseContext)
     const imagePriority =
       showImage && listIndex < MENU_IMAGE_HIGH_PRIORITY_COUNT ? 'high' : 'normal'
     const hasPromotion = promotionValue > 0 && rawPrice > 0
@@ -127,7 +129,6 @@ export const MenuItemRow = memo(
     prev.listIndex === next.listIndex &&
     prev.rawPrice === next.rawPrice &&
     prev.promotionValue === next.promotionValue &&
-    prev.showImage === next.showImage &&
     prev.primaryColor === next.primaryColor &&
     prev.onDetail === next.onDetail &&
     prev.onAddToCart === next.onAddToCart,
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     padding: 8,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white.light,
     borderRadius: 16,
     alignItems: 'stretch',
   },
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.gray[900],
   },
   priceRow: {
     flexDirection: 'row',
@@ -171,10 +172,10 @@ const styles = StyleSheet.create({
   priceDiscounted: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#f97316',
+    color: colors.warning.dark,
   },
   pricePromotionBadge: {
-    backgroundColor: '#dc2626',
+    backgroundColor: colors.destructive.dark,
     borderRadius: 999,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -182,11 +183,11 @@ const styles = StyleSheet.create({
   pricePromotionText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.white.light,
   },
   priceOriginal: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: colors.gray[400],
     textDecorationLine: 'line-through',
   },
   priceRegular: {

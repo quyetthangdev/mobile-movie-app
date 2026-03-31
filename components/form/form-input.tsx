@@ -67,7 +67,7 @@ export function FormInput<T extends FieldValues>({
             {label && (
               <Text
                 className={cn(
-                  'mb-1 text-xs text-gray-500 dark:text-gray-400',
+                  'mb-1 text-xs text-muted-foreground',
                   labelClassName
                 )}
               >
@@ -78,13 +78,13 @@ export function FormInput<T extends FieldValues>({
             {useTextInput ? (
               <TextInput
                 className={cn(
-                  'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-4 py-3 text-base border',
-                  showError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700',
+                  'bg-card text-foreground rounded-lg px-4 py-3 text-base border font-sans',
+                  showError ? 'border-destructive' : 'border-border',
                   disabled && 'opacity-50',
                   className
                 )}
                 placeholder={placeholder}
-                placeholderTextColor="#999"
+                placeholderTextColor="#9ca3af"
                 value={value}
                 onChangeText={handleChangeText}
                 onBlur={onBlur}
@@ -118,7 +118,7 @@ export function FormInput<T extends FieldValues>({
             )}
 
             {showHelper && (
-              <Text className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <Text className="mt-1 text-xs text-muted-foreground">
                 {helperText}
               </Text>
             )}

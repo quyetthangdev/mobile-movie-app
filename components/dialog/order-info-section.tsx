@@ -72,7 +72,7 @@ function OrderInfoSectionInner({ order }: OrderInfoSectionProps) {
               {t('menu.tableName')}
             </Text>
           </View>
-          <Text className="font-medium">{order.tableName}</Text>
+          <Text className="font-medium">{`Bàn số ${order.tableName}`}</Text>
         </View>
       )}
       {order?.type === OrderTypeEnum.DELIVERY &&

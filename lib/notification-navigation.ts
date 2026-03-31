@@ -49,6 +49,9 @@ function getRouteForMessage(
       // Staff/Chef: order status change → navigate to order detail
       return order ? `/payment/${order}` : null
 
+    case NotificationMessageCode.ORDER_PAID:
+      return order ? `/payment/${order}` : null
+
     case NotificationMessageCode.ORDER_BILL_FAILED_PRINTING:
     case NotificationMessageCode.ORDER_CHEF_ORDER_FAILED_PRINTING:
     case NotificationMessageCode.ORDER_LABEL_TICKET_FAILED_PRINTING:

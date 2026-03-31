@@ -24,6 +24,7 @@ import {
 import { TAB_ROUTES } from '@/constants/navigation.config'
 import { useOrderFlowAddToCart, useRunAfterTransition, useSpecificMenuItem } from '@/hooks'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
+import { colors } from '@/constants'
 import { getThemeColor } from '@/lib/utils'
 import type { IMenuItem } from '@/types'
 import { formatCurrency } from '@/utils'
@@ -102,7 +103,7 @@ export default function MenuItemDetailPlaceholder() {
       <View style={styles.header}>
         <NativeGesturePressable navigation={{ type: 'back' }} hapticStyle="light">
           <View style={styles.iconButton}>
-            <ChevronLeft size={18} color="#111827" />
+            <ChevronLeft size={18} color={colors.gray[900]} />
           </View>
         </NativeGesturePressable>
         <ExpoImage
@@ -119,7 +120,7 @@ export default function MenuItemDetailPlaceholder() {
           hapticStyle="light"
         >
           <View style={styles.iconButton}>
-            <ShoppingCart size={18} color="#111827" />
+            <ShoppingCart size={18} color={colors.gray[900]} />
             <CartBadge />
           </View>
         </NativeGesturePressable>
@@ -198,7 +199,7 @@ export default function MenuItemDetailPlaceholder() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: colors.gray[50] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -212,10 +213,10 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.gray[200],
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white.light,
   },
   logo: { height: 32, width: 112 },
   scrollView: { flex: 1 },
@@ -258,17 +259,17 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.gray[100],
     marginBottom: 16,
   },
   image: { width: '100%', height: '100%' },
-  imagePlaceholder: { flex: 1, backgroundColor: '#e5e7eb' },
+  imagePlaceholder: { flex: 1, backgroundColor: colors.gray[200] },
   titleSection: { marginBottom: 16 },
   productName: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
   price: { fontSize: 18, fontWeight: '700' },
   description: {
     fontSize: 14,
-    color: '#4b5563',
+    color: colors.gray[600],
     lineHeight: 20,
     marginBottom: 24,
   },

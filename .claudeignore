@@ -30,5 +30,15 @@ android/.gradle/
 # Sensitive info (Bảo mật)
 .env
 .env.*
+.env.local
+.env.*.local
+*.env
 *.pem
 *.key
+*.p12
+*.pfx
+*.jks
+credentials.json
+eas-credentials/
+google-services.json
+GoogleService-Info.plist

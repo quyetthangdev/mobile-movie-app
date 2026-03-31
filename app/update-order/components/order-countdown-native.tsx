@@ -1,8 +1,7 @@
 import dayjs from 'dayjs'
 import { Timer } from 'lucide-react-native'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Text, useColorScheme, View } from 'react-native'
+import { StyleSheet, Text, useColorScheme, View } from 'react-native'
 
 import { colors } from '@/constants'
 
@@ -11,19 +10,13 @@ interface OrderCountdownNativeProps {
   setIsExpired: (value: boolean) => void
 }
 
-const WARNING_THRESHOLD_SEC = 120 // 2 phút → đổi màu cảnh báo
-const CRITICAL_THRESHOLD_SEC = 60 // 1 phút → đổi màu nguy hiểm
+const WARNING_THRESHOLD_SEC = 120
+const CRITICAL_THRESHOLD_SEC = 60
 
-/**
- * Countdown 15 phút cho Update Order - Native.
- * Cố định trên header, không kéo thả (tối ưu mobile).
- * Phase 3: Warning state khi thời gian sắp hết.
- */
 export default function OrderCountdownNative({
   createdAt,
   setIsExpired,
 }: OrderCountdownNativeProps) {
-  const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
   const [timeRemainingInSec, setTimeRemainingInSec] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -32,23 +25,13 @@ export default function OrderCountdownNative({
   const seconds = timeRemainingInSec % 60
   const timeStr = `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`
 
-  const { bgColor, textColor, iconColor } = useMemo(() => {
+  const bgColor = useMemo(() => {
     const primary = isDark ? colors.primary.dark : colors.primary.light
-    const destructive = isDark
-      ? colors.destructive.dark
-      : colors.destructive.light
-    const warning = isDark ? '#f59e0b' : '#f97316' // amber-500 / orange-500
-
-    if (
-      timeRemainingInSec <= CRITICAL_THRESHOLD_SEC &&
-      timeRemainingInSec > 0
-    ) {
-      return { bgColor: destructive, textColor: '#fff', iconColor: '#fff' }
-    }
-    if (timeRemainingInSec <= WARNING_THRESHOLD_SEC) {
-      return { bgColor: warning, textColor: '#fff', iconColor: '#fff' }
-    }
-    return { bgColor: primary, textColor: '#fff', iconColor: '#fff' }
+    if (timeRemainingInSec <= CRITICAL_THRESHOLD_SEC && timeRemainingInSec > 0)
+      return isDark ? colors.destructive.dark : colors.destructive.light
+    if (timeRemainingInSec <= WARNING_THRESHOLD_SEC)
+      return isDark ? colors.warning.light : colors.warning.dark
+    return primary
   }, [timeRemainingInSec, isDark])
 
   useEffect(() => {
@@ -58,11 +41,8 @@ export default function OrderCountdownNative({
       try {
         const createTime = dayjs(createdAt)
         if (!createTime.isValid()) return
-        const now = dayjs()
-        const timePassed = now.diff(createTime, 'seconds')
-        const remainingTime = 900 - timePassed // 15 phút = 900 giây
-
-        if (remainingTime <= 0) {
+        const remaining = 900 - dayjs().diff(createTime, 'seconds')
+        if (remaining <= 0) {
           if (intervalRef.current) {
             clearInterval(intervalRef.current)
             intervalRef.current = null
@@ -70,16 +50,13 @@ export default function OrderCountdownNative({
           setTimeRemainingInSec(0)
           setIsExpired(true)
         } else {
-          setTimeRemainingInSec(remainingTime)
+          setTimeRemainingInSec(remaining)
         }
-      } catch {
-        // createdAt invalid — ignore
-      }
+      } catch { /* ignore */ }
     }
 
-    tick() // Chạy ngay lần đầu, không đợi 1s
+    tick()
     intervalRef.current = setInterval(tick, 1000)
-
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
@@ -89,14 +66,20 @@ export default function OrderCountdownNative({
   }, [createdAt, setIsExpired])
 
   return (
-    <View
-      className="flex-row items-center justify-center gap-2 py-2.5"
-      style={{ backgroundColor: bgColor }}
-    >
-      <Timer size={16} color={iconColor} />
-      <Text className="text-sm font-semibold" style={{ color: textColor }}>
-        {t('paymentMethod.timeRemaining', 'Thời gian còn lại')} {timeStr}
-      </Text>
+    <View style={[cs.bar, { backgroundColor: bgColor }]}>
+      <Timer size={13} color={colors.white.light} />
+      <Text style={cs.text}>Còn {timeStr}</Text>
     </View>
   )
 }
+
+const cs = StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 34,
+  },
+  text: { fontSize: 13, fontWeight: '600', color: colors.white.light },
+})

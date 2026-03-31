@@ -1,14 +1,16 @@
-import { ArrowLeft } from 'lucide-react-native'
-import React, { useState } from 'react'
-import { Text, View, useColorScheme } from 'react-native'
-import { ScreenContainer } from '@/components/layout'
-
+import { changePassword } from '@/api/profile'
 import { Button, Input } from '@/components/ui'
+import { ScreenContainer } from '@/components/layout'
 import { colors } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
 import { showToast } from '@/utils'
+import { ArrowLeft } from 'lucide-react-native'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Text, View, useColorScheme } from 'react-native'
 
 function ChangePasswordScreen() {
+  const { t } = useTranslation('profile')
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
@@ -20,22 +22,25 @@ function ChangePasswordScreen() {
 
   const handleSubmit = () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      showToast('Vui lòng điền đầy đủ thông tin.')
+      showToast(t('changePassword.fillRequired'))
       return
     }
 
     if (newPassword !== confirmPassword) {
-      showToast('Mật khẩu mới và xác nhận mật khẩu không khớp.')
+      showToast(t('changePassword.passwordMismatch'))
       return
     }
 
-    // TODO: Gọi API cập nhật mật khẩu với IUpdatePasswordRequest
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
-      showToast('Cập nhật mật khẩu (demo). Vui lòng nối API backend.')
-      navigateNative.back()
-    }, 500)
+    changePassword({ oldPassword, newPassword })
+      .then(() => {
+        showToast(t('changePassword.success'))
+        navigateNative.back()
+      })
+      .catch(() => {
+        showToast(t('changePassword.error'))
+      })
+      .finally(() => { setIsSubmitting(false) })
   }
 
   return (
@@ -47,49 +52,49 @@ function ChangePasswordScreen() {
           className="mr-2 px-0 min-h-0 h-10 w-10 rounded-full justify-center items-center"
           onPress={() => navigateNative.back()}
         >
-          <ArrowLeft size={22} color={isDark ? '#9ca3af' : '#6b7280'} />
+          <ArrowLeft size={22} color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />
         </Button>
         <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-          Đổi mật khẩu
+          {t('changePassword.title')}
         </Text>
       </View>
 
       <View className="flex-1 px-4 py-6">
         <View className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
           <View className="mb-4">
-            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">Mật khẩu hiện tại</Text>
+            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">{t('oldPassword')}</Text>
             <Input
               value={oldPassword}
               onChangeText={setOldPassword}
-              placeholder="Nhập mật khẩu hiện tại"
+              placeholder={t('enterOldPassword')}
               secureTextEntry
             />
           </View>
 
           <View className="mb-4">
-            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">Mật khẩu mới</Text>
+            <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">{t('newPassword')}</Text>
             <Input
               value={newPassword}
               onChangeText={setNewPassword}
-              placeholder="Nhập mật khẩu mới"
+              placeholder={t('enterNewPassword')}
               secureTextEntry
             />
           </View>
 
           <View className="mb-2">
             <Text className="mb-1 text-xs text-gray-500 dark:text-gray-400">
-              Xác nhận mật khẩu mới
+              {t('confirmPassword')}
             </Text>
             <Input
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              placeholder="Nhập lại mật khẩu mới"
+              placeholder={t('enterConfirmPassword')}
               secureTextEntry
             />
           </View>
 
           <Text className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-            Mật khẩu nên có tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
+            {t('changePassword.passwordHint')}
           </Text>
         </View>
 
@@ -101,7 +106,7 @@ function ChangePasswordScreen() {
             onPress={handleSubmit}
           >
             <Text className="text-sm font-semibold text-white">
-              {isSubmitting ? 'Đang cập nhật...' : 'Lưu mật khẩu mới'}
+              {isSubmitting ? t('changePassword.updating') : t('changePassword.save')}
             </Text>
           </Button>
         </View>

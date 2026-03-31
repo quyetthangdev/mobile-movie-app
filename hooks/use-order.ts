@@ -82,7 +82,7 @@ export const useOrderBySlug = (slug: string | null | undefined) => {
 
   return useQuery({
     queryKey: ['order', slug],
-    queryFn: () => getOrderBySlug(slug!), // dùng ! vì đã kiểm tra ở trên
+    queryFn: () => getOrderBySlug(slug!),
     enabled: isValidSlug, // Block fetching if slug is not valid
     placeholderData: keepPreviousData,
   })

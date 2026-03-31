@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { colors } from '@/constants'
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react-native'
 import React, { useCallback } from 'react'
 import { Pressable, Text, View } from 'react-native'
@@ -35,9 +36,9 @@ export function DataTableHeader() {
           </Text>
           {canSort && (
             <View className="opacity-60">
-              {dir === 'asc' && <ArrowUp size={14} color="#6b7280" />}
-              {dir === 'desc' && <ArrowDown size={14} color="#6b7280" />}
-              {dir === 'none' && <ChevronsUpDown size={14} color="#6b7280" />}
+              {dir === 'asc' && <ArrowUp size={14} color={colors.gray[500]} />}
+              {dir === 'desc' && <ArrowDown size={14} color={colors.gray[500]} />}
+              {dir === 'none' && <ChevronsUpDown size={14} color={colors.gray[500]} />}
             </View>
           )}
         </Pressable>

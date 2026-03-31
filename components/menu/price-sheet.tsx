@@ -164,7 +164,7 @@ export const PriceFilterSheet = memo(function PriceFilterSheet({
                     placeholder="0"
                     placeholderTextColor={labelColor}
                     keyboardType="number-pad"
-                    style={[styles.input, { backgroundColor: inputBg, color: inputColor }]}
+                    style={[styles.input, { backgroundColor: inputBg, color: inputColor, fontFamily: 'BeVietnamPro_400Regular' }]}
                   />
                   <Text style={[styles.suffix, { color: labelColor }]}>đ</Text>
                 </View>
@@ -181,7 +181,7 @@ export const PriceFilterSheet = memo(function PriceFilterSheet({
                     placeholder="300000"
                     placeholderTextColor={labelColor}
                     keyboardType="number-pad"
-                    style={[styles.input, { backgroundColor: inputBg, color: inputColor }]}
+                    style={[styles.input, { backgroundColor: inputBg, color: inputColor, fontFamily: 'BeVietnamPro_400Regular' }]}
                   />
                   <Text style={[styles.suffix, { color: labelColor }]}>đ</Text>
                 </View>

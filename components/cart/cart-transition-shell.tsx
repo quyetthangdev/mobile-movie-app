@@ -7,7 +7,8 @@ import { colors } from '@/constants'
 import React from 'react'
 import { View } from 'react-native'
 
-import { CART_HEADER_CONTENT_HEIGHT, CartHeaderBlur, CartSkeleton } from '@/components/cart'
+import { CART_HEADER_CONTENT_HEIGHT, CartHeaderBlur } from './cart-header-blur'
+import CartSkeleton from './cart-skeleton'
 import { cn } from '@/utils/cn'
 
 type CartTransitionShellProps = {

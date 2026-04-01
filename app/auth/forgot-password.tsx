@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router'
-import { ArrowRight, Mail, Phone } from 'lucide-react-native'
+import { ChevronRight, Mail, Phone } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'
 import { ScreenContainer } from '@/components/layout'
@@ -61,7 +61,7 @@ export default function ForgotPasswordScreen() {
                   </Text>
                 </View>
               </View>
-              <ArrowRight size={20} color={arrowColor} />
+              <ChevronRight size={20} color={arrowColor} />
             </TouchableOpacity>
 
             {/* Phone Option */}
@@ -82,7 +82,7 @@ export default function ForgotPasswordScreen() {
                   </Text>
                 </View>
               </View>
-              <ArrowRight size={20} color={arrowColor} />
+              <ChevronRight size={20} color={arrowColor} />
             </TouchableOpacity>
           </View>
 

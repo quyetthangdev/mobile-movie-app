@@ -1,9 +1,10 @@
-import { NativeStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { CustomStack, profileNativeStackScreenOptions } from '@/layouts/custom-stack'
 
 /**
  * Home stack: tin tức /home/news/[slug], ...
- * Native Stack — slide_from_right, fullScreenGestureEnabled.
+ * Uses CustomStack with withLayoutContext for proper expo-router integration
+ * (avoids nested independent Stack instances that cause infinite updates)
  */
 export default function HomeLayout() {
-  return <NativeStackWithMasterTransition />
+  return <CustomStack screenOptions={profileNativeStackScreenOptions} />
 }

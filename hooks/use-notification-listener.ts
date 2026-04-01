@@ -57,7 +57,12 @@ function expoToPayload(
 export function useNotificationListener(enabled = true) {
   const listenerRef = useRef<Notifications.EventSubscription | null>(null)
 
+  // eslint-disable-next-line no-console
+  console.log('[FCM] useNotificationListener called, enabled:', enabled)
+
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[FCM] useNotificationListener effect running, enabled:', enabled)
     if (!enabled) return
 
     // Foreground notification received
@@ -66,7 +71,7 @@ export function useNotificationListener(enabled = true) {
         const payload = expoToPayload(notification)
 
         // eslint-disable-next-line no-console
-        console.log('[FCM] Foreground notification received:', JSON.stringify({
+        console.log('[FCM] 📬 Foreground notification received:', JSON.stringify({
           title: payload.notification?.title,
           body: payload.notification?.body,
           data: payload.data,
@@ -85,13 +90,23 @@ export function useNotificationListener(enabled = true) {
         const title =
           payload.notification?.title || 'Thông báo'
         const body = payload.notification?.body || ''
-        if (body) showToast(body, title)
+        if (body) {
+          // eslint-disable-next-line no-console
+          console.log('[FCM] Showing toast:', { title, body })
+          showToast(body, title)
+        }
 
         // Sound
+        // eslint-disable-next-line no-console
+        console.log('[FCM] Playing notification sound...')
         playNotificationSound()
       })
 
+    // eslint-disable-next-line no-console
+    console.log('[FCM] ✅ Foreground listener registered')
     return () => {
+      // eslint-disable-next-line no-console
+      console.log('[FCM] Removing foreground listener')
       listenerRef.current?.remove()
       listenerRef.current = null
     }

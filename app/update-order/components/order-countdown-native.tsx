@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { Timer } from 'lucide-react-native'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, useColorScheme, View } from 'react-native'
 
 import { colors } from '@/constants'
@@ -13,7 +13,7 @@ interface OrderCountdownNativeProps {
 const WARNING_THRESHOLD_SEC = 120
 const CRITICAL_THRESHOLD_SEC = 60
 
-export default function OrderCountdownNative({
+const OrderCountdownNative = memo(function OrderCountdownNative({
   createdAt,
   setIsExpired,
 }: OrderCountdownNativeProps) {
@@ -21,17 +21,17 @@ export default function OrderCountdownNative({
   const [timeRemainingInSec, setTimeRemainingInSec] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const minutes = Math.floor(timeRemainingInSec / 60)
-  const seconds = timeRemainingInSec % 60
-  const timeStr = `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`
-
-  const bgColor = useMemo(() => {
+  const { bgColor, timeStr } = useMemo(() => {
+    const m = Math.floor(timeRemainingInSec / 60)
+    const s = timeRemainingInSec % 60
+    const str = `${m}:${s < 10 ? `0${s}` : s}`
     const primary = isDark ? colors.primary.dark : colors.primary.light
+    let color = primary
     if (timeRemainingInSec <= CRITICAL_THRESHOLD_SEC && timeRemainingInSec > 0)
-      return isDark ? colors.destructive.dark : colors.destructive.light
-    if (timeRemainingInSec <= WARNING_THRESHOLD_SEC)
-      return isDark ? colors.warning.light : colors.warning.dark
-    return primary
+      color = isDark ? colors.destructive.dark : colors.destructive.light
+    else if (timeRemainingInSec <= WARNING_THRESHOLD_SEC)
+      color = isDark ? colors.warning.light : colors.warning.dark
+    return { bgColor: color, timeStr: str }
   }, [timeRemainingInSec, isDark])
 
   useEffect(() => {
@@ -71,7 +71,9 @@ export default function OrderCountdownNative({
       <Text style={cs.text}>Còn {timeStr}</Text>
     </View>
   )
-}
+})
+
+export default OrderCountdownNative
 
 const cs = StyleSheet.create({
   bar: {

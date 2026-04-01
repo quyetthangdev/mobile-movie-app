@@ -11,7 +11,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-black',
-        secondary: 'bg-zinc-200',
+        primary: 'bg-primary',
+        secondary: 'border border-border bg-transparent',
         outline: 'border border-zinc-300 bg-transparent',
         destructive: 'bg-red-600',
         ghost: 'bg-transparent',
@@ -37,7 +38,8 @@ const textVariants = cva('font-medium', {
   variants: {
     variant: {
       default: 'text-white',
-      secondary: 'text-black',
+      primary: 'text-primary-foreground',
+      secondary: 'text-foreground',
       outline: 'text-black',
       destructive: 'text-white',
       ghost: 'text-gray-900 dark:text-gray-50',
@@ -79,8 +81,9 @@ export const Button = React.forwardRef<
   const content = loading ? (
     <ActivityIndicator
       color={
-        variant === 'secondary' ? colors.gray[900] :
+        variant === 'secondary' ? colors.mutedForeground.light :
         variant === 'ghost' ? colors.gray[900] :
+        variant === 'primary' ? colors.white.light :
         colors.white.light
       }
     />

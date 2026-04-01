@@ -51,18 +51,27 @@ export async function registerTokenWithRetry(
   const platform = getPlatform()
   const userAgent = `${Platform.OS}/${Platform.Version}`
 
+  // eslint-disable-next-line no-console
+  console.log('[FCM] registerTokenWithRetry start:', { platform, token: token.slice(0, 20) + '...' })
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
+      // eslint-disable-next-line no-console
+      console.log(`[FCM] Attempt ${attempt + 1}/${MAX_RETRIES + 1} - calling registerDeviceToken API...`)
       const response = await registerDeviceToken({ token, platform, userAgent })
       // eslint-disable-next-line no-console
-      if (__DEV__) console.log('[FCM] Server register response:', JSON.stringify(response))
+      console.log('[FCM] ✅ Server register response:', JSON.stringify(response))
       return { success: true }
     } catch (error) {
       const isLast = attempt === MAX_RETRIES
-      if (isLast || !isRetryableError(error)) {
+      const isRetryable = isRetryableError(error)
+      // eslint-disable-next-line no-console
+      console.log(`[FCM] Attempt ${attempt + 1} failed - isRetryable: ${isRetryable}, isLast: ${isLast}`, error)
+
+      if (isLast || !isRetryable) {
         // eslint-disable-next-line no-console
         console.error(
-          `[FCM] Registration failed after ${attempt + 1} attempt(s):`,
+          `[FCM] ❌ Registration failed after ${attempt + 1} attempt(s):`,
           error,
         )
         return {
@@ -71,7 +80,10 @@ export async function registerTokenWithRetry(
         }
       }
       // Wait before retry
-      await delay(BACKOFF_DELAYS[attempt] ?? 15000)
+      const backoffMs = BACKOFF_DELAYS[attempt] ?? 15000
+      // eslint-disable-next-line no-console
+      console.log(`[FCM] Retrying in ${backoffMs}ms...`)
+      await delay(backoffMs)
     }
   }
   return { success: false, error: 'Max retries exceeded' }

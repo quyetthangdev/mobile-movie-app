@@ -5,35 +5,75 @@ import {
   CreditCard,
   Smartphone,
 } from 'lucide-react-native'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Text, useColorScheme, View } from 'react-native'
 
 import { RadioGroup } from '@/components/ui'
-import { PaymentMethod, Role, VOUCHER_PAYMENT_METHOD } from '@/constants'
+import { PaymentMethod, Role } from '@/constants'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/stores'
-import { IOrder } from '@/types'
+import { IOrder, IUserInfo } from '@/types'
 import { formatCurrency } from '@/utils'
 
 import { PaymentMethodOption } from './payment-method-option'
 
+// ─── Pure helpers (no React deps) ────────────────────────────────────────────
+
+function computeAvailableMethods(
+  userInfo: IUserInfo | null,
+  disabledMethods?: PaymentMethod[],
+): PaymentMethod[] {
+  const methods: PaymentMethod[] = [PaymentMethod.BANK_TRANSFER]
+  if (userInfo && userInfo.role.name !== Role.CUSTOMER) {
+    methods.push(PaymentMethod.CASH, PaymentMethod.CREDIT_CARD)
+  }
+  if (userInfo && userInfo.role.name === Role.CUSTOMER) {
+    methods.push(PaymentMethod.POINT)
+  }
+  return disabledMethods?.length
+    ? methods.filter((m) => !disabledMethods.includes(m))
+    : methods
+}
+
+const VOUCHER_METHOD_KEY: Record<PaymentMethod, string> = {
+  [PaymentMethod.BANK_TRANSFER]: 'bank-transfer',
+  [PaymentMethod.CASH]: 'cash',
+  [PaymentMethod.POINT]: 'point',
+  [PaymentMethod.CREDIT_CARD]: 'credit-card',
+}
+
+function isSupportedByVoucher(
+  method: PaymentMethod,
+  voucherPaymentMethods: Array<{ paymentMethod: string }>,
+): boolean {
+  return voucherPaymentMethods.some(
+    (vpm) => vpm.paymentMethod === VOUCHER_METHOD_KEY[method],
+  )
+}
+
 interface PaymentMethodRadioGroupProps {
   order?: IOrder
+  /** Controlled value — overrides internal state when provided (e.g. after conflict resolution) */
+  value?: string | null
   defaultValue: string | null
   disabledMethods?: PaymentMethod[]
   disabledReasons?: Record<PaymentMethod, string>
   onSubmit?: (paymentMethod: PaymentMethod, transactionId?: string) => void
   onSelect?: (paymentMethod: PaymentMethod, transactionId?: string) => void
+  /** Called when user taps a method blocked by voucher incompatibility */
+  onConflict?: (blockedMethod: PaymentMethod) => void
 }
 
 export default function PaymentMethodRadioGroup({
   order,
+  value,
   defaultValue,
   disabledMethods,
   disabledReasons,
   onSubmit,
   onSelect,
+  onConflict,
 }: PaymentMethodRadioGroupProps) {
   const { t } = useTranslation('menu')
   const { t: tProfile } = useTranslation('profile')
@@ -57,126 +97,72 @@ export default function PaymentMethodRadioGroup({
   const isCustomer =
     userInfo && userInfo.role.name === Role.CUSTOMER
 
-  // Get all available payment methods based on user role
-  const getAvailablePaymentMethods = useCallback(() => {
-    const methods = [PaymentMethod.BANK_TRANSFER]
-
-    if (userInfo && userInfo.role.name !== Role.CUSTOMER) {
-      methods.push(PaymentMethod.CASH)
+  // Single memoized computation — replaces 6 cascaded hooks
+  const {
+    bankTransferSupported,
+    creditCardSupported,
+    cashSupported,
+    pointSupported,
+    hasCompatiblePaymentMethod,
+    hasBlockedMethods,
+    blockedMethodLabels,
+  } = useMemo(() => {
+    const available = computeAvailableMethods(userInfo, disabledMethods)
+    const hasVoucher = !!order?.voucher && voucherPaymentMethods.length > 0
+    const isSupported = (method: PaymentMethod) => {
+      if (!available.includes(method)) return false
+      if (!hasVoucher) return true
+      return isSupportedByVoucher(method, voucherPaymentMethods)
     }
-
-    if (userInfo && userInfo.role.name === Role.CUSTOMER) {
-      methods.push(PaymentMethod.POINT)
+    const blocked = hasVoucher
+      ? available.filter((m) => !isSupportedByVoucher(m, voucherPaymentMethods))
+      : []
+    const labelMap: Record<PaymentMethod, string> = {
+      [PaymentMethod.BANK_TRANSFER]: t('paymentMethod.bankTransfer', 'Chuyển khoản'),
+      [PaymentMethod.CASH]: t('paymentMethod.cash', 'Tiền mặt'),
+      [PaymentMethod.POINT]: t('paymentMethod.coin', 'Điểm tích lũy'),
+      [PaymentMethod.CREDIT_CARD]: t('paymentMethod.creditCard', 'Thẻ tín dụng'),
     }
-
-    if (userInfo && userInfo.role.name !== Role.CUSTOMER) {
-      methods.push(PaymentMethod.CREDIT_CARD)
+    return {
+      bankTransferSupported: isSupported(PaymentMethod.BANK_TRANSFER),
+      creditCardSupported: isSupported(PaymentMethod.CREDIT_CARD),
+      cashSupported: isSupported(PaymentMethod.CASH),
+      pointSupported: isSupported(PaymentMethod.POINT),
+      hasCompatiblePaymentMethod: hasVoucher
+        ? available.some((m) => isSupportedByVoucher(m, voucherPaymentMethods))
+        : available.length > 0,
+      hasBlockedMethods: blocked.length > 0,
+      blockedMethodLabels: blocked.map((m) => labelMap[m]).join(', '),
     }
+  }, [userInfo, disabledMethods, order?.voucher, voucherPaymentMethods, t])
 
-    // Filter out disabled methods
-    if (disabledMethods) {
-      return methods.filter(
-        (method) => !disabledMethods.includes(method),
+  // Auto-select method mặc định khi mount: giao role-methods × voucher-methods, pick first
+  const autoSelectedRef = useRef(false)
+  useEffect(() => {
+    if (autoSelectedRef.current || defaultValue) return
+    autoSelectedRef.current = true
+
+    const available = computeAvailableMethods(userInfo, disabledMethods)
+    const vpmList = order?.voucher?.voucherPaymentMethods ?? []
+    let candidates = available
+    if (vpmList.length > 0) {
+      candidates = available.filter((m) =>
+        isSupportedByVoucher(m, vpmList),
       )
     }
 
-    return methods
-  }, [userInfo, disabledMethods])
-
-  // Get supported payment methods from voucher
-  const getSupportedPaymentMethods = useCallback(() => {
-    if (!order?.voucher || voucherPaymentMethods.length === 0) {
-      return getAvailablePaymentMethods()
+    if (candidates.length > 0) {
+      const first = candidates[0]
+      setSelectedPaymentMethod(first)
+      if (onSelect) onSelect(first)
+      if (onSubmit) onSubmit(first)
     }
+  // Chỉ chạy một lần khi mount — deps cố tình để trống
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    const supportedMethods = voucherPaymentMethods.map((vpm) => {
-      switch (vpm.paymentMethod) {
-        case VOUCHER_PAYMENT_METHOD.CASH:
-          return PaymentMethod.CASH
-        case VOUCHER_PAYMENT_METHOD.BANK_TRANSFER:
-          return PaymentMethod.BANK_TRANSFER
-        case VOUCHER_PAYMENT_METHOD.POINT:
-          return PaymentMethod.POINT
-        case VOUCHER_PAYMENT_METHOD.CREDIT_CARD:
-          return PaymentMethod.CREDIT_CARD
-        default:
-          return PaymentMethod.BANK_TRANSFER
-      }
-    })
-
-    if (disabledMethods) {
-      return supportedMethods.filter(
-        (method) => !disabledMethods.includes(method),
-      )
-    }
-
-    return supportedMethods
-  }, [
-    order?.voucher,
-    voucherPaymentMethods,
-    getAvailablePaymentMethods,
-    disabledMethods,
-  ])
-
-  // Check if payment method is supported by voucher and role
-  const isPaymentMethodSupported = useCallback(
-    (paymentMethod: PaymentMethod) => {
-      if (disabledMethods?.includes(paymentMethod)) {
-        return false
-      }
-
-      const availableMethods = getAvailablePaymentMethods()
-      if (!availableMethods.includes(paymentMethod)) {
-        return false
-      }
-
-      if (!order?.voucher || voucherPaymentMethods.length === 0) {
-        return true
-      }
-
-      return voucherPaymentMethods.some((vpm) => {
-        switch (paymentMethod) {
-          case PaymentMethod.CASH:
-            return vpm.paymentMethod === 'cash'
-          case PaymentMethod.BANK_TRANSFER:
-            return vpm.paymentMethod === 'bank-transfer'
-          case PaymentMethod.POINT:
-            return vpm.paymentMethod === 'point'
-          case PaymentMethod.CREDIT_CARD:
-            return vpm.paymentMethod === 'credit-card'
-          default:
-            return false
-        }
-      })
-    },
-    [
-      disabledMethods,
-      getAvailablePaymentMethods,
-      order?.voucher,
-      voucherPaymentMethods,
-    ],
-  )
-
-  // Check if there's any compatible payment method
-  const hasCompatiblePaymentMethod = useMemo(() => {
-    const availableMethods = getAvailablePaymentMethods()
-
-    if (!order?.voucher || voucherPaymentMethods.length === 0) {
-      return availableMethods.length > 0
-    }
-
-    const supportedMethods = getSupportedPaymentMethods()
-    return supportedMethods.some((method) =>
-      availableMethods.includes(method),
-    )
-  }, [
-    order?.voucher,
-    voucherPaymentMethods,
-    getAvailablePaymentMethods,
-    getSupportedPaymentMethods,
-  ])
-
-  const currentValue = selectedPaymentMethod || defaultValue || ''
+  // value prop (controlled từ parent) takes precedence; fallback về internal state hoặc defaultValue
+  const currentValue = value ?? (selectedPaymentMethod || defaultValue || '')
 
   const handlePaymentMethodChange = useCallback(
     (value: string) => {
@@ -222,15 +208,15 @@ export default function PaymentMethodRadioGroup({
     [disabledReasons, t],
   )
 
-  const bankTransferSupported = isPaymentMethodSupported(
-    PaymentMethod.BANK_TRANSFER,
-  )
-  const creditCardSupported = isPaymentMethodSupported(
-    PaymentMethod.CREDIT_CARD,
-  )
-  const cashSupported = isPaymentMethodSupported(PaymentMethod.CASH)
-  const pointSupported = isPaymentMethodSupported(
-    PaymentMethod.POINT,
+  // Returns a conflict handler only for methods blocked by voucher (not by role/disabledMethods)
+  const makeConflictHandler = useCallback(
+    (method: PaymentMethod): ((m: PaymentMethod) => void) | undefined => {
+      if (!onConflict) return undefined
+      if (disabledMethods?.includes(method)) return undefined
+      if (!order?.voucher || voucherPaymentMethods.length === 0) return undefined
+      return onConflict
+    },
+    [onConflict, disabledMethods, order?.voucher, voucherPaymentMethods],
   )
 
   const radioGroup = (
@@ -249,6 +235,7 @@ export default function PaymentMethodRadioGroup({
           PaymentMethod.BANK_TRANSFER,
         )}
         onSelect={handleSelectMethod}
+        onSelectDisabled={makeConflictHandler(PaymentMethod.BANK_TRANSFER)}
       />
       {isNonCustomer && (
         <PaymentMethodOption
@@ -261,6 +248,7 @@ export default function PaymentMethodRadioGroup({
             PaymentMethod.CREDIT_CARD,
           )}
           onSelect={handleSelectMethod}
+          onSelectDisabled={makeConflictHandler(PaymentMethod.CREDIT_CARD)}
           showTransactionInput={
             selectedPaymentMethod === PaymentMethod.CREDIT_CARD
           }
@@ -280,6 +268,7 @@ export default function PaymentMethodRadioGroup({
           isDark={isDark}
           disabledReason={getDisabledReason(PaymentMethod.CASH)}
           onSelect={handleSelectMethod}
+          onSelectDisabled={makeConflictHandler(PaymentMethod.CASH)}
         />
       )}
       {isCustomer && (
@@ -291,6 +280,7 @@ export default function PaymentMethodRadioGroup({
           isDark={isDark}
           disabledReason={getDisabledReason(PaymentMethod.POINT)}
           onSelect={handleSelectMethod}
+          onSelectDisabled={makeConflictHandler(PaymentMethod.POINT)}
           pointLayout
         >
           <Text
@@ -343,8 +333,8 @@ export default function PaymentMethodRadioGroup({
               })
               .join(', ')}
             , {t('paymentMethod.butYouCanUse')}{' '}
-            {getAvailablePaymentMethods()
-              .map((method) => {
+            {computeAvailableMethods(userInfo, disabledMethods)
+              .map((method: PaymentMethod) => {
                 switch (method) {
                   case PaymentMethod.CASH:
                     return t('paymentMethod.cash')
@@ -359,6 +349,24 @@ export default function PaymentMethodRadioGroup({
                 }
               })
               .join(', ')}
+          </Text>
+        </View>
+        {radioGroup}
+      </View>
+    )
+  }
+
+  // Có method khả dụng nhưng voucher chặn một số → hiện warning nhẹ
+  if (hasBlockedMethods) {
+    return (
+      <View className="flex-col gap-4">
+        <View className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
+          <Text className="text-xs text-amber-700 dark:text-amber-300">
+            ⚠️ Voucher{' '}
+            <Text className="font-semibold">{order?.voucher?.code}</Text>
+            {' '}không hỗ trợ:{' '}
+            <Text className="font-semibold">{blockedMethodLabels}</Text>
+            . Chọn phương thức này sẽ cần xóa voucher.
           </Text>
         </View>
         {radioGroup}

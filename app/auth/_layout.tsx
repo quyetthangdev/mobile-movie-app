@@ -1,9 +1,10 @@
-import { NativeStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { CustomStack, profileNativeStackScreenOptions } from '@/layouts/custom-stack'
 
 /**
  * Auth stack: login, register, forgot-password, ...
- * Native Stack — slide_from_right, fullScreenGestureEnabled.
+ * Uses CustomStack with withLayoutContext for proper expo-router integration
+ * (avoids nested independent Stack instances that cause infinite updates)
  */
 export default function AuthLayout() {
-  return <NativeStackWithMasterTransition />
+  return <CustomStack screenOptions={profileNativeStackScreenOptions} />
 }

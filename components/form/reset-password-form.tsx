@@ -1,12 +1,14 @@
-import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff } from 'lucide-react-native'
-import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useState, useCallback } from 'react'
+import { Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native'
 
 import { PasswordRulesInput } from '@/components/input/password-rules-input'
 import { Button } from '@/components/ui'
+import { ROUTE } from '@/constants'
+import { useZodForm } from '@/hooks'
+import { navigateNative } from '@/lib/navigation'
 import { TResetPasswordSchema, useResetPasswordSchema } from '@/schemas'
 
 interface ResetPasswordFormProps {
@@ -24,8 +26,7 @@ export function ResetPasswordForm({ onSubmit, isLoading = false, token }: ResetP
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<TResetPasswordSchema>({
-    resolver: zodResolver(schema),
+  } = useZodForm(schema, {
     defaultValues: {
       newPassword: '',
       confirmPassword: '',
@@ -33,9 +34,9 @@ export function ResetPasswordForm({ onSubmit, isLoading = false, token }: ResetP
     },
   })
 
-  const onFormSubmit = (values: TResetPasswordSchema) => {
+  const onFormSubmit = useCallback((values: TResetPasswordSchema) => {
     onSubmit(values)
-  }
+  }, [onSubmit])
 
   return (
     <View className="gap-4">
@@ -101,7 +102,7 @@ export function ResetPasswordForm({ onSubmit, isLoading = false, token }: ResetP
         )}
       </View>
 
-      <Button className="mt-2 h-11 rounded-lg" disabled={isLoading} onPress={handleSubmit(onFormSubmit)}>
+      <Button variant="primary" className="mt-2 h-11 rounded-lg" disabled={isLoading} onPress={handleSubmit(onFormSubmit)}>
         {isLoading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -110,6 +111,16 @@ export function ResetPasswordForm({ onSubmit, isLoading = false, token }: ResetP
           </Text>
         )}
       </Button>
+
+      <TouchableOpacity
+        onPress={() => navigateNative.replace(ROUTE.LOGIN)}
+        disabled={isLoading}
+        className="mt-4"
+      >
+        <Text className="text-center text-sm font-sans-medium text-primary">
+          Quay lại đăng nhập
+        </Text>
+      </TouchableOpacity>
     </View>
   )
 }

@@ -12,6 +12,10 @@ export {
   DateOfBirthWheelPicker,
   type DateOfBirthWheelPickerRef,
 } from './date-of-birth-wheel-picker'
+export {
+  DobExpandablePicker,
+  type DobExpandablePickerTheme,
+} from './dob-expandable-picker'
 export { default as InfoCard } from './info-card'
 export { default as InvoiceTemplate } from './invoice-template'
 export { ProfileHeader, type ProfileHeaderProps } from './profile-header'

@@ -35,7 +35,7 @@ export function InvalidList({
         </Text>
       </View>
       {vouchers.slice(0, 5).map((p) => (
-        <View key={p.voucher.slug} style={{ opacity: 0.5 }}>
+        <View key={p.voucher.slug} style={{ opacity: 0.5 }} pointerEvents="none">
           <VoucherCard
             voucher={p.voucher}
             isSelected={false}

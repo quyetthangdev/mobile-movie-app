@@ -1,0 +1,165 @@
+/**
+ * Date of birth picker dạng xổ xuống inline với animation.
+ * Bấm button để mở/đóng, DatePicker hiển thị bên dưới với animation.
+ */
+import { colors } from '@/constants'
+import dayjs from 'dayjs'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native'
+import DatePicker from 'react-native-date-picker'
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
+
+dayjs.extend(customParseFormat)
+
+const PICKER_HEIGHT = 220
+const ANIM_DURATION = 220
+
+/** Chuẩn hóa dob từ API (DD/MM/YYYY hoặc YYYY-MM-DD) sang YYYY-MM-DD */
+function normalizeDob(value: string | null | undefined): string {
+  if (!value || typeof value !== 'string') return ''
+  const ddmmyyyy = dayjs(value, 'DD/MM/YYYY', true)
+  const yyyymmdd = dayjs(value, 'YYYY-MM-DD', true)
+  if (ddmmyyyy.isValid()) return ddmmyyyy.format('YYYY-MM-DD')
+  if (yyyymmdd.isValid()) return yyyymmdd.format('YYYY-MM-DD')
+  return ''
+}
+
+/** Ngày mặc định an toàn để tránh "Date value out of bounds" */
+function getSafeDate(value: string): Date {
+  const normalized = normalizeDob(value) || value
+  if (normalized && dayjs(normalized).isValid()) {
+    const d = dayjs(normalized).toDate()
+    if (!Number.isNaN(d.getTime())) return d
+  }
+  return dayjs().subtract(25, 'year').toDate()
+}
+
+/** Format dob để hiển thị (chấp nhận DD/MM/YYYY hoặc YYYY-MM-DD) */
+function formatDobForDisplay(value: string | null | undefined): string {
+  const normalized = normalizeDob(value) || value
+  if (!normalized || !dayjs(normalized).isValid()) return ''
+  return dayjs(normalized).format('DD/MM/YYYY')
+}
+
+export type DobExpandablePickerTheme = {
+  bg: string
+  editBtn: string
+  text: string
+  textMuted: string
+}
+
+type Props = {
+  value: string // DD/MM/YYYY hoặc YYYY-MM-DD
+  onSelect: (date: string) => void
+  theme?: DobExpandablePickerTheme
+  placeholder?: string
+}
+
+export function DobExpandablePicker({
+  value,
+  onSelect,
+  theme,
+  placeholder = 'Chọn ngày sinh',
+}: Props) {
+  const isDark = useColorScheme() === 'dark'
+  const defaultTheme: DobExpandablePickerTheme = useMemo(
+    () => ({
+      bg: isDark ? colors.gray[700] : colors.gray[100],
+      editBtn: isDark ? colors.gray[700] : colors.gray[200],
+      text: isDark ? colors.gray[50] : colors.gray[900],
+      textMuted: isDark ? colors.gray[400] : colors.gray[500],
+    }),
+    [isDark],
+  )
+  const finalTheme = theme ?? defaultTheme
+
+  const [expanded, setExpanded] = useState(false)
+  const progress = useSharedValue(0)
+  const safeDate = getSafeDate(value)
+
+  useEffect(() => {
+    progress.value = withTiming(expanded ? 1 : 0, {
+      duration: ANIM_DURATION,
+    })
+  }, [expanded, progress])
+
+  const handleDateChange = useCallback(
+    (d: Date) => onSelect(dayjs(d).format('YYYY-MM-DD')),
+    [onSelect],
+  )
+
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      height: interpolate(progress.value, [0, 1], [0, PICKER_HEIGHT]),
+      opacity: interpolate(progress.value, [0, 0.5, 1], [0, 0.5, 1]),
+      overflow: 'hidden' as const,
+    }
+  })
+
+  return (
+    <View>
+      <TouchableOpacity
+        style={[
+          styles.touchable,
+          { backgroundColor: finalTheme.bg, borderColor: finalTheme.editBtn },
+        ]}
+        onPress={() => setExpanded((e) => !e)}
+        activeOpacity={0.7}
+      >
+        <Text
+          style={[
+            styles.text,
+            { color: value ? finalTheme.text : finalTheme.textMuted },
+          ]}
+        >
+          {formatDobForDisplay(value) || placeholder}
+        </Text>
+      </TouchableOpacity>
+      <Animated.View style={[styles.pickerWrap, animatedStyle]}>
+        <View style={styles.pickerInner}>
+          <DatePicker
+            mode="date"
+            date={safeDate}
+            onDateChange={handleDateChange}
+            maximumDate={dayjs().toDate()}
+            minimumDate={dayjs().subtract(120, 'year').toDate()}
+          />
+        </View>
+      </Animated.View>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  touchable: {
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  text: {
+    fontSize: 16,
+  },
+  pickerWrap: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  pickerInner: {
+    height: PICKER_HEIGHT,
+    alignItems: 'center',
+  },
+})

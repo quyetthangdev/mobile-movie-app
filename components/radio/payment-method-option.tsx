@@ -14,6 +14,8 @@ interface PaymentMethodOptionProps {
   isDark: boolean
   disabledReason?: string
   onSelect: (method: PaymentMethod) => void
+  /** Called when user taps an unsupported method (e.g. voucher conflict) */
+  onSelectDisabled?: (method: PaymentMethod) => void
   /** For credit card: show transaction ID input */
   showTransactionInput?: boolean
   transactionId?: string
@@ -33,6 +35,7 @@ export const PaymentMethodOption = memo(function PaymentMethodOption({
   isDark,
   disabledReason,
   onSelect,
+  onSelectDisabled,
   showTransactionInput,
   transactionId,
   onTransactionIdChange,
@@ -41,8 +44,12 @@ export const PaymentMethodOption = memo(function PaymentMethodOption({
   children,
 }: PaymentMethodOptionProps) {
   const handlePress = useCallback(() => {
-    if (isSupported) onSelect(method)
-  }, [isSupported, onSelect, method])
+    if (isSupported) {
+      onSelect(method)
+    } else if (onSelectDisabled) {
+      onSelectDisabled(method)
+    }
+  }, [isSupported, onSelect, onSelectDisabled, method])
 
   const iconColor = isDark ? '#9ca3af' : '#6b7280'
 
@@ -56,7 +63,6 @@ export const PaymentMethodOption = memo(function PaymentMethodOption({
         />
         <Pressable
           onPress={handlePress}
-          disabled={!isSupported}
           className="flex-1"
         >
           <View className="flex-col gap-1">
@@ -97,7 +103,7 @@ export const PaymentMethodOption = memo(function PaymentMethodOption({
       <View className="flex-col gap-2">
         <View className="flex-row items-center gap-2">
           <RadioGroupItem value={method} disabled={!isSupported} />
-          <Pressable onPress={handlePress} disabled={!isSupported}>
+          <Pressable onPress={handlePress}>
             <View
               className={cn(
                 'flex-row gap-1 items-center pl-2',

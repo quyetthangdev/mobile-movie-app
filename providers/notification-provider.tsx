@@ -26,6 +26,9 @@ export function NotificationProvider() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
   const schedulerStartedRef = useRef(false)
 
+  // eslint-disable-next-line no-console
+  console.log('[FCM] NotificationProvider mounted - isAuthenticated:', isAuthenticated)
+
   // T2+T3: Get FCM token + register with server (only when authenticated)
   const { permissionDenied } = useRegisterDeviceToken(isAuthenticated)
 
@@ -37,10 +40,16 @@ export function NotificationProvider() {
 
   // T4: Token refresh scheduler
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[FCM] Token refresh scheduler effect:', { isAuthenticated, schedulerStarted: schedulerStartedRef.current })
     if (isAuthenticated && !schedulerStartedRef.current) {
+      // eslint-disable-next-line no-console
+      console.log('[FCM] 🚀 Starting token refresh scheduler')
       startTokenRefreshScheduler()
       schedulerStartedRef.current = true
     } else if (!isAuthenticated && schedulerStartedRef.current) {
+      // eslint-disable-next-line no-console
+      console.log('[FCM] ⏹️  Stopping token refresh scheduler')
       stopTokenRefreshScheduler()
       schedulerStartedRef.current = false
     }

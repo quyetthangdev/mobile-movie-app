@@ -260,7 +260,7 @@
     "roleRemoveFailed": "Failed to remove role",
     "roleUpdateFailed": "Failed to update role",
     "runWorkflowFromRobotApiFailed": "Failed to run workflow from robot API",
-    "sendVerifyEmailSuccess": "Verification email sent successfully. Please check your email",
+    "sendVerifyEmailSuccess": "Email sent successfully!",
     "sendVerifyPhoneNumberSuccess": "Verification code sent successfully. Please check your Zalo app",
     "otpStillValid": "OTP is still valid, please enter the code to continue",
     "sessionExpired": "Session has expired",

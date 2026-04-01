@@ -1,7 +1,8 @@
 import dayjs from 'dayjs'
 import { Eye, EyeOff } from 'lucide-react-native'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useController } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   Text,
@@ -10,17 +11,17 @@ import {
 } from 'react-native'
 
 import { FormInput } from '@/components/form/form-input'
-import {
-  DateOfBirthWheelPicker,
-  type DateOfBirthWheelPickerRef,
-} from '@/components/profile/date-of-birth-wheel-picker'
-import { useRegister, useZodForm, usePostAuthActions } from '@/hooks'
+import { DobExpandablePicker } from '@/components/profile'
+import { usePostAuthActions, useRegister, useZodForm } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
-import { useRegisterSchema, TRegisterSchema } from '@/schemas'
+import { TRegisterSchema, useRegisterSchema } from '@/schemas'
+import { showToast } from '@/utils'
+
+const DEFAULT_DOB = dayjs().subtract(18, 'year').format('DD/MM/YYYY')
 
 export default function RegisterForm() {
+  const { t } = useTranslation('auth')
   const registerSchema = useRegisterSchema()
-  const dobPickerRef = useRef<DateOfBirthWheelPickerRef>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -29,7 +30,17 @@ export default function RegisterForm() {
     handleSubmit,
     setValue,
     formState: { isSubmitting },
-  } = useZodForm(registerSchema)
+  } = useZodForm(registerSchema, {
+    mode: 'onTouched',
+    defaultValues: {
+      dob: DEFAULT_DOB,
+      firstName: '',
+      lastName: '',
+      phonenumber: '',
+      password: '',
+      confirmPassword: '',
+    },
+  })
 
   const { mutate: registerMutation, isPending } = useRegister()
   const { handleAuthSuccess } = usePostAuthActions()
@@ -39,22 +50,13 @@ export default function RegisterForm() {
     fieldState: { error: dobError },
   } = useController({ control, name: 'dob' })
 
-  // Form stores dob as DD/MM/YYYY (schema format)
-  // Picker expects YYYY-MM-DD — convert for display
-  const dobForPicker = useMemo(() => {
-    if (!dobValue) return ''
-    const parts = dobValue.split('/')
-    if (parts.length !== 3) return ''
-    const [day, month, year] = parts
-    return `${year}-${month}-${day}`
-  }, [dobValue])
 
   const handleDobSelect = useCallback(
     (date: string) => {
       // Picker returns YYYY-MM-DD, convert to DD/MM/YYYY for schema
       const d = dayjs(date)
       if (d.isValid()) {
-        setValue('dob', d.format('DD/MM/YYYY'), { shouldValidate: true })
+        setValue('dob', d.format('DD/MM/YYYY'))
       }
     },
     [setValue],
@@ -71,7 +73,12 @@ export default function RegisterForm() {
       },
       {
         onSuccess: async (response) => {
-          await handleAuthSuccess(response.result.result)
+          const tokens = response.result?.result ?? response.result
+          if (tokens?.accessToken) {
+            await handleAuthSuccess(tokens)
+          }
+          showToast(t('register.success', 'Đăng ký thành công. Vui lòng đăng nhập.'))
+          navigateNative.replace('/auth/login')
         },
         onError: () => {
           // Global error handler (QueryCache) sẽ show toast
@@ -118,18 +125,11 @@ export default function RegisterForm() {
         <Text className="mb-1 text-xs text-muted-foreground">
           Ngày sinh
         </Text>
-        <TouchableOpacity
-          className={`rounded-lg border bg-card px-4 py-3 ${dobError ? 'border-destructive' : 'border-border'}`}
-          onPress={() => dobPickerRef.current?.open()}
-          disabled={isLoading}
-          activeOpacity={0.7}
-        >
-          <Text
-            className={`text-base font-sans ${dobValue ? 'text-foreground' : 'text-muted-foreground'}`}
-          >
-            {dobValue || 'Chọn ngày sinh'}
-          </Text>
-        </TouchableOpacity>
+        <DobExpandablePicker
+          value={dobValue}
+          onSelect={handleDobSelect}
+          placeholder="Chọn ngày sinh"
+        />
         {dobError && (
           <Text className="mt-1 text-xs text-destructive">{dobError.message}</Text>
         )}
@@ -239,12 +239,6 @@ export default function RegisterForm() {
         </Text>
       </TouchableOpacity>
 
-      {/* Date picker bottom sheet */}
-      <DateOfBirthWheelPicker
-        ref={dobPickerRef}
-        value={dobForPicker}
-        onSelect={handleDobSelect}
-      />
     </View>
   )
 }

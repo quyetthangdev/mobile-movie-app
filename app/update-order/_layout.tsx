@@ -1,9 +1,10 @@
-import { NativeStackWithMasterTransition } from '@/layouts/stack-with-master-transition'
+import { CustomStack, profileNativeStackScreenOptions } from '@/layouts/custom-stack'
 
 /**
  * Update Order stack: màn cập nhật đơn hàng /update-order/[slug]
- * Native Stack — slide_from_right, fullScreenGestureEnabled.
+ * Uses CustomStack with withLayoutContext for proper expo-router integration
+ * (avoids nested independent Stack instances that cause infinite updates)
  */
 export default function UpdateOrderLayout() {
-  return <NativeStackWithMasterTransition />
+  return <CustomStack screenOptions={profileNativeStackScreenOptions} />
 }

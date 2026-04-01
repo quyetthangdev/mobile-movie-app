@@ -79,39 +79,57 @@ export function useFirebaseToken(enabled = true) {
   const storedToken = useUserStore((s) => s.deviceToken)
 
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[FCM] useFirebaseToken effect:', { enabled, hasRunRef: hasRunRef.current })
     if (!enabled || hasRunRef.current) return
     hasRunRef.current = true
 
     let cancelled = false
 
-    requestPermissionAndGetToken().then(({ token: newToken, permissionDenied: denied }) => {
-      if (cancelled) return
-
-      setPermissionDenied(denied)
-
-      if (denied) {
+    // eslint-disable-next-line no-console
+    console.log('[FCM] Requesting permission and token...')
+    requestPermissionAndGetToken()
+      .then(({ token: newToken, permissionDenied: denied }) => {
         // eslint-disable-next-line no-console
-        console.warn('[FCM] Permission denied by user')
-      }
+        console.log('[FCM] Permission request result:', { denied, hasToken: !!newToken, cancelled, newToken: newToken?.slice(0, 20) })
+        if (cancelled) {
+          // eslint-disable-next-line no-console
+          console.log('[FCM] Result arrived but component unmounted, ignoring')
+          return
+        }
 
-      if (!newToken) {
+        setPermissionDenied(denied)
+
+        if (denied) {
+          // eslint-disable-next-line no-console
+          console.warn('[FCM] ❌ Permission denied by user')
+          return
+        }
+
+        if (!newToken) {
+          // eslint-disable-next-line no-console
+          console.warn('[FCM] ❌ No token received')
+          return
+        }
+
         // eslint-disable-next-line no-console
-        console.warn('[FCM] No token received')
-        return
-      }
-
-      // eslint-disable-next-line no-console
-      console.log('[FCM] Token received:', newToken.slice(0, 20) + '...')
-      if (__DEV__) {
+        console.log('[FCM] ✅ Token received:', newToken.slice(0, 20) + '...')
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.log('[FCM] Full token (DEV only):', newToken)
+        }
+        setToken(newToken)
+        // NOTE: Don't save to store here — only save AFTER server confirms registration
+        // (handled in use-register-device-token.ts)
+      })
+      .catch((error) => {
         // eslint-disable-next-line no-console
-        console.log('[FCM] Full token (DEV only):', newToken)
-      }
-      setToken(newToken)
-      // NOTE: Don't save to store here — only save AFTER server confirms registration
-      // (handled in use-register-device-token.ts)
-    })
+        console.error('[FCM] Error in requestPermissionAndGetToken:', error)
+      })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [enabled])
 
   return { token, permissionDenied, storedToken }

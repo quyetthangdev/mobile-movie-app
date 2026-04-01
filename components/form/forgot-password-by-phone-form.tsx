@@ -1,11 +1,10 @@
-import { zodResolver } from '@hookform/resolvers/zod'
 import React from 'react'
-import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native'
 
 import { Button } from '@/components/ui'
 import { ROUTE } from '@/constants'
+import { useZodForm } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
 import { TForgotPasswordByPhoneNumberSchema, useForgotPasswordByPhoneNumberSchema } from '@/schemas'
 
@@ -23,8 +22,7 @@ export function ForgotPasswordByPhoneForm({ onSubmit, isLoading = false }: Forgo
   const {
     control,
     handleSubmit,
-  } = useForm<TForgotPasswordByPhoneNumberSchema>({
-    resolver: zodResolver(schema),
+  } = useZodForm(schema, {
     defaultValues: {
       phonenumber: '',
     },
@@ -56,6 +54,7 @@ export function ForgotPasswordByPhoneForm({ onSubmit, isLoading = false }: Forgo
         </TouchableOpacity>
 
         <Button
+          variant="primary"
           className="h-11 rounded-lg px-6"
           disabled={isLoading}
           onPress={handleSubmit(onFormSubmit)}

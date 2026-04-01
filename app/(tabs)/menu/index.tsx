@@ -169,7 +169,7 @@ export default function MenuPage() {
   const hasBranch = !!menuFilter.branch || !!branchSlug
 
   // ── Catalog chips ──
-  const { data: catalogRes } = useCatalog({ enabled: allowFetch && hasBranch })
+  const { data: catalogRes } = useCatalog({ enabled: hasBranch })
   const catalogList = useMemo<CatalogChipData[]>(
     () =>
       catalogRes?.result?.map((c) => ({ slug: c.slug, name: c.name })) ?? [],

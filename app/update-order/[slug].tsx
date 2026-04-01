@@ -1,5 +1,7 @@
 import { ScreenContainer } from '@/components/layout'
 import { FloatingHeader } from '@/components/navigation/floating-header'
+import { useFocusEffect } from '@react-navigation/native'
+import { Image as ExpoImage } from 'expo-image'
 import { useLocalSearchParams } from 'expo-router'
 import { ShoppingCartIcon } from 'lucide-react-native'
 import React, { useCallback, useEffect, useState } from 'react'
@@ -54,6 +56,15 @@ export default function UpdateOrderScreen() {
 
   // Shell-first: delay fetch until after transition
   useRunAfterTransition(() => setAllowFetch(true), [])
+
+  // Clear image memory cache on blur (menu grid images)
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        queueMicrotask(() => ExpoImage.clearMemoryCache())
+      }
+    }, []),
+  )
 
   // Init updating data when order is valid
   useEffect(() => {

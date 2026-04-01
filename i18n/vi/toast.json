@@ -260,7 +260,7 @@
 				"roleRemoveFailed": "Xóa vai trò thất bại",
 				"roleUpdateFailed": "Cập nhật vai trò thất bại",
 				"runWorkflowFromRobotApiFailed": "Chạy workflow từ API robot thất bại",
-				"sendVerifyEmailSuccess": "Gửi email xác minh thành công! Vui lòng kiểm tra email của bạn",
+				"sendVerifyEmailSuccess": "Gửi email thành công!",
 				"sendVerifyPhoneNumberSuccess": "Gửi mã xác minh thành công! Vui lòng kiểm tra ứng dụng Zalo của bạn",
 				"otpStillValid": "Mã OTP vẫn còn hiệu lực, vui lòng nhập mã để tiếp tục",
 				"sessionExpired": "Phiên làm việc đã hết hạn",

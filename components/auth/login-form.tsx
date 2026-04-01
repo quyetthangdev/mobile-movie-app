@@ -25,7 +25,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false)
 
   const { control, handleSubmit, setValue, clearErrors, formState: { isSubmitting } } =
-    useZodForm(loginSchema)
+    useZodForm(loginSchema, {
+      defaultValues: { phonenumber: '', password: '' },
+    })
 
   const { mutate: loginMutation, isPending } = useLogin()
   const { handleAuthSuccess } = usePostAuthActions()
@@ -53,7 +55,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const isLoading = isPending || isSubmitting
 
   return (
-    <View className="flex-1 px-6 pt-8">
+    <View className="flex-1 px-6 pt-12">
       <Text className="mb-2 text-3xl font-sans-bold text-foreground">
         {t('login.title')}
       </Text>
@@ -72,12 +74,13 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         disabled={isLoading}
         useTextInput
         transformOnChange={(v) => v.replace(/\D/g, '')}
+        labelClassName="text-md font-sans-medium text-muted-foreground"
       />
 
       {/* Password */}
       <View className="mb-6">
         <View className="mb-1 flex-row items-center justify-between">
-          <Text className="text-xs text-muted-foreground">
+          <Text className="text-md font-sans-medium text-muted-foreground">
             {t('login.password')}
           </Text>
           <TouchableOpacity
@@ -85,7 +88,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
             disabled={isLoading}
             hitSlop={8}
           >
-            <Text className="text-xs font-sans-semibold text-primary">
+            <Text className="text-sm font-sans-semibold text-primary">
               {t('login.forgotPassword')}
             </Text>
           </TouchableOpacity>

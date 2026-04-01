@@ -24,10 +24,12 @@ import { http } from '@/utils'
   export async function register(
     params: IRegisterRequest,
   ): Promise<IApiResponse<ILoginResponse>> {
+    // console.log('[Register] Request:', params)
     const response = await http.post<IApiResponse<ILoginResponse>>(
       '/auth/register',
       params,
     )
+    // console.log('[Register] Response:', response.data)
     return response.data
   }
 

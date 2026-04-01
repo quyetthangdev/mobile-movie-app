@@ -314,7 +314,7 @@ const ProfileTest = () => {
 
   useEffect(() => {
     const sub = AppState.addEventListener('memoryWarning', () => {
-      Image.clearMemoryCache()
+      queueMicrotask(() => Image.clearMemoryCache())
     })
     return () => { sub.remove() }
   }, [])

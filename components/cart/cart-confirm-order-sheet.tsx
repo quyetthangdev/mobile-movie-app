@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -37,6 +38,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
   primaryColor: string
 }) {
   const sheetRef = useRef<BottomSheet>(null)
+  const { bottom: bottomInset } = useSafeAreaInsets()
   const { t } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
   const queryClient = useQueryClient()
@@ -164,7 +166,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
 
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={0}>
+      <BottomSheetFooter {...props} bottomInset={bottomInset}>
         <View style={[confirmOrderStyles.footer, { backgroundColor: isDark ? colors.gray[900] : colors.white.light, borderTopColor: isDark ? colors.gray[700] : '#e5e7eb' }]}>
           <Pressable
             onPress={() => sheetRef.current?.close()}
@@ -187,7 +189,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
         </View>
       </BottomSheetFooter>
     ),
-    [isDark, primaryColor, handleSubmit, isSubmitting, t],
+    [isDark, primaryColor, handleSubmit, isSubmitting, t, bottomInset],
   )
 
   if (!visible || !order) return null

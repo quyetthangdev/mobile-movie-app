@@ -335,7 +335,7 @@ const cds = StyleSheet.create({
 function PaymentPageContent() {
   const { t } = useTranslation('menu')
   const { t: tCommon } = useTranslation('common')
-  const { order: orderSlug } = useLocalSearchParams<{ order: string }>()
+  const { order: orderSlug, from } = useLocalSearchParams<{ order: string; from?: string }>()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
@@ -362,8 +362,6 @@ function PaymentPageContent() {
   // Show success screen when:
   // 1. Foreground FCM arrived → unread ORDER_PAID notification in store, OR
   // 2. order.status already PAID (e.g. background FCM + refetch, or staff POS confirm)
-  // successDismissed: user tapped "Xem chi tiết đơn" → ẩn overlay, hiện nội dung đơn bên dưới
-  const [successDismissed, setSuccessDismissed] = useState(false)
   const hasOrderPaidNotification = useNotificationStore((s) =>
     s.notifications.some(
       (n) =>
@@ -372,8 +370,7 @@ function PaymentPageContent() {
         n.metadata?.order === orderSlug,
     ),
   )
-  const showSuccess =
-    !successDismissed && (hasOrderPaidNotification || order?.status === OrderStatus.PAID)
+  const showSuccess = hasOrderPaidNotification || order?.status === OrderStatus.PAID
   const markNotificationRead = useNotificationStore((s) => s.markAsRead)
 
   const handleViewDetail = useCallback(() => {
@@ -385,7 +382,7 @@ function PaymentPageContent() {
           n.metadata?.order === orderSlug,
       )
     if (paid) markNotificationRead(paid.slug)
-    setSuccessDismissed(true)
+    navigateNative.replace(`/order/${orderSlug}` as Parameters<typeof navigateNative.replace>[0])
   }, [markNotificationRead, orderSlug])
 
   // Auto-refetch when FCM "order paid" notification arrives for this order
@@ -414,8 +411,12 @@ function PaymentPageContent() {
   }, [orderItems, voucher])
 
   const handleBack = useCallback(() => {
-    navigateNative.replace(TAB_ROUTES.HOME)
-  }, [])
+    if (from === 'history') {
+      navigateNative.back()
+    } else {
+      navigateNative.replace(TAB_ROUTES.HOME)
+    }
+  }, [from])
 
   const [isExpired, setIsExpired] = useState(false)
   const handleExpire = useCallback(() => {
@@ -870,7 +871,7 @@ function PaymentPageContent() {
           </View>
         )}
         <FloatingHeader
-          title={t('order.orderDetail', 'Chi tiết đơn hàng')}
+          title={t('order.payment', 'Thanh toán')}
           onBack={handleBack}
           rightElement={countdownRight}
         />

@@ -141,7 +141,7 @@ export default function TabsLayout() {
   )
 
   const { totalBottomHeight, bottomGap } = useMemo(() => {
-    const gap = Math.max(8, insets.bottom)
+    const gap = Math.max(8, insets.bottom + 8)
     const bgHeight = BAR_HEIGHT + BAR_PADDING + gap
     return {
       bottomGap: gap,

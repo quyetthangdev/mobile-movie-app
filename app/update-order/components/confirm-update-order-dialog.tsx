@@ -17,6 +17,7 @@ import {
   View,
 } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors, ROUTE } from '@/constants'
 import {
@@ -60,6 +61,7 @@ export default memo(function ConfirmUpdateOrderDialog({
   const sheetRef = useRef<BottomSheet>(null)
   const queryClient = useQueryClient()
   const isDark = useColorScheme() === 'dark'
+  const { bottom: bottomInset } = useSafeAreaInsets()
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
   const updatingData = useOrderFlowStore((s) => s.updatingData)
@@ -398,7 +400,7 @@ export default memo(function ConfirmUpdateOrderDialog({
               </BottomSheetScrollView>
 
               {/* Footer */}
-              <View style={cd.footer}>
+              <View style={[cd.footer, { paddingBottom: bottomInset + 8 }]}>
                 <Pressable
                   onPress={() => sheetRef.current?.close()}
                   style={[

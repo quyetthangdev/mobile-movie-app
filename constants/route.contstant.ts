@@ -18,6 +18,7 @@ export const ROUTE = {
   CLIENT_PRODUCT_DETAIL: '/(tabs)/menu/product/[id]',
   CLIENT_CART: '/cart',
   CLIENT_CHECKOUT_ORDER: '/checkout-order',
+  CLIENT_ORDER_DETAIL: '/order/[id]',
   CLIENT_PAYMENT: '/payment/[order]',
   CLIENT_UPDATE_ORDER: '/update-order/[slug]',
   CLIENT_ORDER_HISTORY: '/history',

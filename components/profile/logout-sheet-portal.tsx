@@ -10,6 +10,7 @@ import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
 import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
@@ -96,9 +97,10 @@ const LogoutSheetContent = memo(function LogoutSheetContent({
 }) {
   const { t } = useTranslation('auth')
   const { t: tCommon } = useTranslation('common')
+  const { bottom: bottomInset } = useSafeAreaInsets()
 
   return (
-    <View style={s.content}>
+    <View style={[s.content, { paddingBottom: bottomInset + 8 }]}>
       <Text style={[s.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
         {t('logout.title', 'Đăng xuất')}
       </Text>

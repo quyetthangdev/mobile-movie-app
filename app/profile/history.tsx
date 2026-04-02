@@ -140,16 +140,31 @@ function OrderHistoryPage() {
   // Memoize callbacks
   const handleViewDetail = useCallback(
     (orderSlug: string) => {
-      // Prefetch order detail to speed up navigation to payment page
       if (orderSlug) {
         queryClient.prefetchQuery({
           queryKey: ['order', orderSlug],
           queryFn: () => getOrderBySlug(orderSlug),
         })
       }
-
       navigateNative.push(
-        `${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug)}` as Parameters<
+        `/order/${orderSlug}` as Parameters<
+          typeof navigateNative.push
+        >[0],
+      )
+    },
+    [queryClient],
+  )
+
+  const handlePayment = useCallback(
+    (orderSlug: string) => {
+      if (orderSlug) {
+        queryClient.prefetchQuery({
+          queryKey: ['order', orderSlug],
+          queryFn: () => getOrderBySlug(orderSlug),
+        })
+      }
+      navigateNative.push(
+        `${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug)}?from=history` as Parameters<
           typeof navigateNative.push
         >[0],
       )
@@ -237,11 +252,11 @@ function OrderHistoryPage() {
         statusLabel={getStatusLabel(orderItem.status)}
         onViewDetail={handleViewDetail}
         onUpdateOrder={handleUpdateOrder}
-        onPayment={handleViewDetail}
+        onPayment={handlePayment}
         labels={orderCardLabels}
       />
     ),
-    [orderDisplayMap, primaryColor, isDark, getStatusLabel, handleViewDetail, handleUpdateOrder, orderCardLabels],
+    [orderDisplayMap, primaryColor, isDark, getStatusLabel, handleViewDetail, handlePayment, handleUpdateOrder, orderCardLabels],
   )
 
   const keyExtractor = useCallback((item: IOrder) => item.slug ?? '', [])

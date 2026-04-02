@@ -14,6 +14,7 @@ import { memo, useCallback, useMemo, useRef } from 'react'
 import {
   Linking,
   Modal,
+
   Platform,
   Pressable,
   StyleSheet,
@@ -22,6 +23,7 @@ import {
   View,
 } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
 
@@ -36,6 +38,7 @@ export const NotificationPermissionSheet = memo(
   function NotificationPermissionSheet({ visible, onClose }: Props) {
     const sheetRef = useRef<BottomSheet>(null)
     const isDark = useColorScheme() === 'dark'
+    const { bottom: bottomInset } = useSafeAreaInsets()
 
     const bgStyle = useMemo(
       () => ({
@@ -92,7 +95,7 @@ export const NotificationPermissionSheet = memo(
             backgroundStyle={bgStyle}
             onChange={handleChange}
           >
-            <View style={s.content}>
+            <View style={[s.content, { paddingBottom: bottomInset + 8 }]}>
               <View style={s.body}>
                 <View
                   style={[

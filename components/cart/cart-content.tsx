@@ -11,6 +11,7 @@ import { FlashList } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
 import { StyleSheet, useColorScheme, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 
@@ -38,12 +39,12 @@ const listStyles = StyleSheet.create({
 
 export default function CartContent({ scrollY }: { scrollY?: SharedValue<number> }) {
   const router = useRouter()
+  const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
   const rawItems = useCartItems()
   const items = useMemo(() => rawItems.map(toDisplayItem), [rawItems])
   const removeItem = cartActions.removeItem
-  const { t } = useTranslation('menu')
   // 3.3 — Auto-remove voucher when cart changes make it invalid
   const perfVoucher = useCartVoucher()
   const voucherProducts = perfVoucher?.voucherProducts
@@ -87,8 +88,7 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
   const handleSizeClose = useCallback(() => setSizeSheetItemId(null), [])
 
   const handleBrowse = useCallback(() => {
-    if (router.canGoBack()) router.back()
-    else router.replace('/(tabs)/menu')
+    router.replace('/(tabs)/menu')
   }, [router])
 
   const handleDelete = useCallback(
@@ -125,7 +125,7 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
       <CartEmpty
         isDark={isDark}
         onBrowse={handleBrowse}
-        browseLabel={t('menu.viewDetails')}
+        browseLabel={t('menu.viewMenu', 'Xem thực đơn')}
       />
     )
   }

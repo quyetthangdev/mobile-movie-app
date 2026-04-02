@@ -8,11 +8,13 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
 
@@ -40,6 +42,7 @@ const VoucherConflictBottomSheet = memo(function VoucherConflictBottomSheet({
   onRemoveVoucher,
 }: VoucherConflictBottomSheetProps) {
   const sheetRef = useRef<BottomSheet>(null)
+  const { bottom: bottomInset } = useSafeAreaInsets()
 
   useEffect(() => {
     if (visible) {
@@ -123,7 +126,7 @@ const VoucherConflictBottomSheet = memo(function VoucherConflictBottomSheet({
             </View>
 
             {/* Footer — pinned to bottom */}
-            <View style={[s.footer, { borderTopColor: borderColor }]}>
+            <View style={[s.footer, { borderTopColor: borderColor, paddingBottom: bottomInset + 12 }]}>
               <Pressable
                 onPress={onKeepVoucher}
                 disabled={isRemoving}

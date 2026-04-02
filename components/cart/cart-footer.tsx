@@ -13,6 +13,7 @@ import { useCartValidation } from '@/hooks/use-cart-validation'
 import React, { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SimpleOrderTypeSheet } from './cart-order-type-sheet'
 import { SimpleTableSheet } from './cart-table-sheet'
@@ -27,6 +28,7 @@ export const CartFooter = memo(function CartFooter({
   isDark: boolean
 }) {
   const { t } = useTranslation('menu')
+  const { bottom: bottomInset } = useSafeAreaInsets()
   const total = useCartTotal()
   const itemCount = useCartItemCount()
   const voucher = useCartVoucher()
@@ -116,7 +118,7 @@ export const CartFooter = memo(function CartFooter({
 
   return (
     <>
-      <View style={[footerStyles.container, ft.containerBg]}>
+      <View style={[footerStyles.container, ft.containerBg, { paddingBottom: bottomInset + 12 }]}>
         {/* Order Type + Table row */}
         <View style={footerStyles.selectRow}>
           <Pressable
@@ -250,7 +252,7 @@ const footerStyles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 20,
+    paddingBottom: 20, // overridden inline with + bottomInset
     gap: 10,
   },
   selectRow: {

@@ -1,35 +1,31 @@
 {
   "expo": {
-    "name": "mobile-movie-app",
+    "name": "trend-coffee-app",
     "slug": "mobile-movie-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon/icon.png",
-    "scheme": "movies",
+    "scheme": "trend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Ứng dụng cần truy cập thư viện ảnh để lưu ảnh.",
-        "NSPhotoLibraryAddUsageDescription": "Ứng dụng cần quyền lưu ảnh vào thư viện."
+        "NSPhotoLibraryAddUsageDescription": "Ứng dụng cần quyền lưu ảnh vào thư viện.",
+        "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.quyetthangmarvel.mobilemovieapp",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "bundleIdentifier": "com.quyetthangmarvel.trendcoffeeapp"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/icon/icon.png",
         "backgroundImage": "./assets/images/icon/icon.png",
         "monochromeImage": "./assets/images/icon/icon.png"
       },
-      "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
-      "navigationBar": {
-        "backgroundColor": "#ffffff",
-        "barStyle": "light-content"
-      },
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
@@ -41,8 +37,7 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "package": "com.quyetthangmarvel.mobilemovieapp",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.quyetthangmarvel.trendcoffeeapp"
     },
     "web": {
       "output": "static",
@@ -76,7 +71,9 @@
         {
           "icon": "./assets/images/icon/icon.png",
           "color": "#F7A737",
-          "sounds": ["./assets/sound/notification.mp3"],
+          "sounds": [
+            "./assets/sound/notification.mp3"
+          ],
           "defaultChannel": "default"
         }
       ]

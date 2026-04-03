@@ -163,6 +163,28 @@ export interface IUserGroupMember extends IBase {
   }
 }
 
+export interface ICreateMembershipCardRequest {
+  userSlug: string
+  cardNumber?: string
+}
+
+export interface ICreateMultipleMembershipCardRequest {
+  userSlugs: string[]
+}
+
+export interface IReplaceMembershipCardRequest {
+  oldCardSlug: string
+  newCardNumber: string
+}
+
+export interface ICompleteRegistrationRequest {
+  slug: string
+  firstName: string
+  lastName: string
+  dob?: string
+  address?: string
+}
+
 export interface IGetUserGroupMemberRequest {
   userGroup: string
   page: number | 1

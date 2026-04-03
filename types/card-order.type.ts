@@ -30,7 +30,7 @@ export interface ICardOrderGetRequest {
 }
 
 export interface IRecipient {
-  recipientSlug: string
+  recipientSlug?: string
   quantity: number
   message?: string
   name?: string

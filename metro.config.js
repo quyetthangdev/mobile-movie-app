@@ -1,9 +1,11 @@
 // Load .env FIRST so EXPO_PUBLIC_* is available when Metro bundles
 // (needed when running from Android Studio - Metro must have env before bundling)
 const path = require('path');
+const dotenv = require('dotenv');
+const dotenvExpand = require('dotenv-expand');
 const projectRoot = path.resolve(__dirname);
-require('dotenv').config({ path: path.join(projectRoot, '.env') });
-require('dotenv').config({ path: path.join(projectRoot, '.env.local') });
+dotenvExpand.expand(dotenv.config({ path: path.join(projectRoot, '.env') }));
+dotenvExpand.expand(dotenv.config({ path: path.join(projectRoot, '.env.local') }));
 
 // Load polyfills before any other modules
 require('./polyfills');

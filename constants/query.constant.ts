@@ -37,5 +37,6 @@ export const QUERYKEY = {
     userGroupMembers: ['userGroupMembers'],
     userGroupMember: ['userGroupMember'],
     printerEvents: ['printerEvents'],
+    giftCardFeatureFlags: ['giftCardFeatureFlags'],
   }
   

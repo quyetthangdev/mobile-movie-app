@@ -5,6 +5,7 @@ import {
   updateMultipleParentFeatureFlags,
   getSystemFeatureFlagsByGroup,
   updateMultipleChildFeatureFlags,
+  getFeatureFlagsByGroup,
 } from '@/api'
 import { QUERYKEY } from '@/constants'
 
@@ -40,9 +41,19 @@ export const useGetSystemFeatureFlagsByGroup = (
 ) => {
   const enabled = options?.enabled !== false && !!groupName
   return useQuery({
-    queryKey: [QUERYKEY.systemFeatureFlagsByGroup],
+    queryKey: [QUERYKEY.systemFeatureFlagsByGroup, groupName],
     queryFn: () => getSystemFeatureFlagsByGroup(groupName),
     placeholderData: keepPreviousData,
     enabled,
+  })
+}
+
+export const useGetFeatureFlagsByGroup = (group: string) => {
+  return useQuery({
+    queryKey: [QUERYKEY.giftCardFeatureFlags, group],
+    queryFn: () => getFeatureFlagsByGroup(group),
+    select: (data) => data.result,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
   })
 }

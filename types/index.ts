@@ -4,6 +4,7 @@ export * from './banner.type';
 export * from './base.type';
 export * from './branch.type';
 export * from './card-order.type';
+export * from './gift-card.type';
 export * from './cart.type';
 export * from './catalog.type';
 export * from './chef-order.type';

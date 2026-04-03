@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 
 import { IUserInfo, IUserStore } from '@/types'
 import { createSafeStorage } from '@/utils/storage'
+import { useGiftCardStore } from './gift-card.store'
 
 export const useUserStore = create<IUserStore>()(
   persist(
@@ -21,7 +22,10 @@ export const useUserStore = create<IUserStore>()(
         set({ userInfo })
       },
       getUserInfo: () => get().userInfo,
-      removeUserInfo: () => set({ userInfo: null }),
+      removeUserInfo: () => {
+        set({ userInfo: null })
+        useGiftCardStore.getState().clearGiftCard(false)
+      },
       setIsVerifyingEmail: (isVerifyingEmail: boolean) =>
         set({ isVerifyingEmail }),
       setIsVerifyingPhoneNumber: (isVerifyingPhoneNumber: boolean) =>

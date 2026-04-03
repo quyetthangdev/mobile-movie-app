@@ -42,3 +42,13 @@ export async function getSystemFeatureFlagsByGroup(
   )
   return response.data
 }
+
+export async function getFeatureFlagsByGroup(
+  group: string,
+): Promise<IApiResponse<IFeatureLock[]>> {
+  const response = await http.get<IApiResponse<IFeatureLock[]>>(
+    `/feature-flag`,
+    { params: { group } },
+  )
+  return response.data
+}

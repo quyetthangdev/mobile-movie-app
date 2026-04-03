@@ -14,6 +14,7 @@ export enum TOKEN_CHECK_INTERVAL {
       ORDER_CHEF_ORDER_FAILED_PRINTING = 'order-chef-order-failed-printing',
       ORDER_LABEL_TICKET_FAILED_PRINTING = 'order-label-ticket-failed-printing',
       ORDER_PAID = 'order-paid',
+      CARD_ORDER_PAID = 'card-order-paid',
   }
   
   export enum MAX_RETRIES {

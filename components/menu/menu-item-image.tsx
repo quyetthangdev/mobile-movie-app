@@ -68,14 +68,12 @@ export const MenuItemImage = React.memo(MenuItemImageBase, areEqual)
 
 const styles = StyleSheet.create({
   image: {
-    width: 88,
-    height: 88,
-    borderRadius: 10,
+    width: '100%',
+    height: '100%',
   },
   placeholder: {
-    width: 88,
-    height: 88,
-    borderRadius: 10,
+    width: '100%',
+    height: '100%',
     backgroundColor: '#f3f4f6',
   },
 })

@@ -28,7 +28,7 @@ export type MenuDisplayItem = {
 }
 
 export const MENU_IMAGE_HIGH_PRIORITY_COUNT = 4
-export const MENU_ITEM_ESTIMATED_HEIGHT = 116
+export const MENU_ITEM_ESTIMATED_HEIGHT = 140
 
 export const menuKeyExtractor = (item: MenuDisplayItem) => item.id
 export const menuViewabilityConfig = {
@@ -76,13 +76,15 @@ export const MenuItemRow = memo(
       <Pressable onPress={handlePress} style={styles.wrapper}>
         <View style={styles.card}>
           <View style={styles.imageWrap}>
-            <MenuItemImage
-              id={id}
-              imageUrl={imageUrl}
-              isEnabled={showImage}
-              transitionMs={0}
-              priority={imagePriority}
-            />
+            <View style={styles.imageInner}>
+              <MenuItemImage
+                id={id}
+                imageUrl={imageUrl}
+                isEnabled={showImage}
+                transitionMs={0}
+                priority={imagePriority}
+              />
+            </View>
           </View>
           <View style={styles.content}>
             <View>
@@ -141,22 +143,25 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
-    padding: 8,
     backgroundColor: colors.white.light,
-    borderRadius: 16,
-    alignItems: 'stretch',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   imageWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 10,
+    width: 128,
+    height: 128,
+    padding: 8,
+    flexShrink: 0,
+  },
+  imageInner: {
+    flex: 1,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   content: {
     flex: 1,
-    marginLeft: 12,
+    padding: 12,
     justifyContent: 'space-between',
-    alignSelf: 'stretch',
   },
   productName: {
     fontSize: 16,

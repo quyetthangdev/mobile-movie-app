@@ -1,6 +1,6 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
-import { History, Settings, User, Wallet } from 'lucide-react-native'
+import { Gift, History, Settings, User, Wallet } from 'lucide-react-native'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -35,6 +35,7 @@ const SETTINGS_ITEM_ICONS = {
   'coins': Wallet,
   'orders-history': History,
   'account-settings': Settings,
+  'gift-cards': Gift,
 } as const
 
 // type SettingsItemKey = keyof typeof SETTINGS_ITEM_ICONS
@@ -55,6 +56,7 @@ export default function ProfilePlaceholderScreen() {
     { key: 'points', label: t('points.title'), icon: SETTINGS_ITEM_ICONS['points'] },
     { key: 'coins', label: t('myCoins'), icon: SETTINGS_ITEM_ICONS['coins'] },
     { key: 'orders-history', label: t('orderHistory.title'), icon: SETTINGS_ITEM_ICONS['orders-history'] },
+    { key: 'gift-cards', label: 'Thẻ quà tặng', icon: SETTINGS_ITEM_ICONS['gift-cards'] },
     { key: 'account-settings', label: t('accountSettings'), icon: SETTINGS_ITEM_ICONS['account-settings'] },
   ], [t])
 
@@ -93,6 +95,9 @@ export default function ProfilePlaceholderScreen() {
           break
         case 'orders-history':
           router.push('/profile/history' as never)
+          break
+        case 'gift-cards':
+          router.push('/profile/gift-cards' as never)
           break
         case 'account-settings':
           router.push('/profile/change-password' as never)

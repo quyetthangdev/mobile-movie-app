@@ -1,4 +1,5 @@
 import enAuth from './en/auth.json'
+import enGiftCard from './en/gift-card.json'
 import enCommon from './en/common.json'
 import enHome from './en/home.json'
 import enMenu from './en/menu.json'
@@ -9,6 +10,7 @@ import enToast from './en/toast.json'
 import enVoucher from './en/voucher.json'
 
 import viAuth from './vi/auth.json'
+import viGiftCard from './vi/gift-card.json'
 import viCommon from './vi/common.json'
 import viHome from './vi/home.json'
 import viMenu from './vi/menu.json'
@@ -21,6 +23,7 @@ import viVoucher from './vi/voucher.json'
 export const resources = {
   vi: {
     auth: viAuth,
+    giftCard: viGiftCard,
     home: viHome.home,
     menu: viMenu,
     table: viTable,
@@ -32,6 +35,7 @@ export const resources = {
   },
   en: {
     auth: enAuth,
+    giftCard: enGiftCard,
     home: enHome.home,
     menu: enMenu,
     table: enTable,

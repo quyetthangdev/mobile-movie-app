@@ -353,7 +353,7 @@ const ProfileTest = () => {
   }, [router])
 
   const openGiftCard = useCallback(() => {
-    router.push('/(tabs)/gift-card' as never)
+    router.push('/profile/gift-card-hub' as never)
   }, [router])
 
   const { t: tToast } = useTranslation('toast')

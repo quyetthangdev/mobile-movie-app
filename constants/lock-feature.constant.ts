@@ -1,6 +1,7 @@
 export enum SystemLockFeatureGroup {
     GROUP_EXAMPLE = 'GROUP_EXAMPLE',
     ORDER = 'ORDER',
+    GIFT_CARD = 'GIFT_CARD',
   }
   
   export enum SystemLockFeatureType {

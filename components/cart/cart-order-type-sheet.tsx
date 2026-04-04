@@ -12,8 +12,9 @@ import {
   GestureHandlerRootView,
   TouchableOpacity,
 } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-const ORDER_TYPE_SHEET_SNAP = [280]
+const ORDER_TYPE_SHEET_BASE_HEIGHT = 280
 
 export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
   visible,
@@ -28,11 +29,16 @@ export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
 }) {
   const sheetRef = useRef<BottomSheet>(null)
   const { t } = useTranslation('menu')
+  const { bottom: bottomInset } = useSafeAreaInsets()
   // Fetch feature flags only when sheet is visible — defer pattern
   const { orderTypes, selectedType, handleChange: selectType } = useOrderTypeOptions({
     enabled: visible,
   })
 
+  const snapPoints = useMemo(
+    () => [ORDER_TYPE_SHEET_BASE_HEIGHT + bottomInset],
+    [bottomInset],
+  )
   const bgStyle = useMemo(
     () => ({ backgroundColor: isDark ? colors.gray[900] : colors.white.light }),
     [isDark],
@@ -61,7 +67,7 @@ export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
         <BottomSheet
           ref={sheetRef}
           index={0}
-          snapPoints={ORDER_TYPE_SHEET_SNAP}
+          snapPoints={snapPoints}
           enablePanDownToClose
           enableContentPanningGesture={false}
           enableHandlePanningGesture
@@ -70,7 +76,7 @@ export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
           backgroundStyle={bgStyle}
           onChange={handleSheetChange}
         >
-          <View style={orderTypeSheetStyles.content}>
+          <View style={[orderTypeSheetStyles.content, { paddingBottom: bottomInset }]}>
             <Text style={[orderTypeSheetStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
               {t('menu.orderType')}
             </Text>

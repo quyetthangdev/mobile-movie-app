@@ -10,6 +10,7 @@ import { Bell } from 'lucide-react-native'
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, RefreshControl, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
 import { NotificationMessageCode } from '@/constants/notification.constant'
@@ -303,6 +304,7 @@ const MarkAllReadSheet = memo(function MarkAllReadSheet({
   primaryColor: string
 }) {
   const sheetRef = useRef<BottomSheet>(null)
+  const { bottom: bottomInset } = useSafeAreaInsets()
 
   const bgStyle = useMemo(
     () => ({ backgroundColor: isDark ? colors.gray[900] : colors.white.light }),
@@ -343,7 +345,7 @@ const MarkAllReadSheet = memo(function MarkAllReadSheet({
           backgroundStyle={bgStyle}
           onChange={handleChange}
         >
-          <View style={confirmStyles.content}>
+          <View style={[confirmStyles.content, { paddingBottom: bottomInset + 20 }]}>
             <Text style={[confirmStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
               Đánh dấu đã đọc
             </Text>
@@ -367,7 +369,7 @@ const MarkAllReadSheet = memo(function MarkAllReadSheet({
 })
 
 const confirmStyles = StyleSheet.create({
-  content: { flex: 1, paddingHorizontal: 20, paddingTop: 4, paddingBottom: 20 },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 4 },
   title: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
   desc: { fontSize: 14 },
   spacer: { flex: 1 },

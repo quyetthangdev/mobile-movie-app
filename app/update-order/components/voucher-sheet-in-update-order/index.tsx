@@ -417,6 +417,7 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
             onPress={handleFooterPress}
             isDark={isDark}
             primaryColor={primaryColor}
+            bottomInset={insets.bottom}
           />
         </BottomSheet>
 

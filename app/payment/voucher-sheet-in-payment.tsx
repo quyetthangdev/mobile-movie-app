@@ -482,15 +482,14 @@ export const VoucherSheetInPayment = memo(function VoucherSheetInPayment({
             />
           </BottomSheetScrollView>
 
-          <View style={{ paddingBottom: insets.bottom }}>
-            <SheetFooter
-              isCurrentApplied={isCurrentApplied}
-              isNewSelection={isNewSelection}
-              onPress={handleFooterPress}
-              isDark={isDark}
-              primaryColor={primaryColor}
-            />
-          </View>
+          <SheetFooter
+            isCurrentApplied={isCurrentApplied}
+            isNewSelection={isNewSelection}
+            onPress={handleFooterPress}
+            isDark={isDark}
+            primaryColor={primaryColor}
+            bottomInset={insets.bottom}
+          />
         </BottomSheet>
 
         <VoucherConditionModal

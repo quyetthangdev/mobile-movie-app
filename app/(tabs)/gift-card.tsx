@@ -295,23 +295,8 @@ export default function GiftCardScreen() {
           </View>
         </View>
 
-        {/* Filter chips: Tất cả | Giá tăng dần | Giá giảm dần */}
+        {/* Filter chips: Giá tăng dần | Giá giảm dần */}
         <View style={s.filterRow}>
-          <Pressable
-            onPress={() => setSortOrder(null)}
-            style={[
-              s.sortChip,
-              {
-                backgroundColor: sortOrder === null ? primaryColor : chipBg,
-                borderColor: sortOrder === null ? primaryColor : borderColor,
-              },
-            ]}
-          >
-            <Text style={[s.sortChipText, { color: sortOrder === null ? colors.white.light : subColor }]}>
-              Tất cả
-            </Text>
-          </Pressable>
-
           <Pressable
             onPress={() => handleSortToggle('asc')}
             style={[

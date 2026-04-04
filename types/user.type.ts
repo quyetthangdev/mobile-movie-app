@@ -38,6 +38,14 @@ export interface IUserInfo {
   isActive: boolean
 }
 
+export interface IUserBalance {
+  userSlug: string
+  currentBalance: number
+  totalSpent: number
+  totalEarned: number
+  lastUpdated: string
+}
+
 export interface ICreateUserRequest {
   phonenumber: string
   password: string

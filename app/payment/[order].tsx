@@ -11,10 +11,12 @@ import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import PaymentMethodRadioGroup from '@/components/radio/payment-method-radio-group'
+import { LightweightDialog } from '@/components/ui/lightweight-dialog'
 import { Skeleton } from '@/components/ui'
 import { colors, NotificationMessageCode, PaymentMethod, TAB_ROUTES } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useInitiatePayment, useInitiatePublicPayment, useOrderBySlug, useRunAfterTransition, useUpdatePublicVoucherInOrder, useUpdateVoucherInOrder } from '@/hooks'
+import { useCoinBalance } from '@/hooks/use-coin-balance'
 import { useLoyaltyPoints } from '@/hooks/use-loyalty-point'
 import { navigateNative } from '@/lib/navigation'
 import { useNotificationStore, useUserStore } from '@/stores'
@@ -109,6 +111,7 @@ const PaymentMethodSection = React.memo(function PaymentMethodSection({
   onConflict,
   isInitiating,
   qrCode,
+  coinBalance,
 }: {
   order: NonNullable<ReturnType<typeof useOrderBySlug>['data']>['result']
   primaryColor: string
@@ -118,6 +121,7 @@ const PaymentMethodSection = React.memo(function PaymentMethodSection({
   onConflict: (blockedMethod: PaymentMethod) => void
   isInitiating: boolean
   qrCode: string | null
+  coinBalance?: number
 }) {
   const { t } = useTranslation('menu')
 
@@ -138,6 +142,7 @@ const PaymentMethodSection = React.memo(function PaymentMethodSection({
           disabledReasons={order.payment?.paymentMethod ? { [order.payment.paymentMethod as PaymentMethod]: t('paymentMethod.alreadyPaid', 'Đã thanh toán') } as Record<PaymentMethod, string> : undefined}
           onSelect={onMethodChange}
           onConflict={onConflict}
+          coinBalance={coinBalance}
         />
       </View>
       {isInitiating && (
@@ -330,6 +335,74 @@ const cds = StyleSheet.create({
   },
 })
 
+// ─── Bottom Action Bar (memo-isolated for style stability) ──────────────────
+
+const BottomActionBar = React.memo(function BottomActionBar({
+  insetBottom,
+  isDark,
+  isExpired,
+  isInitiatingPayment,
+  selectedPaymentMethod,
+  primaryColor,
+  onSubmit,
+  children,
+}: {
+  insetBottom: number
+  isDark: boolean
+  isExpired: boolean
+  isInitiatingPayment: boolean
+  selectedPaymentMethod: PaymentMethod | null
+  primaryColor: string
+  onSubmit: () => void
+  children?: React.ReactNode
+}) {
+  const { t } = useTranslation('menu')
+  const { t: tCommon } = useTranslation('common')
+
+  const barStyle = useMemo(
+    () => ({
+      paddingBottom: insetBottom,
+      backgroundColor: isDark ? colors.gray[800] : colors.white.light,
+      borderTopColor: isDark ? colors.gray[700] : colors.gray[200],
+    }),
+    [insetBottom, isDark],
+  )
+
+  const btnStyle = useMemo(
+    () => ({
+      backgroundColor: isExpired
+        ? (isDark ? colors.destructive.dark : colors.destructive.light)
+        : selectedPaymentMethod
+          ? primaryColor
+          : (isDark ? colors.gray[600] : colors.gray[300]),
+      opacity: isExpired ? 0.7 : 1,
+    }),
+    [isExpired, isDark, selectedPaymentMethod, primaryColor],
+  )
+
+  return (
+    <View style={[ps.bottomBar, barStyle]}>
+      <Pressable
+        onPress={isExpired ? undefined : onSubmit}
+        disabled={isExpired || !selectedPaymentMethod || isInitiatingPayment}
+        style={[ps.checkoutBtn, btnStyle]}
+      >
+        {isInitiatingPayment
+          ? <ActivityIndicator color={colors.white.light} />
+          : <Text style={ps.checkoutBtnText}>
+              {isExpired
+                ? 'Hết hạn thanh toán'
+                : selectedPaymentMethod
+                  ? tCommon('common.checkout', 'Thanh toán')
+                  : t('paymentMethod.noMethodSelected', 'Chưa chọn phương thức')}
+            </Text>
+        }
+      </Pressable>
+      {children}
+    </View>
+  )
+})
+
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 function PaymentPageContent() {
@@ -451,6 +524,10 @@ function PaymentPageContent() {
   const userInfo = useUserStore((s) => s.userInfo)
   const isLoggedIn = !!userInfo
 
+  // Coin balance — chỉ fetch khi logged in + order PENDING
+  const { balance: coinBalance, refetch: refetchCoinBalance } =
+    useCoinBalance(isLoggedIn && order?.status === OrderStatus.PENDING)
+
   // Loyalty points — chỉ fetch khi logged in + order PENDING
   const loyaltyData = useLoyaltyPoints(
     order?.status === OrderStatus.PENDING && isLoggedIn ? (userInfo?.slug ?? undefined) : undefined,
@@ -462,13 +539,35 @@ function PaymentPageContent() {
   const initiatePayment = isLoggedIn ? initiatePaymentAuth : initiatePaymentPublic
   const isInitiatingPayment = isLoggedIn ? isInitiatingPaymentAuth : isInitiatingPaymentPublic
 
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
-  const [selectedTransactionId, setSelectedTransactionId] = useState('')
-  const [qrCode, setQrCode] = useState<string | null>(null)
+  const [paymentForm, dispatchPaymentForm] = React.useReducer(
+    (
+      state: { method: PaymentMethod | null; transactionId: string; qrCode: string | null },
+      action:
+        | { type: 'SET_METHOD'; method: PaymentMethod; transactionId?: string }
+        | { type: 'SET_QR'; qrCode: string }
+        | { type: 'SET_TRANSACTION_ID'; transactionId: string },
+    ) => {
+      switch (action.type) {
+        case 'SET_METHOD':
+          return {
+            ...state,
+            method: action.method,
+            transactionId: action.transactionId ?? state.transactionId,
+          }
+        case 'SET_QR':
+          return { ...state, qrCode: action.qrCode }
+        case 'SET_TRANSACTION_ID':
+          return { ...state, transactionId: action.transactionId }
+      }
+    },
+    { method: null, transactionId: '', qrCode: null },
+  )
+  const selectedPaymentMethod = paymentForm.method
+  const selectedTransactionId = paymentForm.transactionId
+  const qrCode = paymentForm.qrCode
 
   const handleMethodChange = useCallback((method: PaymentMethod, transactionId?: string) => {
-    setSelectedPaymentMethod(method)
-    if (transactionId !== undefined) setSelectedTransactionId(transactionId)
+    dispatchPaymentForm({ type: 'SET_METHOD', method, transactionId })
   }, [])
 
   // ── Voucher ↔ Payment Method conflict (Feature 2) ───────────────────────────
@@ -531,10 +630,11 @@ function PaymentPageContent() {
     )
   }, [orderSlug, order, isLoggedIn, isRemovingVoucher, conflictPendingMethod, updateVoucherAuth, updateVoucherPublic, handleMethodChange, refetchOrder])
 
-  const handlePaymentSubmit = useCallback(() => {
+  // ── Point payment confirm dialog ──
+  const [showPointConfirm, setShowPointConfirm] = useState(false)
+
+  const executePayment = useCallback(() => {
     if (!selectedPaymentMethod || !orderSlug || !order) return
-    if (order.payment?.paymentMethod && order.payment.statusMessage === OrderStatus.COMPLETED) return
-    if (selectedPaymentMethod === PaymentMethod.CREDIT_CARD && !selectedTransactionId.trim()) return
 
     const payload: { paymentMethod: string; orderSlug: string; transactionId?: string } = {
       paymentMethod: selectedPaymentMethod,
@@ -544,19 +644,48 @@ function PaymentPageContent() {
 
     initiatePayment(payload, {
       onSuccess: (response) => {
-        if (response?.result?.qrCode) setQrCode(response.result.qrCode)
+        if (response?.result?.qrCode) dispatchPaymentForm({ type: 'SET_QR', qrCode: response.result.qrCode })
         refetchOrder()
+        if (selectedPaymentMethod === PaymentMethod.POINT) {
+          refetchCoinBalance()
+        }
       },
       onError: (error: unknown) => {
         if (error && typeof error === 'object' && 'response' in error) {
           const axiosError = error as { response?: { data?: { statusCode?: number; message?: string } } }
           if (axiosError.response?.data?.statusCode) { showErrorToast(axiosError.response.data.statusCode); return }
-          if (axiosError.response?.data?.message) { showErrorToastMessage(axiosError.response.data.message); return }
+          if (axiosError.response?.data?.message) {
+            if (axiosError.response.data.message?.toLowerCase().includes('insufficient balance')) {
+              showErrorToastMessage(t('toast:toast.insufficientBalance', 'Bạn không đủ số dư để thanh toán đơn hàng'))
+              return
+            }
+            showErrorToastMessage(axiosError.response.data.message)
+            return
+          }
         }
         showToast(t('paymentMethod.paymentError', 'Lỗi khi cập nhật phương thức thanh toán'))
       },
     })
-  }, [selectedPaymentMethod, selectedTransactionId, orderSlug, order, initiatePayment, refetchOrder, t])
+  }, [selectedPaymentMethod, selectedTransactionId, orderSlug, order, initiatePayment, refetchOrder, refetchCoinBalance, t])
+
+  const handlePaymentSubmit = useCallback(() => {
+    if (!selectedPaymentMethod || !orderSlug || !order) return
+    if (order.payment?.paymentMethod && order.payment.statusMessage === OrderStatus.COMPLETED) return
+    if (selectedPaymentMethod === PaymentMethod.CREDIT_CARD && !selectedTransactionId.trim()) return
+
+    // Show confirm dialog for point payment
+    if (selectedPaymentMethod === PaymentMethod.POINT) {
+      setShowPointConfirm(true)
+      return
+    }
+
+    executePayment()
+  }, [selectedPaymentMethod, selectedTransactionId, orderSlug, order, executePayment])
+
+  const handleConfirmPointPayment = useCallback(() => {
+    setShowPointConfirm(false)
+    executePayment()
+  }, [executePayment])
 
   if (isPending) {
     return <PaymentSkeletonShell />
@@ -712,6 +841,7 @@ function PaymentPageContent() {
             onConflict={handlePaymentMethodConflict}
             isInitiating={isInitiatingPayment}
             qrCode={qrCode}
+            coinBalance={coinBalance}
           />
 
           {/* Voucher Row */}
@@ -841,6 +971,18 @@ function PaymentPageContent() {
               <Text style={[ps.xsText, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
                 ({order.orderItems?.length || 0} {t('order.product', 'sản phẩm')})
               </Text>
+              {order.payment?.paymentMethod === PaymentMethod.POINT && order.status === OrderStatus.PAID && (
+                <View style={[ps.coinPaidNote, { backgroundColor: isDark ? `${primaryColor}18` : `${primaryColor}08`, borderColor: isDark ? `${primaryColor}40` : `${primaryColor}20` }]}>
+                  <Text style={[ps.xsText, { color: primaryColor, fontWeight: '500' }]}>
+                    {t('paymentMethod.paidWithCoin', 'Đã thanh toán {{amount}} xu', { amount: formatCurrency(order.subtotal || 0, '') })}
+                  </Text>
+                  {coinBalance > 0 && (
+                    <Text style={[ps.xsText, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
+                      {t('paymentMethod.currentBalance', 'Số dư hiện tại')}: {formatCurrency(coinBalance, '')} xu
+                    </Text>
+                  )}
+                </View>
+              )}
             </View>
           </View>
 
@@ -851,24 +993,16 @@ function PaymentPageContent() {
 
         {/* Bottom Action Bar */}
         {order.status === OrderStatus.PENDING && (
-          <View style={[ps.bottomBar, { paddingBottom: insets.bottom, backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderTopColor: isDark ? colors.gray[700] : colors.gray[200] }]}>
-            <Pressable
-              onPress={isExpired ? undefined : handlePaymentSubmit}
-              disabled={isExpired || !selectedPaymentMethod || isInitiatingPayment}
-              style={[ps.checkoutBtn, { backgroundColor: isExpired ? (isDark ? colors.destructive.dark : colors.destructive.light) : selectedPaymentMethod ? primaryColor : (isDark ? colors.gray[600] : colors.gray[300]), opacity: isExpired ? 0.7 : 1 }]}
-            >
-              {isInitiatingPayment
-                ? <ActivityIndicator color={colors.white.light} />
-                : <Text style={ps.checkoutBtnText}>
-                    {isExpired
-                      ? 'Hết hạn thanh toán'
-                      : selectedPaymentMethod
-                        ? tCommon('common.checkout', 'Thanh toán')
-                        : t('paymentMethod.noMethodSelected', 'Chưa chọn phương thức')}
-                  </Text>
-              }
-            </Pressable>
-          </View>
+          <BottomActionBar
+            insetBottom={insets.bottom}
+            isDark={isDark}
+            isExpired={isExpired}
+            isInitiatingPayment={isInitiatingPayment}
+            selectedPaymentMethod={selectedPaymentMethod}
+            primaryColor={primaryColor}
+            onSubmit={handlePaymentSubmit}
+          >
+          </BottomActionBar>
         )}
         <FloatingHeader
           title={t('order.payment', 'Thanh toán')}
@@ -897,6 +1031,63 @@ function PaymentPageContent() {
           onKeepVoucher={handleKeepVoucher}
           onRemoveVoucher={handleRemoveVoucherForConflict}
         />
+        <LightweightDialog
+          visible={showPointConfirm}
+          onClose={() => setShowPointConfirm(false)}
+        >
+          {(dismiss) => (
+            <View style={[pointConfirmStyles.card, { backgroundColor: isDark ? colors.gray[800] : colors.white.light }]}>
+              <Text style={[pointConfirmStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
+                {t('paymentMethod.confirmPointPaymentTitle', 'Xác nhận thanh toán bằng xu')}
+              </Text>
+              <View style={pointConfirmStyles.body}>
+                <View style={pointConfirmStyles.row}>
+                  <Text style={[pointConfirmStyles.label, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
+                    {t('paymentMethod.currentBalance', 'Số dư hiện tại')}
+                  </Text>
+                  <Text style={[pointConfirmStyles.value, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
+                    {formatCurrency(coinBalance, '')} xu
+                  </Text>
+                </View>
+                <View style={pointConfirmStyles.row}>
+                  <Text style={[pointConfirmStyles.label, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
+                    {t('paymentMethod.deductAmount', 'Số xu thanh toán')}
+                  </Text>
+                  <Text style={[pointConfirmStyles.value, { color: isDark ? colors.destructive.dark : colors.destructive.light }]}>
+                    -{formatCurrency(order.subtotal || 0, '')} xu
+                  </Text>
+                </View>
+                <View style={[pointConfirmStyles.divider, { backgroundColor: isDark ? colors.gray[700] : colors.gray[200] }]} />
+                <View style={pointConfirmStyles.row}>
+                  <Text style={[pointConfirmStyles.label, { color: isDark ? colors.gray[400] : colors.gray[500], fontWeight: '600' }]}>
+                    {t('paymentMethod.balanceAfter', 'Số dư sau thanh toán')}
+                  </Text>
+                  <Text style={[pointConfirmStyles.value, { color: primaryColor, fontWeight: '700' }]}>
+                    {formatCurrency(coinBalance - (order.subtotal || 0), '')} xu
+                  </Text>
+                </View>
+              </View>
+              <View style={pointConfirmStyles.actions}>
+                <Pressable
+                  onPress={dismiss}
+                  style={[pointConfirmStyles.btn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] }]}
+                >
+                  <Text style={[pointConfirmStyles.btnText, { color: isDark ? colors.gray[200] : colors.gray[700] }]}>
+                    {t('common:common.cancel', 'Hủy')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleConfirmPointPayment}
+                  style={[pointConfirmStyles.btn, { backgroundColor: primaryColor, flex: 1 }]}
+                >
+                  <Text style={[pointConfirmStyles.btnText, { color: colors.white.light }]}>
+                    {t('paymentMethod.confirmPayment', 'Thanh toán')}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </LightweightDialog>
       </ScreenContainer>
     </View>
   )
@@ -951,8 +1142,22 @@ const ps = StyleSheet.create({
   voucherLabel: { fontSize: 13, fontWeight: '600' },
   voucherRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   voucherName: { fontSize: 13, fontWeight: '600', maxWidth: 120 },
+  coinPaidNote: { marginTop: 8, padding: 10, borderRadius: 8, borderWidth: 1, gap: 2 },
   discountBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   discountBadgeText: { fontSize: 11, fontWeight: '700' },
+})
+
+const pointConfirmStyles = StyleSheet.create({
+  card: { width: '100%', borderRadius: 16, padding: 24, gap: 20 },
+  title: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  body: { gap: 12 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  label: { fontSize: 14 },
+  value: { fontSize: 14, fontWeight: '600' },
+  divider: { height: StyleSheet.hairlineWidth },
+  actions: { flexDirection: 'row', gap: 12 },
+  btn: { height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, flex: 1 },
+  btnText: { fontSize: 15, fontWeight: '600' },
 })
 
 export default function PaymentPage() {

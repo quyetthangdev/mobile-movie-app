@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import LogoutSheetPortal from '@/components/profile/logout-sheet-portal'
+import ScanSheetPortal from '@/components/profile/scan-sheet-portal'
 import { useBackHandlerForExit } from '@/hooks'
 import {
   setNavigationBarColorFixed,
@@ -158,6 +159,7 @@ function AppContent() {
         <QueryClientProvider client={queryClient}>
           <BottomSheetModalProvider>
             <LogoutSheetPortal />
+            <ScanSheetPortal />
             <NotificationProvider />
             <I18nProvider>
               <GhostMountProvider>

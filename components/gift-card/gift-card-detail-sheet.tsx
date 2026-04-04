@@ -8,6 +8,7 @@
  * - Clipboard copy + toast
  * - Inline redeem (không navigation): mutation → success state trong sheet
  */
+import dayjs from 'dayjs'
 import BottomSheet, {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
@@ -33,10 +34,10 @@ import { useTranslation } from 'react-i18next'
 import { colors, GiftCardUsageStatus } from '@/constants'
 import { useUserGiftCardBySlug } from '@/hooks/use-gift-cards'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
-import { useRedeemGiftCard, getGiftCardErrorMessage } from '@/hooks/use-redeem-gift-card'
+import { useRedeemGiftCard } from '@/hooks/use-redeem-gift-card'
 import { useUserStore } from '@/stores'
 import { formatPoints } from '@/utils'
-import { showErrorToastMessage, showToast } from '@/utils/toast'
+import { showErrorToast, showToast } from '@/utils/toast'
 
 interface GiftCardDetailSheetProps {
   visible: boolean
@@ -198,8 +199,8 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
           onClose()
         },
         onError: (err: Error) => {
-          const code = (err as Error & { response?: { data?: { code?: number } } })?.response?.data?.code
-          showErrorToastMessage(getGiftCardErrorMessage(code ?? 0))
+          const code = (err as Error & { response?: { data?: { statusCode?: number } } })?.response?.data?.statusCode
+          showErrorToast(code ?? 0)
         },
       },
     )
@@ -216,7 +217,7 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
   }, [card, t])
 
   const expiryDate = useMemo(
-    () => card?.expiredAt ? new Date(card.expiredAt).toLocaleDateString('vi-VN') : null,
+    () => card?.expiredAt ? dayjs(card.expiredAt).format('HH:mm:ss DD/MM/YYYY') : null,
     [card],
   )
 
@@ -314,7 +315,7 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
                       <View style={s.infoRow}>
                         <Text style={[s.infoKey, { color: subColor }]}>{t('detail.issuedAt')}</Text>
                         <Text style={[s.infoVal, { color: textColor }]}>
-                          {new Date(card.createdAt).toLocaleDateString('vi-VN')}
+                          {dayjs(card.createdAt).format('HH:mm:ss DD/MM/YYYY')}
                         </Text>
                       </View>
                       {expiryDate && (
@@ -337,7 +338,7 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
                         <View style={s.infoRow}>
                           <Text style={[s.infoKey, { color: subColor }]}>{t('detail.usedAt')}</Text>
                           <Text style={[s.infoVal, { color: textColor }]}>
-                            {new Date(card.usedAt).toLocaleDateString('vi-VN')}
+                            {dayjs(card.usedAt).format('HH:mm:ss DD/MM/YYYY')}
                           </Text>
                         </View>
                       )}

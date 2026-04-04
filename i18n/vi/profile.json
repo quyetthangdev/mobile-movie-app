@@ -325,6 +325,10 @@
     "myCoins": "Xu của tôi",
     "accountSettings": "Cài đặt tài khoản",
     "subtitle": "Quản lý tài khoản, đơn hàng và ưu đãi của bạn.",
-    "settings": "Cài đặt"
+    "settings": "Cài đặt",
+    "language": {
+      "title": "Ngôn ngữ",
+      "subtitle": "Chọn ngôn ngữ hiển thị"
+    }
   }
 }

@@ -75,7 +75,7 @@ export const GiftCardFilterSheet = memo(function GiftCardFilterSheet({
   const { t: tCommon } = useTranslation('common')
 
   const STATUS_OPTIONS = useMemo(() => [
-    { label: tCommon('all'), value: null },
+    { label: tCommon('common.all'), value: null },
     { label: t('status.available'), value: GiftCardUsageStatus.AVAILABLE },
     { label: t('status.used'), value: GiftCardUsageStatus.USED },
     { label: t('status.expired'), value: GiftCardUsageStatus.EXPIRED },
@@ -251,7 +251,7 @@ export const GiftCardFilterSheet = memo(function GiftCardFilterSheet({
                   style={[fs.btn, { backgroundColor: chipBg }]}
                 >
                   <Text style={[fs.btnText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
-                    {tCommon('reset')}
+                    {tCommon('common.reset')}
                   </Text>
                 </GHTouchable>
               </View>

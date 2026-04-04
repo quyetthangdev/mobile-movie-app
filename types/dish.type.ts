@@ -444,6 +444,8 @@ export interface IOrderInvoice {
   tableName: string
   referenceNumber: number
   branchAddress: string
+  wifiName?: string
+  wifiPassword?: string
   cashier: string
   customer: string
   invoiceItems: {

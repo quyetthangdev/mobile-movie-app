@@ -111,7 +111,7 @@ const StatusQuickFilter = memo(function StatusQuickFilter({
   const inactiveText = isDark ? colors.gray[400] : colors.gray[500]
 
   const STATUS_OPTIONS_QUICK = useMemo(() => [
-    { label: tCommon('all'),          value: null                          },
+    { label: tCommon('common.all'),    value: null                          },
     { label: t('status.available'),   value: GiftCardUsageStatus.AVAILABLE },
     { label: t('status.used'),        value: GiftCardUsageStatus.USED      },
     { label: t('status.expired'),     value: GiftCardUsageStatus.EXPIRED   },

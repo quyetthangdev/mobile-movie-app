@@ -1,5 +1,5 @@
 import { Image as ExpoImage } from 'expo-image'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 
 import { Images } from '@/assets/images'
@@ -26,28 +26,35 @@ export const PaymentProductItem = React.memo(function PaymentProductItem({
   isLast: boolean
   noNoteLabel: string
 }) {
-  const original = item.variant?.price || 0
-  const priceAfterPromotion = displayItem?.priceAfterPromotion || 0
-  const finalPrice = displayItem?.finalPrice || 0
+  const { displayPrice, shouldShowLineThrough, original } = useMemo(() => {
+    const orig = item.variant?.price || 0
+    const priceAfterPromotion = displayItem?.priceAfterPromotion || 0
+    const finalPrice = displayItem?.finalPrice || 0
+    const productSlug = item.variant?.product?.slug
 
-  const isSamePriceVoucher =
-    voucher?.type === VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
-    voucher?.voucherProducts?.some((vp) => vp.product?.slug === item.variant?.product?.slug)
-  const isAtLeastOneVoucher =
-    voucher?.applicabilityRule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
-    voucher?.voucherProducts?.some((vp) => vp.product?.slug === item.variant?.product?.slug)
-  const hasVoucherDiscount = (displayItem?.voucherDiscount ?? 0) > 0
-  const hasPromotionDiscount = (displayItem?.promotionDiscount ?? 0) > 0
+    const isSamePrice =
+      voucher?.type === VOUCHER_TYPE.SAME_PRICE_PRODUCT &&
+      voucher?.voucherProducts?.some((vp) => vp.product?.slug === productSlug)
+    const isAtLeastOne =
+      voucher?.applicabilityRule === APPLICABILITY_RULE.AT_LEAST_ONE_REQUIRED &&
+      voucher?.voucherProducts?.some((vp) => vp.product?.slug === productSlug)
+    const hasVoucher = (displayItem?.voucherDiscount ?? 0) > 0
+    const hasPromo = (displayItem?.promotionDiscount ?? 0) > 0
 
-  const displayPrice = isSamePriceVoucher
-    ? finalPrice * item.quantity
-    : isAtLeastOneVoucher && hasVoucherDiscount
-      ? (original - (displayItem?.voucherDiscount || 0)) * item.quantity
-      : hasPromotionDiscount
-        ? priceAfterPromotion * item.quantity
-        : original * item.quantity
+    const price = isSamePrice
+      ? finalPrice * item.quantity
+      : isAtLeastOne && hasVoucher
+        ? (orig - (displayItem?.voucherDiscount || 0)) * item.quantity
+        : hasPromo
+          ? priceAfterPromotion * item.quantity
+          : orig * item.quantity
 
-  const shouldShowLineThrough = isSamePriceVoucher || hasPromotionDiscount || hasVoucherDiscount
+    return {
+      displayPrice: price,
+      shouldShowLineThrough: isSamePrice || hasPromo || hasVoucher,
+      original: orig,
+    }
+  }, [item.variant, item.quantity, displayItem, voucher])
 
   return (
     <View style={!isLast ? [pItemStyles.row, pItemStyles.rowBorder] : pItemStyles.row}>

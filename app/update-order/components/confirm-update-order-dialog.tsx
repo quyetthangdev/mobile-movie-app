@@ -254,11 +254,13 @@ export default memo(function ConfirmUpdateOrderDialog({
         onPress={() => setSheetVisible(true)}
         style={[
           cd.btn,
-          { backgroundColor: primaryColor },
+          { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] },
           (disabled || isSubmitting) && cd.btnDisabled,
         ]}
       >
-        <Text style={cd.btnText}>{t('order.confirmUpdate', 'Xác nhận cập nhật')}</Text>
+        <Text style={[cd.btnText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+          {t('order.confirmUpdate', 'Xác nhận cập nhật')}
+        </Text>
       </Pressable>
 
       {/* Bottom sheet */}
@@ -417,13 +419,15 @@ export default memo(function ConfirmUpdateOrderDialog({
                   disabled={isSubmitting}
                   style={[
                     cd.submitBtn,
-                    { backgroundColor: primaryColor, opacity: isSubmitting ? 0.6 : 1 },
+                    { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], opacity: isSubmitting ? 0.6 : 1 },
                   ]}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator size="small" color={colors.white.light} />
+                    <ActivityIndicator size="small" color={isDark ? colors.gray[50] : colors.gray[700]} />
                   ) : (
-                    <Text style={cd.submitText}>{t('order.confirmUpdate', 'Xác nhận')}</Text>
+                    <Text style={[cd.submitText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+                      {t('order.confirmUpdate', 'Xác nhận')}
+                    </Text>
                   )}
                 </Pressable>
               </View>
@@ -446,7 +450,7 @@ const cd = StyleSheet.create({
     minWidth: 160,
   },
   btnDisabled: { opacity: 0.5 },
-  btnText: { fontSize: 15, fontWeight: '700', color: colors.white.light },
+  btnText: { fontSize: 15, fontWeight: '700' },
   // ── Sheet ───────────────────────────────────────────────────────────────────
   sheetHeader: {
     paddingHorizontal: 20,
@@ -517,5 +521,5 @@ const cd = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitText: { fontSize: 15, fontWeight: '700', color: colors.white.light },
+  submitText: { fontSize: 15, fontWeight: '700' },
 })

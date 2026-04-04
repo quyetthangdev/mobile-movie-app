@@ -6,6 +6,7 @@ export { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 export type { CarouselApi } from './carousel'
 export { Checkbox } from './checkbox'
 export { Dialog } from './dialog'
+export { LightweightDialog } from './lightweight-dialog'
 export { Drawer } from './drawer'
 export {
     Dropdown,

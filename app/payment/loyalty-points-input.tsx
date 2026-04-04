@@ -27,6 +27,42 @@ interface LoyaltyPointsInputProps {
 
 const QUICK_PRESETS = [1_000, 2_000, 3_000, 5_000, 10_000, 50_000]
 
+const PresetChip = memo(function PresetChip({
+  value,
+  label,
+  isActive,
+  primaryColor,
+  chipBg,
+  chipBorderColor,
+  subColor,
+  onPress,
+}: {
+  value: number
+  label: string
+  isActive: boolean
+  primaryColor: string
+  chipBg: string
+  chipBorderColor: string
+  subColor: string
+  onPress: (v: number) => void
+}) {
+  const handlePress = useCallback(() => onPress(value), [onPress, value])
+  const chipStyle = useMemo(
+    () => ({
+      borderColor: isActive ? primaryColor : chipBorderColor,
+      backgroundColor: isActive ? `${primaryColor}15` : chipBg,
+    }),
+    [isActive, primaryColor, chipBorderColor, chipBg],
+  )
+  return (
+    <Pressable onPress={handlePress} style={[s.chip, chipStyle]}>
+      <Text style={[s.chipText, { color: isActive ? primaryColor : subColor }]}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+})
+
 const LoyaltyPointsInput = memo(function LoyaltyPointsInput({
   orderSlug,
   orderTotal,
@@ -122,7 +158,7 @@ const LoyaltyPointsInput = memo(function LoyaltyPointsInput({
     inputRef.current?.blur()
   }, [])
 
-  const handleUseMax = useCallback(() => {
+  const handleUseMax = useCallback((_?: number) => {
     setInputValue(String(maxUsablePoints))
     inputRef.current?.blur()
   }, [maxUsablePoints])
@@ -157,41 +193,33 @@ const LoyaltyPointsInput = memo(function LoyaltyPointsInput({
               style={s.chipsScroll}
               contentContainerStyle={s.chipsContent}
             >
-              {quickPresets.map((v) => {
-                const active = clampedPoints === v
-                return (
-                  <Pressable
-                    key={v}
-                    onPress={() => handlePreset(v)}
-                    style={[
-                      s.chip,
-                      { borderColor: active ? primaryColor : chipBorderColor, backgroundColor: active ? `${primaryColor}15` : chipBg },
-                    ]}
-                  >
-                    <Text style={[s.chipText, { color: active ? primaryColor : subColor }]}>
-                      {v >= 1_000 ? `${v / 1_000}K` : v}
-                    </Text>
-                  </Pressable>
-                )
-              })}
+              {quickPresets.map((v) => (
+                <PresetChip
+                  key={v}
+                  value={v}
+                  label={v >= 1_000 ? `${v / 1_000}K` : String(v)}
+                  isActive={clampedPoints === v}
+                  primaryColor={primaryColor}
+                  chipBg={chipBg}
+                  chipBorderColor={chipBorderColor}
+                  subColor={subColor}
+                  onPress={handlePreset}
+                />
+              ))}
 
-              {/* Chip "Tối đa" — style đồng nhất với preset thường */}
-              {maxUsablePoints > 0 && (() => {
-                const active = clampedPoints === maxUsablePoints
-                return (
-                  <Pressable
-                    onPress={handleUseMax}
-                    style={[
-                      s.chip,
-                      { borderColor: active ? primaryColor : chipBorderColor, backgroundColor: active ? `${primaryColor}15` : chipBg },
-                    ]}
-                  >
-                    <Text style={[s.chipText, { color: active ? primaryColor : subColor }]}>
-                      Tối đa
-                    </Text>
-                  </Pressable>
-                )
-              })()}
+              {/* Chip "Tối đa" */}
+              {maxUsablePoints > 0 && (
+                <PresetChip
+                  value={maxUsablePoints}
+                  label="Tối đa"
+                  isActive={clampedPoints === maxUsablePoints}
+                  primaryColor={primaryColor}
+                  chipBg={chipBg}
+                  chipBorderColor={chipBorderColor}
+                  subColor={subColor}
+                  onPress={handleUseMax}
+                />
+              )}
             </ScrollView>
 
             {/* Input row */}

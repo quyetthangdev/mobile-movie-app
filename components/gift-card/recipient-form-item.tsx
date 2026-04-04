@@ -4,6 +4,7 @@ import { useDebounce } from 'use-debounce'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -80,6 +81,7 @@ export const RecipientFormItem = memo(function RecipientFormItem({
 
   const handleSelectSuggestion = useCallback(() => {
     if (fullName) {
+      Keyboard.dismiss()
       setValue(`recipients.${index}.name`, fullName, { shouldValidate: false })
       setNameLocked(true)
     }

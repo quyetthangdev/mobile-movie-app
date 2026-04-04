@@ -1,22 +1,29 @@
 import { ScreenContainer } from '@/components/layout'
 import { FloatingHeader } from '@/components/navigation/floating-header'
+import { useFocusEffect } from '@react-navigation/native'
+import { useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams } from 'expo-router'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { getOrderBySlug } from '@/api'
+import { CancelOrderDialog } from '@/components/dialog'
 import { Skeleton } from '@/components/ui'
-import { colors, PaymentMethod } from '@/constants'
+import { colors, NotificationMessageCode, PaymentMethod, ROUTE } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useOrderBySlug, useRunAfterTransition } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
+import { useNotificationStore, useUpdateOrderStore, useUserStore } from '@/stores'
 import { OrderStatus, OrderTypeEnum } from '@/types'
 import {
   calculateOrderDisplayAndTotals,
   formatCurrency,
   formatDateTime,
   getPaymentStatusLabel,
+  showErrorToast,
 } from '@/utils'
 
 import { InvoiceSection } from '@/app/payment/payment-invoice-section'
@@ -60,10 +67,73 @@ function OrderDetailContent() {
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
   const screenBg = isDark ? colors.background.dark : colors.background.light
 
-  const { data: orderResponse, isPending } = useOrderBySlug(id ?? '')
+  const { data: orderResponse, isPending, isRefetching, refetch: refetchOrder } = useOrderBySlug(id ?? '')
   const order = orderResponse?.result
   const orderItems = order?.orderItems ?? null
   const voucher = order?.voucher ?? null
+
+  // ── Auto-refetch on FCM ORDER_PAID notification ──
+  const processedRef = useRef<Set<string>>(new Set())
+  const latestNotification = useNotificationStore((s) => s.notifications[0])
+  useEffect(() => {
+    if (!latestNotification || latestNotification.isRead) return
+    if (processedRef.current.has(latestNotification.slug)) return
+    if (
+      latestNotification.message === NotificationMessageCode.ORDER_PAID &&
+      latestNotification.metadata?.order === id
+    ) {
+      processedRef.current.add(latestNotification.slug)
+      refetchOrder()
+    }
+  }, [latestNotification, id, refetchOrder])
+
+  // Refetch khi screen regains focus (background FCM)
+  useFocusEffect(
+    useCallback(() => {
+      void refetchOrder()
+    }, [refetchOrder]),
+  )
+
+  const insets = useSafeAreaInsets()
+  const queryClient = useQueryClient()
+  const getUserInfo = useUserStore((s) => s.getUserInfo)
+  const setOrderItems = useUpdateOrderStore((s) => s.setOrderItems)
+  const isPending_ = order?.status === OrderStatus.PENDING
+
+  const handlePayment = useCallback(() => {
+    if (!id) return
+    queryClient.prefetchQuery({
+      queryKey: ['order', id],
+      queryFn: () => getOrderBySlug(id),
+    })
+    navigateNative.push(
+      `${ROUTE.CLIENT_PAYMENT.replace('[order]', id)}?from=history` as Parameters<typeof navigateNative.push>[0],
+    )
+  }, [id, queryClient])
+
+  const handleUpdateOrder = useCallback(() => {
+    if (!getUserInfo()?.slug) {
+      showErrorToast(1042)
+      navigateNative.push(ROUTE.LOGIN)
+      return
+    }
+    if (!order?.slug) return
+    queryClient.prefetchQuery({
+      queryKey: ['order', order.slug],
+      queryFn: () => getOrderBySlug(order.slug),
+    })
+    setOrderItems(order)
+    navigateNative.push(
+      `${ROUTE.CLIENT_UPDATE_ORDER.replace('[slug]', order.slug)}` as Parameters<typeof navigateNative.push>[0],
+    )
+  }, [order, queryClient, setOrderItems, getUserInfo])
+
+  const handleProductPress = useCallback((productSlug: string) => {
+    navigateNative.push({
+      pathname: ROUTE.CLIENT_PRODUCT_DETAIL,
+      params: { id: productSlug },
+    })
+  }, [])
 
   const { displayItemMap, cartTotals } = useMemo(() => {
     if (!orderItems) return { displayItemMap: new Map<string, ReturnType<typeof calculateOrderDisplayAndTotals>['displayItems'][number]>(), cartTotals: null }
@@ -102,8 +172,11 @@ function OrderDetailContent() {
       <ScreenContainer edges={['top']} style={{ flex: 1 }}>
         <GestureScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingTop: STATIC_TOP_INSET + 60, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingTop: STATIC_TOP_INSET + 60, paddingBottom: isPending_ ? 100 : 40 }}
           showsVerticalScrollIndicator={true}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetchOrder} tintColor={primaryColor} colors={[primaryColor]} />
+          }
         >
           <View style={ds.contentPad}>
 
@@ -184,19 +257,24 @@ function OrderDetailContent() {
               </View>
             </View>
 
-            {/* Order Items */}
+            {/* Order Items — tap product image to view detail */}
             <View style={[ds.card, { backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderColor: isDark ? colors.gray[700] : colors.gray[100], padding: 16 }]}>
               {(orderItems ?? []).map((item, index) => (
-                <PaymentProductItem
+                <Pressable
                   key={item.slug || index}
-                  item={item}
-                  displayItem={displayItemMap.get(item.slug) ?? null}
-                  voucher={voucher}
-                  primaryColor={primaryColor}
-                  isDark={isDark}
-                  isLast={index === (orderItems ?? []).length - 1}
-                  noNoteLabel={t('order.noNote', 'Không có ghi chú')}
-                />
+                  onPress={() => handleProductPress(item.variant?.product?.slug ?? '')}
+                  style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
+                >
+                  <PaymentProductItem
+                    item={item}
+                    displayItem={displayItemMap.get(item.slug) ?? null}
+                    voucher={voucher}
+                    primaryColor={primaryColor}
+                    isDark={isDark}
+                    isLast={index === (orderItems ?? []).length - 1}
+                    noNoteLabel={t('order.noNote', 'Không có ghi chú')}
+                  />
+                </Pressable>
               ))}
             </View>
 
@@ -289,8 +367,36 @@ function OrderDetailContent() {
             {/* Invoice */}
             <InvoiceSection order={order} primaryColor={primaryColor} isDark={isDark} />
 
+            {/* Update order — inline at bottom of scroll content, muted style */}
+            {isPending_ && (
+              <Pressable
+                onPress={handleUpdateOrder}
+                style={[ds.updateBtn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], borderWidth: 1, borderColor: isDark ? colors.gray[600] : colors.gray[300] }]}
+              >
+                <Text style={[ds.updateBtnText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+                  {t('order.updateOrder', 'Cập nhật đơn hàng')}
+                </Text>
+              </Pressable>
+            )}
+
           </View>
         </GestureScrollView>
+        {/* Sticky footer — cancel + payment */}
+        {isPending_ && (
+          <View style={[ds.bottomBar, { paddingBottom: insets.bottom, backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderTopColor: isDark ? colors.gray[700] : colors.gray[200] }]}>
+            <View style={ds.footerRow}>
+              <CancelOrderDialog order={order} />
+              <Pressable
+                onPress={handlePayment}
+                style={[ds.actionBtnFilled, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], flex: 1 }]}
+              >
+                <Text style={[ds.actionBtnFilledText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+                  {t('order.payment', 'Thanh toán')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
         <FloatingHeader title={t('order.orderDetail', 'Chi tiết đơn hàng')} onBack={navigateNative.back} />
       </ScreenContainer>
     </View>
@@ -316,6 +422,12 @@ const ds = StyleSheet.create({
   semibold: { fontSize: 16, fontWeight: '600' },
   totalPrice: { fontSize: 24, fontWeight: '800' },
   xsText: { fontSize: 12 },
+  updateBtn: { marginBottom: 16, height: 46, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  updateBtnText: { fontSize: 14, fontWeight: '600' },
+  bottomBar: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 12 },
+  footerRow: { flexDirection: 'row', gap: 10 },
+  actionBtnFilled: { height: 46, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  actionBtnFilledText: { fontSize: 14, fontWeight: '700' },
 })
 
 export default function OrderDetailPage() {

@@ -7,6 +7,7 @@ type SheetFooterProps = {
   onPress: () => void
   isDark: boolean
   primaryColor: string
+  bottomInset: number
 }
 
 export function SheetFooter({
@@ -15,9 +16,10 @@ export function SheetFooter({
   onPress,
   isDark,
   primaryColor,
+  bottomInset,
 }: SheetFooterProps) {
   return (
-    <View style={styles.footer}>
+    <View style={[styles.footer, { paddingBottom: bottomInset + 4 }]}>
       <Pressable
         onPress={onPress}
         style={[
@@ -54,7 +56,7 @@ export function SheetFooter({
 }
 
 const styles = StyleSheet.create({
-  footer: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+  footer: { paddingHorizontal: 20, paddingTop: 12 },
   footerBtn: {
     height: 48,
     borderRadius: 12,

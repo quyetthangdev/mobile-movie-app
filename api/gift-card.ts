@@ -50,9 +50,26 @@ export async function redeemGiftCard(
   data: IUseGiftCardRequest,
 ): Promise<IApiResponse<IUseGiftCardResponse>> {
   const { serial, code, userSlug } = data
-  const response = await http.post<IApiResponse<IUseGiftCardResponse>>(
-    '/gift-card/use',
-    { serial, code, userSlug },
-  )
-  return response.data
+  if (__DEV__) {
+    // eslint-disable-next-line no-console
+    console.log('[redeemGiftCard] POST /gift-card/use', JSON.stringify({ serial, code, userSlug }, null, 2))
+  }
+  try {
+    const response = await http.post<IApiResponse<IUseGiftCardResponse>>(
+      '/gift-card/use',
+      { serial, code, userSlug },
+    )
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log('[redeemGiftCard] response:', JSON.stringify(response.data, null, 2))
+    }
+    return response.data
+  } catch (error: unknown) {
+    const e = error as { response?: { status?: number; data?: unknown } }
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log('[redeemGiftCard] error:', e?.response?.status, JSON.stringify(e?.response?.data, null, 2))
+    }
+    throw error
+  }
 }

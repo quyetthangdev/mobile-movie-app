@@ -27,15 +27,23 @@ export function useNotificationResponse(enabled = true) {
       if (processedRef.current.has(id)) return
       processedRef.current.add(id)
 
-      const data = response.notification.request.content.data as
-        | Record<string, string>
-        | undefined
+      const content = response.notification.request.content
+      const data = content.data as Record<string, string> | undefined
 
-      // Mark as read in store
-      const slug = data?.slug
-      if (slug) {
-        useNotificationStore.getState().markAsRead(slug)
-      }
+      // Add notification to store (background FCM never goes through foreground
+      // listener, so it won't be in the store yet). This allows screens like the
+      // payment screen to detect ORDER_PAID via hasOrderPaidNotification.
+      useNotificationStore.getState().addNotification(
+        {
+          notification: {
+            title: content.title ?? undefined,
+            body: content.body ?? undefined,
+          },
+          data: data ?? {},
+          messageId: id,
+        },
+        { markAsRead: false },
+      )
 
       // Navigate to relevant screen
       navigateFromNotification(data)

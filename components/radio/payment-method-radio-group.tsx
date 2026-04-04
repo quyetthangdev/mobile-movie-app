@@ -63,6 +63,8 @@ interface PaymentMethodRadioGroupProps {
   onSelect?: (paymentMethod: PaymentMethod, transactionId?: string) => void
   /** Called when user taps a method blocked by voucher incompatibility */
   onConflict?: (blockedMethod: PaymentMethod) => void
+  /** Coin balance fetched from API — used to disable Point when insufficient */
+  coinBalance?: number
 }
 
 export default function PaymentMethodRadioGroup({
@@ -74,6 +76,7 @@ export default function PaymentMethodRadioGroup({
   onSubmit,
   onSelect,
   onConflict,
+  coinBalance,
 }: PaymentMethodRadioGroupProps) {
   const { t } = useTranslation('menu')
   const { t: tProfile } = useTranslation('profile')
@@ -81,7 +84,10 @@ export default function PaymentMethodRadioGroup({
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
-  const balance = userInfo?.balance?.points || 0
+  const balance = coinBalance ?? userInfo?.balance?.points ?? 0
+  const orderSubtotal = order?.subtotal ?? 0
+  const isBalanceInsufficient =
+    userInfo?.role?.name === Role.CUSTOMER && balance < orderSubtotal
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<string>('')
   const [creditCardTransactionId, setCreditCardTransactionId] =
@@ -97,6 +103,12 @@ export default function PaymentMethodRadioGroup({
   const isCustomer =
     userInfo && userInfo.role.name === Role.CUSTOMER
 
+  // Memoize available methods once — reused in both support check and auto-select
+  const availableMethods = useMemo(
+    () => computeAvailableMethods(userInfo, disabledMethods),
+    [userInfo, disabledMethods],
+  )
+
   // Single memoized computation — replaces 6 cascaded hooks
   const {
     bankTransferSupported,
@@ -107,7 +119,7 @@ export default function PaymentMethodRadioGroup({
     hasBlockedMethods,
     blockedMethodLabels,
   } = useMemo(() => {
-    const available = computeAvailableMethods(userInfo, disabledMethods)
+    const available = availableMethods
     const hasVoucher = !!order?.voucher && voucherPaymentMethods.length > 0
     const isSupported = (method: PaymentMethod) => {
       if (!available.includes(method)) return false
@@ -127,14 +139,15 @@ export default function PaymentMethodRadioGroup({
       bankTransferSupported: isSupported(PaymentMethod.BANK_TRANSFER),
       creditCardSupported: isSupported(PaymentMethod.CREDIT_CARD),
       cashSupported: isSupported(PaymentMethod.CASH),
-      pointSupported: isSupported(PaymentMethod.POINT),
+      pointSupported:
+        isSupported(PaymentMethod.POINT) && !isBalanceInsufficient,
       hasCompatiblePaymentMethod: hasVoucher
         ? available.some((m) => isSupportedByVoucher(m, voucherPaymentMethods))
         : available.length > 0,
       hasBlockedMethods: blocked.length > 0,
       blockedMethodLabels: blocked.map((m) => labelMap[m]).join(', '),
     }
-  }, [userInfo, disabledMethods, order?.voucher, voucherPaymentMethods, t])
+  }, [availableMethods, order?.voucher, voucherPaymentMethods, t, isBalanceInsufficient])
 
   // Auto-select method mặc định khi mount: giao role-methods × voucher-methods, pick first
   const autoSelectedRef = useRef(false)
@@ -142,11 +155,10 @@ export default function PaymentMethodRadioGroup({
     if (autoSelectedRef.current || defaultValue) return
     autoSelectedRef.current = true
 
-    const available = computeAvailableMethods(userInfo, disabledMethods)
     const vpmList = order?.voucher?.voucherPaymentMethods ?? []
-    let candidates = available
+    let candidates = availableMethods
     if (vpmList.length > 0) {
-      candidates = available.filter((m) =>
+      candidates = availableMethods.filter((m) =>
         isSupportedByVoucher(m, vpmList),
       )
     }
@@ -202,10 +214,26 @@ export default function PaymentMethodRadioGroup({
   )
 
   const getDisabledReason = useCallback(
-    (method: PaymentMethod) =>
-      disabledReasons?.[method] ||
-      t('paymentMethod.voucherNotSupport'),
-    [disabledReasons, t],
+    (method: PaymentMethod) => {
+      if (
+        method === PaymentMethod.POINT &&
+        isBalanceInsufficient
+      ) {
+        return t(
+          'paymentMethod.insufficientCoinBalance',
+          'Không đủ xu (cần {{required}}, có {{available}})',
+          {
+            required: formatCurrency(orderSubtotal, ''),
+            available: formatCurrency(balance, ''),
+          },
+        )
+      }
+      return (
+        disabledReasons?.[method] ||
+        t('paymentMethod.voucherNotSupport')
+      )
+    },
+    [disabledReasons, t, isBalanceInsufficient, orderSubtotal, balance],
   )
 
   // Returns a conflict handler only for methods blocked by voucher (not by role/disabledMethods)
@@ -296,6 +324,19 @@ export default function PaymentMethodRadioGroup({
               color={isDark ? '#60a5fa' : '#3b82f6'}
             />
           </Text>
+          <Text
+            className={cn(
+              'text-[10px] pl-2',
+              pointSupported
+                ? 'text-gray-400 dark:text-gray-500'
+                : 'text-gray-300 dark:text-gray-600',
+            )}
+          >
+            {t(
+              'paymentMethod.coinNote',
+              'Xu từ gift card, dùng thanh toán toàn bộ đơn hàng',
+            )}
+          </Text>
         </PaymentMethodOption>
       )}
     </RadioGroup>
@@ -333,7 +374,7 @@ export default function PaymentMethodRadioGroup({
               })
               .join(', ')}
             , {t('paymentMethod.butYouCanUse')}{' '}
-            {computeAvailableMethods(userInfo, disabledMethods)
+            {availableMethods
               .map((method: PaymentMethod) => {
                 switch (method) {
                   case PaymentMethod.CASH:

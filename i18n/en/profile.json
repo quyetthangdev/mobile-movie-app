@@ -327,6 +327,10 @@
     "myCoins": "My Coins",
     "accountSettings": "Account Settings",
     "subtitle": "Manage your account, orders and promotions.",
-    "settings": "Settings"
+    "settings": "Settings",
+    "language": {
+      "title": "Language",
+      "subtitle": "Select display language"
+    }
   }
 }

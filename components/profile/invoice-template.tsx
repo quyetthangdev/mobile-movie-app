@@ -1,4 +1,5 @@
 import { Coins } from 'lucide-react-native'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image, type ImageSourcePropType, ScrollView, Text, useColorScheme, View } from 'react-native'
 import QRCode from 'react-native-qrcode-svg'
@@ -12,36 +13,37 @@ interface InvoiceProps {
   order: IOrder | undefined
 }
 
-export default function Invoice({ order }: InvoiceProps) {
+export default React.memo(function Invoice({ order }: InvoiceProps) {
   const { t } = useTranslation('menu')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
-  const originalTotal =
-    order?.orderItems.reduce(
+  const { originalTotal, discount, voucherDiscount } = useMemo(() => {
+    const items = order?.orderItems
+    if (!items) return { originalTotal: 0, discount: 0, voucherDiscount: 0 }
+
+    const origTotal = items.reduce(
       (sum, item) => sum + item.variant.price * item.quantity,
       0,
-    ) || 0
+    )
+    const disc = items.reduce(
+      (sum, item) =>
+        sum +
+        (item.promotion
+          ? item.variant.price * item.quantity * (item.promotion.value / 100)
+          : 0),
+      0,
+    )
+    const vDisc =
+      order?.voucher?.type === VOUCHER_TYPE.PERCENT_ORDER
+        ? (origTotal - disc || 0) * (order.voucher.value / 100)
+        : order?.voucher?.type === VOUCHER_TYPE.FIXED_VALUE
+          ? order.voucher.value
+          : 0
 
-  const discount = order
-    ? order.orderItems.reduce(
-        (sum, item) =>
-          sum +
-          (item.promotion
-            ? item.variant.price * item.quantity * (item.promotion.value / 100)
-            : 0),
-        0,
-      )
-    : 0
+    return { originalTotal: origTotal, discount: disc, voucherDiscount: vDisc }
+  }, [order?.orderItems, order?.voucher])
 
-  const voucherDiscount =
-    order?.voucher && order?.voucher.type === VOUCHER_TYPE.PERCENT_ORDER
-      ? (originalTotal - discount || 0) * (order?.voucher.value / 100)
-      : order?.voucher && order?.voucher.type === VOUCHER_TYPE.FIXED_VALUE
-        ? order?.voucher.value
-        : 0
-
-  // calculate loss
   const loss = order?.loss || 0
 
   const isPointPayment =
@@ -180,7 +182,7 @@ export default function Invoice({ order }: InvoiceProps) {
           </View>
           <View className="flex-[0.1] items-center">
             <Text className="text-xs font-semibold text-gray-900 dark:text-gray-50">
-              {t('menu.promotion', 'KM')} (%)
+              {t('menu.promotion', 'Khuyến mãi')} (%)
             </Text>
           </View>
           <View className="flex-[0.2] items-end">
@@ -191,8 +193,8 @@ export default function Invoice({ order }: InvoiceProps) {
         </View>
 
         {/* Table Body */}
-        {order?.orderItems.map((item, idx) => (
-          <View key={`item-${idx}`}>
+        {order?.orderItems.map((item) => (
+          <View key={item.slug}>
             <View className="flex-row border-b border-dashed border-gray-200 dark:border-gray-700 pb-2 mb-2">
               <View className="flex-[0.35]">
                 <Text className="text-xs text-gray-900 dark:text-gray-50">
@@ -252,7 +254,7 @@ export default function Invoice({ order }: InvoiceProps) {
           </View>
           <View className="flex-row justify-between items-center py-2">
             <Text className="text-xs text-gray-900 dark:text-gray-50">
-              {t('order.estimatedTotal', 'Tổng ước tính')}
+              {t('order.estimatedTotal', 'Tạm tính')}
             </Text>
             <Text className="text-xs text-gray-900 dark:text-gray-50">
               {formatCurrency(originalTotal - discount || 0)}
@@ -269,7 +271,7 @@ export default function Invoice({ order }: InvoiceProps) {
           {isPointPayment && (
             <View className="flex-row justify-between items-center py-2">
               <Text className="text-xs text-gray-900 dark:text-gray-50">
-                {t('order.deductedCoinAmount', 'Số coin đã trừ')}
+                {t('order.deductedCoinAmount', 'Số xu đã trừ')}
               </Text>
               <View className="flex-row items-center gap-1">
                 <Text className="text-xs text-gray-900 dark:text-gray-50">
@@ -303,7 +305,7 @@ export default function Invoice({ order }: InvoiceProps) {
             <Text className="text-xs text-gray-900 dark:text-gray-50">
               {t(
                 'order.invoiceAutoDiscountUnderThreshold',
-                'Giảm giá tự động dưới ngưỡng',
+                'Giảm giá tự động đơn hàng dưới 2000đ',
               )}
             </Text>
             <Text className="text-xs text-gray-900 dark:text-gray-50">
@@ -312,7 +314,7 @@ export default function Invoice({ order }: InvoiceProps) {
           </View>
           <View className="flex-row justify-between items-center py-3 mt-2 border-t-2 border-dashed border-gray-300 dark:border-gray-600">
             <Text className="text-base font-semibold text-gray-900 dark:text-gray-50">
-              {t('order.totalPayment', 'Tổng thanh toán')}
+              {t('order.totalPayment', 'Tổng tiền')}
             </Text>
             <Text
               className="text-xl font-bold"
@@ -327,19 +329,16 @@ export default function Invoice({ order }: InvoiceProps) {
       </View>
 
       {/* Invoice footer */}
-      <Text className="text-sm italic text-red-500 dark:text-red-400 mt-4">
-        {t('order.invoiceNote', 'Lưu ý hóa đơn')}
+      <Text className="text-sm italic mt-4" style={{ color: primaryColor }}>
+        {t('order.invoiceNote', 'Lưu ý: Nếu bạn không tải được hóa đơn, vui lòng chụp lại màn hình')}
       </Text>
 
       {/* System wifi info */}
-      {order?.invoice?.branchAddress && (
-        <View className="flex pt-2 mt-2">
-          <Text className="text-xs text-gray-600 dark:text-gray-400">
-            <Text className="font-bold">{t('order.wifi', 'WiFi')}:</Text>{' '}
-            {t('order.wifiInfo', 'Vui lòng liên hệ nhân viên để được hỗ trợ')}
-          </Text>
-        </View>
-      )}
+      <View className="pt-2 mt-2">
+        <Text className="text-xs text-gray-600 dark:text-gray-400">
+          {`${t('order.wifi', 'Wifi')}: ${order?.invoice?.wifiName ?? 'Trendcoffee'} - Mật khẩu: ${order?.invoice?.wifiPassword ?? 'Trendcoffee'}`}
+        </Text>
+      </View>
     </ScrollView>
   )
-}
+})

@@ -1,4 +1,4 @@
-import { confirmEmailVerification, confirmForgotPassword, confirmPhoneNumberVerification, initiateForgotPassword, login, register, resendEmailVerification, resendOTPForgotPassword, resendPhoneNumberVerification, verifyEmail, verifyOTPForgotPassword, verifyPhoneNumber } from "@/api"
+import { confirmEmailVerification, confirmForgotPassword, confirmPhoneNumberVerification, initiateForgotPassword, login, register, resendEmailVerification, resendOTPForgotPassword, resendPhoneNumberVerification, updateLanguage, uploadAvatar, verifyEmail, verifyOTPForgotPassword, verifyPhoneNumber } from "@/api"
 import { IConfirmForgotPasswordRequest, IInitiateForgotPasswordRequest, ILoginRequest, IRegisterRequest, IResendOTPForgotPasswordRequest, IVerifyEmailRequest, IVerifyOTPForgotPasswordRequest } from "@/types"
 import { useMutation } from "@tanstack/react-query"
 
@@ -95,6 +95,22 @@ export const useLogin = () => {
     return useMutation({
       mutationFn: async () => {
         return resendEmailVerification()
+      },
+    })
+  }
+
+  export const useUploadAvatar = () => {
+    return useMutation({
+      mutationFn: async (formData: FormData) => {
+        return uploadAvatar(formData)
+      },
+    })
+  }
+
+  export const useUpdateLanguage = () => {
+    return useMutation({
+      mutationFn: async ({ userSlug, language }: { userSlug: string; language: string }) => {
+        return updateLanguage(userSlug, language)
       },
     })
   }

@@ -21,7 +21,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat'
 import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { Check } from 'lucide-react-native'
+import { Check, ChevronDown } from 'lucide-react-native'
 import React, {
   useCallback,
   useEffect,
@@ -31,6 +31,7 @@ import React, {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -90,7 +91,7 @@ function DobSamplePicker({
 }: {
   value: string
   onSelect: (date: string) => void
-  theme: { bg: string; editBtn: string; text: string; textMuted: string }
+  theme: { bg: string; card: string; editBtn: string; text: string; textMuted: string }
   placeholder: string
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -122,7 +123,10 @@ function DobSamplePicker({
       <TouchableOpacity
         style={[
           styles.dobTouchable,
-          { backgroundColor: theme.bg, borderColor: theme.editBtn },
+          {
+            backgroundColor: theme.card,
+            borderColor: expanded ? theme.text : theme.editBtn,
+          },
         ]}
         onPress={() => setExpanded((e) => !e)}
         activeOpacity={0.7}
@@ -130,11 +134,16 @@ function DobSamplePicker({
         <Text
           style={[
             styles.dobText,
-            { color: value ? theme.text : theme.textMuted },
+            { color: value ? theme.text : theme.textMuted, flex: 1 },
           ]}
         >
           {formatDobForDisplay(value) || placeholder}
         </Text>
+        <ChevronDown
+          size={16}
+          color={theme.textMuted}
+          style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}
+        />
       </TouchableOpacity>
       <Animated.View style={[styles.dobPickerWrap, animatedStyle]}>
         <View style={styles.dobPickerInner}>
@@ -445,6 +454,10 @@ const ProfileEditForm = React.memo(function ProfileEditForm({ userInfo }: { user
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -532,6 +545,7 @@ const ProfileEditForm = React.memo(function ProfileEditForm({ userInfo }: { user
           />
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <DateOfBirthWheelPicker
         ref={dobPickerRef}
@@ -618,6 +632,7 @@ export default function ProfileEditScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  flex1: { flex: 1 },
   scrollView: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 16,
@@ -645,7 +660,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 12,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   dobPickerWrap: {
     marginTop: 8,

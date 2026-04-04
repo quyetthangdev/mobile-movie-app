@@ -1,13 +1,16 @@
 import { LoginForm } from '@/components/auth'
+import { LanguageSheet } from '@/components/profile'
 import { Skeleton } from '@/components/ui'
 import { colors } from '@/constants/colors.constant'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
-import { useLoyaltyPoints, useRunAfterTransition } from '@/hooks'
+import { useLoyaltyPoints, useRunAfterTransition, useUploadAvatar } from '@/hooks'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
+import { useScanSheetStore } from '@/stores/scan-sheet.store'
 import { showToast } from '@/utils'
 import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
+import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import {
@@ -17,12 +20,13 @@ import {
   Coins,
   Folder,
   Gift,
-  LayoutGrid,
+  Globe,
+  ScanLine,
   Settings,
   Trophy,
   User
 } from 'lucide-react-native'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AppState,
@@ -43,7 +47,6 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
 import { useProfileAnimation } from './use-profile-animation'
 
 const AnimatedGestureScrollView = Animated.createAnimatedComponent(GestureScrollView)
@@ -153,12 +156,12 @@ const MenuItem = React.memo(function MenuItem({
 // ─── Profile Header — copied 100% from CartHeader, 2 buttons changed ────────
 
 const ProfileHeader = React.memo(function ProfileHeader({
-  onMenu,
   onEdit,
+  onScan,
   isDark,
 }: {
-  onMenu: () => void
   onEdit: () => void
+  onScan: () => void
   isDark: boolean
 }) {
   const { t } = useTranslation('profile')
@@ -183,7 +186,7 @@ const ProfileHeader = React.memo(function ProfileHeader({
       />
       <View style={[phStyles.row, { paddingTop: STATIC_TOP_INSET + 10 }]} pointerEvents="auto">
         <Pressable
-          onPress={onMenu}
+          onPress={onScan}
           hitSlop={8}
           style={[
             phStyles.circleBtn,
@@ -191,9 +194,8 @@ const ProfileHeader = React.memo(function ProfileHeader({
             phStyles.shadow,
           ]}
         >
-          <LayoutGrid size={20} color={isDark ? colors.gray[50] : colors.gray[900]} />
+          <ScanLine size={20} color={isDark ? colors.gray[50] : colors.gray[900]} />
         </Pressable>
-        <View style={phStyles.circleBtn} />
         <Pressable
           onPress={onEdit}
           hitSlop={8}
@@ -301,12 +303,14 @@ const ProfileTest = () => {
 
   const { t } = useTranslation('profile')
   const handleBack = useCallback(() => router.back(), [router])
-  const { animatedStyle, closeProfile, panGesture } =
+  const { animatedStyle, panGesture } =
     useProfileAnimation(handleBack)
   const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
   const userInfo = useUserStore((state) => state.userInfo)
+  const setUserInfo = useUserStore((state) => state.setUserInfo)
   const setLogout = useAuthStore((state) => state.setLogout)
   const removeUserInfo = useUserStore((state) => state.removeUserInfo)
+  const { mutate: uploadAvatar } = useUploadAvatar()
 
   const [allowFetch, setAllowFetch] = React.useState(false)
   const openLogoutSheet = useLogoutSheetStore((s) => s.open)
@@ -328,9 +332,58 @@ const ProfileTest = () => {
   const { totalPoints: loyaltyPoints, isLoading: loyaltyLoading } =
     useLoyaltyPoints(userInfo?.slug, allowFetch)
 
+  const [isLangSheetOpen, setIsLangSheetOpen] = useState(false)
+  const openLangSheet = useCallback(() => setIsLangSheetOpen(true), [])
+  const closeLangSheet = useCallback(() => setIsLangSheetOpen(false), [])
+
+  const openScanSheet = useScanSheetStore((s) => s.open)
+
   const openEdit = useCallback(() => {
     router.push('/(tabs)/profile/edit')
   }, [router])
+
+  const handleAvatarPress = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      showToast('Cần quyền truy cập thư viện ảnh')
+      return
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+
+    if (result.canceled) return
+
+    const asset = result.assets[0]
+
+    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+      showToast('Ảnh phải nhỏ hơn 5MB')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('file', {
+      uri: asset.uri,
+      type: asset.mimeType ?? 'image/jpeg',
+      name: asset.fileName ?? `avatar-${Date.now()}.jpg`,
+    } as never)
+
+    uploadAvatar(formData, {
+      onSuccess: (data) => {
+        if (data.result) {
+          setUserInfo(data.result)
+        }
+        showToast('Cập nhật ảnh đại diện thành công')
+      },
+      onError: () => {
+        showToast('Không thể tải ảnh lên, vui lòng thử lại')
+      },
+    })
+  }, [uploadAvatar, setUserInfo])
 
   const openGeneralInfo = useCallback(() => {
     router.push('/(tabs)/profile/general-info')
@@ -445,7 +498,7 @@ const ProfileTest = () => {
                 icon={Camera}
                 iconColor={ICON_COLORS.blue}
                 title="Đổi ảnh đại diện"
-                onPress={openEdit}
+                onPress={handleAvatarPress}
                 textColor={theme.text}
                 textMuted={theme.textMuted}
                 variant="primary"
@@ -520,6 +573,15 @@ const ProfileTest = () => {
             {/* Group 4: Settings */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <MenuItem
+                icon={Globe}
+                iconColor={ICON_COLORS.blue}
+                title={t('profile.language.title', 'Ngôn ngữ')}
+                onPress={openLangSheet}
+                textColor={theme.text}
+                textMuted={theme.textMuted}
+              />
+              <View style={[styles.menuItemDivider, { backgroundColor: theme.divider }]} />
+              <MenuItem
                 icon={Bell}
                 iconColor={ICON_COLORS.red}
                 title={t('profile.notification', 'Thông báo và Âm báo')}
@@ -552,9 +614,16 @@ const ProfileTest = () => {
           </AnimatedGestureScrollView>
 
           {/* ProfileHeader — 100% CartHeader structure, LayoutGrid + Pencil buttons */}
-          <ProfileHeader onMenu={closeProfile} onEdit={openEdit} isDark={isDark} />
+          <ProfileHeader onEdit={openEdit} onScan={openScanSheet} isDark={isDark} />
         </Animated.View>
       </GestureDetector>
+
+      <LanguageSheet
+        visible={isLangSheetOpen}
+        onClose={closeLangSheet}
+        isDark={isDark}
+        primaryColor={isDark ? colors.primary.dark : colors.primary.light}
+      />
 
     </View>
   )

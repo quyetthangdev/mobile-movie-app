@@ -24,12 +24,12 @@ import { z } from 'zod'
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Input } from '@/components/ui'
 import { colors } from '@/constants'
-import { useRedeemGiftCard, getGiftCardErrorMessage } from '@/hooks/use-redeem-gift-card'
+import { useRedeemGiftCard } from '@/hooks/use-redeem-gift-card'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useZodForm } from '@/hooks/use-zod-form'
 import { useUserStore } from '@/stores'
 import { IUseGiftCardResponse } from '@/types'
-import { formatPoints, showErrorToastMessage } from '@/utils'
+import { formatPoints, showErrorToast } from '@/utils'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -179,8 +179,8 @@ export default function RedeemGiftCardScreen() {
         {
           onSuccess: (res) => setSuccessResult(res.result),
           onError: (error: Error) => {
-            const code = (error as Error & { response?: { data?: { code?: number } } })?.response?.data?.code
-            showErrorToastMessage(getGiftCardErrorMessage(code ?? 0))
+            const code = (error as Error & { response?: { data?: { statusCode?: number } } })?.response?.data?.statusCode
+            showErrorToast(code ?? 0)
           },
         },
       )

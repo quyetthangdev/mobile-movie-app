@@ -1,24 +1,25 @@
-import { http } from '@/utils'
 import {
-  IApiResponse,
-  IUserInfo,
-  IPaginationResponse,
-  IUserQuery,
-  ICreateUserRequest,
-  IUpdateUserRequest,
-  ICreateUserGroupRequest,
-  IUserGroup,
-  IUpdateUserGroupRequest,
-  IAddUserGroupMemberRequest,
   IAddMultipleUserGroupMemberRequest,
-  IUserGroupMember,
-  IGetAllUserGroupRequest,
-  IGetUserGroupMemberRequest,
+  IAddUserGroupMemberRequest,
+  IApiResponse,
+  ICompleteRegistrationRequest,
   ICreateMembershipCardRequest,
   ICreateMultipleMembershipCardRequest,
+  ICreateUserGroupRequest,
+  ICreateUserRequest,
+  IGetAllUserGroupRequest,
+  IGetUserGroupMemberRequest,
+  IPaginationResponse,
   IReplaceMembershipCardRequest,
-  ICompleteRegistrationRequest,
+  IUpdateUserGroupRequest,
+  IUpdateUserRequest,
+  IUserGroup,
+  IUserGroupMember,
+  IUserInfo,
+  IUserQuery,
 } from '@/types'
+import { IBalanceResponse } from '@/types/balance.type'
+import { http } from '@/utils'
 
 export async function getUsers(
   params: IUserQuery | null,
@@ -72,6 +73,25 @@ export async function updateUser(
   )
   return response.data
 }
+
+export async function getBalance(
+  userSlug: string,
+): Promise<IApiResponse<IBalanceResponse>> {
+  const response = await http.get<IApiResponse<IBalanceResponse>>('/balance', { params: { userSlug } })
+  return response.data
+}
+
+export async function updateLanguage(
+  userSlug: string,
+  language: string,
+): Promise<IApiResponse<IUserInfo>> {
+  const response = await http.patch<IApiResponse<IUserInfo>>(
+    `/user/${userSlug}/language`,
+    { language },
+  )
+  return response.data
+}
+
 
 export async function lockUser(slug: string): Promise<IApiResponse<null>> {
   const response = await http.patch<IApiResponse<null>>(

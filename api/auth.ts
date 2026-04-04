@@ -9,6 +9,7 @@ import {
   IRefreshTokenResponse,
   IRegisterRequest,
   IResendOTPForgotPasswordRequest,
+  IUserInfo,
   IVerifyEmailRequest,
   IVerifyOTPForgotPasswordRequest,
   IVerifyOTPForgotPasswordResponse,
@@ -134,6 +135,19 @@ import { http } from '@/utils'
   > {
     const response = await http.post<IApiResponse<IVerifyPhoneNumberRequest>>(
       `/auth/resend-verify-phone-number`,
+    )
+    return response.data
+  }
+
+  export async function uploadAvatar(
+    formData: FormData,
+  ): Promise<IApiResponse<IUserInfo>> {
+    const response = await http.patch<IApiResponse<IUserInfo>>(
+      '/auth/upload',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
     )
     return response.data
   }

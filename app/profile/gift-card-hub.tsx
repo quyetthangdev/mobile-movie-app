@@ -16,7 +16,8 @@ import {
   ShoppingBag,
   Ticket,
 } from 'lucide-react-native'
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Pressable,
   ScrollView,
@@ -27,15 +28,13 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useTranslation } from 'react-i18next'
 
 import { colors } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
-import { useLoyaltyPoints } from '@/hooks/use-loyalty-points'
+import { useCoinBalance } from '@/hooks/use-coin-balance'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useRunAfterTransition } from '@/hooks/use-run-after-transition'
 import { navigateNative } from '@/lib/navigation'
-import { useUserStore } from '@/stores'
 import { formatPoints } from '@/utils'
 
 // ─── Gradient height (header zone) ───────────────────────────────────────────
@@ -49,7 +48,7 @@ export default function GiftCardHubScreen() {
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
   const insets = useSafeAreaInsets()
-  const userSlug = useUserStore((s) => s.userInfo?.slug)
+
 
   const QUICK_ACTIONS = useMemo(() => [
     { key: 'my-cards', label: t('hub.myCards'),  icon: Gift,        route: '/profile/gift-cards'       },
@@ -70,7 +69,7 @@ export default function GiftCardHubScreen() {
 
   useRunAfterTransition(() => setReady(true), [])
 
-  const { totalPoints, isLoading } = useLoyaltyPoints(userSlug, ready)
+  const { balance, isLoading } = useCoinBalance(ready)
 
   const bg        = isDark ? colors.background.dark : colors.background.light
   const cardBg    = isDark ? '#2B3B4C'              : '#ffffff'
@@ -118,7 +117,7 @@ export default function GiftCardHubScreen() {
               <View style={s.balanceSkeleton} />
             ) : (
               <Text style={s.balanceValue}>
-                {balanceVisible ? formatPoints(totalPoints) : '••••••'}
+                {balanceVisible ? formatPoints(balance) : '••••••'}
               </Text>
             )}
             <Pressable onPress={() => setBalanceVisible((v) => !v)} hitSlop={12}>

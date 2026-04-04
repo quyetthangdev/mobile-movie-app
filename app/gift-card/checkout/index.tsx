@@ -22,6 +22,7 @@ import { Redirect } from 'expo-router'
 import { Lock, Plus, ShoppingBag, Unlock, UserRound, Users } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFieldArray } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -36,7 +37,6 @@ import {
 } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
 import { GiftCardCartItem } from '@/components/gift-card/gift-card-cart-item'
@@ -49,9 +49,9 @@ import { useGiftCardTypeOptions } from '@/hooks/use-gift-card-type-options'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useRunAfterTransition } from '@/hooks/use-run-after-transition'
 import { useZodForm } from '@/hooks/use-zod-form'
+import { navigateNative } from '@/lib/navigation'
 import { useGiftCardStore, useUserStore } from '@/stores'
 import { capitalizeFirst, formatCurrency, formatPoints, showErrorToastMessage } from '@/utils'
-import { navigateNative } from '@/lib/navigation'
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -122,6 +122,7 @@ export default function GiftCardCheckoutScreen() {
   useRunAfterTransition(() => setReady(true), [], { androidDelayMs: -20 })
 
   const giftCardItem = useGiftCardStore((s) => s.giftCardItem)
+  const clearGiftCard = useGiftCardStore((s) => s.clearGiftCard)
   const userInfo = useUserStore((s) => s.userInfo)
 
   const { mutate: createOrder, isPending } = useCreateCardOrder()
@@ -144,12 +145,18 @@ export default function GiftCardCheckoutScreen() {
 
   const { availableTypes, defaultType, lockMap, isLoaded: flagsLoaded, refetch: refetchFlags } = useGiftCardTypeOptions()
 
-  // Auto-switch sang type đầu tiên available khi flags load xong
+  // Auto-switch sang type đầu tiên available khi flags load xong,
+  // chỉ switch nếu type hiện tại bị lock — không override lựa chọn của user
+  const cardOrderTypeRef = useRef(cardOrderType)
   useEffect(() => {
-    if (defaultType && cardOrderType !== defaultType) {
+    cardOrderTypeRef.current = cardOrderType
+  }, [cardOrderType])
+  useEffect(() => {
+    if (!defaultType) return
+    if (!availableTypes.includes(cardOrderTypeRef.current as never)) {
       setValue('cardOrderType', defaultType, { shouldValidate: false })
     }
-  }, [defaultType, cardOrderType, setValue])
+  }, [availableTypes, defaultType, setValue])
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -217,6 +224,7 @@ export default function GiftCardCheckoutScreen() {
           onSuccess: (res) => {
             const slug = res.result?.slug
             if (slug) {
+              clearGiftCard(false)
               navigateNative.push(
                 `/gift-card/checkout/${slug}` as Parameters<typeof navigateNative.push>[0],
               )
@@ -235,7 +243,7 @@ export default function GiftCardCheckoutScreen() {
       )
       setShowConfirm(false)
     },
-    [createOrder, giftCardItem, userInfo, selfQty, refetchFlags, t],
+    [createOrder, giftCardItem, userInfo, selfQty, refetchFlags, t, clearGiftCard],
   )
 
   const handlePressConfirm = useCallback(() => setShowConfirm(true), [])

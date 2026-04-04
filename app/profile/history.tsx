@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import { ChevronLeft, Package } from 'lucide-react-native'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Platform,
@@ -21,18 +21,15 @@ import { getOrderBySlug } from '@/api'
 import { Skeleton } from '@/components/ui'
 import {
   colors,
-  ROUTE,
+  NotificationMessageCode,
 } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useOrders, useRunAfterTransition } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
-import { useUpdateOrderStore, useUserStore } from '@/stores'
+import { useNotificationStore, useUserStore } from '@/stores'
 import type { IOrder } from '@/types'
 import { OrderStatus } from '@/types'
-import {
-  calculateOrderDisplayAndTotals,
-  showErrorToast,
-} from '@/utils'
+import { calculateOrderDisplayAndTotals } from '@/utils'
 
 import OrderCard from './order-card'
 import type { OrderDisplayData } from './order-card'
@@ -93,8 +90,6 @@ function OrderHistoryPage() {
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
   const userInfo = useUserStore((s) => s.userInfo)
-  const getUserInfo = useUserStore((s) => s.getUserInfo)
-  const setOrderItems = useUpdateOrderStore((s) => s.setOrderItems)
   const [status, setStatus] = useState<OrderStatus>(OrderStatus.ALL)
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -114,6 +109,18 @@ function OrderHistoryPage() {
     },
     { enabled: allowFetch && !!userInfo?.slug },
   )
+
+  // ── Auto-refetch on FCM ORDER_PAID notification ──
+  const processedRef = useRef<Set<string>>(new Set())
+  const latestNotification = useNotificationStore((s) => s.notifications[0])
+  useEffect(() => {
+    if (!latestNotification || latestNotification.isRead) return
+    if (processedRef.current.has(latestNotification.slug)) return
+    if (latestNotification.message === NotificationMessageCode.ORDER_PAID) {
+      processedRef.current.add(latestNotification.slug)
+      refetch()
+    }
+  }, [latestNotification, refetch])
 
   const orders = useMemo(() => orderResponse?.items || [], [orderResponse?.items])
 
@@ -137,8 +144,7 @@ function OrderHistoryPage() {
   const totalPages = orderResponse?.totalPages || 0
 
 
-  // Memoize callbacks
-  const handleViewDetail = useCallback(
+  const handleOrderPress = useCallback(
     (orderSlug: string) => {
       if (orderSlug) {
         queryClient.prefetchQuery({
@@ -147,52 +153,10 @@ function OrderHistoryPage() {
         })
       }
       navigateNative.push(
-        `/order/${orderSlug}` as Parameters<
-          typeof navigateNative.push
-        >[0],
+        `/order/${orderSlug}` as Parameters<typeof navigateNative.push>[0],
       )
     },
     [queryClient],
-  )
-
-  const handlePayment = useCallback(
-    (orderSlug: string) => {
-      if (orderSlug) {
-        queryClient.prefetchQuery({
-          queryKey: ['order', orderSlug],
-          queryFn: () => getOrderBySlug(orderSlug),
-        })
-      }
-      navigateNative.push(
-        `${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug)}?from=history` as Parameters<
-          typeof navigateNative.push
-        >[0],
-      )
-    },
-    [queryClient],
-  )
-
-  const handleUpdateOrder = useCallback(
-    (order: IOrder) => {
-      if (!getUserInfo()?.slug) {
-        showErrorToast(1042)
-        navigateNative.push(ROUTE.LOGIN)
-        return
-      }
-      if (!order?.slug) return
-      // Prefetch order để màn update-order load ngay, animation mượt
-      queryClient.prefetchQuery({
-        queryKey: ['order', order.slug],
-        queryFn: () => getOrderBySlug(order.slug),
-      })
-      setOrderItems(order)
-      navigateNative.push(
-        `${ROUTE.CLIENT_UPDATE_ORDER.replace('[slug]', order.slug)}` as Parameters<
-          typeof navigateNative.push
-        >[0],
-      )
-    },
-    [queryClient, setOrderItems, getUserInfo],
   )
 
   // getStatusLabel depends on t — stays as hook
@@ -225,9 +189,6 @@ function OrderHistoryPage() {
     deliveryFee: t('order.deliveryFee', 'Phí giao hàng'),
     totalPayment: t('order.totalPayment', 'Tổng thanh toán'),
     moreItems: t('order.moreItems', 'sản phẩm khác'),
-    viewDetail: t('order.viewDetail', 'Xem chi tiết'),
-    updateOrder: t('order.updateOrder', 'Cập nhật'),
-    payment: t('order.payment', 'Thanh toán'),
   }), [t])
 
   const filterBarLabels = useMemo(() => ({
@@ -250,13 +211,11 @@ function OrderHistoryPage() {
         primaryColor={primaryColor}
         isDark={isDark}
         statusLabel={getStatusLabel(orderItem.status)}
-        onViewDetail={handleViewDetail}
-        onUpdateOrder={handleUpdateOrder}
-        onPayment={handlePayment}
+        onPress={handleOrderPress}
         labels={orderCardLabels}
       />
     ),
-    [orderDisplayMap, primaryColor, isDark, getStatusLabel, handleViewDetail, handlePayment, handleUpdateOrder, orderCardLabels],
+    [orderDisplayMap, primaryColor, isDark, getStatusLabel, handleOrderPress, orderCardLabels],
   )
 
   const keyExtractor = useCallback((item: IOrder) => item.slug ?? '', [])
@@ -438,8 +397,8 @@ const pageStyles = StyleSheet.create({
   circleBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   shadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 24, elevation: 2 },
   headerTitle: { fontSize: 17, fontWeight: '700' },
-  filterRow: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
-  filterScroll: { flexDirection: 'row', gap: 8 },
+  filterRow: { paddingTop: 10, paddingBottom: 4 },
+  filterScroll: { flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
   filterChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8 },
   filterChipText: { fontSize: 14, fontWeight: '500' },
   listPadding: { paddingHorizontal: 16, paddingTop: 130, paddingBottom: 24 },

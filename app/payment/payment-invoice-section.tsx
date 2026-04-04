@@ -110,6 +110,6 @@ export const invoiceStyles = StyleSheet.create({
   progressFill: { height: '100%', borderRadius: 999 },
   processingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 16 },
   successCard: { marginBottom: 16, padding: 16, borderRadius: 12, borderWidth: 1 },
-  downloadBtn: { height: 48, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  downloadBtn: { marginTop: 12, height: 48, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   downloadBtnText: { fontSize: 15, fontWeight: '600', color: colors.white.light },
 })

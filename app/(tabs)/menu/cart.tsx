@@ -38,8 +38,6 @@ const CartContent = lazy(() => import('@/components/cart/cart-content'))
 
 // ─── Clear Confirmation Sheet ────────────────────────────────────────────────
 
-const CONFIRM_SNAP = [220]
-
 function ClearCartSheet({
   visible,
   onClose,
@@ -53,6 +51,7 @@ function ClearCartSheet({
 }) {
   const insets = useSafeAreaInsets()
   const sheetRef = useRef<BottomSheet>(null)
+  const snapPoints = useMemo(() => [220 + insets.bottom], [insets.bottom])
 
   const bgStyle = useMemo(
     () => ({ backgroundColor: isDark ? colors.gray[900] : colors.white.light }),
@@ -104,7 +103,7 @@ function ClearCartSheet({
         <BottomSheet
           ref={sheetRef}
           index={0}
-          snapPoints={CONFIRM_SNAP}
+          snapPoints={snapPoints}
           enablePanDownToClose
           enableContentPanningGesture={false}
           enableHandlePanningGesture

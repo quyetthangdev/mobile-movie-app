@@ -9,27 +9,9 @@ import Animated, {
 
 import { DOT_SCALE_ACTIVE, SPRING_CONFIGS } from '@/constants'
 
-import { Images } from '@/assets/images'
-
 interface StoreCarouselProps {
-  /**
-   * Array of image sources for the carousel
-   */
   images?: ImageSourcePropType[]
 }
-
-// Default images - using actual store images
-const defaultImages: ImageSourcePropType[] = [
-  Images.News.Article11,
-  Images.News.Article12,
-  Images.News.Article13,
-  Images.News.Article22,
-  Images.News.Article23,
-  Images.News.Article31,
-  Images.News.Article32,
-  Images.News.Article33,
-  Images.News.Article34,
-] as ImageSourcePropType[]
 
 /**
  * StoreCarousel Component
@@ -47,7 +29,7 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
   const [activeIndexState, setActiveIndexState] = useState(0)
   const screenWidth = Dimensions.get('window').width
 
-  const carouselImages = images || defaultImages
+  const carouselImages = images ?? []
 
   // Handle scroll end - only update state when scroll completes (not every frame)
   const handleScrollEnd = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {

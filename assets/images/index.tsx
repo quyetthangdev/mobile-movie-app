@@ -32,19 +32,6 @@ export const Images = {
     Mobile: require('./landing/landing-page-background-mobile.jpg'),
   },
 
-  News: {
-    Article11: require('./news/news_article_1_1.webp'),
-    Article12: require('./news/news_article_1_2.webp'),
-    Article13: require('./news/news_article_1_3.webp'),
-    Article21: require('./news/news_article_2_1.webp'),
-    Article22: require('./news/news_article_2_2.webp'),
-    Article23: require('./news/news_article_2_3.webp'),
-    Article31: require('./news/news_article_3_1.webp'),
-    Article32: require('./news/news_article_3_2.webp'),
-    Article33: require('./news/news_article_3_3.webp'),
-    Article34: require('./news/news_article_3_4.webp'),
-  },
-
   Highlight: {
     Menu2: require('./highlight/highlight_menu_2.webp'),
     Menu3: require('./highlight/highlight_menu_3.webp'),

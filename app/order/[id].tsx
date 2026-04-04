@@ -371,9 +371,9 @@ function OrderDetailContent() {
             {isPending_ && (
               <Pressable
                 onPress={handleUpdateOrder}
-                style={[ds.updateBtn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], borderWidth: 1, borderColor: isDark ? colors.gray[600] : colors.gray[300] }]}
+                style={[ds.updateBtn, { backgroundColor: primaryColor }]}
               >
-                <Text style={[ds.updateBtnText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+                <Text style={[ds.updateBtnText, { color: '#ffffff' }]}>
                   {t('order.updateOrder', 'Cập nhật đơn hàng')}
                 </Text>
               </Pressable>
@@ -388,9 +388,9 @@ function OrderDetailContent() {
               <CancelOrderDialog order={order} />
               <Pressable
                 onPress={handlePayment}
-                style={[ds.actionBtnFilled, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], flex: 1 }]}
+                style={[ds.actionBtnFilled, { backgroundColor: primaryColor, flex: 1 }]}
               >
-                <Text style={[ds.actionBtnFilledText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+                <Text style={[ds.actionBtnFilledText, { color: '#ffffff' }]}>
                   {t('order.payment', 'Thanh toán')}
                 </Text>
               </Pressable>

@@ -12,11 +12,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 
 import { getLoyaltyPoints } from '@/api/loyalty-point'
-import { BannerPage, QUERYKEY } from '@/constants'
+import { BannerPage, QUERYKEY, Role } from '@/constants'
 import { useProfile } from '@/hooks/use-profile'
 import { navigateNative } from '@/lib/navigation'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { useAuthStore, useUserStore } from '@/stores'
+import { showErrorToastMessage } from '@/utils'
 import { useShallow } from 'zustand/react/shallow'
 
 export interface ITokenPayload {
@@ -83,11 +84,19 @@ export function usePostAuthActions() {
         throw new Error('Failed to fetch user profile')
       }
 
-      // 3. Lưu user info + slug
+      // 3. Chặn tài khoản không phải CUSTOMER
+      if (profileResult.role?.name !== Role.CUSTOMER) {
+        setLogout()
+        removeUserInfo()
+        showErrorToastMessage('Tài khoản không có quyền truy cập ứng dụng này')
+        return
+      }
+
+      // 4. Lưu user info + slug
       setUserInfo(profileResult)
       useAuthStore.getState().setSlug(profileResult.slug)
 
-      // 4. Prefetch loyalty points để Profile render từ cache
+      // 5. Prefetch loyalty points để Profile render từ cache
       if (profileResult.slug) {
         await queryClient.prefetchQuery({
           queryKey: [QUERYKEY.loyaltyPoints, 'total', { slug: profileResult.slug }],
@@ -95,7 +104,7 @@ export function usePostAuthActions() {
         })
       }
 
-      // 5. Navigate
+      // 6. Navigate
       if (onSuccess) {
         onSuccess()
       } else {

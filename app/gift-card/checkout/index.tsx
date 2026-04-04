@@ -21,7 +21,7 @@ import BottomSheet, {
 import { Redirect } from 'expo-router'
 import { Lock, Plus, ShoppingBag, Unlock, UserRound, Users } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useFieldArray } from 'react-hook-form'
+import { useFieldArray, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
@@ -141,7 +141,7 @@ export default function GiftCardCheckoutScreen() {
   })
 
   const cardOrderType = watch('cardOrderType')
-  const recipients = watch('recipients')
+  const recipients = useWatch({ control, name: 'recipients' })
 
   const { availableTypes, defaultType, lockMap, isLoaded: flagsLoaded, refetch: refetchFlags } = useGiftCardTypeOptions()
 
@@ -339,6 +339,7 @@ export default function GiftCardCheckoutScreen() {
                 item={giftCardItem}
                 primaryColor={primaryColor}
                 isDark={isDark}
+                overrideQty={cardOrderType === GiftCardType.GIFT ? giftQty : undefined}
               />
 
               {/* Lock status strip */}

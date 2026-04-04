@@ -19,12 +19,15 @@ interface GiftCardCartItemProps {
   item: IGiftCardCartItem
   primaryColor: string
   isDark: boolean
+  /** Khi truyền vào (GIFT mode), ghi đè qty hiển thị và disable stepper */
+  overrideQty?: number
 }
 
 export const GiftCardCartItem = memo(function GiftCardCartItem({
   item,
   primaryColor,
   isDark,
+  overrideQty,
 }: GiftCardCartItemProps) {
   const cardBg = isDark ? colors.gray[800] : colors.white.light
   const titleColor = isDark ? colors.gray[50] : colors.gray[900]
@@ -38,7 +41,8 @@ export const GiftCardCartItem = memo(function GiftCardCartItem({
 
   const [pendingQty, setPendingQty] = useState<number | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const displayQty = pendingQty ?? item.quantity
+  const displayQty = overrideQty ?? pendingQty ?? item.quantity
+  const isOverridden = overrideQty !== undefined
 
   useEffect(() => () => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -121,16 +125,16 @@ export const GiftCardCartItem = memo(function GiftCardCartItem({
             <View style={s.qtyRow}>
               <Pressable
                 onPress={handleDecrease}
-                disabled={displayQty <= MIN_QTY}
-                style={[s.qtyBtn, { borderColor: qtyBtnBorder }, displayQty <= MIN_QTY && s.qtyBtnDisabled]}
+                disabled={isOverridden || displayQty <= MIN_QTY}
+                style={[s.qtyBtn, { borderColor: qtyBtnBorder }, (isOverridden || displayQty <= MIN_QTY) && s.qtyBtnDisabled]}
               >
                 <Text style={[s.qtyBtnText, { color: qtyBtnText }]}>−</Text>
               </Pressable>
               <Text style={[s.qtyText, { color: qtyText }]}>{displayQty}</Text>
               <Pressable
                 onPress={handleIncrease}
-                disabled={displayQty >= MAX_QTY}
-                style={[s.qtyBtn, { borderColor: qtyBtnBorder }, displayQty >= MAX_QTY && s.qtyBtnDisabled]}
+                disabled={isOverridden || displayQty >= MAX_QTY}
+                style={[s.qtyBtn, { borderColor: qtyBtnBorder }, (isOverridden || displayQty >= MAX_QTY) && s.qtyBtnDisabled]}
               >
                 <Text style={[s.qtyBtnText, { color: qtyBtnText }]}>+</Text>
               </Pressable>

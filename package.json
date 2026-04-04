@@ -18,6 +18,7 @@
     "check": "npm run typecheck && npm run lint",
     "check-circular": "madge --circular --ts-config tsconfig.json --extensions ts,tsx app stores utils api hooks lib providers",
     "android": "expo run:android",
+    "android:clean": "npx expo prebuild --platform android --clean && echo 'sdk.dir=/Users/phanquyetthang/Library/Android/sdk' > android/local.properties && npx expo run:android",
     "android:release": "npm run clean:android-assets && expo run:android --variant release",
     "clean:android-assets": "rm -rf android/app/build/generated/res/createBundleReleaseJsAndAssets android/app/build/generated/res/createBundleDebugJsAndAssets 2>/dev/null; echo 'Cleaned Android asset cache'",
     "ios": "expo run:ios",

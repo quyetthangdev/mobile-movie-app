@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "trend-coffee-app",
+    "name": "TREND Coffee",
     "slug": "mobile-movie-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon/icon.png",
+    "icon": "./assets/images/trend/logo-icon-padded.png",
     "scheme": "trend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -20,10 +20,8 @@
     "android": {
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/icon/icon.png",
-        "backgroundImage": "./assets/images/icon/icon.png",
-        "monochromeImage": "./assets/images/icon/icon.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/trend/logo-icon-padded.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -41,7 +39,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/icon/icon.png"
+      "favicon": "./assets/images/trend/logo-icon-padded.png"
     },
     "plugins": [
       "expo-router",
@@ -69,7 +67,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon/icon.png",
+          "icon": "./assets/images/trend/logo-icon-padded.png",
           "color": "#F7A737",
           "sounds": [
             "./assets/sound/notification.mp3"

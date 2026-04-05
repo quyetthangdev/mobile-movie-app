@@ -52,24 +52,35 @@ async function checkAndRefresh(): Promise<void> {
   if (!storedToken) return
   if (!Device.isDevice) return
 
-  const registeredAt = await getStoredTimestamp()
-  if (!registeredAt) {
-    // No timestamp — assume fresh, save now
-    await setStoredTimestamp(Date.now())
-    return
-  }
-
-  const age = Date.now() - registeredAt
-  if (age < TOKEN_REFRESH_THRESHOLD) return
-
-  // Token is stale — refresh
   try {
     const pushToken = await Notifications.getDevicePushTokenAsync()
-    const newToken = pushToken.data as string
+    const currentToken = pushToken.data as string
 
-    const result = await registerTokenWithRetry(newToken)
+    if (currentToken !== storedToken) {
+      // Firebase rotated the token — re-register immediately regardless of age
+      // eslint-disable-next-line no-console
+      console.log('[FCM] 🔄 Token changed on foreground resume, re-registering...')
+      const result = await registerTokenWithRetry(currentToken)
+      if (result.success) {
+        useUserStore.getState().setDeviceToken(currentToken)
+        await setStoredTimestamp(Date.now())
+      }
+      return
+    }
+
+    // Token unchanged — only refresh if older than threshold
+    const registeredAt = await getStoredTimestamp()
+    if (!registeredAt) {
+      await setStoredTimestamp(Date.now())
+      return
+    }
+
+    const age = Date.now() - registeredAt
+    if (age < TOKEN_REFRESH_THRESHOLD) return
+
+    // Token is stale — re-register to keep server in sync
+    const result = await registerTokenWithRetry(currentToken)
     if (result.success) {
-      useUserStore.getState().setDeviceToken(newToken)
       await setStoredTimestamp(Date.now())
     }
   } catch {

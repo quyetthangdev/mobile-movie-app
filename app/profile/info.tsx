@@ -164,7 +164,7 @@ function ProfileInfoScreen() {
 
   if (!userInfo) return null
 
-  const isVerified = userInfo.isVerifiedEmail || userInfo.isVerifiedPhonenumber
+  const isVerified = userInfo.isVerifiedEmail && userInfo.isVerifiedPhonenumber
   const successColor = isDark ? colors.success.dark : colors.success.light
 
   return (
@@ -268,31 +268,33 @@ function ProfileInfoScreen() {
               {!userInfo.isVerifiedPhonenumber && (
                 <Button
                   variant="outline"
-                  className="h-8 rounded-md border border-muted px-2"
+                  className="h-8 rounded-md border border-primary px-3"
                   onPress={() =>
                     navigateNative.push(
                       ROUTE.CLIENT_PROFILE_VERIFY_PHONE_NUMBER,
                     )
                   }
                 >
-                  <Text className="text-xs font-medium text-muted-foreground">
+                  <Text className="text-xs font-sans-semibold text-primary">
                     {t('profile.contactInfo.verify')}
                   </Text>
                 </Button>
               )}
             </View>
 
-            <View className="flex-row items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            <View className="flex-row items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/40">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
                 <Mail size={18} color={isDark ? colors.gray[200] : colors.gray[600]} />
               </View>
 
               <View className="flex-1">
-                <View className="flex-row items-center gap-2">
+                <View className="flex-row items-center gap-1.5">
                   <Text className="text-xs text-gray-500 dark:text-gray-400">
                     {t('profile.contactInfo.email')}
                   </Text>
-
+                  {userInfo.isVerifiedEmail && (
+                    <Shield size={12} color={successColor} fill={successColor} />
+                  )}
                   {!userInfo.isVerifiedEmail && (
                     <Text className="text-xs text-yellow-600 dark:text-yellow-400">
                       • {t('profile.contactInfo.notVerified')}
@@ -308,12 +310,12 @@ function ProfileInfoScreen() {
               {!userInfo.isVerifiedEmail && (
                 <Button
                   variant="outline"
-                  className="h-8 rounded-md border border-muted px-2"
+                  className="h-8 rounded-md border border-primary px-3"
                   onPress={() =>
                     navigateNative.push(ROUTE.CLIENT_PROFILE_VERIFY_EMAIL)
                   }
                 >
-                  <Text className="text-xs font-medium text-muted-foreground">
+                  <Text className="text-xs font-sans-semibold text-primary">
                     {t('profile.contactInfo.verify')}
                   </Text>
                 </Button>

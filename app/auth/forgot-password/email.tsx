@@ -1,17 +1,21 @@
 import { ScreenContainer } from '@/components/layout'
 import { Redirect } from 'expo-router'
-import { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 
-import { OTPInput } from '@/components/auth'
+import { AnimatedCountdownText, OTPInput } from '@/components/auth'
 import { ForgotPasswordByEmailForm, ResetPasswordForm } from '@/components/form'
 import { Button } from '@/components/ui'
-import { ROUTE, VerificationMethod, colors } from '@/constants'
+import { ROUTE, VerificationMethod } from '@/constants'
 import {
-  useConfirmForgotPassword, useCountdown, useFormatTime, useInitiateForgotPassword,
+  useAnimatedCountdown,
+  useConfirmForgotPassword,
+  useCountdown,
+  useFormatTime,
+  useInitiateForgotPassword,
   useResendOTPForgotPassword,
-  useVerifyOTPForgotPassword
+  useVerifyOTPForgotPassword,
 } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
 import { TForgotPasswordByEmailSchema, TResetPasswordSchema } from '@/schemas'
@@ -26,8 +30,197 @@ import {
   useToken,
   useTokenExpireTime,
 } from '@/stores/selectors/forgot-password'
-import { showToast } from '@/utils'
+import { showErrorToast, showToast } from '@/utils'
 
+function applyOtpBuffer(expiresAt: string): string {
+  const expiresMs = new Date(expiresAt).getTime()
+  const remainingMs = expiresMs - Date.now()
+  if (remainingMs <= 30_000) return expiresAt
+  return new Date(expiresMs - 30_000).toISOString()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OTPStepForgot — isolates countdown re-renders to this subtree only
+// ─────────────────────────────────────────────────────────────────────────────
+const OTPStepForgot = React.memo(function OTPStepForgot({
+  expiresAt,
+  otpValue,
+  onOtpChange,
+  isResending,
+  isVerifyingOTP,
+  onVerify,
+  onResend,
+  onBack,
+  onExpired,
+}: {
+  expiresAt: string
+  otpValue: string
+  onOtpChange: (v: string) => void
+  isResending: boolean
+  isVerifyingOTP: boolean
+  onVerify: () => void
+  onResend: () => void
+  onBack: () => void
+  onExpired: () => void
+}) {
+  const { t } = useTranslation('auth')
+
+  const otpSeconds = useCountdown({ expiresAt, enabled: true })
+  const otpTimeDisplay = useFormatTime(otpSeconds)
+  const otpShared = useAnimatedCountdown({ expiresAt, enabled: true })
+  const otpExpired = otpSeconds === 0
+
+  useEffect(() => {
+    if (otpExpired) onExpired()
+  }, [otpExpired, onExpired])
+
+  const isVerifyDisabled = otpValue.length !== 6 || isVerifyingOTP || otpExpired
+  const isResendDisabled = isResending || isVerifyingOTP || otpSeconds > 0
+
+  return (
+    <View className="gap-4">
+      <OTPInput
+        value={otpValue}
+        onChange={onOtpChange}
+        length={6}
+        disabled={otpExpired}
+      />
+
+      {!otpExpired ? (
+        <AnimatedCountdownText
+          countdownShared={otpShared}
+          label={t('forgotPassword.otpExpiresIn')}
+          className="text-center text-sm font-sans"
+        />
+      ) : (
+        <Text className="text-center text-sm font-sans text-destructive">
+          {t('forgotPassword.otpExpired')}
+        </Text>
+      )}
+
+      <Button
+        variant="primary"
+        className="mt-2 h-11 rounded-lg"
+        disabled={isVerifyDisabled}
+        onPress={onVerify}
+      >
+        {isVerifyingOTP ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text className="text-sm font-sans-semibold text-primary-foreground">
+            {t('forgotPassword.verify')}
+          </Text>
+        )}
+      </Button>
+
+      <View className="gap-2">
+        <Button
+          variant={otpExpired ? 'primary' : 'secondary'}
+          className="h-11 rounded-lg"
+          disabled={isResendDisabled}
+          onPress={onResend}
+        >
+          {isResending ? (
+            <ActivityIndicator color={otpExpired ? '#fff' : undefined} />
+          ) : (
+            <Text className={`text-sm font-sans-semibold ${
+              isResendDisabled
+                ? 'text-muted-foreground'
+                : otpExpired
+                  ? 'text-primary-foreground'
+                  : 'text-foreground'
+            }`}>
+              {otpSeconds > 0
+                ? `${t('forgotPassword.resend')} (${otpTimeDisplay})`
+                : t('forgotPassword.resend')}
+            </Text>
+          )}
+        </Button>
+
+        <TouchableOpacity onPress={onBack} className="py-2">
+          <Text className="text-center text-sm font-sans-medium text-primary">
+            {t('forgotPassword.backButton')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ResetPasswordStep — isolates token countdown re-renders to this subtree only
+// ─────────────────────────────────────────────────────────────────────────────
+const ResetPasswordStep = React.memo(function ResetPasswordStep({
+  token,
+  expiresAt,
+  isConfirming,
+  onConfirm,
+  onStartOver,
+  onBackToLogin,
+  onExpired,
+}: {
+  token: string
+  expiresAt: string
+  isConfirming: boolean
+  onConfirm: (data: TResetPasswordSchema) => void
+  onStartOver: () => void
+  onBackToLogin: () => void
+  onExpired: () => void
+}) {
+  const { t } = useTranslation('auth')
+
+  const tokenSeconds = useCountdown({ expiresAt, enabled: true })
+  const tokenShared = useAnimatedCountdown({ expiresAt, enabled: true })
+  const tokenExpired = tokenSeconds === 0
+
+  useEffect(() => {
+    if (tokenExpired) onExpired()
+  }, [tokenExpired, onExpired])
+
+  return (
+    <View className="gap-4">
+      {!tokenExpired && (
+        <AnimatedCountdownText
+          countdownShared={tokenShared}
+          label={t('forgotPassword.sessionExpiresIn')}
+          className="text-center text-sm font-sans"
+        />
+      )}
+
+      {tokenExpired ? (
+        <View className="gap-3">
+          <Text className="text-center text-sm font-sans text-destructive">
+            {t('forgotPassword.sessionExpired')}
+          </Text>
+          <Button
+            variant="primary"
+            className="h-11 rounded-lg"
+            onPress={onStartOver}
+          >
+            <Text className="text-sm font-sans-semibold text-primary-foreground">
+              {t('forgotPassword.sessionExpiredAction')}
+            </Text>
+          </Button>
+          <TouchableOpacity onPress={onBackToLogin} className="py-2">
+            <Text className="text-center text-sm font-sans-medium text-primary">
+              {t('forgotPassword.backToLogin')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ResetPasswordForm
+          token={token}
+          onSubmit={onConfirm}
+          isLoading={isConfirming}
+        />
+      )}
+    </View>
+  )
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main screen
+// ─────────────────────────────────────────────────────────────────────────────
 export default function ForgotPasswordByEmailScreen() {
   const { t } = useTranslation('auth')
   const { t: tToast } = useTranslation('toast')
@@ -45,58 +238,61 @@ export default function ForgotPasswordByEmailScreen() {
 
   const [otpValue, setOtpValue] = useState('')
 
-  // Countdowns — only tick when on the relevant step
-  const otpSeconds = useCountdown({ expiresAt: expireTime, enabled: step === 2 })
-  const otpTimeDisplay = useFormatTime(otpSeconds)
-  const tokenSeconds = useCountdown({ expiresAt: tokenExpireTime, enabled: step === 3 })
-  const tokenTimeDisplay = useFormatTime(tokenSeconds)
-
-  const otpExpired = step === 2 && !!expireTime && otpSeconds === 0
-  const tokenExpired = step === 3 && !!tokenExpireTime && tokenSeconds === 0
-
-  // Check if OTP is still valid on mount
-  useEffect(() => {
-    if (expireTime && step === 1) {
-      const timeLeft = Math.floor((new Date(expireTime).getTime() - Date.now()) / 1000)
-      if (timeLeft > 0) {
-        setStep(2)
-      } else {
-        setExpireTime('')
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const { mutate: initiateForgotPassword, isPending: isInitiating } = useInitiateForgotPassword()
   const { mutate: verifyOTPForgotPassword, isPending: isVerifyingOTP } = useVerifyOTPForgotPassword()
   const { mutate: confirmForgotPassword, isPending: isConfirming } = useConfirmForgotPassword()
   const { mutate: resendOTPForgotPassword, isPending: isResending } = useResendOTPForgotPassword()
 
-  const isVerifyDisabled = otpValue.length !== 6 || isVerifyingOTP || otpExpired
-  const isResendDisabled = isResending || otpSeconds > 0
+  // On mount: restore flow state if still valid, otherwise clean up
+  useEffect(() => {
+    if (expireTime && step === 1) {
+      const timeLeft = Math.floor((new Date(expireTime).getTime() - Date.now()) / 1000)
+      if (timeLeft > 0) setStep(2)
+      else setExpireTime('')
+    }
+    if (tokenExpireTime && step === 3) {
+      const timeLeft = Math.floor((new Date(tokenExpireTime).getTime() - Date.now()) / 1000)
+      if (timeLeft <= 0) {
+        setToken('')
+        setTokenExpireTime('')
+        setStep(1)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSubmit = useCallback((value: TForgotPasswordByEmailSchema) => {
-    setEmail(value.email)
-
+    // Check with email stored from previous attempt (closure captures old email)
     if (expireTime && email === value.email) {
       const timeLeft = Math.floor((new Date(expireTime).getTime() - Date.now()) / 1000)
       if (timeLeft > 0) {
         showToast(tToast('toast.otpStillValid'))
+        setEmail(value.email)
         setStep(2)
         return
       }
     }
 
+    setEmail(value.email)
     initiateForgotPassword(
       { email: value.email, verificationMethod: VerificationMethod.EMAIL },
       {
         onSuccess: (response) => {
           showToast(tToast('toast.sendVerifyEmailSuccess'))
-          setExpireTime(response?.result?.expiresAt || '')
+          setExpireTime(applyOtpBuffer(response?.result?.expiresAt || ''))
           setStep(2)
         },
-        onError: () => {
-          if (expireTime) setStep(2)
+        onError: (err: unknown) => {
+          const code =
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.code ??
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.statusCode
+          if (expireTime && new Date(expireTime).getTime() > Date.now()) {
+            setStep(2)
+          } else if (typeof code === 'number') {
+            showErrorToast(code)
+          }
         },
       },
     )
@@ -104,21 +300,29 @@ export default function ForgotPasswordByEmailScreen() {
 
   const handleVerifyOTP = useCallback(() => {
     if (otpValue.length !== 6) return
-
     verifyOTPForgotPassword(
       { code: otpValue },
       {
         onSuccess: (response) => {
           showToast(tToast('toast.verifyOTPSuccess'))
           setToken(response?.result?.token || '')
-          const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
-          setTokenExpireTime(expiresAt.toISOString())
+          // Use 4:30 (270s) instead of 5:00 as a safety buffer since server controls the real expiry
+          setTokenExpireTime(new Date(Date.now() + 270_000).toISOString())
           setOtpValue('')
-          setTimeout(() => setStep(3), 0)
+          setStep(3)
+        },
+        onError: (err: unknown) => {
+          const code =
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.code ??
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.statusCode
+          setOtpValue('')
+          if (typeof code === 'number') showErrorToast(code)
         },
       },
     )
-  }, [otpValue, verifyOTPForgotPassword, setToken, setTokenExpireTime, setOtpValue, setStep, tToast])
+  }, [otpValue, verifyOTPForgotPassword, setToken, setTokenExpireTime, setStep, tToast])
 
   const handleConfirmForgotPassword = useCallback((data: TResetPasswordSchema) => {
     confirmForgotPassword(
@@ -128,6 +332,14 @@ export default function ForgotPasswordByEmailScreen() {
           showToast(tToast('toast.confirmForgotPasswordSuccess'))
           clearForgotPassword()
           navigateNative.replace(ROUTE.LOGIN)
+        },
+        onError: (err: unknown) => {
+          const code =
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.code ??
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.statusCode
+          if (typeof code === 'number') showErrorToast(code)
         },
       },
     )
@@ -139,138 +351,130 @@ export default function ForgotPasswordByEmailScreen() {
       {
         onSuccess: (response) => {
           showToast(tToast('toast.sendVerifyEmailSuccess'))
-          setExpireTime(response?.result?.expiresAt || '')
+          setExpireTime(applyOtpBuffer(response?.result?.expiresAt || ''))
           setOtpValue('')
+        },
+        onError: (err: unknown) => {
+          const code =
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.code ??
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.statusCode
+          if (typeof code === 'number') showErrorToast(code)
         },
       },
     )
-  }, [email, resendOTPForgotPassword, setExpireTime, setOtpValue, tToast])
+  }, [email, resendOTPForgotPassword, setExpireTime, tToast])
 
   const handleBack = useCallback(() => {
-    if (step === 2) { setStep(1); setOtpValue('') }
-    else if (step === 3) { setStep(2); setOtpValue('') }
-    else navigateNative.back()
-  }, [step, setStep])
+    if (step === 2) {
+      setStep(1)
+      setOtpValue('')
+      setExpireTime('')
+    } else if (step === 3) {
+      // OTP already consumed — cannot re-enter OTP; restart from beginning
+      setStep(1)
+      setOtpValue('')
+      setExpireTime('')
+      setToken('')
+      setTokenExpireTime('')
+    } else {
+      navigateNative.back()
+    }
+  }, [step, setStep, setExpireTime, setToken, setTokenExpireTime])
+
+  const handleOtpChange = useCallback((v: string) => setOtpValue(v), [])
+
+  const handleStartOver = useCallback(() => {
+    clearForgotPassword()
+    setStep(1)
+  }, [clearForgotPassword, setStep])
+
+  const handleBackToLogin = useCallback(() => {
+    navigateNative.replace(ROUTE.LOGIN)
+  }, [])
+
+  // no-op: OTPStepForgot/ResetPasswordStep manage expired UI internally
+  const handleOtpExpired = useCallback(() => {}, [])
+  const handleTokenExpired = useCallback(() => {}, [])
+
+  const title = useMemo(() => {
+    if (step === 2) return t('forgotPassword.otpInputTitle')
+    if (step === 3) return t('forgotPassword.resetPassword')
+    return t('forgotPassword.title')
+  }, [step, t])
+
+  const description = useMemo(() => {
+    if (step === 2) return t('forgotPassword.otpInputDescription')
+    if (step === 3) return t('forgotPassword.resetPasswordDescription')
+    return t('forgotPassword.useEmailDescription')
+  }, [step, t])
 
   if (isAuthenticated) return <Redirect href="/(tabs)/home" />
 
   return (
     <ScreenContainer edges={['top']} className="flex-1">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={32}
+      >
         <View className="flex-1 px-6 pt-8">
           <Text className="mb-2 text-3xl font-sans-bold text-foreground">
-            {step === 1 && t('forgotPassword.title')}
-            {step === 2 && t('forgotPassword.otpInputTitle')}
-            {step === 3 && t('forgotPassword.resetPassword')}
+            {title}
           </Text>
           <Text className="mb-8 text-base font-sans text-muted-foreground">
-            {step === 1 && t('forgotPassword.useEmailDescription')}
-            {step === 2 && t('forgotPassword.otpInputDescription')}
-            {step === 3 && t('forgotPassword.resetPasswordDescription')}
+            {description}
           </Text>
 
           {step === 1 && (
             <ForgotPasswordByEmailForm onSubmit={handleSubmit} isLoading={isInitiating} />
           )}
 
-          {step === 2 && (
-            <View className="gap-4">
-              <OTPInput
-                value={otpValue}
-                onChange={setOtpValue}
-                length={6}
-                disabled={otpExpired}
-              />
+          {step === 2 && expireTime ? (
+            <OTPStepForgot
+              expiresAt={expireTime}
+              otpValue={otpValue}
+              onOtpChange={handleOtpChange}
+              isResending={isResending}
+              isVerifyingOTP={isVerifyingOTP}
+              onVerify={handleVerifyOTP}
+              onResend={handleResendOTP}
+              onBack={handleBack}
+              onExpired={handleOtpExpired}
+            />
+          ) : step === 2 ? (
+            // expireTime missing (edge case) — go back to step 1
+            <TouchableOpacity onPress={handleBack} className="py-2">
+              <Text className="text-center text-sm font-sans-medium text-primary">
+                {t('forgotPassword.backButton')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
 
-              {expireTime && !otpExpired && (
-                <Text className={`text-center text-sm font-sans ${otpSeconds <= 60 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {t('forgotPassword.otpExpiresIn')} {otpTimeDisplay}
+          {step === 3 && tokenExpireTime ? (
+            <ResetPasswordStep
+              token={token}
+              expiresAt={tokenExpireTime}
+              isConfirming={isConfirming}
+              onConfirm={handleConfirmForgotPassword}
+              onStartOver={handleStartOver}
+              onBackToLogin={handleBackToLogin}
+              onExpired={handleTokenExpired}
+            />
+          ) : step === 3 ? (
+            // tokenExpireTime missing (edge case) — restart
+            <View className="gap-3">
+              <Text className="text-center text-sm font-sans text-destructive">
+                {t('forgotPassword.sessionExpired')}
+              </Text>
+              <Button variant="primary" className="h-11 rounded-lg" onPress={handleStartOver}>
+                <Text className="text-sm font-sans-semibold text-primary-foreground">
+                  {t('forgotPassword.sessionExpiredAction')}
                 </Text>
-              )}
-
-              {otpExpired && (
-                <Text className="text-center text-sm font-sans text-destructive">
-                  {t('forgotPassword.otpExpired')}
-                </Text>
-              )}
-
-              <Button
-                variant="primary"
-                className="mt-2 h-11 rounded-lg"
-                disabled={isVerifyDisabled}
-                onPress={handleVerifyOTP}
-              >
-                {isVerifyingOTP ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text className="text-sm font-sans-semibold text-primary-foreground">
-                    {t('forgotPassword.verify')}
-                  </Text>
-                )}
               </Button>
-
-              <View className="gap-2">
-                <Button
-                  variant="secondary"
-                  className="h-11 rounded-lg"
-                  disabled={isResendDisabled}
-                  onPress={handleResendOTP}
-                >
-                  {isResending ? (
-                    <ActivityIndicator color={colors.mutedForeground.light} />
-                  ) : (
-                    <Text className={`text-sm font-sans-semibold ${isResendDisabled ? 'text-muted-foreground' : 'text-foreground'}`}>
-                      {otpSeconds > 0 ? `${t('forgotPassword.resend')} (${otpTimeDisplay})` : t('forgotPassword.resend')}
-                    </Text>
-                  )}
-                </Button>
-
-                <TouchableOpacity onPress={handleBack} className="py-2">
-                  <Text className="text-center text-sm font-sans-medium text-primary">
-                    {t('forgotPassword.backButton')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
             </View>
-          )}
-
-          {step === 3 && (
-            <View className="gap-4">
-              {!tokenExpired && tokenExpireTime && (
-                <Text className={`text-center text-sm font-sans ${tokenSeconds <= 60 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {t('forgotPassword.sessionExpiresIn')} {tokenTimeDisplay}
-                </Text>
-              )}
-
-              {tokenExpired ? (
-                <View className="gap-3">
-                  <Text className="text-center text-sm font-sans text-destructive">
-                    {t('forgotPassword.sessionExpired')}
-                  </Text>
-                  <Button
-                    variant="primary"
-                    className="h-11 rounded-lg"
-                    onPress={() => { clearForgotPassword(); setStep(1) }}
-                  >
-                    <Text className="text-sm font-sans-semibold text-primary-foreground">
-                      {t('forgotPassword.sessionExpiredAction')}
-                    </Text>
-                  </Button>
-                  <TouchableOpacity onPress={() => navigateNative.replace(ROUTE.LOGIN)}>
-                    <Text className="text-center text-sm font-sans-medium text-primary">
-                      Quay lại đăng nhập
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <ResetPasswordForm
-                  token={token}
-                  onSubmit={handleConfirmForgotPassword}
-                  isLoading={isConfirming}
-                />
-              )}
-            </View>
-          )}
+          ) : null}
         </View>
       </ScrollView>
     </ScreenContainer>

@@ -15,7 +15,7 @@ interface ForgotPasswordByEmailFormProps {
   isLoading?: boolean
 }
 
-export function ForgotPasswordByEmailForm({ onSubmit, isLoading = false }: ForgotPasswordByEmailFormProps) {
+export const ForgotPasswordByEmailForm = React.memo(function ForgotPasswordByEmailForm({ onSubmit, isLoading = false }: ForgotPasswordByEmailFormProps) {
   const { t } = useTranslation('auth')
 
   const schema = useForgotPasswordByEmailSchema()
@@ -62,10 +62,10 @@ export function ForgotPasswordByEmailForm({ onSubmit, isLoading = false }: Forgo
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-sm font-sans-semibold text-primary-foreground">{t('forgotPassword.resend')}</Text>
+            <Text className="text-sm font-sans-semibold text-primary-foreground">{t('forgotPassword.send')}</Text>
           )}
         </Button>
       </View>
     </View>
   )
-}
+})

@@ -15,7 +15,7 @@ interface ForgotPasswordByPhoneFormProps {
   isLoading?: boolean
 }
 
-export function ForgotPasswordByPhoneForm({ onSubmit, isLoading = false }: ForgotPasswordByPhoneFormProps) {
+export const ForgotPasswordByPhoneForm = React.memo(function ForgotPasswordByPhoneForm({ onSubmit, isLoading = false }: ForgotPasswordByPhoneFormProps) {
   const { t } = useTranslation('auth')
 
   const schema = useForgotPasswordByPhoneNumberSchema()
@@ -68,4 +68,4 @@ export function ForgotPasswordByPhoneForm({ onSubmit, isLoading = false }: Forgo
       </View>
     </View>
   )
-}
+})

@@ -132,5 +132,20 @@ export function useFirebaseToken(enabled = true) {
     }
   }, [enabled])
 
+  // Listen for Firebase-side token rotation (e.g. token invalidated while app is open)
+  useEffect(() => {
+    if (!enabled) return
+
+    const subscription = Notifications.addPushTokenListener(({ data }) => {
+      const newToken = data as string
+      if (!newToken) return
+      // eslint-disable-next-line no-console
+      console.log('[FCM] 🔄 Token rotated by Firebase:', newToken.slice(0, 20) + '...')
+      setToken(newToken)
+    })
+
+    return () => subscription.remove()
+  }, [enabled])
+
   return { token, permissionDenied, storedToken }
 }

@@ -21,17 +21,20 @@
     },
     "verifyEmailScreen": {
       "title": "Verify Email",
+      "otpInputTitle": "Enter verification code",
       "description": {
-        "otp": "Enter 6-character OTP (letters and numbers)",
+        "otp": "Enter the 6-character OTP (letters and numbers) sent to your email",
         "email": "We will send a verification code to your email"
       },
+      "otpHint": "OTP contains both letters and numbers (case insensitive)",
+      "backToEdit": "Re-enter email",
       "label": {
         "email": "Email"
       },
       "button": {
-        "send": "Send Verification Email",
+        "send": "Send Verification Code",
         "verify": "Verify",
-        "resend": "Resend OTP"
+        "resend": "Resend code"
       },
       "toast": {
         "sent": "Verification code sent to your email",
@@ -46,12 +49,19 @@
     },
     "verifyPhone": {
       "title": "Verify Phone Number",
+      "description": "We will send an OTP to your phone number via Zalo / SMS",
+      "otpDescription": "Enter the 6-digit OTP sent to your phone number",
       "otpSent": "Verification code sent to your phone number.",
       "otpInvalid": "Invalid OTP code",
       "success": "Phone number verified successfully",
       "otpResent": "OTP resent, please check Zalo / SMS.",
       "sendTo": "OTP will be sent to phone number:",
+      "smsWillBeSentTo": "OTP will be sent via Zalo / SMS to",
       "enterOtp": "Enter the 6-digit OTP sent to your phone number.",
+      "otpInputTitle": "Enter verification code",
+      "otpExpired": "Verification code has expired",
+      "backToEdit": "Re-enter phone number",
+      "sendFailed": "Failed to send verification code. Please try again",
       "sending": "Sending...",
       "verifying": "Verifying...",
       "resending": "Resending..."

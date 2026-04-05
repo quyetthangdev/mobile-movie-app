@@ -24,30 +24,34 @@ export const useLogin = () => {
       mutationFn: async (params: IInitiateForgotPasswordRequest) => {
         return initiateForgotPassword(params)
       },
+      meta: { skipGlobalError: true },
     })
   }
-  
+
   export const useVerifyOTPForgotPassword = () => {
     return useMutation({
       mutationFn: async (params: IVerifyOTPForgotPasswordRequest) => {
         return verifyOTPForgotPassword(params)
       },
+      meta: { skipGlobalError: true },
     })
   }
-  
+
   export const useResendOTPForgotPassword = () => {
     return useMutation({
       mutationFn: async (params: IResendOTPForgotPasswordRequest) => {
         return resendOTPForgotPassword(params)
       },
+      meta: { skipGlobalError: true },
     })
   }
-  
+
   export const useConfirmForgotPassword = () => {
     return useMutation({
       mutationFn: async (params: IConfirmForgotPasswordRequest) => {
         return confirmForgotPassword(params)
       },
+      meta: { skipGlobalError: true },
     })
   }
 
@@ -56,6 +60,7 @@ export const useLogin = () => {
       mutationFn: async (data: IVerifyEmailRequest) => {
         return verifyEmail(data)
       },
+      meta: { skipGlobalError: true },
     })
   }
   
@@ -64,6 +69,7 @@ export const useLogin = () => {
       mutationFn: async () => {
         return verifyPhoneNumber()
       },
+      meta: { skipGlobalError: true },
     })
   }
   
@@ -96,6 +102,7 @@ export const useLogin = () => {
       mutationFn: async () => {
         return resendEmailVerification()
       },
+      meta: { skipGlobalError: true },
     })
   }
 

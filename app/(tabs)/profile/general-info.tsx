@@ -2,7 +2,9 @@
  * Thông tin cá nhân — UI giống Profile: avatar, 2 nút header, các trường thông tin bên dưới.
  */
 import { colors } from '@/constants/colors.constant'
+import { ROUTE } from '@/constants/route.contstant'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
+import { navigateNative } from '@/lib/navigation'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
 import { showToast } from '@/utils'
@@ -206,6 +208,61 @@ const InfoRow = React.memo(function InfoRow({
   )
 })
 
+const VerifiableInfoRow = React.memo(function VerifiableInfoRow({
+  icon: Icon,
+  iconColor,
+  label,
+  value,
+  theme,
+  isVerified,
+  onVerify,
+  verifyLabel,
+  successColor,
+}: {
+  icon: React.ElementType
+  iconColor: string
+  label: string
+  value: string
+  theme: (typeof PROFILE_THEME)[keyof typeof PROFILE_THEME]
+  isVerified: boolean
+  onVerify: () => void
+  verifyLabel: string
+  successColor: string
+}) {
+  return (
+    <View style={[styles.infoRow, { alignItems: 'center' }]}>
+      <View style={[styles.infoIconWrap, { backgroundColor: iconColor }]}>
+        <Icon size={18} color="#ffffff" />
+      </View>
+      <View style={styles.infoContent}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+          <Text style={[styles.infoLabel, { color: theme.textMuted }]}>{label}</Text>
+          {isVerified && (
+            <Shield size={11} color={successColor} fill={successColor} />
+          )}
+          {!isVerified && (
+            <Text style={[styles.infoLabel, { color: '#CA8A04' }]}>• Chưa xác thực</Text>
+          )}
+        </View>
+        <Text style={[styles.infoValue, { color: theme.text }]} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
+      {!isVerified && (
+        <TouchableOpacity
+          onPress={onVerify}
+          hitSlop={8}
+          style={[styles.verifyBtn, { borderColor: colors.primary.light }]}
+        >
+          <Text style={[styles.verifyBtnText, { color: colors.primary.light }]}>
+            {verifyLabel}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  )
+})
+
 export default function GeneralInfo() {
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
@@ -353,7 +410,7 @@ export default function GeneralInfo() {
           />
           <View style={[styles.divider, { backgroundColor: theme.divider }]} />
 
-          <InfoRow
+          <VerifiableInfoRow
             icon={Phone}
             iconColor={ICON_COLORS.green}
             label={t('profile.contactInfo.phone', 'Số điện thoại')}
@@ -362,10 +419,14 @@ export default function GeneralInfo() {
               t('profile.contactInfo.notUpdated', 'Chưa cập nhật')
             }
             theme={theme}
+            isVerified={!!userInfo.isVerifiedPhonenumber}
+            onVerify={() => navigateNative.push(ROUTE.CLIENT_PROFILE_VERIFY_PHONE_NUMBER)}
+            verifyLabel={t('profile.contactInfo.verify', 'Xác thực')}
+            successColor={successColor}
           />
           <View style={[styles.divider, { backgroundColor: theme.divider }]} />
 
-          <InfoRow
+          <VerifiableInfoRow
             icon={Mail}
             iconColor={ICON_COLORS.red}
             label={t('profile.contactInfo.email', 'Email')}
@@ -374,6 +435,10 @@ export default function GeneralInfo() {
               t('profile.contactInfo.notUpdated', 'Chưa cập nhật')
             }
             theme={theme}
+            isVerified={!!userInfo.isVerifiedEmail}
+            onVerify={() => navigateNative.push(ROUTE.CLIENT_PROFILE_VERIFY_EMAIL)}
+            verifyLabel={t('profile.contactInfo.verify', 'Xác thực')}
+            successColor={successColor}
           />
           <View style={[styles.divider, { backgroundColor: theme.divider }]} />
 
@@ -529,5 +594,15 @@ const styles = StyleSheet.create({
   branchAddress: {
     fontSize: 13,
     marginTop: 4,
+  },
+  verifyBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  verifyBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 })

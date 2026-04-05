@@ -20,17 +20,20 @@
     },
     "verifyEmailScreen": {
       "title": "Xác minh email",
+      "otpInputTitle": "Nhập mã xác thực",
       "description": {
-        "otp": "Nhập mã OTP 6 ký tự (chữ và số)",
+        "otp": "Nhập mã OTP 6 ký tự (chữ và số) đã được gửi đến email của bạn",
         "email": "Chúng tôi sẽ gửi mã xác minh đến email của bạn"
       },
+      "otpHint": "Mã OTP gồm cả chữ cái và chữ số (không phân biệt hoa thường)",
+      "backToEdit": "Nhập lại email",
       "label": {
         "email": "Email"
       },
       "button": {
-        "send": "Gửi email xác minh",
+        "send": "Gửi mã xác minh",
         "verify": "Xác minh",
-        "resend": "Gửi lại OTP"
+        "resend": "Gửi lại mã"
       },
       "toast": {
         "sent": "Đã gửi mã xác minh đến email của bạn",
@@ -45,12 +48,19 @@
     },
     "verifyPhone": {
       "title": "Xác minh số điện thoại",
+      "description": "Chúng tôi sẽ gửi mã OTP đến số điện thoại của bạn qua Zalo / SMS",
+      "otpDescription": "Nhập mã OTP 6 chữ số đã được gửi đến số điện thoại của bạn",
       "otpSent": "Đã gửi mã xác minh đến số điện thoại của bạn.",
       "otpInvalid": "Mã OTP không hợp lệ",
       "success": "Xác minh số điện thoại thành công",
       "otpResent": "Đã gửi lại mã OTP, vui lòng kiểm tra Zalo / SMS.",
       "sendTo": "Mã OTP sẽ được gửi tới số điện thoại:",
+      "smsWillBeSentTo": "OTP sẽ được gửi qua Zalo / SMS đến",
       "enterOtp": "Nhập mã OTP gồm 6 chữ số đã được gửi tới số điện thoại của bạn.",
+      "otpInputTitle": "Nhập mã xác thực",
+      "otpExpired": "Mã xác thực đã hết hạn",
+      "backToEdit": "Nhập lại số điện thoại",
+      "sendFailed": "Gửi mã xác minh thất bại. Vui lòng thử lại",
       "sending": "Đang gửi...",
       "verifying": "Đang xác minh...",
       "resending": "Đang gửi lại..."

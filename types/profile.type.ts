@@ -41,6 +41,9 @@ export interface IEmailVerificationResponse extends IBase {
   expiresAt: string
 }
 
-export interface IVerifyPhoneNumberRequest {
+export interface IVerifyPhoneNumberResponse {
   expiresAt: string
 }
+
+/** @deprecated Use IVerifyPhoneNumberResponse */
+export type IVerifyPhoneNumberRequest = IVerifyPhoneNumberResponse

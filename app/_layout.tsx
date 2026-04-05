@@ -102,6 +102,7 @@ const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error, _variables, _context, mutation) => {
       if (mutation.options.onError) return
+      if (mutation.meta?.skipGlobalError) return
       const code = extractStatusCode(error)
       if (code) showErrorToast(code)
     },

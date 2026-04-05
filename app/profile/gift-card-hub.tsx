@@ -1,11 +1,11 @@
 /**
- * Gift Card Hub — tổng quan thẻ quà tặng.
+ * Gift Card & Coin Hub — tổng quan xu và thẻ quà tặng.
  * Route: /profile/gift-card-hub
  *
- * Layout: gradient full-bleed (status bar) → số xu căn giữa → 4 ô tròn
- *         → card trắng/tối bo góc trên phủ lên gradient (giống màn chi tiết món)
+ * Layout: gradient full-bleed (status bar) → số xu căn giữa
+ *         → card trắng/tối bo góc trên phủ lên gradient
+ *         → 2 section menu: Xu / Thẻ quà tặng
  */
-import { LinearGradient } from 'expo-linear-gradient'
 import {
   ChevronRight,
   Coins,
@@ -15,6 +15,7 @@ import {
   History,
   ShoppingBag,
   Ticket,
+  Wallet,
 } from 'lucide-react-native'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -39,7 +40,23 @@ import { formatPoints } from '@/utils'
 
 // ─── Gradient height (header zone) ───────────────────────────────────────────
 
-const GRADIENT_HEIGHT = 320
+const HERO_HEIGHT = 260
+
+// ─── Section menu ─────────────────────────────────────────────────────────────
+
+interface MenuItem {
+  key: string
+  label: string
+  icon: typeof Gift
+  iconColor: string
+  route: string
+}
+
+interface MenuSection {
+  key: string
+  title: string
+  items: MenuItem[]
+}
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
@@ -49,19 +66,24 @@ export default function GiftCardHubScreen() {
   const primaryColor = usePrimaryColor()
   const insets = useSafeAreaInsets()
 
-
-  const QUICK_ACTIONS = useMemo(() => [
-    { key: 'my-cards', label: t('hub.myCards'),  icon: Gift,        route: '/profile/gift-cards'       },
-    { key: 'redeem',   label: t('hub.redeem'),   icon: Ticket,      route: '/gift-card/redeem'          },
-    { key: 'buy',      label: t('hub.buy'),      icon: ShoppingBag, route: '/(tabs)/gift-card'          },
-    { key: 'orders',   label: t('hub.history'),  icon: History,     route: '/profile/gift-card-orders'  },
-  ], [t])
-
-  const MENU_ITEMS = useMemo(() => [
-    { key: 'my-cards', label: t('hub.myCards'),      icon: Gift,        iconColor: '#4CAF50', route: '/profile/gift-cards'      },
-    { key: 'redeem',   label: t('hub.useCard'),      icon: Ticket,      iconColor: '#5DA8E8', route: '/gift-card/redeem'         },
-    { key: 'buy',      label: t('hub.buy'),           icon: ShoppingBag, iconColor: '#F5A623', route: '/(tabs)/gift-card'         },
-    { key: 'orders',   label: t('hub.orderHistory'),  icon: History,     iconColor: '#E85D5D', route: '/profile/gift-card-orders' },
+  const SECTIONS: MenuSection[] = useMemo(() => [
+    {
+      key: 'coin',
+      title: t('hub.sectionCoin'),
+      items: [
+        { key: 'coin-history', label: t('hub.coinHistory'), icon: Wallet, iconColor: '#7C3AED', route: '/profile/coin-hub' },
+      ],
+    },
+    {
+      key: 'gift-card',
+      title: t('hub.sectionGiftCard'),
+      items: [
+        { key: 'my-cards', label: t('hub.myCards'),      icon: Gift,        iconColor: '#4CAF50', route: '/profile/gift-cards'      },
+        { key: 'redeem',   label: t('hub.useCard'),      icon: Ticket,      iconColor: '#5DA8E8', route: '/gift-card/redeem'         },
+        { key: 'buy',      label: t('hub.buy'),           icon: ShoppingBag, iconColor: '#F5A623', route: '/(tabs)/gift-card'         },
+        { key: 'orders',   label: t('hub.orderHistory'),  icon: History,     iconColor: '#E85D5D', route: '/profile/gift-card-orders' },
+      ],
+    },
   ], [t])
 
   const [ready, setReady] = useState(false)
@@ -76,23 +98,12 @@ export default function GiftCardHubScreen() {
   const textColor = isDark ? colors.gray[50]        : colors.gray[900]
   const subColor  = isDark ? '#8B9BB2'              : colors.gray[500]
   const divColor  = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
-
-  // Gradient: từ đậm hơn primary → primary → bg
-  const gradientColors: [string, string, string, string] = [
-    isDark ? '#0d0d0d' : `${primaryColor}ee`,
-    primaryColor,
-    primaryColor,
-    bg,
-  ]
+  const sectionLabelColor = isDark ? colors.gray[400] : colors.gray[500]
 
   return (
     <View style={[s.container, { backgroundColor: bg }]}>
-      {/* ── Full-bleed gradient ──────────────────────────────────────────── */}
-      <LinearGradient
-        colors={gradientColors}
-        locations={[0, 0.35, 0.78, 1]}
-        style={[s.gradient, { height: GRADIENT_HEIGHT }]}
-      />
+      {/* ── Solid hero background ────────────────────────────────────────── */}
+      <View style={[s.heroBg, { height: HERO_HEIGHT, backgroundColor: primaryColor }]} />
 
       {/* ── Back button ─────────────────────────────────────────────────── */}
       <Pressable
@@ -108,7 +119,8 @@ export default function GiftCardHubScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
         {/* ── Balance zone ────────────────────────────────────────────────── */}
-        <View style={[s.heroZone, { paddingTop: STATIC_TOP_INSET + 48 }]}>
+        <View style={[s.heroZone, { height: HERO_HEIGHT, paddingTop: STATIC_TOP_INSET + 44 }]}>
+          <Text style={s.screenTitle}>{t('hub.title')}</Text>
           <Text style={s.balanceLabelText}>{t('hub.balance')}</Text>
 
           <View style={s.balanceRow}>
@@ -126,51 +138,39 @@ export default function GiftCardHubScreen() {
                 : <Eye    size={20} color="rgba(255,255,255,0.7)" />}
             </Pressable>
           </View>
-
-          {/* ── 4 quick action circles ───────────────────────────────────── */}
-          <View style={s.quickRow}>
-            {QUICK_ACTIONS.map((action) => {
-              const Icon = action.icon
-              return (
-                <Pressable
-                  key={action.key}
-                  onPress={() => navigateNative.push(action.route as Parameters<typeof navigateNative.push>[0])}
-                  style={({ pressed }) => [s.quickCell, { opacity: pressed ? 0.6 : 1 }]}
-                >
-                  <View style={[s.quickCircle, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                    <Icon size={20} color={colors.white.light} />
-                  </View>
-                  <Text style={s.quickLabel}>{action.label}</Text>
-                </Pressable>
-              )
-            })}
-          </View>
         </View>
 
         {/* ── Bottom card — bo góc trên, phủ lên gradient ─────────────────── */}
         <View style={[s.bottomCard, { backgroundColor: bg }]}>
-          <View style={[s.menuCard, { backgroundColor: cardBg }]}>
-            {MENU_ITEMS.map((item, i) => {
-              const Icon = item.icon
-              const isLast = i === MENU_ITEMS.length - 1
-              return (
-                <View key={item.key}>
-                  <TouchableOpacity
-                    style={s.menuItem}
-                    onPress={() => navigateNative.push(item.route as Parameters<typeof navigateNative.push>[0])}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[s.menuIconWrap, { backgroundColor: item.iconColor }]}>
-                      <Icon size={18} color="#ffffff" />
+          {SECTIONS.map((section) => (
+            <View key={section.key} style={s.section}>
+              <Text style={[s.sectionLabel, { color: sectionLabelColor }]}>
+                {section.title}
+              </Text>
+              <View style={[s.menuCard, { backgroundColor: cardBg }]}>
+                {section.items.map((item, i) => {
+                  const Icon = item.icon
+                  const isLast = i === section.items.length - 1
+                  return (
+                    <View key={item.key}>
+                      <TouchableOpacity
+                        style={s.menuItem}
+                        onPress={() => navigateNative.push(item.route as Parameters<typeof navigateNative.push>[0])}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[s.menuIconWrap, { backgroundColor: item.iconColor }]}>
+                          <Icon size={18} color="#ffffff" />
+                        </View>
+                        <Text style={[s.menuTitle, { color: textColor }]}>{item.label}</Text>
+                        <ChevronRight size={20} color={subColor} />
+                      </TouchableOpacity>
+                      {!isLast && <View style={[s.menuDivider, { backgroundColor: divColor }]} />}
                     </View>
-                    <Text style={[s.menuTitle, { color: textColor }]}>{item.label}</Text>
-                    <ChevronRight size={20} color={subColor} />
-                  </TouchableOpacity>
-                  {!isLast && <View style={[s.menuDivider, { backgroundColor: divColor }]} />}
-                </View>
-              )
-            })}
-          </View>
+                  )
+                })}
+              </View>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </View>
@@ -182,7 +182,7 @@ export default function GiftCardHubScreen() {
 const s = StyleSheet.create({
   container: { flex: 1 },
 
-  gradient: {
+  heroBg: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -204,22 +204,27 @@ const s = StyleSheet.create({
   // Hero / balance zone
   heroZone: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingBottom: 40,
     gap: 4,
   },
+  screenTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.white.light,
+    marginBottom: 12,
+  },
   balanceLabelText: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: '500',
     textAlign: 'center',
-    marginBottom: 10,
   },
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 28,
+    marginTop: 4,
   },
   balanceValue: {
     fontSize: 46,
@@ -234,42 +239,29 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
 
-  // Quick actions
-  quickRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 8,
-    marginTop: 12,
-  },
-  quickCell: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  quickCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickLabel: {
-    fontSize: 11,
-    color: colors.white.light,
-    textAlign: 'center',
-  },
-
   // Bottom card
   bottomCard: {
     paddingTop: 8,
     minHeight: 300,
+    gap: 4,
   },
 
-  // Menu — identical to profile screen
-  menuCard: {
+  // Section
+  section: {
     marginHorizontal: 16,
     marginTop: 20,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+
+  // Menu card
+  menuCard: {
     borderRadius: 18,
     overflow: 'hidden',
   },
@@ -288,5 +280,5 @@ const s = StyleSheet.create({
     marginRight: 14,
   },
   menuTitle: { flex: 1, fontSize: 16, fontWeight: '400' },
-  menuDivider: { height: StyleSheet.hairlineWidth, marginLeft: 46 },
+  menuDivider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
 })

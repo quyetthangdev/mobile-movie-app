@@ -263,11 +263,9 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           const updatedData = {
             ...newOrderingData,
             type,
-            // If type is take-out, remove table
-            ...(type === OrderTypeEnum.TAKE_OUT && {
-              table: '',
-              tableName: '',
-            }),
+            ...(type === OrderTypeEnum.TAKE_OUT
+              ? { table: '', tableName: '' }
+              : { timeLeftTakeOut: undefined }),
           }
 
           set({
@@ -278,11 +276,9 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           const updatedData = {
             ...orderingData,
             type,
-            // If type is take-out, remove table
-            ...(type === OrderTypeEnum.TAKE_OUT && {
-              table: '',
-              tableName: '',
-            }),
+            ...(type === OrderTypeEnum.TAKE_OUT
+              ? { table: '', tableName: '' }
+              : { timeLeftTakeOut: undefined }),
           }
 
           set({

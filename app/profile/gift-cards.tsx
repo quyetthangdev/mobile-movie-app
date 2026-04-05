@@ -198,7 +198,7 @@ function StatusPill({ status, isDark }: { status: string; isDark: boolean }) {
 }
 
 const pill = StyleSheet.create({
-  wrap: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  wrap: { width: 72, paddingVertical: 4, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   text: { fontSize: 11, fontWeight: '700' },
 })
 
@@ -387,12 +387,6 @@ export default function GiftCardsScreen() {
 
   const ListHeader = (
     <>
-      <StatusQuickFilter
-        value={filter.status}
-        onChange={handleStatusFilter}
-        primaryColor={primaryColor}
-        isDark={isDark}
-      />
       {!isLoading && !active && items.length > 0 && (
         <StatsStrip items={items} isDark={isDark} />
       )}
@@ -402,6 +396,8 @@ export default function GiftCardsScreen() {
       )}
     </>
   )
+
+  const borderColor = isDark ? colors.gray[700] : colors.gray[200]
 
   const ListEmpty = !isLoading ? (
     <View style={s.emptyWrap}>
@@ -447,10 +443,18 @@ export default function GiftCardsScreen() {
         }
       />
 
+      {/* ── Fixed status filter bar ─────────────────────────────────── */}
+      <View style={[s.statusFilterBar, { paddingTop: insets.top + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>
+        <StatusQuickFilter
+          value={filter.status}
+          onChange={handleStatusFilter}
+          primaryColor={primaryColor}
+          isDark={isDark}
+        />
+      </View>
+
       {(!ready || isLoading) ? (
-        <View style={{ paddingTop: insets.top + 64 }}>
-          <SkeletonList />
-        </View>
+        <SkeletonList />
       ) : (
         <FlashList
           ref={flashListRef}
@@ -458,7 +462,6 @@ export default function GiftCardsScreen() {
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{
-            paddingTop: insets.top + 64,
             paddingHorizontal: 16,
             paddingBottom: insets.bottom + 24,
           }}
@@ -497,6 +500,9 @@ export default function GiftCardsScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1 },
+  statusFilterBar: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   headerActions: { flexDirection: 'row', gap: 4 },
   headerBtn: {
     width: 36,

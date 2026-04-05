@@ -39,5 +39,6 @@ export const QUERYKEY = {
     printerEvents: ['printerEvents'],
     giftCardFeatureFlags: ['giftCardFeatureFlags'],
     identityCode: ['identityCode'],
+    pointTransactions: ['pointTransactions'],
   }
   

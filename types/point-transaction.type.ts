@@ -8,6 +8,7 @@ export interface IPointTransaction {
   objectType: string
   objectSlug: string
   points: number
+  balance: number
   user: IUserInfo
   userSlug: string
   createdAt?: string

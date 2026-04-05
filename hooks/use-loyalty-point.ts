@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 
 import {
   applyLoyaltyPoint,
@@ -53,6 +53,30 @@ export const useLoyaltyPointHistory = (params: ILoyaltyPointHistoryQuery) => {
     queryFn: () => getLoyaltyPointHistory(params),
     placeholderData: keepPreviousData,
     select: (data) => data.result,
+    enabled: !!params.slug,
+  })
+}
+
+export const useLoyaltyPointHistoryInfinite = (
+  params: Omit<ILoyaltyPointHistoryQuery, 'page'>,
+) => {
+  return useInfiniteQuery({
+    queryKey: [
+      QUERYKEY.loyaltyPoints,
+      'history-infinite',
+      params.slug,
+      params.size,
+      params.fromDate,
+      params.toDate,
+      (params.types || []).join(','),
+    ],
+    queryFn: ({ pageParam }) =>
+      getLoyaltyPointHistory({ ...params, page: pageParam as number }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const total = lastPage.result.totalPages ?? 1
+      return allPages.length < total ? allPages.length + 1 : undefined
+    },
     enabled: !!params.slug,
   })
 }

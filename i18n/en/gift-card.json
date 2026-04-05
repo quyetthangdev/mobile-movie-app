@@ -18,13 +18,17 @@
     "buy": "Bulk buy"
   },
   "hub": {
+    "title": "Gift Cards & Coins",
     "balance": "Current balance",
+    "sectionCoin": "Coins",
+    "sectionGiftCard": "Gift Cards",
+    "coinHistory": "Coin Transaction History",
     "myCards": "My Cards",
     "redeem": "Redeem",
     "buy": "Buy Cards",
     "history": "History",
     "useCard": "Use Card",
-    "orderHistory": "Order History"
+    "orderHistory": "Card Order History"
   },
   "list": {
     "title": "Gift Cards",
@@ -49,6 +53,11 @@
     "types": {
       "all": "All"
     },
+    "filterTitle": "Filter",
+    "dateRange": "Date Range",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "apply": "Apply",
     "empty": {
       "noOrders": "No orders yet",
       "noOwned": "You haven't purchased any gift cards",
@@ -150,6 +159,17 @@
       "serial": "Serial",
       "usedAt": "Redeemed at"
     }
+  },
+  "orderDetail": {
+    "title": "Gift Card Order",
+    "status": "Status",
+    "orderDate": "Order Date",
+    "paymentMethod": "Payment Method",
+    "quantity": "Quantity",
+    "type": "Type",
+    "orderCode": "Order Code",
+    "giftCardsSection": "Gift Cards ({{count}})",
+    "notFound": "Order not found"
   },
   "orderSuccess": {
     "title": "Order Details",

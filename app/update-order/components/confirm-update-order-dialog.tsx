@@ -254,11 +254,11 @@ export default memo(function ConfirmUpdateOrderDialog({
         onPress={() => setSheetVisible(true)}
         style={[
           cd.btn,
-          { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] },
+          { backgroundColor: disabled || isSubmitting ? (isDark ? colors.gray[700] : colors.gray[300]) : primaryColor },
           (disabled || isSubmitting) && cd.btnDisabled,
         ]}
       >
-        <Text style={[cd.btnText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+        <Text style={[cd.btnText, { color: disabled || isSubmitting ? (isDark ? colors.gray[400] : colors.gray[500]) : colors.white.light }]}>
           {t('order.confirmUpdate', 'Xác nhận cập nhật')}
         </Text>
       </Pressable>
@@ -419,13 +419,13 @@ export default memo(function ConfirmUpdateOrderDialog({
                   disabled={isSubmitting}
                   style={[
                     cd.submitBtn,
-                    { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], opacity: isSubmitting ? 0.6 : 1 },
+                    { backgroundColor: primaryColor, opacity: isSubmitting ? 0.6 : 1 },
                   ]}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator size="small" color={isDark ? colors.gray[50] : colors.gray[700]} />
+                    <ActivityIndicator size="small" color={colors.white.light} />
                   ) : (
-                    <Text style={[cd.submitText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+                    <Text style={[cd.submitText, { color: colors.white.light }]}>
                       {t('order.confirmUpdate', 'Xác nhận')}
                     </Text>
                   )}

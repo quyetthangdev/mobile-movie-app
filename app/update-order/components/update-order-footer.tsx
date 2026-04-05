@@ -16,6 +16,7 @@ import {
 import { useEffect } from 'react'
 
 import ConfirmUpdateOrderDialog from './confirm-update-order-dialog'
+import { PickupTimeChipsInUpdateOrder } from './pickup-time-chips-in-update-order'
 import { SimpleOrderTypeSheetInUpdateOrder } from './simple-order-type-sheet-in-update-order'
 import { SimpleTableSheetInUpdateOrder } from './simple-table-sheet-in-update-order'
 import { VoucherSheetInUpdateOrder } from './voucher-sheet-in-update-order'
@@ -189,6 +190,9 @@ export default memo(function UpdateOrderFooter({
             </Pressable>
           )}
         </View>
+
+        {/* Pickup Time Chips — tự ẩn khi không phải TAKE_OUT */}
+        <PickupTimeChipsInUpdateOrder isDark={isDark} primaryColor={primaryColor} />
 
         {/* Voucher trigger */}
         <Pressable onPress={openVoucherSheet} style={[f.voucherTrigger, voucherBorderStyle]}>

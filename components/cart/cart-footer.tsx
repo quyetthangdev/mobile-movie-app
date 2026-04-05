@@ -19,6 +19,7 @@ import { SimpleOrderTypeSheet } from './cart-order-type-sheet'
 import { SimpleTableSheet } from './cart-table-sheet'
 import { ConfirmOrderSheet } from './cart-confirm-order-sheet'
 import { VoucherSheet } from './cart-voucher-sheet'
+import { PickupTimeChips } from './pickup-time-chips'
 
 export const CartFooter = memo(function CartFooter({
   primaryColor,
@@ -148,6 +149,9 @@ export const CartFooter = memo(function CartFooter({
             </Pressable>
           )}
         </View>
+
+        {/* Pickup Time Chips — tự ẩn khi không phải TAKE_OUT */}
+        <PickupTimeChips isDark={isDark} primaryColor={primaryColor} />
 
         {/* Voucher trigger */}
         <Pressable

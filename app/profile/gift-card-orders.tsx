@@ -5,11 +5,28 @@
  * Hiển thị lịch sử đơn hàng thẻ quà của khách với filter theo type.
  * Tap vào đơn → navigate tới order-success/[slug] để xem chi tiết.
  */
-import { FlashList, type ListRenderItem } from '@shopify/flash-list'
-import { Clock, Gift, ShoppingBag, UserRound, Users } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useState } from 'react'
+import BottomSheet, {
+  BottomSheetBackdrop,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet'
+import { FlashList, type FlashListRef, type ListRenderItem } from '@shopify/flash-list'
+import dayjs from 'dayjs'
+import {
+  ArrowRight,
+  CalendarDays,
+  Clock,
+  Gift,
+  ShoppingBag,
+  SlidersHorizontal,
+  UserRound,
+  Users,
+  X,
+} from 'lucide-react-native'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  ActivityIndicator,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,15 +35,20 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
+import DatePicker from 'react-native-date-picker'
+import {
+  GestureHandlerRootView,
+  TouchableOpacity as GHTouchable,
+} from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { GiftCardOrderDetailSheet } from '@/components/gift-card/gift-card-order-detail-sheet'
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors, GiftCardType } from '@/constants'
-import { useCardOrders } from '@/hooks/use-card-order'
+import { useCardOrdersInfinite } from '@/hooks/use-card-order'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useRunAfterTransition } from '@/hooks/use-run-after-transition'
-import { navigateNative } from '@/lib/navigation'
 import { useUserStore } from '@/stores'
 import type { ICardOrderResponse } from '@/types'
 import { formatCurrency } from '@/utils'
@@ -101,7 +123,7 @@ function StatusBadge({ status, isDark }: { status: string; isDark: boolean }) {
 }
 
 const sb = StyleSheet.create({
-  wrap: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  wrap: { width: 68, paddingVertical: 3, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   text: { fontSize: 10, fontWeight: '700' },
 })
 
@@ -198,6 +220,188 @@ function SkeletonList() {
 
 const ItemSeparator = () => <View style={{ height: 10 }} />
 
+// ─── Date filter sheet ───────────────────────────────────────────────────────
+
+interface DateFilter { fromDate: Date | null; toDate: Date | null }
+
+const DATE_SNAP = ['50%']
+
+const DateFilterSheet = memo(function DateFilterSheet({
+  visible,
+  value,
+  primaryColor,
+  isDark,
+  onClose,
+  onApply,
+}: {
+  visible: boolean
+  value: DateFilter
+  primaryColor: string
+  isDark: boolean
+  onClose: () => void
+  onApply: (v: DateFilter) => void
+}) {
+  const sheetRef = useRef<BottomSheet>(null)
+  const { bottom } = useSafeAreaInsets()
+  const { t } = useTranslation('giftCard')
+  const { t: tCommon } = useTranslation('common')
+
+  const [localFrom, setLocalFrom] = useState<Date | null>(value.fromDate)
+  const [localTo,   setLocalTo]   = useState<Date | null>(value.toDate)
+  const [fromOpen,  setFromOpen]  = useState(false)
+  const [toOpen,    setToOpen]    = useState(false)
+
+  const bg       = isDark ? colors.gray[900]  : colors.white.light
+  const textColor = isDark ? colors.gray[50]  : colors.gray[900]
+  const subColor  = isDark ? colors.gray[400] : colors.gray[500]
+  const chipBg    = isDark ? colors.gray[800] : colors.gray[100]
+  const dateBg    = isDark ? colors.gray[800] : colors.gray[50]
+  const dateBorder = isDark ? colors.gray[700] : colors.gray[200]
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.4} pressBehavior="close" />
+    ),
+    [],
+  )
+
+  const handleApply = useCallback(() => {
+    onApply({ fromDate: localFrom, toDate: localTo })
+    sheetRef.current?.close()
+  }, [localFrom, localTo, onApply])
+
+  const handleReset = useCallback(() => {
+    onApply({ fromDate: null, toDate: null })
+    sheetRef.current?.close()
+  }, [onApply])
+
+  if (!visible) return null
+
+  return (
+    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={() => sheetRef.current?.close()}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BottomSheet
+          ref={sheetRef}
+          index={0}
+          snapPoints={DATE_SNAP}
+          enablePanDownToClose
+          enableDynamicSizing={false}
+          enableContentPanningGesture={false}
+          enableHandlePanningGesture
+          backdropComponent={renderBackdrop}
+          backgroundStyle={{ backgroundColor: bg }}
+          handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
+          onChange={(i) => { if (i === -1) onClose() }}
+        >
+          <View style={[ds.content, { paddingBottom: bottom + 16 }]}>
+            <View>
+              <Text style={[ds.title, { color: textColor }]}>{t('orders.filterTitle')}</Text>
+              <Text style={[ds.sectionLabel, { color: subColor }]}>{t('orders.dateRange')}</Text>
+
+              <View style={ds.dateRow}>
+                {/* From */}
+                <View style={ds.dateWrap}>
+                  <GHTouchable
+                    onPress={() => setFromOpen(true)}
+                    activeOpacity={0.7}
+                    style={[ds.datePicker, { backgroundColor: dateBg, borderColor: localFrom ? primaryColor : dateBorder }]}
+                  >
+                    <CalendarDays size={13} color={localFrom ? primaryColor : subColor} />
+                    <View style={ds.dateText}>
+                      <Text style={[ds.dateHint, { color: subColor }]}>{t('orders.fromDate')}</Text>
+                      <Text style={[ds.dateVal, { color: localFrom ? textColor : subColor }]}>
+                        {localFrom ? dayjs(localFrom).format('DD/MM/YYYY') : '––/––/––––'}
+                      </Text>
+                    </View>
+                    {localFrom && (
+                      <GHTouchable onPress={() => setLocalFrom(null)} hitSlop={10}>
+                        <X size={12} color={subColor} />
+                      </GHTouchable>
+                    )}
+                  </GHTouchable>
+                </View>
+
+                <ArrowRight size={16} color={subColor} />
+
+                {/* To */}
+                <View style={ds.dateWrap}>
+                  <GHTouchable
+                    onPress={() => setToOpen(true)}
+                    activeOpacity={0.7}
+                    style={[ds.datePicker, { backgroundColor: dateBg, borderColor: localTo ? primaryColor : dateBorder }]}
+                  >
+                    <CalendarDays size={13} color={localTo ? primaryColor : subColor} />
+                    <View style={ds.dateText}>
+                      <Text style={[ds.dateHint, { color: subColor }]}>{t('orders.toDate')}</Text>
+                      <Text style={[ds.dateVal, { color: localTo ? textColor : subColor }]}>
+                        {localTo ? dayjs(localTo).format('DD/MM/YYYY') : '––/––/––––'}
+                      </Text>
+                    </View>
+                    {localTo && (
+                      <GHTouchable onPress={() => setLocalTo(null)} hitSlop={10}>
+                        <X size={12} color={subColor} />
+                      </GHTouchable>
+                    )}
+                  </GHTouchable>
+                </View>
+              </View>
+            </View>
+
+            {/* Footer */}
+            <View style={ds.footer}>
+              <View style={ds.btnWrap}>
+                <GHTouchable onPress={handleReset} activeOpacity={0.8} style={[ds.btn, { backgroundColor: chipBg }]}>
+                  <Text style={[ds.btnText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
+                    {tCommon('common.reset')}
+                  </Text>
+                </GHTouchable>
+              </View>
+              <View style={ds.btnWrap}>
+                <GHTouchable onPress={handleApply} activeOpacity={0.8} style={[ds.btn, { backgroundColor: primaryColor }]}>
+                  <Text style={[ds.btnText, { color: colors.white.light }]}>{t('orders.apply')}</Text>
+                </GHTouchable>
+              </View>
+            </View>
+          </View>
+
+          <DatePicker
+            modal open={fromOpen} date={localFrom ?? new Date()} mode="date"
+            maximumDate={localTo ?? new Date()}
+            onConfirm={(d) => { setLocalFrom(d); setFromOpen(false) }}
+            onCancel={() => setFromOpen(false)}
+            confirmText={tCommon('common.confirm')} cancelText={tCommon('common.cancel')}
+            theme={isDark ? 'dark' : 'light'}
+          />
+          <DatePicker
+            modal open={toOpen} date={localTo ?? new Date()} mode="date"
+            minimumDate={localFrom ?? undefined} maximumDate={new Date()}
+            onConfirm={(d) => { setLocalTo(d); setToOpen(false) }}
+            onCancel={() => setToOpen(false)}
+            confirmText={tCommon('common.confirm')} cancelText={tCommon('common.cancel')}
+            theme={isDark ? 'dark' : 'light'}
+          />
+        </BottomSheet>
+      </GestureHandlerRootView>
+    </Modal>
+  )
+})
+
+const ds = StyleSheet.create({
+  content:     { flex: 1, paddingHorizontal: 20, paddingTop: 8, justifyContent: 'space-between' },
+  title:       { fontSize: 17, fontWeight: '700', marginBottom: 20 },
+  sectionLabel:{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 },
+  dateRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateWrap:    { flex: 1 },
+  datePicker:  { flexDirection: 'row', alignItems: 'center', gap: 7, height: 52, borderRadius: 10, paddingHorizontal: 10, borderWidth: 1 },
+  dateText:    { flex: 1, gap: 2 },
+  dateHint:    { fontSize: 10, fontWeight: '500' },
+  dateVal:     { fontSize: 13, fontWeight: '600' },
+  footer:      { flexDirection: 'row', gap: 10 },
+  btnWrap:     { flex: 1 },
+  btn:         { height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  btnText:     { fontSize: 15, fontWeight: '700' },
+})
+
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function GiftCardOrdersScreen() {
@@ -216,35 +420,72 @@ export default function GiftCardOrdersScreen() {
 
   const [ready, setReady] = useState(false)
   const [selectedType, setSelectedType] = useState('ALL')
+  const [detailSlug, setDetailSlug] = useState<string | null>(null)
+  const [dateFilter, setDateFilter] = useState<DateFilter>({ fromDate: null, toDate: null })
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+
+  const flashListRef = useRef<FlashListRef<ICardOrderResponse>>(null)
 
   useRunAfterTransition(() => setReady(true), [])
 
   const queryParams = useMemo(
-    () => ({ customerSlug: userSlug, page: 1, size: 50, sort: '-createdAt' }),
-    [userSlug],
+    () => ({
+      customerSlug: userSlug,
+      sort: '-createdAt',
+      ...(dateFilter.fromDate ? { fromDate: dayjs(dateFilter.fromDate).format('YYYY-MM-DD') } : {}),
+      ...(dateFilter.toDate ? { toDate: dayjs(dateFilter.toDate).format('YYYY-MM-DD') } : {}),
+    }),
+    [userSlug, dateFilter],
   )
 
-  const { data, isLoading, isFetching, refetch } = useCardOrders(
-    queryParams,
-    { enabled: ready && !!userSlug },
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useCardOrdersInfinite(queryParams, { enabled: ready && !!userSlug })
+
+  const allItems = useMemo(
+    () => data?.pages.flatMap((p) => p.result.items) ?? [],
+    [data],
   )
 
-  const allItems = data?.items ?? []
-  const items = selectedType === 'ALL'
-    ? allItems
-    : allItems.filter((o) => (o.type ?? '').toUpperCase() === selectedType)
+  const items = useMemo(
+    () => selectedType === 'ALL'
+      ? allItems
+      : allItems.filter((o) => (o.type ?? '').toUpperCase() === selectedType),
+    [allItems, selectedType],
+  )
+
+  // Reset scroll khi đổi filter
+  useEffect(() => {
+    flashListRef.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [selectedType])
+
+  useEffect(() => {
+    flashListRef.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [dateFilter])
 
   const bg = isDark ? colors.background.dark : colors.background.light
   const textColor = isDark ? colors.gray[50] : colors.gray[900]
   const subColor = isDark ? colors.gray[400] : colors.gray[500]
 
-  const handlePress = useCallback((slug: string) => {
-    navigateNative.push(
-      `/gift-card/order-success/${slug}` as Parameters<typeof navigateNative.push>[0],
-    )
+  const handlePress = useCallback((slug: string) => setDetailSlug(slug), [])
+  const handleTypeSelect = useCallback((v: string) => setSelectedType(v), [])
+  const handleFilterOpen = useCallback(() => setFilterSheetOpen(true), [])
+  const handleFilterClose = useCallback(() => setFilterSheetOpen(false), [])
+  const handleFilterApply = useCallback((v: DateFilter) => {
+    setDateFilter(v)
+    setFilterSheetOpen(false)
   }, [])
 
-  const handleTypeSelect = useCallback((v: string) => setSelectedType(v), [])
+  const isDateActive = dateFilter.fromDate !== null || dateFilter.toDate !== null
+
+  const handleEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const renderItem: ListRenderItem<ICardOrderResponse> = useCallback(
     ({ item }) => (
@@ -260,20 +501,11 @@ export default function GiftCardOrdersScreen() {
 
   const keyExtractor = useCallback((item: ICardOrderResponse) => item.slug, [])
 
-  const ListHeader = (
-    <>
-      <FilterBar
-        selected={selectedType}
-        primaryColor={primaryColor}
-        isDark={isDark}
-        onSelect={handleTypeSelect}
-        filters={TYPE_FILTERS}
-      />
-      {!isLoading && items.length > 0 && (
-        <Text style={[s.totalText, { color: subColor }]}>{t('orders.countOrders', { count: items.length })}</Text>
-      )}
-    </>
-  )
+  const borderColor = isDark ? colors.gray[700] : colors.gray[200]
+
+  const ListFooter = isFetchingNextPage
+    ? <ActivityIndicator color={primaryColor} style={{ paddingVertical: 16 }} />
+    : null
 
   const ListEmpty = !isLoading ? (
     <View style={s.emptyWrap}>
@@ -291,40 +523,117 @@ export default function GiftCardOrdersScreen() {
     <View style={[s.container, { backgroundColor: bg }]}>
       <FloatingHeader title={t('orders.title')} />
 
-      {(!ready || isLoading) ? (
-        <View style={{ paddingTop: insets.top + 64 }}>
-          <SkeletonList />
+      {/* ── Fixed filter bar ─────────────────────────────────────────── */}
+      <View style={[s.filterBarFixed, { paddingTop: insets.top + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>
+        <View style={s.filterRow}>
+          <View style={{ flex: 1 }}>
+            <FilterBar
+              selected={selectedType}
+              primaryColor={primaryColor}
+              isDark={isDark}
+              onSelect={handleTypeSelect}
+              filters={TYPE_FILTERS}
+            />
+          </View>
+          <Pressable
+            onPress={handleFilterOpen}
+            style={[s.filterIconBtn, { backgroundColor: isDateActive ? `${primaryColor}15` : (isDark ? colors.gray[800] : colors.gray[100]) }]}
+          >
+            <SlidersHorizontal size={16} color={isDateActive ? primaryColor : (isDark ? colors.gray[300] : colors.gray[600])} />
+            {isDateActive && <View style={[s.activeDot, { backgroundColor: primaryColor }]} />}
+          </Pressable>
         </View>
+        {isDateActive && (
+          <View style={s.dateChipRow}>
+            {dateFilter.fromDate && (
+              <View style={[s.dateChip, { backgroundColor: `${primaryColor}15`, borderColor: `${primaryColor}30` }]}>
+                <Text style={[s.dateChipText, { color: primaryColor }]}>
+                  {t('orders.fromDate')}: {dayjs(dateFilter.fromDate).format('DD/MM/YYYY')}
+                </Text>
+              </View>
+            )}
+            {dateFilter.toDate && (
+              <View style={[s.dateChip, { backgroundColor: `${primaryColor}15`, borderColor: `${primaryColor}30` }]}>
+                <Text style={[s.dateChipText, { color: primaryColor }]}>
+                  {t('orders.toDate')}: {dayjs(dateFilter.toDate).format('DD/MM/YYYY')}
+                </Text>
+              </View>
+            )}
+            <Pressable onPress={() => setDateFilter({ fromDate: null, toDate: null })} hitSlop={8}>
+              <X size={14} color={isDark ? colors.gray[400] : colors.gray[500]} />
+            </Pressable>
+          </View>
+        )}
+      </View>
+
+      {(!ready || isLoading) ? (
+        <SkeletonList />
       ) : (
         <FlashList
+          ref={flashListRef}
           data={items}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={{
-            paddingTop: insets.top + 64,
             paddingHorizontal: 16,
             paddingBottom: insets.bottom + 24,
           }}
-          ListHeaderComponent={ListHeader}
           ListEmptyComponent={ListEmpty}
+          ListFooterComponent={ListFooter}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={ItemSeparator}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.4}
           refreshControl={
             <RefreshControl
-              refreshing={isFetching && !isLoading}
+              refreshing={false}
               onRefresh={refetch}
               tintColor={primaryColor}
             />
           }
         />
       )}
+
+      <GiftCardOrderDetailSheet
+        visible={!!detailSlug}
+        orderSlug={detailSlug}
+        onClose={() => setDetailSlug(null)}
+      />
+
+      <DateFilterSheet
+        visible={filterSheetOpen}
+        value={dateFilter}
+        primaryColor={primaryColor}
+        isDark={isDark}
+        onClose={handleFilterClose}
+        onApply={handleFilterApply}
+      />
     </View>
   )
 }
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  filterScroll: { paddingVertical: 12, gap: 8 },
+  filterBarFixed: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterRow: { flexDirection: 'row', alignItems: 'center', paddingRight: 12 },
+  filterIconBtn: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: 8, flexShrink: 0,
+  },
+  activeDot: {
+    width: 6, height: 6, borderRadius: 3,
+    position: 'absolute', top: 6, right: 6,
+  },
+  dateChipRow: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
+    gap: 6, paddingHorizontal: 12, paddingBottom: 8,
+  },
+  dateChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  dateChipText: { fontSize: 11, fontWeight: '600' },
+  filterScroll: { paddingVertical: 12, paddingHorizontal: 12, gap: 8 },
   filterChip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
@@ -332,7 +641,6 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   filterText: { fontSize: 13, fontWeight: '600' },
-  totalText: { fontSize: 12, fontWeight: '500', paddingBottom: 4 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',

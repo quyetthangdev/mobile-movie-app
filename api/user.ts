@@ -257,12 +257,8 @@ export async function completeRegistration(
 }
 
 export async function getUserIdentityCode(): Promise<IApiResponse<{ identityCode: string }>> {
-  // eslint-disable-next-line no-console
-  console.log('[QR] GET /user/identity-code — request')
   const response = await http.get<IApiResponse<{ identityCode: string }>>(
     `/user/identity-code`,
   )
-  // eslint-disable-next-line no-console
-  console.log('[QR] GET /user/identity-code — response:', JSON.stringify(response.data))
   return response.data
 }

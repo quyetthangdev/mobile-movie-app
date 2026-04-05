@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   cancelCardOrder,
@@ -31,6 +31,25 @@ export const useCardOrders = (
     queryFn: () => getCardOrders(params),
     placeholderData: keepPreviousData,
     select: (data) => data.result,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    enabled: options?.enabled !== false,
+  })
+}
+
+export const useCardOrdersInfinite = (
+  params?: Omit<ICardOrderGetRequest, 'page'>,
+  options?: { enabled?: boolean },
+) => {
+  return useInfiniteQuery({
+    queryKey: [QUERYKEY.cardOrder, 'infinite', params],
+    queryFn: ({ pageParam }) =>
+      getCardOrders({ ...params, page: pageParam as number, size: 20 }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => {
+      const { page, totalPages } = last.result
+      return page < totalPages ? page + 1 : undefined
+    },
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     enabled: options?.enabled !== false,

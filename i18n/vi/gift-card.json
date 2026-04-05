@@ -18,13 +18,17 @@
     "buy": "Mua lô"
   },
   "hub": {
+    "title": "Thẻ quà tặng & Xu",
     "balance": "Số xu hiện tại",
+    "sectionCoin": "Xu",
+    "sectionGiftCard": "Thẻ quà tặng",
+    "coinHistory": "Lịch sử giao dịch xu",
     "myCards": "Thẻ của tôi",
     "redeem": "Dùng thẻ",
     "buy": "Mua thẻ",
     "history": "Lịch sử",
     "useCard": "Sử dụng thẻ",
-    "orderHistory": "Lịch sử đơn hàng"
+    "orderHistory": "Lịch sử đơn thẻ"
   },
   "list": {
     "title": "Thẻ quà tặng",
@@ -49,6 +53,11 @@
     "types": {
       "all": "Tất cả"
     },
+    "filterTitle": "Bộ lọc",
+    "dateRange": "Khoảng thời gian",
+    "fromDate": "Từ ngày",
+    "toDate": "Đến ngày",
+    "apply": "Áp dụng",
     "empty": {
       "noOrders": "Chưa có đơn nào",
       "noOwned": "Bạn chưa mua thẻ quà tặng nào",
@@ -150,6 +159,17 @@
       "serial": "Serial",
       "usedAt": "Thời gian"
     }
+  },
+  "orderDetail": {
+    "title": "Đơn thẻ quà tặng",
+    "status": "Trạng thái",
+    "orderDate": "Ngày đặt hàng",
+    "paymentMethod": "Phương thức TT",
+    "quantity": "Số lượng",
+    "type": "Loại",
+    "orderCode": "Mã đơn hàng",
+    "giftCardsSection": "Danh sách thẻ ({{count}})",
+    "notFound": "Không tìm thấy đơn hàng"
   },
   "orderSuccess": {
     "title": "Chi tiết đơn hàng",

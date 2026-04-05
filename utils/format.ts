@@ -103,7 +103,7 @@ export function formatShortCurrency(value: number, currency = 'VND'): string {
  * @param value - Number to format
  * @returns Formatted string (e.g., "100.000")
  */
-export function formatPoints(value: number): string {
+export function formatPoints(value: number) {
   return formatCurrency(value, '').trimEnd()
 }
 

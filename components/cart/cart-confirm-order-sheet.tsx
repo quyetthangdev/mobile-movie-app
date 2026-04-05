@@ -92,8 +92,6 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
         return
       }
     }
-    // console.log('Submitting order with data:', order)
-
     const req: ICreateOrderRequest = {
       type: order.type,
       timeLeftTakeOut: order.timeLeftTakeOut || 0,
@@ -235,6 +233,16 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
                   <Text style={[confirmOrderStyles.infoValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{order.tableName}</Text>
                 </View>
               ) : null}
+              {order.type === 'take-out' && (
+                <View style={[confirmOrderStyles.infoRow, { backgroundColor: isDark ? colors.gray[800] : colors.gray[100] }]}>
+                  <Text style={[confirmOrderStyles.infoLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('menu.pickupTime')}</Text>
+                  <Text style={[confirmOrderStyles.infoValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
+                    {!order.timeLeftTakeOut || order.timeLeftTakeOut === 0
+                      ? t('menu.immediately')
+                      : `${order.timeLeftTakeOut} ${t('menu.minutes')}`}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Items */}

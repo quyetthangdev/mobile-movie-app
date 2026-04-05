@@ -23,7 +23,7 @@ const SETTINGS_ITEMS = [
   {
     label: 'Điểm tích lũy',
     icon: CreditCard,
-    href: '/(tabs)/profile/points-placeholder',
+    href: '/profile/loyalty-point' as never,
   },
   {
     label: 'Xu của tôi',

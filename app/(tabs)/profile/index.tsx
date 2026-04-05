@@ -17,7 +17,7 @@ import {
   Bell,
   Camera,
   ChevronRight,
-  Coins,
+
   Folder,
   Gift,
   Globe,
@@ -329,7 +329,7 @@ const ProfileTest = () => {
     return `${first}${last}`.toUpperCase()
   }, [userInfo?.firstName, userInfo?.lastName])
 
-  const { totalPoints: loyaltyPoints, isLoading: loyaltyLoading } =
+  const { isLoading: loyaltyLoading } =
     useLoyaltyPoints(userInfo?.slug, allowFetch)
 
   const [isLangSheetOpen, setIsLangSheetOpen] = useState(false)
@@ -390,11 +390,7 @@ const ProfileTest = () => {
   }, [router])
 
   const openPoints = useCallback(() => {
-    router.push('/(tabs)/profile/points-placeholder')
-  }, [router])
-
-  const openCoins = useCallback(() => {
-    router.push('/(tabs)/profile/coins-placeholder')
+    router.push('/profile/loyalty-point-hub' as never)
   }, [router])
 
   const openOrdersHistory = useCallback(() => {
@@ -520,37 +516,6 @@ const ProfileTest = () => {
 
             {/* Group 3: General features */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
-              {loyaltyLoading ? (
-                <View style={styles.menuItem}>
-                  <Skeleton style={[styles.menuIconWrap, { marginRight: 14 }]} />
-                  <View style={{ flex: 1 }}>
-                    <Skeleton style={{ height: 16, width: 120, borderRadius: 4 }} />
-                  </View>
-                  <ChevronRight size={20} color={theme.textMuted} />
-                </View>
-              ) : (
-                <>
-                  <MenuItem
-                    icon={Trophy}
-                    iconColor={ICON_COLORS.green}
-                    title={t('profile.loyaltyPoint.title', 'Điểm tích lũy')}
-                    value={`${loyaltyPoints} ${t('profile.points.point', 'điểm')}`}
-                    onPress={openPoints}
-                    textColor={theme.text}
-                    textMuted={theme.textMuted}
-                  />
-                  <View style={[styles.menuItemDivider, { backgroundColor: theme.divider }]} />
-                </>
-              )}
-              <MenuItem
-                icon={Coins}
-                iconColor={ICON_COLORS.orange}
-                title={t('profile.coin.title', 'Quản lý xu')}
-                onPress={openCoins}
-                textColor={theme.text}
-                textMuted={theme.textMuted}
-              />
-              <View style={[styles.menuItemDivider, { backgroundColor: theme.divider }]} />
               <MenuItem
                 icon={Folder}
                 iconColor={ICON_COLORS.blue}
@@ -563,11 +528,35 @@ const ProfileTest = () => {
               <MenuItem
                 icon={Gift}
                 iconColor={ICON_COLORS.orange}
-                title="Thẻ quà tặng"
+                title={t('profile.giftCardAndCoin.title', 'Thẻ quà tặng & Xu')}
                 onPress={openGiftCard}
                 textColor={theme.text}
                 textMuted={theme.textMuted}
               />
+              {loyaltyLoading ? (
+                <>
+                  <View style={[styles.menuItemDivider, { backgroundColor: theme.divider }]} />
+                  <View style={styles.menuItem}>
+                    <Skeleton style={[styles.menuIconWrap, { marginRight: 14 }]} />
+                    <View style={{ flex: 1 }}>
+                      <Skeleton style={{ height: 16, width: 120, borderRadius: 4 }} />
+                    </View>
+                    <ChevronRight size={20} color={theme.textMuted} />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={[styles.menuItemDivider, { backgroundColor: theme.divider }]} />
+                  <MenuItem
+                    icon={Trophy}
+                    iconColor={ICON_COLORS.green}
+                    title={t('profile.loyaltyPoint.title', 'Điểm tích lũy')}
+                    onPress={openPoints}
+                    textColor={theme.text}
+                    textMuted={theme.textMuted}
+                  />
+                </>
+              )}
             </View>
 
             {/* Group 4: Settings */}

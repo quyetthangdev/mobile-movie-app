@@ -11,9 +11,8 @@ import { http } from '@/utils'
 export async function getLoyaltyPoints(
   userSlug?: string,
 ): Promise<IApiResponse<ILoyaltyPoint>> {
-  const response = await http.get<IApiResponse<ILoyaltyPoint>>(
-    `/accumulated-point/user/${userSlug}/points`,
-  )
+  const url = `/accumulated-point/user/${userSlug}/points`
+  const response = await http.get<IApiResponse<ILoyaltyPoint>>(url)
   return response.data
 }
 
@@ -43,13 +42,12 @@ export async function getLoyaltyPointHistory(
   params: ILoyaltyPointHistoryQuery,
 ): Promise<IApiResponse<IPaginationResponse<ILoyaltyPointHistory>>> {
   const { slug, ...rest } = params
+  const url = `/accumulated-point/user/${slug}/history`
   const response = await http.get<
     IApiResponse<IPaginationResponse<ILoyaltyPointHistory>>
-  >(`/accumulated-point/user/${slug}/history`, {
+  >(url, {
     params: rest,
-    paramsSerializer: {
-      indexes: null, // bỏ "[]"
-    },
+    paramsSerializer: { indexes: null },
   })
   return response.data
 }

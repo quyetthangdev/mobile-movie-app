@@ -18,7 +18,11 @@
         "title": "News & Event"
       },
       "videoSection": {
-        "title": "HOW TO REGISTER FOR MEMBER"
+        "label": "Guide",
+        "title": "Register for membership",
+        "subtitle": "Watch our video guide to earn points and unlock exclusive offers.",
+        "tap": "Tap to watch",
+        "cta": "Watch now"
       },
       "viewMenu": "View more MENU",
       "viewMore": "View more",

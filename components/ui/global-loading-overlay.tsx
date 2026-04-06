@@ -38,7 +38,7 @@ export function GlobalLoadingOverlay({ visible }: GlobalLoadingOverlayProps) {
     >
       <View style={styles.content}>
         <Image
-          source={Images.Brand.Logo as unknown as number}
+          source={Images.Brand.Logo}
           style={styles.logo}
           resizeMode="contain"
         />

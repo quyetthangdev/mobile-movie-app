@@ -1,271 +1,262 @@
-import { Images } from '@/assets/images'
-import { ROUTE, publicFileURL } from '@/constants'
-import { navigateNative } from '@/lib/navigation'
-import { IBanner } from '@/types'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import type { ImageSourcePropType } from 'react-native'
-import { Dimensions, FlatList, Linking, Pressable, View } from 'react-native'
 import { Image } from 'expo-image'
+import { Linking, Pressable, StyleSheet, View } from 'react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Dimensions, FlatList } from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 
-import { DOT_SCALE_ACTIVE, SPRING_CONFIGS } from '@/constants'
+import { Images } from '@/assets/images'
+import { ROUTE, publicFileURL } from '@/constants'
+import { navigateNative } from '@/lib/navigation'
+import type { IBanner } from '@/types'
+import type { ImageSourcePropType } from 'react-native'
 
-interface SwiperBannerProps {
-  /**
-   * Array of banner data to display
-   */
-  bannerData: IBanner[]
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const AUTO_SCROLL_INTERVAL = 3500
+const DOT_SIZE = 7
+const DOT_ACTIVE_WIDTH = 20
+const DOT_GAP = 5
+
+// ─── Dot indicator ───────────────────────────────────────────────────────────
+
+const BannerDot = React.memo(function BannerDot({ isActive }: { isActive: boolean }) {
+  const width = useSharedValue(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE)
+  const opacity = useSharedValue(isActive ? 1 : 0.45)
+
+  useEffect(() => {
+    width.value = withSpring(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE, {
+      damping: 15,
+      stiffness: 220,
+    })
+    opacity.value = withTiming(isActive ? 1 : 0.45, { duration: 180 })
+  }, [isActive, width, opacity])
+
+  const style = useAnimatedStyle(() => ({
+    width: width.value,
+    height: DOT_SIZE,
+    borderRadius: DOT_SIZE / 2,
+    backgroundColor: '#fff',
+    opacity: opacity.value,
+  }))
+
+  return <Animated.View style={style} />
+})
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getBannerImage(banner: IBanner): ImageSourcePropType {
+  if (banner.image) {
+    if (banner.image.startsWith('http')) return { uri: banner.image }
+    const url = publicFileURL ? `${publicFileURL}/${banner.image}` : banner.image
+    return { uri: url }
+  }
+  return Images.Landing.Desktop
 }
 
-/**
- * SwiperBanner Component
- * 
- * Displays a horizontal carousel of banners with autoplay.
- * Supports internal navigation and external links.
- * 
- * @example
- * ```tsx
- * <SwiperBanner bannerData={banners} />
- * ```
- */
-const SwiperBanner = React.memo(function SwiperBanner({ bannerData }: SwiperBannerProps): React.ReactElement | null {
+function extractPathname(url: string): string {
+  try { return new URL(url).pathname } catch { return url }
+}
+
+function isInternalRoute(url: string, routeValues: string[]): boolean {
+  if (!url?.trim()) return true
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return true
+  try {
+    const pathname = new URL(url).pathname
+    return routeValues.some((r) => pathname === r || pathname.startsWith(r + '/'))
+  } catch { return true }
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+interface SwiperBannerProps {
+  bannerData: IBanner[]
+  height?: number
+}
+
+const SwiperBanner = React.memo(function SwiperBanner({
+  bannerData,
+  height: heightProp,
+}: SwiperBannerProps): React.ReactElement | null {
   const flatListRef = useRef<FlatList>(null)
   const screenWidth = Dimensions.get('window').width
   const screenHeight = Dimensions.get('window').height
+  const bannerHeight = heightProp ?? screenHeight * 0.4
 
-  // State for active index (only updated on scroll end, not every frame)
-  const [activeIndexState, setActiveIndexState] = useState(0)
+  const count = bannerData.length
+
+  /**
+   * Infinite scroll — clone last item at front, first item at back:
+   *   [last, item0, item1, ..., itemN, first]
+   * Real items occupy indices 1..count in this array.
+   * Start at index 1 (first real item).
+   */
+  const infiniteData = useMemo(() => {
+    if (count <= 1) return bannerData
+    return [bannerData[count - 1], ...bannerData, bannerData[0]]
+  }, [bannerData, count])
+
+  // Real active index (0..count-1) — used for dots
+  const [activeIndex, setActiveIndex] = useState(0)
   const activeIndexRef = useRef(0)
-  activeIndexRef.current = activeIndexState
+  // Current position in infiniteData (1..count) — used for auto-scroll
+  const infiniteIndexRef = useRef(1)
 
-  // Helper function to extract pathname from URL
-  const extractPathname = useCallback((url: string): string => {
-    try {
-      const urlObj = new URL(url)
-      return urlObj.pathname
-    } catch {
-      // If not a valid URL, treat as pathname
-      return url
-    }
-  }, [])
-
-  // Helper function to check if pathname matches ROUTE constants
-  const matchesInternalRoute = useCallback((pathname: string): boolean => {
-    const routeValues = Object.values(ROUTE)
-    return routeValues.some((route) => {
-      return pathname === route || pathname.startsWith(route + '/')
-    })
-  }, [])
-
-  // Helper function to check if it's an internal route
-  const isInternalRoute = useCallback((url: string): boolean => {
-    if (!url || url.trim() === '') return true
-
-    // If not http/https, treat as internal
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      return true
-    }
-
-    try {
-      const urlObj = new URL(url)
-      const pathname = urlObj.pathname
-
-      // Check if pathname matches ROUTE
-      if (matchesInternalRoute(pathname)) {
-        return true
-      }
-
-      // For mobile apps, external links should open in browser
-      return false
-    } catch {
-      return true
-    }
-  }, [matchesInternalRoute])
-
-  // Helper function to determine destination URL
-  const getBannerLink = useCallback((banner: IBanner): string => {
-    if (banner.url && banner.url.trim() !== '') {
-      if (isInternalRoute(banner.url)) {
-        return extractPathname(banner.url)
-      }
-      return banner.url
-    }
-    return ROUTE.CLIENT_MENU || '/'
-  }, [isInternalRoute, extractPathname])
-
-
-  // Auto-scroll functionality — dùng ref để tránh recreate interval mỗi khi activeIndexState đổi
+  // Scroll to index 1 on mount (skip the cloned-last at position 0)
   useEffect(() => {
-    if (bannerData.length <= 1) return
-
-    const interval = setInterval(() => {
-      const current = activeIndexRef.current
-      const next = current + 1 >= bannerData.length ? 0 : current + 1
-      flatListRef.current?.scrollToIndex({ index: next, animated: true })
-    }, 3000)
-
-    return () => clearInterval(interval)
-  }, [bannerData.length])
-
-  // Handle scroll end - only update state when scroll completes (not every frame)
-  const handleScrollEnd = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
-    const slideSize = screenWidth
-    const index = Math.round(event.nativeEvent.contentOffset.x / slideSize)
-    if (index >= 0 && index < bannerData.length && index !== activeIndexState) {
-      setActiveIndexState(index)
-    }
-  }, [screenWidth, bannerData.length, activeIndexState])
-
-  const handleBannerPress = useCallback((banner: IBanner) => {
-    const linkUrl = getBannerLink(banner)
-    const isInternal = isInternalRoute(banner.url || '')
-
-    if (isInternal) {
-      // Navigate internally using expo-router
-      navigateNative.push(linkUrl as Parameters<typeof navigateNative.push>[0])
-    } else {
-      // Open external link in browser
-      Linking.openURL(linkUrl).catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error('Failed to open URL:', err)
-      })
-    }
-  }, [getBannerLink, isInternalRoute])
-
-  const getBannerImage = (banner: IBanner): ImageSourcePropType => {
-    if (banner.image) {
-      // If image is already a full URL, use it directly
-      if (banner.image.startsWith('http')) {
-        return { uri: banner.image }
-      }
-      // Otherwise, construct URL with publicFileURL
-      const imageUrl = publicFileURL ? `${publicFileURL}/${banner.image}` : banner.image
-      return { uri: imageUrl }
-    }
-    // Fallback to default image
-    return Images.Landing.Desktop as ImageSourcePropType
-  }
-
-  const renderItem = useCallback(({ item: banner }: { item: IBanner; index: number }) => {
-    const imageSource = getBannerImage(banner)
-
-    return (
-      <Pressable
-        onPress={() => handleBannerPress(banner)}
-        className="w-full"
-        style={{ width: screenWidth }}
-      >
-        <View className="relative justify-center items-center w-full bg-black" style={{ height: screenHeight * 0.4 }}>
-          {/* Background image with blur effect - subtle background only */}
-          <View className="absolute top-0 left-0 w-full h-full" style={{ zIndex: 0 }}>
-            <Image
-              source={imageSource}
-              className="w-full h-full"
-              contentFit="cover"
-              style={{ opacity: 0.3 }}
-              blurRadius={20}
-              cachePolicy="memory-disk"
-              transition={0}
-            />
-          </View>
-
-          {/* Main image - clear and prominent on top (expo-image: cache + memory) */}
-          <View className="absolute inset-0 justify-center items-center px-4" style={{ zIndex: 10 }}>
-            <Image
-              source={imageSource}
-              className="w-full h-full"
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              transition={0}
-            />
-          </View>
-        </View>
-      </Pressable>
-    )
-  }, [screenWidth, screenHeight, handleBannerPress])
-
-  // Pagination dot component with scale animation (transform, not width)
-  const PaginationDot = React.memo(function PaginationDot({
-    isActive,
-  }: {
-    isActive: boolean
-  }) {
-    const scale = useSharedValue(isActive ? DOT_SCALE_ACTIVE : 1)
-
-    useEffect(() => {
-      scale.value = withSpring(isActive ? DOT_SCALE_ACTIVE : 1, SPRING_CONFIGS.dot)
-    }, [isActive, scale])
-
-    const animatedStyle = useAnimatedStyle(() => {
-      'worklet'
-      return {
-        transform: [{ scale: scale.value }],
-      }
+    if (count <= 1) return
+    requestAnimationFrame(() => {
+      flatListRef.current?.scrollToIndex({ index: 1, animated: false })
     })
+  }, [count])
 
-    return (
-      <Animated.View
-        style={animatedStyle}
-        className={`h-2 w-2 rounded-full ${
-          isActive ? 'bg-white' : 'bg-white/50'
-        }`}
-      />
-    )
-  })
+  // Auto-scroll forward, teleport handled by handleScrollEnd
+  useEffect(() => {
+    if (count <= 1) return
+    const interval = setInterval(() => {
+      const next = infiniteIndexRef.current + 1
+      flatListRef.current?.scrollToIndex({ index: next, animated: true })
+    }, AUTO_SCROLL_INTERVAL)
+    return () => clearInterval(interval)
+  }, [count])
 
-  const renderPagination = (): React.ReactElement | null => {
-    if (bannerData.length <= 1) return null
+  const handleScrollEnd = useCallback(
+    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      if (count <= 1) return
+      const rawIndex = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
 
-    return (
-      <View className="absolute bottom-4 left-0 right-0 flex-row justify-center items-center space-x-2">
-        {bannerData.map((_, index) => (
-          <PaginationDot
-            key={index}
-            isActive={index === activeIndexState}
+      // Teleport: cloned-last (index 0) → real last (index count)
+      if (rawIndex === 0) {
+        flatListRef.current?.scrollToIndex({ index: count, animated: false })
+        infiniteIndexRef.current = count
+        activeIndexRef.current = count - 1
+        setActiveIndex(count - 1)
+        return
+      }
+      // Teleport: cloned-first (index count+1) → real first (index 1)
+      if (rawIndex === count + 1) {
+        flatListRef.current?.scrollToIndex({ index: 1, animated: false })
+        infiniteIndexRef.current = 1
+        activeIndexRef.current = 0
+        setActiveIndex(0)
+        return
+      }
+
+      const realIndex = rawIndex - 1
+      infiniteIndexRef.current = rawIndex
+      activeIndexRef.current = realIndex
+      setActiveIndex(realIndex)
+    },
+    [screenWidth, count],
+  )
+
+  const routeValues = useMemo(() => Object.values(ROUTE), [])
+
+  const handleBannerPress = useCallback(
+    (banner: IBanner) => {
+      const url = banner.url?.trim()
+      if (!url) return
+      const internal = isInternalRoute(url, routeValues)
+      const dest = internal ? extractPathname(url) : url
+      if (internal) {
+        navigateNative.push(dest as Parameters<typeof navigateNative.push>[0])
+      } else {
+        Linking.openURL(dest).catch(() => {})
+      }
+    },
+    [routeValues],
+  )
+
+  const renderItem = useCallback(
+    ({ item: banner }: { item: IBanner }) => {
+      const source = getBannerImage(banner)
+      return (
+        <Pressable
+          onPress={() => handleBannerPress(banner)}
+          style={{ width: screenWidth, height: bannerHeight, overflow: 'hidden' }}
+        >
+          {/* Blurred background — fills the entire frame for any aspect ratio */}
+          <Image
+            source={source}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            blurRadius={22}
+            cachePolicy="memory-disk"
           />
-        ))}
-      </View>
-    )
-  }
+          {/* Dim overlay để chữ/dot dễ đọc và bg không quá sáng */}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.28)' }]} />
+          {/* Main image — contain để không bị crop dù ngang/vuông/đứng */}
+          <Image
+            source={source}
+            style={{ width: screenWidth, height: bannerHeight }}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={300}
+          />
+        </Pressable>
+      )
+    },
+    [screenWidth, bannerHeight, handleBannerPress],
+  )
 
-  if (!bannerData || bannerData.length === 0) {
-    return null
-  }
+  const keyExtractor = useCallback(
+    (_: IBanner, index: number) => index.toString(),
+    [],
+  )
+
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: screenWidth,
+      offset: screenWidth * index,
+      index,
+    }),
+    [screenWidth],
+  )
+
+  if (!count) return null
 
   return (
-    <View className="relative w-full">
+    <View style={{ width: '100%' }}>
       <FlatList
         ref={flatListRef}
-        data={bannerData}
+        data={infiniteData}
         renderItem={renderItem}
-        keyExtractor={(item, index) => item.slug || index.toString()}
+        keyExtractor={keyExtractor}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScrollEnd}
-        getItemLayout={(data, index) => ({
-          length: screenWidth,
-          offset: screenWidth * index,
-          index,
-        })}
-        onScrollToIndexFailed={(info) => {
-          const wait = new Promise((resolve) => setTimeout(resolve, 500))
-          wait.then(() => {
-            flatListRef.current?.scrollToIndex({ index: info.index, animated: true })
-          })
-        }}
-        // Performance optimizations for POS/Kiosk
-        removeClippedSubviews={true}
+        getItemLayout={getItemLayout}
+        onScrollToIndexFailed={() => {}}
+        removeClippedSubviews
         initialNumToRender={3}
         maxToRenderPerBatch={2}
         windowSize={3}
-        updateCellsBatchingPeriod={50}
       />
-      {renderPagination()}
+
+      {/* Dot indicators — only when >1 banner */}
+      {count > 1 && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 14,
+            left: 0,
+            right: 0,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: DOT_GAP,
+          }}
+        >
+          {bannerData.map((_, i) => (
+            <BannerDot key={i} isActive={i === activeIndex} />
+          ))}
+        </View>
+      )}
     </View>
   )
 })

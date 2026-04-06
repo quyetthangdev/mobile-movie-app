@@ -97,6 +97,71 @@ Custom navigation layer on top of Expo Router with:
 - React 19 (no need for `import React`)
 - NativeWind className-based styling (not StyleSheet)
 
+## Layout Conventions
+
+### Screen types & wrappers
+
+| Screen type | Root wrapper | Header |
+|-------------|-------------|--------|
+| Tab screen (Home, Menu, Cart, Gift Card) | `<TabScreenLayout>` | `<TabHeader>` |
+| Stack screen (Payment, Order, Notification...) | plain `<View style={{ flex: 1 }}>` | `<FloatingHeader>` (absolute) |
+| Profile (custom animated header) | plain `<View>` | custom animated header |
+
+### Safe area — top
+
+```ts
+// ✅ ĐÚNG — Tab screens và Stack screen headers
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
+paddingTop: STATIC_TOP_INSET
+
+// ❌ SAI — KHÔNG dùng useSafeAreaInsets() cho header/layout tĩnh
+const insets = useSafeAreaInsets()
+paddingTop: insets.top  // gây re-render, có thể flicker khi transition
+```
+
+`STATIC_TOP_INSET` được tính 1 lần lúc khởi động app, không hook, không re-render.
+
+### Safe area — bottom
+
+```ts
+// ✅ ĐÚNG — bottom sheet, scroll content padding
+const insets = useSafeAreaInsets()
+paddingBottom: insets.bottom + 16   // dynamic vì bottom có thể thay đổi
+
+// ✅ ĐÚNG — tab screen scroll content
+import { TAB_BAR_BOTTOM_PADDING } from '@/components/layout'
+contentContainerStyle={{ paddingBottom: TAB_BAR_BOTTOM_PADDING }}
+```
+
+### Background color
+
+```ts
+// ✅ ĐÚNG — dùng colors constant
+import { colors } from '@/constants'
+backgroundColor: isDark ? colors.background.dark : colors.background.light
+
+// ❌ SAI — không dùng NativeWind cho root View của tab screen
+<View className="bg-background">  // NativeWind ở đây unreliable với dynamic theme
+```
+
+### Notification Bell
+
+```tsx
+// ✅ ĐÚNG — dùng component có sẵn (badge + navigate + unread count)
+import { NotificationBell } from '@/components/notification/notification-bell'
+<NotificationBell color={iconColor} />
+
+// ❌ SAI — không tự build lại Bell + badge
+<Pressable><Bell /><View>…badge…</View></Pressable>
+```
+
+### Key layout files
+
+- `components/layout/tab-header.tsx` — Header cho tab screens (`variant="logo"` hoặc `"title"`)
+- `components/layout/tab-screen-layout.tsx` — Root wrapper cho tab screens
+- `components/navigation/floating-header.tsx` — Header cho stack screens (back + title + right)
+- `constants/status-bar.ts` — `STATIC_TOP_INSET` definition
+
 ## ⚡ Performance & Optimization Rules
 
 To maintain a consistent **60fps** and minimize **JS Thread spikes**, all components and features must adhere to the following optimization standards:

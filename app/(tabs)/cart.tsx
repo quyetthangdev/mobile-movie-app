@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { TAB_ROUTES } from '@/constants/navigation.config'
+import { TabScreenLayout } from '@/components/layout'
 import { useRunAfterTransition } from '@/hooks'
 import { useOrderFlowStore } from '@/stores'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
@@ -349,7 +350,7 @@ export default function CartScreen() {
   }, [clearCart])
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? colors.background.dark : colors.background.light }}>
+    <TabScreenLayout>
       {contentReady ? (
         <>
           <Suspense fallback={<View style={{ flex: 1 }} />}>
@@ -373,6 +374,6 @@ export default function CartScreen() {
         onConfirm={handleConfirmClear}
         isDark={isDark}
       />
-    </View>
+    </TabScreenLayout>
   )
 }

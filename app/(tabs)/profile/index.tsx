@@ -46,7 +46,6 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useProfileAnimation } from './use-profile-animation'
 
 const AnimatedGestureScrollView = Animated.createAnimatedComponent(GestureScrollView)
@@ -263,7 +262,6 @@ const ProfileTest = () => {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const theme = PROFILE_THEME[isDark ? 'dark' : 'light']
-  const insets = useSafeAreaInsets()
   const router = useRouter()
   const scrollY = useSharedValue(0)
 
@@ -274,7 +272,7 @@ const ProfileTest = () => {
     },
   })
 
-  const avatarTop = insets.top + AVATAR_TOP
+  const avatarTop = STATIC_TOP_INSET + AVATAR_TOP
   const nameTop = avatarTop + AVATAR_SIZE + 12
 
   // Single derived progress 0→1
@@ -483,7 +481,7 @@ const ProfileTest = () => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingTop: HEADER_HEIGHT + insets.top + 12 },
+              { paddingTop: HEADER_HEIGHT + STATIC_TOP_INSET + 12 },
             ]}
             onScroll={handleScroll}
             scrollEventThrottle={16}

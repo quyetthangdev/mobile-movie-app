@@ -64,7 +64,7 @@ export const PaymentProductItem = React.memo(function PaymentProductItem({
             source={
               item.variant?.product?.image
                 ? { uri: `${publicFileURL}/${item.variant.product.image}` }
-                : Images.Food.ProductImage as unknown as number
+                : Images.Food.ProductImage
             }
             style={pItemStyles.image}
             contentFit="cover"

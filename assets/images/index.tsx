@@ -1,8 +1,8 @@
 // images/index.ts
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-require-imports */
-import type { ImageTree } from './types'
+import type { ImageAssets } from './types'
 
-export const Images = {
+export const Images: ImageAssets = {
   Auth: {
     LoginBackground: require('./auth/login-background.jpg'),
   },
@@ -46,6 +46,17 @@ export const Images = {
     Services4: require('./highlight/featured_service_4.webp'),
   },
 
+  News: {
+    Article1_1: require('./news/news_article_1_1.webp'),
+    Article1_2: require('./news/news_article_1_2.webp'),
+    Article1_3: require('./news/news_article_1_3.webp'),
+    Article2_2: require('./news/news_article_2_2.webp'),
+    Article2_3: require('./news/news_article_2_3.webp'),
+    Article3_2: require('./news/news_article_3_2.webp'),
+    Article3_3: require('./news/news_article_3_3.webp'),
+    Article3_4: require('./news/news_article_3_4.webp'),
+  },
+
   Order: {
     Success: require('./food/order-success.png'),
     SuccessSVG: require('./icon/order-success.svg'),
@@ -62,4 +73,4 @@ export const Images = {
     Splash: require('./icon/splash.png'),
     PromotionTag: require('./icon/promotion-tag.svg'),
   },
-} satisfies ImageTree
+}

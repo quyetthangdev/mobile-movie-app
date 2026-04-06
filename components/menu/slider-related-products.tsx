@@ -95,14 +95,14 @@ const RelatedProductItem = React.memo(
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                   recyclingKey={item.slug}
-                  placeholder={(Images.Food.DefaultProductImage as unknown as number)}
+                  placeholder={Images.Food.DefaultProductImage}
                   placeholderContentFit="cover"
                   cachePolicy="disk"
                   priority="low"
                 />
               ) : (
                 <RNImage
-                  source={Images.Food.DefaultProductImage as number}
+                  source={Images.Food.DefaultProductImage}
                   resizeMode="cover"
                   style={{ width: '100%', height: '100%' }}
                 />

@@ -20,6 +20,7 @@ import { getLoyaltyPoints } from '@/api/loyalty-point'
 import { AnimatedTabBar, FloatingCartButton } from '@/components/navigation'
 import { QUERYKEY, tabsScreenOptions } from '@/constants'
 import { usePredictivePrefetch } from '@/hooks'
+import { useNotifications } from '@/hooks/use-notification'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { getThemeColor, hexToRgba } from '@/lib/utils'
 import {
@@ -28,6 +29,7 @@ import {
   useMenuFilterStore,
   useUserStore,
 } from '@/stores'
+import { useNotificationStore } from '@/stores/notification.store'
 const TAB_ROUTES = {
   HOME: '/(tabs)/home',
   MENU: '/(tabs)/menu',
@@ -50,6 +52,21 @@ export default function TabsLayout() {
   const masterTransition = useMasterTransitionOptional()
   const queryClient = useQueryClient()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
+  const userSlug = useUserStore((s) => s.userInfo?.slug)
+
+  // ── Bootstrap notification badge on app start ────────────────────────────
+  // Fetch first page of notifications ngay khi đã login để badge hiện đúng
+  // mà không cần user phải mở màn thông báo trước.
+  const { data: bootstrapNotifData } = useNotifications(
+    { receiver: userSlug, page: 1, size: 20 },
+    { enabled: isAuthenticated && !!userSlug },
+  )
+  useEffect(() => {
+    const items = bootstrapNotifData?.result?.items
+    if (items && items.length > 0) {
+      useNotificationStore.getState().hydrateFromApi(items)
+    }
+  }, [bootstrapNotifData])
 
   // useLayoutEffect: overlay chỉ khi Home→Menu và chưa cache (chờ data)
   // Đọc menuFilter, branchSlug, userSlug qua getState() — giảm subscriptions
@@ -193,7 +210,7 @@ export default function TabsLayout() {
               hexToRgba(colors.background, 0.55),
               colors.background,
             ]}
-            locations={[0, 0.15, 0.25, 0.35, 0.45, 0.55, 0.7, 0.85, 1]}
+            locations={[0, 0.15, 0.25, 0.35, 0.45, 0.55, 0.7, 1]}
             style={{ flex: 1 }}
           />
         </View>

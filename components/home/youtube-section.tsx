@@ -1,124 +1,177 @@
+import { Image } from 'expo-image'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Play } from 'lucide-react-native'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Dimensions, Image, Linking, Pressable, Text, useColorScheme, View } from 'react-native'
+import { Linking, Pressable, StyleSheet, Text, View, useColorScheme, useWindowDimensions } from 'react-native'
+
 import { colors } from '@/constants'
+import { usePrimaryColor } from '@/hooks/use-primary-color'
 
 interface YouTubeVideoSectionProps {
-  /**
-   * YouTube video ID (extracted from URL)
-   * Example: For "https://www.youtube.com/watch?v=dQw4w9WgXcQ", videoId would be "dQw4w9WgXcQ"
-   */
   videoId: string
-  /**
-   * Optional title for the video section
-   */
   title?: string
 }
 
-/**
- * YouTubeVideoSection Component
- * 
- * Displays a YouTube video thumbnail with play button overlay.
- * Tapping opens the video in YouTube app or browser.
- * 
- * Note: React Native doesn't support YouTube iframe API directly.
- * This implementation shows a thumbnail that opens YouTube when tapped.
- * 
- * @example
- * ```tsx
- * <YouTubeVideoSection videoId="dQw4w9WgXcQ" title="Watch our story" />
- * ```
- */
-export const YouTubeVideoSection: React.FC<YouTubeVideoSectionProps> = ({
+export const YouTubeVideoSection = React.memo(function YouTubeVideoSection({
   videoId,
   title,
-}) => {
+}: YouTubeVideoSectionProps) {
   const { t } = useTranslation('home')
   const isDark = useColorScheme() === 'dark'
-  const [isLoading, setIsLoading] = useState(true)
-  const screenWidth = Dimensions.get('window').width
-  const videoHeight = (screenWidth * 9) / 16 // 16:9 aspect ratio
+  const { width: screenWidth } = useWindowDimensions()
+  const primaryColor = usePrimaryColor()
+  const [imageError, setImageError] = useState(false)
 
-  // Generate YouTube thumbnail URL (max quality)
-  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-  
-  // Generate YouTube URL
-  const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
+  const cardWidth = screenWidth - 32
+  const thumbHeight = Math.round((cardWidth * 9) / 16)
 
-  const handleVideoPress = () => {
-    // Try to open in YouTube app first, fallback to browser
-    const youtubeAppUrl = `vnd.youtube:${videoId}`
-    
-    Linking.canOpenURL(youtubeAppUrl)
-      .then((supported) => {
-        if (supported) {
-          return Linking.openURL(youtubeAppUrl)
-        } else {
-          return Linking.openURL(youtubeUrl)
-        }
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error('Failed to open YouTube:', err)
-        // Fallback to browser
-        Linking.openURL(youtubeUrl)
-      })
+  const thumbnailUrl = imageError
+    ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+    : `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+
+  const handlePress = () => {
+    const appUrl = `vnd.youtube:${videoId}`
+    const webUrl = `https://www.youtube.com/watch?v=${videoId}`
+    Linking.canOpenURL(appUrl)
+      .then((ok) => Linking.openURL(ok ? appUrl : webUrl))
+      .catch(() => Linking.openURL(webUrl))
   }
 
+  const cardBg = isDark ? colors.card.dark : colors.card.light
+  const mutedFg = isDark ? colors.mutedForeground.dark : colors.mutedForeground.light
+  const borderColor = isDark ? colors.border.dark : colors.border.light
+
   return (
-    <View className="w-full px-4 py-4">
-      <View className="w-full items-center mb-8">
-        <View className="w-full items-center">
-          <Text className="w-full text-center text-lg sm:text-2xl font-extrabold uppercase text-primary mb-4">
-            {title || t('home.videoSection.title', 'Khám phá câu chuyện TREND Coffee')}
+    <View style={s.wrapper}>
+      {/* Title — same style as highlight section */}
+      <Text style={[s.title, { color: primaryColor }]}>
+        {title ?? t('videoSection.title')}
+      </Text>
+
+      {/* Card */}
+      <Pressable
+        style={({ pressed }) => [
+          s.card,
+          { backgroundColor: cardBg, borderColor, opacity: pressed ? 0.9 : 1 },
+        ]}
+        onPress={handlePress}
+      >
+        {/* Thumbnail — bo 4 góc, tách khỏi footer nên không phụ thuộc overflow card */}
+        <View style={[s.thumbWrap, { height: thumbHeight }]}>
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            onError={() => setImageError(true)}
+            recyclingKey={`yt-thumb-${videoId}`}
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.5)']}
+            locations={[0.45, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Play button */}
+          <View style={s.playBtn}>
+            <Play size={24} color="#fff" fill="#fff" />
+          </View>
+          {/* YouTube badge */}
+          <View style={s.ytBadge}>
+            <View style={s.ytDot} />
+            <Text style={s.ytText}>YouTube</Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={s.footer}>
+          <Text style={[s.tapLabel, { color: mutedFg }]}>
+            {t('videoSection.tap')}
           </Text>
+          <View style={[s.ctaBtn, { backgroundColor: primaryColor }]}>
+            <Text style={s.ctaText}>{t('videoSection.cta')}</Text>
+          </View>
         </View>
-      </View>
-
-      <View className="w-full items-center">
-        <View className="w-full max-w-4xl rounded-lg overflow-hidden" style={{ height: videoHeight }}>
-          <Pressable onPress={handleVideoPress} className="relative w-full h-full">
-            {/* Thumbnail */}
-            <Image
-              source={{ uri: thumbnailUrl }}
-              className="w-full h-full"
-              resizeMode="cover"
-              onLoadEnd={() => setIsLoading(false)}
-              onError={() => setIsLoading(false)}
-            />
-
-            {/* Loading indicator */}
-            {isLoading && (
-              <View className="absolute inset-0 justify-center items-center bg-gray-200 dark:bg-gray-800">
-                <ActivityIndicator size="large" color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />
-              </View>
-            )}
-
-            {/* Play button overlay */}
-            <View className="absolute inset-0 justify-center items-center bg-black/20">
-              <View className="w-20 h-20 bg-primary rounded-full justify-center items-center">
-                <View className="ml-1">
-                  {/* Play icon - using triangle */}
-                  <View
-                    style={{
-                      width: 0,
-                      height: 0,
-                      borderLeftWidth: 20,
-                      borderTopWidth: 12,
-                      borderBottomWidth: 12,
-                      borderTopColor: 'transparent',
-                      borderBottomColor: 'transparent',
-                      borderLeftColor: 'white',
-                    }}
-                  />
-                </View>
-              </View>
-            </View>
-          </Pressable>
-        </View>
-      </View>
+      </Pressable>
     </View>
   )
-}
+})
 
 export default YouTubeVideoSection
+
+const s = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 16,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 14,
+    letterSpacing: -0.3,
+  },
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  thumbWrap: {
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  playBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ytBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  ytDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#FF0000',
+  },
+  ytText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  tapLabel: {
+    fontSize: 13,
+  },
+  ctaBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  ctaText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+})

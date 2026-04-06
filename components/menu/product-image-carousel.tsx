@@ -55,7 +55,7 @@ const ProductImageCarousel = React.memo(function ProductImageCarousel({
         >
           <Image
             source={{ uri: imageUrl }}
-            placeholder={Images.Food.ProductImage as unknown as number}
+            placeholder={Images.Food.ProductImage}
             placeholderContentFit="cover"
             contentFit="cover"
             cachePolicy="memory-disk"

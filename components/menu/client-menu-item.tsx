@@ -115,7 +115,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
             />
           ) : (
             <RNImage
-              source={Images.Food.DefaultProductImage as number}
+              source={Images.Food.DefaultProductImage}
               resizeMode="cover"
               style={{ width: '100%', height: '100%', borderRadius: 12 }}
             />

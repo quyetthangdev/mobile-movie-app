@@ -107,7 +107,7 @@ export default function MenuItemDetailPlaceholder() {
           </View>
         </NativeGesturePressable>
         <ExpoImage
-          source={Images.Brand.Logo as unknown as number}
+          source={Images.Brand.Logo}
           style={styles.logo}
           contentFit="contain"
           recyclingKey="brand-logo"

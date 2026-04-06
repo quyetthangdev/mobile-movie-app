@@ -18,7 +18,11 @@
         "title": "Tin tức sự kiện"
       },
       "videoSection": {
-        "title": "HƯỚNG DẪN ĐĂNG KÝ THÀNH VIÊN"
+        "label": "Hướng dẫn",
+        "title": "Đăng ký thành viên",
+        "subtitle": "Xem video hướng dẫn để tích điểm và nhận ưu đãi độc quyền.",
+        "tap": "Nhấn để xem",
+        "cta": "Xem ngay"
       },
       "viewMenu": "Xem thêm MENU",
       "viewMore": "Xem thêm",

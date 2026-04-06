@@ -104,7 +104,7 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
 
   const renderPagination = () => {
     return (
-      <View className="absolute bottom-4 left-0 right-0 flex-row justify-center items-center space-x-2">
+      <View className="absolute bottom-4 left-0 right-0 flex-row justify-center items-center" style={{ gap: 8 }}>
         {carouselImages.map((_, index) => (
           <PaginationDot
             key={index}

@@ -40,6 +40,8 @@ import { GiftCardListItem, GIFT_CARD_ITEM_HEIGHT, GIFT_CARD_IMAGE_SIZE } from '@
 import { Skeleton } from '@/components/ui'
 import { colors } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
+import { TabScreenLayout } from '@/components/layout'
+import { showErrorToastMessage } from '@/utils/toast'
 import { useGiftCards } from '@/hooks/use-gift-cards'
 import { useGiftCardTypeOptions } from '@/hooks/use-gift-card-type-options'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -167,6 +169,7 @@ export default function GiftCardScreen() {
     (item: IGiftCard) => {
       const userInfo = useUserStore.getState().userInfo
       if (!userInfo?.slug) {
+        showErrorToastMessage('toast.unloggedIn')
         router.push('/auth/login' as Parameters<typeof router.push>[0])
         return
       }
@@ -243,7 +246,6 @@ export default function GiftCardScreen() {
   )
 
   // ── Colors ────────────────────────────────────────────────────────────────
-  const bg = isDark ? colors.background.dark : colors.background.light
   const headerBg = isDark ? colors.gray[900] : colors.white.light
   const subColor = isDark ? colors.gray[400] : colors.gray[500]
   const chipBg = isDark ? colors.gray[800] : colors.gray[100]
@@ -259,13 +261,13 @@ export default function GiftCardScreen() {
   )
 
   return (
-    <View style={[s.container, { backgroundColor: bg }]}>
+    <TabScreenLayout>
       {/* Header */}
       <View style={[s.header, { backgroundColor: headerBg, paddingTop: STATIC_TOP_INSET + 12, borderBottomColor: borderColor }]}>
         {/* Title row */}
         <View style={s.titleRow}>
           <RNImage
-            source={isDark ? Images.Brand.LogoWhite as unknown as number : Images.Brand.Logo as unknown as number}
+            source={isDark ? Images.Brand.LogoWhite : Images.Brand.Logo}
             style={s.logo}
             resizeMode="contain"
           />
@@ -419,12 +421,11 @@ export default function GiftCardScreen() {
           onReplace={handleReplace}
         />
       )}
-    </View>
+    </TabScreenLayout>
   )
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1 },
   header: {
     paddingHorizontal: 16,
     paddingBottom: 12,

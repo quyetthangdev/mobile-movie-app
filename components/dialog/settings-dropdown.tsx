@@ -111,7 +111,7 @@ export default function SettingsDropdown() {
               <Select.Item value="en">
                 <View className="flex-row items-center">
                   <Image
-                    source={Images.Flags.US as unknown as number}
+                    source={Images.Flags.US}
                     className="w-4 h-4 mr-2"
                     resizeMode="contain"
                   />
@@ -121,7 +121,7 @@ export default function SettingsDropdown() {
               <Select.Item value="vi">
                 <View className="flex-row items-center">
                   <Image
-                    source={Images.Flags.VI as unknown as number}
+                    source={Images.Flags.VI}
                     className="w-4 h-4 mr-2"
                     resizeMode="contain"
                   />

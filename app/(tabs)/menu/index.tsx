@@ -7,6 +7,7 @@ import { Images } from '@/assets/images'
 import { SelectBranchDropdown } from '@/components/branch'
 import { PriceFilterSheet } from '@/components/menu/price-sheet'
 import { NotificationBell } from '@/components/notification/notification-bell'
+import { TabScreenLayout } from '@/components/layout'
 import { colors, OrderFlowStep } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useCatalog } from '@/hooks/use-catalog'
@@ -17,7 +18,7 @@ import { useSetMenuFilter } from '@/stores/selectors'
 import type { ISpecificMenuRequest } from '@/types'
 import { IOrderItem } from '@/types'
 import { getProductImageUrl } from '@/utils/product-image-url'
-import { showToast } from '@/utils/toast'
+import { showErrorToastMessage, showToast } from '@/utils/toast'
 import { useFocusEffect } from '@react-navigation/native'
 import { FlashList } from '@shopify/flash-list'
 import { useQuery } from '@tanstack/react-query'
@@ -424,6 +425,12 @@ export default function MenuPage() {
 
   const handleAddToCart = useCallback(
     (itemId: string) => {
+      if (!useUserStore.getState().userInfo?.slug) {
+        showErrorToastMessage('toast.unloggedIn')
+        router.push('/auth/login' as Parameters<typeof router.push>[0])
+        return
+      }
+
       const displayItem = itemsMapRef.current.get(itemId)
       if (!displayItem) return
 
@@ -469,7 +476,7 @@ export default function MenuPage() {
       store.addOrderingItem(orderItem)
       showToast(t('menu.addedToCart', { name: displayItem.name }))
     },
-    [t],
+    [t, router],
   )
 
   const catalogHeaderColor = isDark ? colors.gray[400] : colors.gray[500]
@@ -501,15 +508,13 @@ export default function MenuPage() {
     [handleOpenDetail, handleAddToCart, primaryColor, catalogHeaderColor],
   )
 
-  const pageBg = isDark ? colors.background.dark : colors.background.light
-
   return (
-    <View style={[styles.screen, { backgroundColor: pageBg }]}>
+    <TabScreenLayout>
       {/* Header + filter — static, solid bg */}
       <View style={[styles.header, { backgroundColor: isDark ? colors.gray[900] : '#ffffff', paddingTop: STATIC_TOP_INSET + 12 }]}>
         <View style={styles.headerRow}>
           <RNImage
-            source={Images.Brand.Logo as unknown as number}
+            source={Images.Brand.Logo}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -608,15 +613,11 @@ export default function MenuPage() {
           allPrices: t('menu.allPrices'),
         }}
       />
-
-    </View>
+    </TabScreenLayout>
   )
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
   header: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border.light,

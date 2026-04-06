@@ -8,6 +8,10 @@ interface ColorConstants {
     light: string
     dark: string
   }
+  card: {
+    light: string
+    dark: string
+  }
   destructive: {
     light: string
     dark: string
@@ -73,6 +77,10 @@ export const colors: ColorConstants = {
   white: {
     light: '#ffffff',
     dark: '#ffffff',
+  },
+  card: {
+    light: '#ffffff',
+    dark: '#1c1c1e',
   },
   // Destructive colors (from --destructive CSS variable)
   // Light: hsl(0, 84.2%, 60.2%) ≈ #ef4444

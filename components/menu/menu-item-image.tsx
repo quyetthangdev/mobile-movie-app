@@ -30,7 +30,7 @@ function MenuItemImageBase({
   if (!imageUrl) {
     return (
       <RNImage
-        source={Images.Food.DefaultProductImage as number}
+        source={Images.Food.DefaultProductImage}
         style={styles.image}
         resizeMode="cover"
       />

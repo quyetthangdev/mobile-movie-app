@@ -15,5 +15,5 @@ import { initialWindowMetrics } from 'react-native-safe-area-context'
  */
 export const STATIC_TOP_INSET: number =
   Platform.OS === 'android'
-    ? (StatusBar.currentHeight ?? 24)
+    ? (StatusBar.currentHeight || 24)   // || catches both null and 0 (cold-start edge case)
     : (initialWindowMetrics?.insets.top ?? 47)

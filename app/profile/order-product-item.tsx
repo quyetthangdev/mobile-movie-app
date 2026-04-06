@@ -91,7 +91,7 @@ const OrderProductItem = memo(function OrderProductItem({
           source={
             product.variant?.product?.image
               ? { uri: `${publicFileURL}/${product.variant.product.image}` }
-              : Images.Food.ProductImage as unknown as number
+              : Images.Food.ProductImage
           }
           style={productStyles.productImage}
           contentFit="cover"

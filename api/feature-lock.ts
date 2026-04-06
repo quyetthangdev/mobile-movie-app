@@ -1,38 +1,5 @@
-import { IApiResponse, IFeatureLock, IFeatureLockGroup } from '@/types';
+import { IApiResponse, IFeatureLock } from '@/types';
 import { http } from '@/utils';
-
-export async function updateMultipleParentFeatureFlags(
-  updates: { slug: string; isLocked: boolean }[],
-): Promise<IApiResponse<IFeatureLockGroup>> {
-  const response = await http.patch<IApiResponse<IFeatureLockGroup>>(
-    `/feature-flag-system/bulk-toggle`,
-    {
-      updates,
-    },
-  )
-  return response.data
-}
-
-export async function updateMultipleChildFeatureFlags(
-  updates: { slug: string; isLocked: boolean }[],
-): Promise<IApiResponse<IFeatureLockGroup>> {
-  const response = await http.patch<IApiResponse<IFeatureLockGroup>>(
-    `/feature-flag-system/child/bulk-toggle`,
-    {
-      updates,
-    },
-  )
-  return response.data
-}
-
-export async function getSystemFeatureFlagGroups(): Promise<
-  IApiResponse<IFeatureLockGroup[]>
-> {
-  const response = await http.get<IApiResponse<IFeatureLockGroup[]>>(
-    `/feature-flag-system/group`,
-  )
-  return response.data
-}
 
 export async function getSystemFeatureFlagsByGroup(
   groupName: string,

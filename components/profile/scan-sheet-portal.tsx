@@ -6,7 +6,6 @@ import BottomSheet, {
 import { X } from 'lucide-react-native'
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   StyleSheet,
@@ -19,7 +18,6 @@ import QRCode from 'react-native-qrcode-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
-import { useIdentityCode } from '@/hooks/use-identity-code'
 import { useUserStore } from '@/stores'
 import { useScanSheetStore } from '@/stores/scan-sheet.store'
 
@@ -36,17 +34,17 @@ const QrContent = memo(function QrContent({
   onClose: () => void
 }) {
   const userInfo = useUserStore((s) => s.userInfo)
-  const { identityCode, isLoading, isError, refetch } = useIdentityCode(true)
 
   const primary = isDark ? colors.primary.dark : colors.primary.light
   const textColor = isDark ? colors.gray[50] : colors.gray[900]
   const mutedColor = isDark ? colors.gray[400] : colors.gray[500]
   const qrBg = isDark ? colors.gray[800] : colors.white.light
-  const errorBg = isDark ? 'rgba(220,38,38,0.1)' : 'rgba(239,68,68,0.08)'
 
   const fullName = [userInfo?.firstName, userInfo?.lastName]
     .filter(Boolean)
     .join(' ')
+
+  const slug = userInfo?.slug ?? null
 
   return (
     <View style={s.content}>
@@ -69,31 +67,19 @@ const QrContent = memo(function QrContent({
         <View style={[s.corner, s.cornerTR, { borderColor: primary }]} />
         <View style={[s.corner, s.cornerBL, { borderColor: primary }]} />
         <View style={[s.corner, s.cornerBR, { borderColor: primary }]} />
-        {isLoading ? (
-          <View style={s.qrPlaceholder}>
-            <ActivityIndicator size="large" color={primary} />
-          </View>
-        ) : isError || !identityCode ? (
-          <View style={[s.qrPlaceholder, { backgroundColor: errorBg }]}>
-            <Text style={[s.errorText, { color: colors.destructive.light }]}>
-              Không tải được mã QR
-            </Text>
-            <Pressable
-              onPress={() => refetch()}
-              style={[s.retryBtn, { borderColor: colors.destructive.light }]}
-            >
-              <Text style={[s.retryText, { color: colors.destructive.light }]}>
-                Thử lại
-              </Text>
-            </Pressable>
-          </View>
-        ) : (
+        {slug ? (
           <QRCode
-            value={identityCode}
+            value={slug}
             size={QR_SIZE}
             color={isDark ? colors.gray[50] : colors.gray[900]}
             backgroundColor="transparent"
           />
+        ) : (
+          <View style={s.qrPlaceholder}>
+            <Text style={[s.errorText, { color: mutedColor }]}>
+              Chưa đăng nhập
+            </Text>
+          </View>
         )}
       </View>
 
@@ -108,7 +94,6 @@ const QrContent = memo(function QrContent({
           {userInfo.phonenumber}
         </Text>
       ) : null}
-
     </View>
   )
 })
@@ -270,20 +255,6 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
-  },
-  retryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 4,
-  },
-  retryText: {
-    fontSize: 13,
-    fontWeight: '500',
   },
   userName: {
     fontSize: 17,

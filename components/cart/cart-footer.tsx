@@ -1,12 +1,14 @@
 /**
  * Cart Footer — order type, table, voucher trigger, total + checkout button.
  */
-import { colors } from '@/constants'
-import type { IVoucher } from '@/types'
-import { useOrderFlowStore } from '@/stores'
+import { getSystemFeatureFlagsByGroup } from '@/api'
+import { colors, QUERYKEY, SystemLockFeatureChild, SystemLockFeatureGroup, SystemLockFeatureType } from '@/constants'
+import type { IFeatureLock, IVoucher } from '@/types'
+import { useOrderFlowStore, useUserStore } from '@/stores'
 import { cartActions, useCartItemCount, useCartTotal, useCartVoucher, useCartVoucherDiscount } from '@/stores/cart.store'
 import { useOrderFlowOrderType, useOrderFlowTableName } from '@/stores/selectors/order-flow.selectors'
-import { showToast } from '@/utils'
+import { showErrorToastMessage, showToast } from '@/utils'
+import { useQueryClient } from '@tanstack/react-query'
 import { formatCurrencyNative } from 'cart-price-calc'
 import { ChevronRight, ShoppingBag, Ticket } from 'lucide-react-native'
 import { useCartValidation } from '@/hooks/use-cart-validation'
@@ -21,6 +23,27 @@ import { ConfirmOrderSheet } from './cart-confirm-order-sheet'
 import { VoucherSheet } from './cart-voucher-sheet'
 import { PickupTimeChips } from './pickup-time-chips'
 
+const ORDER_TYPE_FEATURE_MAP: Partial<Record<string, string>> = {
+  'at-table': SystemLockFeatureChild.AT_TABLE,
+  'take-out': SystemLockFeatureChild.TAKE_OUT,
+  'delivery': SystemLockFeatureChild.DELIVERY,
+}
+
+// Trả về danh sách order type còn khả dụng dựa trên feature flags
+// isLoggedIn → dùng CREATE_PRIVATE (có DELIVERY), guest → dùng CREATE_PUBLIC (không có DELIVERY)
+function getAvailableOrderTypes(flags: IFeatureLock[], isLoggedIn: boolean): string[] {
+  const parentName = isLoggedIn
+    ? SystemLockFeatureType.CREATE_PRIVATE
+    : SystemLockFeatureType.CREATE_PUBLIC
+  const parent = flags.find((f) => f.name === parentName)
+  if (!parent || parent.isLocked) return []
+  return Object.keys(ORDER_TYPE_FEATURE_MAP).filter((type) => {
+    const featureKey = ORDER_TYPE_FEATURE_MAP[type]
+    const child = parent.children?.find((c) => c.name === featureKey)
+    return child !== undefined && child.isLocked !== true
+  })
+}
+
 export const CartFooter = memo(function CartFooter({
   primaryColor,
   isDark,
@@ -30,6 +53,8 @@ export const CartFooter = memo(function CartFooter({
 }) {
   const { t } = useTranslation('menu')
   const { bottom: bottomInset } = useSafeAreaInsets()
+  const queryClient = useQueryClient()
+  const hasUser = useUserStore((s) => !!s.userInfo)
   const total = useCartTotal()
   const itemCount = useCartItemCount()
   const voucher = useCartVoucher()
@@ -44,6 +69,13 @@ export const CartFooter = memo(function CartFooter({
 
   const [confirmSheetVisible, setConfirmSheetVisible] = useState(false)
   const { validate } = useCartValidation()
+  const setOrderingType = useOrderFlowStore((s) => s.setOrderingType)
+
+  const orderTypeLabel = orderType === 'take-out'
+    ? t('menu.takeAway')
+    : orderType === 'delivery'
+    ? t('menu.delivery')
+    : t('menu.dineIn')
 
   const closeConfirmSheet = useCallback(() => setConfirmSheetVisible(false), [])
   const closeOrderTypeSheet = useCallback(() => setOrderTypeSheetVisible(false), [])
@@ -54,9 +86,7 @@ export const CartFooter = memo(function CartFooter({
     showToast(`Áp dụng: ${v.title}`)
     setVoucherSheetOpen(false)
   }, [])
-
   const showTableSelect = orderType === 'at-table'
-  const orderTypeLabel = orderType === 'take-out' ? t('menu.takeAway') : orderType === 'delivery' ? t('menu.delivery') : t('menu.dineIn')
   const tableLabel = tableName || t('menu.selectTable', 'Chọn bàn')
   const isOrderDisabled = showTableSelect && !tableName
   const orderBtnLabel = isOrderDisabled ? t('menu.selectTable', 'Chọn bàn') : t('menu.placeOrder', 'Đặt hàng')
@@ -70,8 +100,31 @@ export const CartFooter = memo(function CartFooter({
     // After validation, check if cart still has items
     const remaining = useOrderFlowStore.getState().orderingData?.orderItems
     if (!remaining || remaining.length === 0) return
+
+    // Proactive: fetch fresh feature flags để đảm bảo order type chưa bị khoá
+    // staleTime 5s — dùng cache nếu còn mới, tránh fetch thừa
+    try {
+      const flagsResponse = await queryClient.fetchQuery({
+        queryKey: [QUERYKEY.systemFeatureFlagsByGroup, SystemLockFeatureGroup.ORDER],
+        queryFn: () => getSystemFeatureFlagsByGroup(SystemLockFeatureGroup.ORDER),
+        staleTime: 5_000,
+      })
+      const currentType = useOrderFlowStore.getState().orderingData?.type
+      const available = getAvailableOrderTypes(flagsResponse.result ?? [], hasUser)
+      if (currentType && !available.includes(currentType)) {
+        // Type bị khoá: tự chuyển sang type đầu tiên còn khả dụng để user thấy ngay
+        if (available.length > 0) {
+          setOrderingType(available[0] as Parameters<typeof setOrderingType>[0])
+        }
+        showErrorToastMessage('toast.orderTypeUnavailable')
+        return
+      }
+    } catch {
+      // Lỗi mạng: bỏ qua, để BE validate khi submit
+    }
+
     setConfirmSheetVisible(true)
-  }, [isOrderDisabled, validate])
+  }, [isOrderDisabled, validate, queryClient, hasUser, setOrderingType])
 
   // Memoize isDark/primaryColor-dependent styles
   const ft = useMemo(() => ({

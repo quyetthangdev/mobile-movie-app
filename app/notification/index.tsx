@@ -1,63 +1,68 @@
 /**
- * Notification List Screen — paginated, pull-to-refresh, confirm sheet for mark all.
+ * Notification List Screen — paginated, pull-to-refresh, tab filter, undo mark-all.
  */
-import BottomSheet, {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet'
 import { FlashList } from '@shopify/flash-list'
 import { Bell } from 'lucide-react-native'
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, Pressable, RefreshControl, StyleSheet, Text, useColorScheme, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from 'react-native'
+import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { FloatingHeader } from '@/components/navigation/floating-header'
+import { Skeleton } from '@/components/ui'
 import { colors } from '@/constants'
 import { NotificationMessageCode } from '@/constants/notification.constant'
 import { useMarkNotificationAsRead, useNotifications } from '@/hooks/use-notification'
-import { navigateFromNotification } from '@/lib/notification-navigation'
-import { FloatingHeader } from '@/components/navigation/floating-header'
+import { navigateNative } from '@/lib/navigation'
 import { useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/notification.store'
 import type { INotification } from '@/types/notification.type'
 
-// ─── Message code → Vietnamese title ────────────────────────────────────────
+// ─── Notification helpers ────────────────────────────────────────────────────
 
 function getNotificationTitle(message: string): string {
   switch (message) {
-    case NotificationMessageCode.ORDER_NEEDS_PROCESSED:
-      return 'Đơn hàng cần xử lý'
-    case NotificationMessageCode.ORDER_NEEDS_DELIVERED:
-      return 'Đơn hàng cần giao'
-    case NotificationMessageCode.ORDER_NEEDS_READY_TO_GET:
-      return 'Đơn hàng sẵn sàng'
-    case NotificationMessageCode.ORDER_NEEDS_CANCELLED:
-      return 'Đơn hàng đã hủy'
-    case NotificationMessageCode.ORDER_BILL_FAILED_PRINTING:
-      return 'In hóa đơn lỗi'
-    case NotificationMessageCode.ORDER_CHEF_ORDER_FAILED_PRINTING:
-      return 'In đơn hàng nhà bếp lỗi'
-    case NotificationMessageCode.ORDER_LABEL_TICKET_FAILED_PRINTING:
-      return 'In nhãn dán lỗi'
-    default:
-      return message || 'Thông báo'
+    case NotificationMessageCode.ORDER_NEEDS_PROCESSED: return 'Đơn hàng cần xử lý'
+    case NotificationMessageCode.ORDER_NEEDS_DELIVERED: return 'Đơn hàng cần giao'
+    case NotificationMessageCode.ORDER_NEEDS_READY_TO_GET: return 'Đơn hàng sẵn sàng'
+    case NotificationMessageCode.ORDER_NEEDS_CANCELLED: return 'Đơn hàng đã huỷ'
+    case NotificationMessageCode.ORDER_BILL_FAILED_PRINTING: return 'In hoá đơn lỗi'
+    case NotificationMessageCode.ORDER_CHEF_ORDER_FAILED_PRINTING: return 'In đơn bếp lỗi'
+    case NotificationMessageCode.ORDER_LABEL_TICKET_FAILED_PRINTING: return 'In nhãn dán lỗi'
+    case NotificationMessageCode.ORDER_PAID: return 'Đơn hàng đã thanh toán'
+    case NotificationMessageCode.CARD_ORDER_PAID: return 'Thẻ quà tặng đã thanh toán'
+    default: return message || 'Thông báo'
   }
 }
 
-function getNotificationBody(message: string, refNum: string): string {
+function getNotificationBody(message: string, orderSlug: string): string {
+  const ref = orderSlug ? `#${orderSlug}` : ''
   switch (message) {
     case NotificationMessageCode.ORDER_NEEDS_PROCESSED:
-      return `Đơn hàng #${refNum} cần xử lý. Vui lòng xử lý sớm!`
+      return `Đơn ${ref} đang chờ xử lý`
     case NotificationMessageCode.ORDER_NEEDS_DELIVERED:
-      return `Đơn hàng #${refNum} cần giao. Vui lòng giao hàng sớm!`
+      return `Đơn ${ref} cần được giao`
     case NotificationMessageCode.ORDER_NEEDS_READY_TO_GET:
-      return `Đơn hàng #${refNum} đã sẵn sàng. Vui lòng tới quầy để nhận!`
+      return `Đơn ${ref} đã sẵn sàng để lấy`
+    case NotificationMessageCode.ORDER_NEEDS_CANCELLED:
+      return `Đơn ${ref} đã bị huỷ`
     case NotificationMessageCode.ORDER_BILL_FAILED_PRINTING:
-      return `Hóa đơn #${refNum} in lỗi. Vui lòng in lại thủ công!`
+      return `Hoá đơn ${ref} in thất bại`
     case NotificationMessageCode.ORDER_CHEF_ORDER_FAILED_PRINTING:
-      return `Đơn hàng #${refNum} in lỗi. Vui lòng in lại thủ công!`
+      return `Phiếu bếp ${ref} in thất bại`
     case NotificationMessageCode.ORDER_LABEL_TICKET_FAILED_PRINTING:
-      return `Nhãn dán cho đơn hàng #${refNum} in lỗi. Vui lòng in lại thủ công!`
+      return `Nhãn dán ${ref} in thất bại`
+    case NotificationMessageCode.ORDER_PAID:
+    case NotificationMessageCode.CARD_ORDER_PAID:
+      return `Đơn ${ref} đã được thanh toán`
     default:
       return ''
   }
@@ -74,7 +79,24 @@ function formatTimeAgo(createdAt: string): string {
   return `${days} ngày trước`
 }
 
-// ─── NotificationItem (memo'd) ──────────────────────────────────────────────
+// ─── Skeleton item ───────────────────────────────────────────────────────────
+
+const NotificationSkeletonItem = memo(function NotificationSkeletonItem() {
+  return (
+    <View style={ns.itemContainer}>
+      <View style={ns.itemInner}>
+        <Skeleton className="w-10 h-10 rounded-xl" />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Skeleton className="h-3.5 rounded w-2/3" />
+          <Skeleton className="h-3 rounded w-full" />
+          <Skeleton className="h-3 rounded w-1/4" />
+        </View>
+      </View>
+    </View>
+  )
+})
+
+// ─── NotificationItem ────────────────────────────────────────────────────────
 
 const NotificationItem = memo(function NotificationItem({
   item,
@@ -89,91 +111,220 @@ const NotificationItem = memo(function NotificationItem({
 }) {
   const handlePress = useCallback(() => {
     onMarkRead(item.slug)
-    const data: Record<string, string> = {
-      ...item.metadata,
-      message: item.message,
-      order: item.metadata?.order ?? '',
+    const orderSlug = item.metadata?.order
+    if (orderSlug) {
+      navigateNative.push({ pathname: '/order/[id]', params: { id: orderSlug } })
     }
-    navigateFromNotification(data)
-  }, [item.slug, item.message, item.metadata, onMarkRead])
+  }, [item.slug, item.metadata?.order, onMarkRead])
 
-  const timeAgo = formatTimeAgo(item.createdAt)
+  const title = useMemo(() => getNotificationTitle(item.message), [item.message])
+  const orderSlug = item.metadata?.order ?? ''
+  const body = useMemo(
+    () => getNotificationBody(item.message, orderSlug),
+    [item.message, orderSlug],
+  )
+  const timeAgo = useMemo(() => formatTimeAgo(item.createdAt), [item.createdAt])
 
-  const title = getNotificationTitle(item.message)
-  const refNum = item.metadata?.order || item.metadata?.referenceNumber || ''
-  const body = getNotificationBody(item.message, refNum)
+  const cardBg = item.isRead
+    ? (isDark ? colors.gray[900] : '#fff')
+    : (isDark ? `${primaryColor}18` : `${primaryColor}12`)
 
   return (
     <Pressable
       onPress={handlePress}
       style={[
-        ns.item,
+        ns.itemContainer,
         {
-          backgroundColor: item.isRead
-            ? (isDark ? colors.gray[900] : '#fff')
-            : (isDark ? colors.gray[800] : '#fffbeb'),
+          backgroundColor: cardBg,
+          borderWidth: 1,
+          borderColor: !item.isRead
+            ? `${primaryColor}40`
+            : (isDark ? colors.gray[800] : colors.gray[200]),
         },
       ]}
     >
-      <View style={[ns.iconWrap, { backgroundColor: `${primaryColor}20` }]}>
-        <Bell size={18} color={primaryColor} />
-      </View>
-      <View style={ns.itemContent}>
-        <Text
-          style={[
-            ns.itemTitle,
-            { color: isDark ? colors.gray[50] : colors.gray[900] },
-            !item.isRead && ns.itemTitleUnread,
-          ]}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-        {body ? (
+      <View style={ns.itemInner}>
+        <View style={[ns.iconWrap, { backgroundColor: primaryColor }]}>
+          <Bell size={18} color="#fff" />
+        </View>
+        <View style={ns.itemContent}>
           <Text
-            style={[ns.itemBody, { color: isDark ? colors.gray[400] : colors.gray[600] }]}
-            numberOfLines={2}
+            style={[
+              ns.itemTitle,
+              { color: isDark ? colors.gray[50] : colors.gray[900] },
+              !item.isRead && ns.itemTitleUnread,
+            ]}
+            numberOfLines={1}
           >
-            {body}
+            {title}
           </Text>
-        ) : null}
-        <View style={ns.itemBottomRow}>
-          <Text style={[ns.itemTime, { color: isDark ? colors.gray[500] : colors.gray[400] }]}>
-            {timeAgo}
-          </Text>
-          {!item.isRead && (
-            <Text style={[ns.unreadLabel, { color: primaryColor }]}>Chưa đọc</Text>
+          {!!body && (
+            <Text
+              style={[ns.itemBody, { color: isDark ? colors.gray[400] : colors.gray[500] }]}
+              numberOfLines={2}
+            >
+              {body}
+            </Text>
           )}
+          <View style={ns.itemBottomRow}>
+            <Text style={[ns.itemTime, { color: isDark ? colors.gray[500] : colors.gray[400] }]}>
+              {timeAgo}
+            </Text>
+            {!item.isRead && (
+              <Text style={[ns.statusLabel, { color: primaryColor }]}>
+                Chưa đọc
+              </Text>
+            )}
+          </View>
         </View>
       </View>
     </Pressable>
   )
 })
 
+// ─── Undo snackbar ───────────────────────────────────────────────────────────
+
+const UndoSnackbar = memo(function UndoSnackbar({
+  onUndo,
+  isDark,
+  primaryColor,
+  bottomInset,
+}: {
+  onUndo: () => void
+  isDark: boolean
+  primaryColor: string
+  bottomInset: number
+}) {
+  return (
+    <Animated.View
+      entering={FadeInDown.duration(200)}
+      exiting={FadeOutDown.duration(200)}
+      style={[
+        snackStyles.container,
+        {
+          backgroundColor: isDark ? colors.gray[800] : colors.gray[900],
+          bottom: bottomInset + 16,
+        },
+      ]}
+    >
+      <Text style={snackStyles.label}>Đã đọc tất cả thông báo</Text>
+      <Pressable onPress={onUndo} hitSlop={8}>
+        <Text style={[snackStyles.undoBtn, { color: primaryColor }]}>Hoàn tác</Text>
+      </Pressable>
+    </Animated.View>
+  )
+})
+
+const snackStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  label: { fontSize: 13, color: '#fff', flex: 1 },
+  undoBtn: { fontSize: 13, fontWeight: '700', marginLeft: 12 },
+})
+
+// ─── Tab header ──────────────────────────────────────────────────────────────
+
+const NotificationTabHeader = memo(function NotificationTabHeader({
+  activeTab,
+  unreadCount,
+  isDark,
+  primaryColor,
+  onTabChange,
+}: {
+  activeTab: 'all' | 'unread'
+  unreadCount: number
+  isDark: boolean
+  primaryColor: string
+  onTabChange: (tab: 'all' | 'unread') => void
+}) {
+  return (
+    <View style={ns.tabs}>
+      <Pressable
+        style={[
+          ns.tab,
+          activeTab === 'all' && { borderColor: primaryColor, backgroundColor: `${primaryColor}15` },
+        ]}
+        onPress={() => onTabChange('all')}
+      >
+        <Text
+          style={[
+            ns.tabText,
+            { color: isDark ? colors.gray[400] : colors.gray[500] },
+            activeTab === 'all' && { color: primaryColor, fontWeight: '700' },
+          ]}
+        >
+          Tất cả
+        </Text>
+      </Pressable>
+      <Pressable
+        style={[
+          ns.tab,
+          activeTab === 'unread' && { borderColor: primaryColor, backgroundColor: `${primaryColor}15` },
+        ]}
+        onPress={() => onTabChange('unread')}
+      >
+        <Text
+          style={[
+            ns.tabText,
+            { color: isDark ? colors.gray[400] : colors.gray[500] },
+            activeTab === 'unread' && { color: primaryColor, fontWeight: '700' },
+          ]}
+        >
+          {unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc'}
+        </Text>
+      </Pressable>
+    </View>
+  )
+})
+
 // ─── Screen ─────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 15
+const UNDO_DURATION = 5000
 
 export default function NotificationScreen() {
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
   const screenBg = isDark ? colors.background.dark : colors.background.light
+  const { bottom: bottomInset } = useSafeAreaInsets()
+
   const notifications = useNotificationStore((s) => s.notifications)
+  const unreadCount = useNotificationStore(
+    (s) => s.notifications.filter((n) => !n.isRead).length,
+  )
   const userSlug = useUserStore((s) => s.userInfo?.slug)
 
-  // Pagination
-  const [page, setPage] = useState(1)
+  // ── Tab filter ──────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all')
+  const displayedNotifications = useMemo(
+    () => activeTab === 'unread' ? notifications.filter((n) => !n.isRead) : notifications,
+    [activeTab, notifications],
+  )
 
+  // ── Pagination ──────────────────────────────────────────────────────────
+  const [page, setPage] = useState(1)
   const { data: apiData, isRefetching, isFetching, refetch } = useNotifications(
     { receiver: userSlug, page, size: PAGE_SIZE },
     { enabled: !!userSlug },
   )
-
-  // Derive pagination from query — no useState needed
   const hasMore = apiData?.result?.hasNext ?? true
   const loadingMore = isFetching && page > 1
+  const isFirstLoad = isFetching && page === 1 && notifications.length === 0
 
-  // Hydrate store when data arrives
   useEffect(() => {
     const items = apiData?.result?.items
     if (items && items.length > 0) {
@@ -191,44 +342,97 @@ export default function NotificationScreen() {
     setPage((p) => p + 1)
   }, [hasMore, isFetching])
 
-
-
+  // ── Mark as read ────────────────────────────────────────────────────────
   const { mutate: markReadApi } = useMarkNotificationAsRead()
-  const handleMarkRead = useCallback((slug: string) => {
-    markReadApi(slug)
-  }, [markReadApi])
+  const handleMarkRead = useCallback((slug: string) => { markReadApi(slug) }, [markReadApi])
 
-  // Confirm sheet for "Mark all read"
-  const [confirmSheetVisible, setConfirmSheetVisible] = useState(false)
-  const handleOpenConfirm = useCallback(() => setConfirmSheetVisible(true), [])
-  const handleCloseConfirm = useCallback(() => setConfirmSheetVisible(false), [])
-  const handleConfirmMarkAll = useCallback(() => {
+  // ── Mark all read with undo ─────────────────────────────────────────────
+  const [undoPending, setUndoPending] = useState(false)
+  const prevUnreadSlugsRef = useRef<string[]>([])
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  const handleMarkAllRead = useCallback(() => {
+    const unreadSlugs = useNotificationStore
+      .getState()
+      .notifications.filter((n) => !n.isRead)
+      .map((n) => n.slug)
+    if (unreadSlugs.length === 0) return
+
+    prevUnreadSlugsRef.current = unreadSlugs
     useNotificationStore.getState().markAllAsRead()
-    setConfirmSheetVisible(false)
+    setUndoPending(true)
+
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    undoTimerRef.current = setTimeout(() => {
+      setUndoPending(false)
+      prevUnreadSlugsRef.current = []
+    }, UNDO_DURATION)
   }, [])
 
+  const handleUndo = useCallback(() => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    const slugs = prevUnreadSlugsRef.current
+    if (slugs.length > 0) {
+      useNotificationStore.getState().setReadStates(
+        slugs.map((slug) => ({ slug, isRead: false })),
+      )
+    }
+    prevUnreadSlugsRef.current = []
+    setUndoPending(false)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    }
+  }, [])
+
+  // ── Render helpers ──────────────────────────────────────────────────────
   const renderItem = useCallback(
     ({ item }: { item: INotification }) => (
-      <NotificationItem item={item} isDark={isDark} primaryColor={primaryColor} onMarkRead={handleMarkRead} />
+      <NotificationItem
+        item={item}
+        isDark={isDark}
+        primaryColor={primaryColor}
+        onMarkRead={handleMarkRead}
+      />
     ),
     [isDark, primaryColor, handleMarkRead],
   )
 
   const keyExtractor = useCallback((item: INotification) => item.slug, [])
 
-  const ListEmptyComponent = useMemo(
+  const handleTabChange = useCallback((tab: 'all' | 'unread') => setActiveTab(tab), [])
+
+  const ListHeaderComponent = useMemo(
     () => (
-      <View style={ns.emptyWrap}>
-        <Bell size={64} color={isDark ? '#6b7280' : '#9ca3af'} />
-        <Text style={[ns.emptyTitle, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-          Chưa có thông báo
-        </Text>
-        <Text style={[ns.emptyDesc, { color: isDark ? colors.gray[400] : colors.gray[600] }]}>
-          Thông báo mới sẽ hiển thị tại đây
-        </Text>
-      </View>
+      <NotificationTabHeader
+        activeTab={activeTab}
+        unreadCount={unreadCount}
+        isDark={isDark}
+        primaryColor={primaryColor}
+        onTabChange={handleTabChange}
+      />
     ),
-    [isDark],
+    [activeTab, unreadCount, isDark, primaryColor, handleTabChange],
+  )
+
+  const ListEmptyComponent = useMemo(
+    () =>
+      isFirstLoad ? null : (
+        <View style={ns.emptyWrap}>
+          <Bell size={56} color={isDark ? colors.gray[600] : colors.gray[300]} />
+          <Text style={[ns.emptyTitle, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
+            {activeTab === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo'}
+          </Text>
+          <Text style={[ns.emptyDesc, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
+            {activeTab === 'unread'
+              ? 'Bạn đã đọc tất cả thông báo'
+              : 'Thông báo mới sẽ hiển thị tại đây'}
+          </Text>
+        </View>
+      ),
+    [isDark, isFirstLoad, activeTab],
   )
 
   const ListFooterComponent = useMemo(() => {
@@ -242,159 +446,117 @@ export default function NotificationScreen() {
     return null
   }, [loadingMore, primaryColor])
 
-  const unreadCount = useNotificationStore(
-    (s) => s.notifications.filter((n) => !n.isRead).length,
-  )
-
   return (
     <View style={[ns.flex, { backgroundColor: screenBg }]}>
-      {/* List */}
-      <FlashList
-        data={notifications}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        ListEmptyComponent={ListEmptyComponent}
-        ListFooterComponent={ListFooterComponent}
-        contentContainerStyle={ns.listPadding}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.3}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} tintColor={primaryColor} colors={[primaryColor]} />
-        }
-      />
+      {isFirstLoad ? (
+        <View style={ns.skeletonList}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <NotificationSkeletonItem key={i} />
+          ))}
+        </View>
+      ) : (
+        <FlashList
+          data={displayedNotifications}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          ListHeaderComponent={ListHeaderComponent}
+          ListEmptyComponent={ListEmptyComponent}
+          ListFooterComponent={ListFooterComponent}
+          contentContainerStyle={ns.listPadding}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={handleRefresh}
+              tintColor={primaryColor}
+              colors={[primaryColor]}
+            />
+          }
+        />
+      )}
 
       <FloatingHeader
         title="Thông báo"
         rightElement={
           unreadCount > 0 ? (
-            <Pressable onPress={handleOpenConfirm} hitSlop={8} style={ns.markAllBtn}>
+            <Pressable onPress={handleMarkAllRead} hitSlop={8} style={ns.markAllBtn}>
               <Text style={[ns.markAllText, { color: primaryColor }]}>Đọc tất cả</Text>
             </Pressable>
           ) : undefined
         }
       />
 
-      {/* Confirm "Mark all read" sheet */}
-      <MarkAllReadSheet
-        visible={confirmSheetVisible}
-        onClose={handleCloseConfirm}
-        onConfirm={handleConfirmMarkAll}
-        isDark={isDark}
-        primaryColor={primaryColor}
-      />
+      {undoPending && (
+        <UndoSnackbar
+          onUndo={handleUndo}
+          isDark={isDark}
+          primaryColor={primaryColor}
+          bottomInset={bottomInset}
+        />
+      )}
     </View>
   )
 }
 
-// ─── MarkAllReadSheet ───────────────────────────────────────────────────────
-
-const CONFIRM_SNAP = ['28%']
-
-const MarkAllReadSheet = memo(function MarkAllReadSheet({
-  visible,
-  onClose,
-  onConfirm,
-  isDark,
-  primaryColor,
-}: {
-  visible: boolean
-  onClose: () => void
-  onConfirm: () => void
-  isDark: boolean
-  primaryColor: string
-}) {
-  const sheetRef = useRef<BottomSheet>(null)
-  const { bottom: bottomInset } = useSafeAreaInsets()
-
-  const bgStyle = useMemo(
-    () => ({ backgroundColor: isDark ? colors.gray[900] : colors.white.light }),
-    [isDark],
-  )
-
-  const handleChange = useCallback(
-    (index: number) => { if (index === -1) onClose() },
-    [onClose],
-  )
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.4} pressBehavior="close" />
-    ),
-    [],
-  )
-
-  const handleConfirm = useCallback(() => {
-    sheetRef.current?.close()
-    onConfirm()
-  }, [onConfirm])
-
-  if (!visible) return null
-
-  return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={() => sheetRef.current?.close()}>
-      <GestureHandlerRootView style={ns.flex}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={CONFIRM_SNAP}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          onChange={handleChange}
-        >
-          <View style={[confirmStyles.content, { paddingBottom: bottomInset + 20 }]}>
-            <Text style={[confirmStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-              Đánh dấu đã đọc
-            </Text>
-            <Text style={[confirmStyles.desc, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-              Đánh dấu tất cả thông báo là đã đọc?
-            </Text>
-            <View style={confirmStyles.spacer} />
-            <View style={confirmStyles.buttons}>
-              <Pressable onPress={onClose} style={[confirmStyles.btn, { backgroundColor: isDark ? colors.gray[800] : colors.gray[100] }]}>
-                <Text style={[confirmStyles.btnText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>Huỷ</Text>
-              </Pressable>
-              <Pressable onPress={handleConfirm} style={[confirmStyles.btn, { backgroundColor: primaryColor }]}>
-                <Text style={confirmStyles.confirmText}>Xác nhận</Text>
-              </Pressable>
-            </View>
-          </View>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
-  )
-})
-
-const confirmStyles = StyleSheet.create({
-  content: { flex: 1, paddingHorizontal: 20, paddingTop: 4 },
-  title: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
-  desc: { fontSize: 14 },
-  spacer: { flex: 1 },
-  buttons: { flexDirection: 'row', gap: 10 },
-  btn: { flex: 1, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  btnText: { fontSize: 15, fontWeight: '600' },
-  confirmText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-})
+// ─── Styles ─────────────────────────────────────────────────────────────────
 
 const ns = StyleSheet.create({
   flex: { flex: 1 },
-  markAllBtn: { minWidth: 38, paddingHorizontal: 8, paddingVertical: 8, alignItems: 'flex-end' as const },
-  markAllText: { fontSize: 13, fontWeight: '600' },
-  listPadding: { paddingTop: 100, paddingBottom: 24, paddingHorizontal: 16 },
-  item: { flexDirection: 'row', alignItems: 'flex-start', padding: 14, borderRadius: 12, marginBottom: 8, gap: 12 },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  itemContent: { flex: 1, gap: 4 },
-  itemTitle: { fontSize: 14 },
+  listPadding: { paddingTop: 100, paddingBottom: 32, paddingHorizontal: 16 },
+  skeletonList: { paddingTop: 100, paddingHorizontal: 16, gap: 8 },
+
+  // Tabs
+  tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 99,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  tabText: { fontSize: 13, fontWeight: '500' },
+
+  // Item
+  itemContainer: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  itemInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    gap: 12,
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  itemContent: { flex: 1, gap: 3 },
+  itemTitle: { fontSize: 14, lineHeight: 20 },
   itemTitleUnread: { fontWeight: '700' },
   itemBody: { fontSize: 13, lineHeight: 18 },
   itemBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   itemTime: { fontSize: 11 },
-  unreadLabel: { fontSize: 11, fontStyle: 'italic', fontWeight: '500' },
+  statusLabel: { fontSize: 11, fontWeight: '600' },
+
+  // Helpers
+  markAllBtn: { paddingHorizontal: 8, paddingVertical: 8, alignItems: 'flex-end' },
+  markAllText: { fontSize: 13, fontWeight: '600' },
   loadingMore: { paddingVertical: 16, alignItems: 'center' },
-  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
-  emptyTitle: { marginTop: 16, fontSize: 18, fontWeight: '600' },
-  emptyDesc: { marginTop: 8, fontSize: 14, textAlign: 'center' },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+  },
+  emptyTitle: { marginTop: 14, fontSize: 17, fontWeight: '600' },
+  emptyDesc: { marginTop: 6, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 })

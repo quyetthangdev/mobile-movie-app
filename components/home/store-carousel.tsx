@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Image } from 'expo-image'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ImageSourcePropType } from 'react-native'
-import { Dimensions, FlatList, Image, InteractionManager, View } from 'react-native'
+import { Dimensions, FlatList, InteractionManager, View } from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -13,41 +14,66 @@ interface StoreCarouselProps {
   images?: ImageSourcePropType[]
 }
 
-/**
- * StoreCarousel Component
- * 
- * Displays a horizontal carousel of store images with pagination dots.
- * Auto-scrolls through images automatically.
- * 
- * @example
- * ```tsx
- * <StoreCarousel images={storeImages} />
- * ```
- */
+// ─── PaginationDot — must live OUTSIDE StoreCarousel ─────────────────────────
+// Defining it inside causes React to create a new component type on every parent
+// re-render, which unmounts + remounts dots and resets their animations.
+
+const PaginationDot = React.memo(function PaginationDot({
+  isActive,
+}: {
+  isActive: boolean
+}) {
+  const scale = useSharedValue(isActive ? DOT_SCALE_ACTIVE : 1)
+
+  useEffect(() => {
+    scale.value = withSpring(isActive ? DOT_SCALE_ACTIVE : 1, SPRING_CONFIGS.dot)
+  }, [isActive, scale])
+
+  const animatedStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      transform: [{ scale: scale.value }],
+    }
+  })
+
+  return (
+    <Animated.View
+      style={animatedStyle}
+      className={`h-2 w-2 rounded-full ${isActive ? 'bg-white' : 'bg-white/50'}`}
+    />
+  )
+})
+
+// ─── StoreCarousel ────────────────────────────────────────────────────────────
+
 const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouselProps) {
   const flatListRef = useRef<FlatList>(null)
-  const [activeIndexState, setActiveIndexState] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const activeIndexRef = useRef(0)
   const screenWidth = Dimensions.get('window').width
 
-  const carouselImages = images ?? []
+  const carouselImages = useMemo(() => images ?? [], [images])
+  const count = carouselImages.length
 
-  // Handle scroll end - only update state when scroll completes (not every frame)
-  const handleScrollEnd = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
-    const slideSize = screenWidth
-    const index = Math.round(event.nativeEvent.contentOffset.x / slideSize)
-    if (index >= 0 && index < carouselImages.length && index !== activeIndexState) {
-      setActiveIndexState(index)
-    }
-  }, [screenWidth, carouselImages.length, activeIndexState])
+  const handleScrollEnd = useCallback(
+    (event: { nativeEvent: { contentOffset: { x: number } } }) => {
+      const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth)
+      if (index >= 0 && index < count && index !== activeIndexRef.current) {
+        activeIndexRef.current = index
+        setActiveIndex(index)
+      }
+    },
+    [screenWidth, count],
+  )
 
-  // Auto-scroll — defer sau transition (tránh stutter khi mount)
+  // Auto-scroll — uses ref to avoid stale closure; deferred after interactions
   useEffect(() => {
-    if (carouselImages.length <= 1) return
+    if (count <= 1) return
 
     let intervalId: ReturnType<typeof setInterval> | null = null
     const task = InteractionManager.runAfterInteractions(() => {
       intervalId = setInterval(() => {
-        const next = activeIndexState + 1 >= carouselImages.length ? 0 : activeIndexState + 1
+        const next = (activeIndexRef.current + 1) % count
         flatListRef.current?.scrollToIndex({ index: next, animated: true })
       }, 3000)
     })
@@ -56,65 +82,40 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
       task.cancel()
       if (intervalId) clearInterval(intervalId)
     }
-  }, [carouselImages.length, activeIndexState])
+  }, [count])
 
-  const renderItem = useCallback(({ item }: { item: ImageSourcePropType }) => {
-    return (
-      <View className="w-full" style={{ width: screenWidth }}>
-        <View className="w-full overflow-hidden rounded-xl" style={{ aspectRatio: 16 / 9 }}>
+  const renderItem = useCallback(
+    ({ item }: { item: ImageSourcePropType }) => (
+      <View style={{ width: screenWidth }}>
+        <View
+          className="w-full overflow-hidden rounded-xl"
+          style={{ aspectRatio: 16 / 9 }}
+        >
           <Image
             source={item}
-            className="w-full h-full"
-            resizeMode="cover"
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
           />
         </View>
       </View>
-    )
-  }, [screenWidth])
+    ),
+    [screenWidth],
+  )
 
-  // Pagination dot component with scale animation (transform, not width)
-  const PaginationDot = React.memo(function PaginationDot({
-    isActive,
-  }: {
-    index: number
-    isActive: boolean
-  }) {
-    const scale = useSharedValue(isActive ? DOT_SCALE_ACTIVE : 1)
-
-    useEffect(() => {
-      scale.value = withSpring(isActive ? DOT_SCALE_ACTIVE : 1, SPRING_CONFIGS.dot)
-    }, [isActive, scale])
-
-    const animatedStyle = useAnimatedStyle(() => {
-      'worklet'
-      return {
-        transform: [{ scale: scale.value }],
-      }
-    })
-
-    return (
-      <Animated.View
-        style={animatedStyle}
-        className={`h-2 w-2 rounded-full ${
-          isActive ? 'bg-white' : 'bg-white/50'
-        }`}
-      />
-    )
-  })
-
-  const renderPagination = () => {
-    return (
-      <View className="absolute bottom-4 left-0 right-0 flex-row justify-center items-center" style={{ gap: 8 }}>
+  const pagination = useMemo(
+    () => (
+      <View
+        className="absolute bottom-4 left-0 right-0 flex-row justify-center items-center"
+        style={{ gap: 8 }}
+      >
         {carouselImages.map((_, index) => (
-          <PaginationDot
-            key={index}
-            index={index}
-            isActive={index === activeIndexState}
-          />
+          <PaginationDot key={index} isActive={index === activeIndex} />
         ))}
       </View>
-    )
-  }
+    ),
+    [carouselImages, activeIndex],
+  )
 
   return (
     <View className="overflow-hidden w-full max-w-6xl rounded-xl mx-auto">
@@ -130,20 +131,19 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
         windowSize={3}
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScrollEnd}
-        getItemLayout={(data, index) => ({
+        getItemLayout={(_, index) => ({
           length: screenWidth,
           offset: screenWidth * index,
           index,
         })}
         onScrollToIndexFailed={(info) => {
-          // Handle scroll to index failure
           const wait = new Promise((resolve) => setTimeout(resolve, 500))
           wait.then(() => {
             flatListRef.current?.scrollToIndex({ index: info.index, animated: true })
           })
         }}
       />
-      {renderPagination()}
+      {pagination}
     </View>
   )
 })

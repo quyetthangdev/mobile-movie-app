@@ -255,10 +255,3 @@ export async function completeRegistration(
   )
   return response.data
 }
-
-export async function getUserIdentityCode(): Promise<IApiResponse<{ identityCode: string }>> {
-  const response = await http.get<IApiResponse<{ identityCode: string }>>(
-    `/user/identity-code`,
-  )
-  return response.data
-}

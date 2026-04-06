@@ -1,5 +1,5 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { focusManager, MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as SplashScreen from 'expo-splash-screen'
 import * as SystemUI from 'expo-system-ui'
 
@@ -8,7 +8,7 @@ import { useBeVietnamProFont } from '@/lib/fonts/be-vietnam-pro'
 import { MasterTransitionProvider } from '@/lib/navigation/master-transition-provider'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
-import { InteractionManager, Platform } from 'react-native'
+import { AppState, InteractionManager, Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
@@ -185,6 +185,15 @@ function AppContent() {
 export default function RootLayout() {
   useNavigationBarFixed('#FFFFFF', true, true)
   useBackHandlerForExit()
+
+  // Sync TanStack Query focusManager với AppState của React Native
+  // Khi app về foreground → các query có refetchOnWindowFocus: true sẽ tự refetch nếu stale
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      focusManager.setFocused(state === 'active')
+    })
+    return () => sub.remove()
+  }, [])
 
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {

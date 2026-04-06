@@ -34,6 +34,7 @@ interface NotificationStore {
   ) => void
   markAsRead: (slug: string) => void
   markAllAsRead: () => void
+  setReadStates: (updates: { slug: string; isRead: boolean }[]) => void
   clearAll: () => void
   getUnreadCount: () => number
   hydrateFromApi: (items: INotification[]) => void
@@ -126,6 +127,15 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         ...n,
         isRead: true,
       })),
+    }))
+  },
+
+  setReadStates: (updates) => {
+    const map = new Map(updates.map((u) => [u.slug, u.isRead]))
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        map.has(n.slug) ? { ...n, isRead: map.get(n.slug)! } : n,
+      ),
     }))
   },
 

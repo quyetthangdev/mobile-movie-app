@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Dimensions, FlatList } from 'react-native'
 import Animated, {
   useAnimatedStyle,
-  useSharedValue,
+  useDerivedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
@@ -18,6 +18,8 @@ import type { ImageSourcePropType } from 'react-native'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const AUTO_SCROLL_INTERVAL = 3500
+// ROUTE is a compile-time constant — no need to recompute per render
+const ROUTE_VALUES = Object.values(ROUTE)
 const DOT_SIZE = 7
 const DOT_ACTIVE_WIDTH = 20
 const DOT_GAP = 5
@@ -25,16 +27,14 @@ const DOT_GAP = 5
 // ─── Dot indicator ───────────────────────────────────────────────────────────
 
 const BannerDot = React.memo(function BannerDot({ isActive }: { isActive: boolean }) {
-  const width = useSharedValue(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE)
-  const opacity = useSharedValue(isActive ? 1 : 0.45)
-
-  useEffect(() => {
-    width.value = withSpring(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE, {
-      damping: 15,
-      stiffness: 220,
-    })
-    opacity.value = withTiming(isActive ? 1 : 0.45, { duration: 180 })
-  }, [isActive, width, opacity])
+  // Drive width + opacity directly on UI thread — no useEffect / JS-thread hop.
+  // useDerivedValue re-runs on UI thread whenever isActive changes (via prop update).
+  const width = useDerivedValue(() =>
+    withSpring(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE, { damping: 15, stiffness: 220 }),
+  )
+  const opacity = useDerivedValue(() =>
+    withTiming(isActive ? 1 : 0.45, { duration: 180 }),
+  )
 
   const style = useAnimatedStyle(() => ({
     width: width.value,
@@ -154,13 +154,11 @@ const SwiperBanner = React.memo(function SwiperBanner({
     [screenWidth, count],
   )
 
-  const routeValues = useMemo(() => Object.values(ROUTE), [])
-
   const handleBannerPress = useCallback(
     (banner: IBanner) => {
       const url = banner.url?.trim()
       if (!url) return
-      const internal = isInternalRoute(url, routeValues)
+      const internal = isInternalRoute(url, ROUTE_VALUES)
       const dest = internal ? extractPathname(url) : url
       if (internal) {
         navigateNative.push(dest as Parameters<typeof navigateNative.push>[0])
@@ -168,7 +166,7 @@ const SwiperBanner = React.memo(function SwiperBanner({
         Linking.openURL(dest).catch(() => {})
       }
     },
-    [routeValues],
+    [],
   )
 
   const renderItem = useCallback(

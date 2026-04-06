@@ -1,34 +1,10 @@
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import {
-  getSystemFeatureFlagGroups,
-  updateMultipleParentFeatureFlags,
   getSystemFeatureFlagsByGroup,
-  updateMultipleChildFeatureFlags,
   getFeatureFlagsByGroup,
 } from '@/api'
 import { QUERYKEY } from '@/constants'
-
-export const useBulkToggleParentFeatureFlags = () => {
-  return useMutation({
-    mutationFn: (updates: { slug: string; isLocked: boolean }[]) =>
-      updateMultipleParentFeatureFlags(updates),
-  })
-}
-
-export const useBulkToggleChildFeatureFlags = () => {
-  return useMutation({
-    mutationFn: (updates: { slug: string; isLocked: boolean }[]) =>
-      updateMultipleChildFeatureFlags(updates),
-  })
-}
-
-export const useGetSystemFeatureFlagGroups = () => {
-  return useQuery({
-    queryKey: [QUERYKEY.systemFeatureFlagGroups],
-    queryFn: () => getSystemFeatureFlagGroups(),
-  })
-}
 
 export interface UseGetSystemFeatureFlagsByGroupOptions {
   /** Khi false, không fetch — defer đến khi cần (B2). */
@@ -45,6 +21,8 @@ export const useGetSystemFeatureFlagsByGroup = (
     queryFn: () => getSystemFeatureFlagsByGroup(groupName),
     placeholderData: keepPreviousData,
     enabled,
+    staleTime: 5_000,
+    refetchOnWindowFocus: true,
   })
 }
 

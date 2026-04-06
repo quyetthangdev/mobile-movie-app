@@ -201,6 +201,7 @@
     "orderSuccess": "Order placed successfully",
     "orderTakeOutCannotUseRobot": "Takeout orders cannot use a robot",
     "orderTypeInvalid": "Invalid order type",
+    "orderTypeUnavailable": "This order type is unavailable, please select another",
     "orderValueLessThanMinOrderValue": "Order value is less than minimum required",
     "ordersMustBelongToOneTable": "Orders must belong to one table",
     "ownerNotFound": "Invalid owner",

@@ -1,7 +1,7 @@
 /**
  * Notification API hooks — fetch list (paginated) + mark as read.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { getNotifications, markNotificationAsRead } from '@/api/notification'
 import type { IAllNotificationRequest } from '@/types/notification.type'
@@ -22,17 +22,13 @@ export function useNotifications(
 }
 
 export function useMarkNotificationAsRead() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (slug: string) => markNotificationAsRead(slug),
     onMutate: (slug) => {
-      // Optimistic: mark as read in local store immediately
+      // Optimistic: mark as read in local store immediately.
+      // No onSuccess invalidation — the local store is the source of truth here;
+      // server state will sync naturally on the next page load / pull-to-refresh.
       useNotificationStore.getState().markAsRead(slug)
-    },
-    onSuccess: () => {
-      // Invalidate list cache so next fetch reflects server state
-      queryClient.invalidateQueries({ queryKey: [NOTIFICATION_QUERY_KEY] })
     },
   })
 }

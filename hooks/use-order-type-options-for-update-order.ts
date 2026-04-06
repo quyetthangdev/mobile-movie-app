@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -75,6 +75,15 @@ export function useOrderTypeOptionsForUpdateOrder() {
     }
     return orderTypes[0]
   }, [currentType, orderTypes])
+
+  // Auto-switch to available type if current type is locked or not available
+  // Mirrors the same pattern in use-order-type-options.ts
+  useEffect(() => {
+    const found = orderTypes.find((type) => type.value === currentType)
+    if (!found && orderTypes.length > 0) {
+      setDraftType(orderTypes[0].value as OrderTypeEnum)
+    }
+  }, [orderTypes, currentType, setDraftType])
 
   const handleChange = (value: string) => {
     setDraftType(value as OrderTypeEnum)

@@ -201,6 +201,7 @@
 				"orderSuccess": "Đặt hàng thành công",
 				"orderTakeOutCannotUseRobot": "Đơn hàng mang đi không thể sử dụng robot",
 				"orderTypeInvalid": "Loại đơn hàng không hợp lệ",
+				"orderTypeUnavailable": "Loại đơn hàng đã bị khoá, vui lòng chọn loại khác",
 				"orderValueLessThanMinOrderValue": "Giá trị đơn hàng phải lớn hơn giá trị tối thiểu",
 				"ordersMustBelongToOneTable": "Đơn hàng phải thuộc về một bàn",
 				"ownerNotFound": "Chủ sở hữu không hợp lệ",

@@ -1,5 +1,5 @@
 import { LoginForm } from '@/components/auth'
-import { LanguageSheet } from '@/components/profile'
+import { LanguageSheet, ThemeSheet } from '@/components/profile'
 import { Skeleton } from '@/components/ui'
 import { colors } from '@/constants/colors.constant'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
@@ -14,17 +14,15 @@ import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import {
-  Bell,
   Camera,
   ChevronRight,
-
-  Folder,
+  ClipboardList,
   Gift,
-  Globe,
+  Languages,
   ScanLine,
-  Settings,
+  SunMoon,
   Trophy,
-  User
+  User,
 } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -91,6 +89,9 @@ const ICON_COLORS = {
   red: '#E85D5D',
   green: '#4CAF50',
   orange: '#F5A623',
+  purple: '#8B5CF6',
+  teal: '#14B8A6',
+  indigo: '#6366F1',
 }
 
 interface MenuItemProps {
@@ -166,23 +167,25 @@ const ProfileHeader = React.memo(function ProfileHeader({
   const { t } = useTranslation('profile')
   const pageBg = isDark ? colors.background.dark : colors.background.light
   const gradientColors = useMemo(
-    () => [`${pageBg}F0`, `${pageBg}AA`, `${pageBg}00`] as const,
+    () => [pageBg, `${pageBg}E6`, `${pageBg}B0`, `${pageBg}50`, `${pageBg}00`] as const,
     [pageBg],
   )
   return (
     <View style={phStyles.container} pointerEvents="box-none">
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          intensity={20}
-          tint={isDark ? 'dark' : 'light'}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {Platform.OS !== 'ios' ? (
+          <BlurView
+            intensity={20}
+            tint={isDark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <LinearGradient
+          colors={gradientColors}
+          locations={[0, 0.3, 0.62, 0.85, 1]}
           style={StyleSheet.absoluteFill}
         />
-      ) : null}
-      <LinearGradient
-        colors={gradientColors}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      </View>
       <View style={[phStyles.row, { paddingTop: STATIC_TOP_INSET + 10 }]} pointerEvents="auto">
         <Pressable
           onPress={onScan}
@@ -204,7 +207,7 @@ const ProfileHeader = React.memo(function ProfileHeader({
             phStyles.shadow,
           ]}
         >
-          <Text style={phStyles.editText}>
+          <Text style={[phStyles.editText, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
             {t('profile.generalInfo.edit', 'Sửa')}
           </Text>
         </Pressable>
@@ -334,6 +337,10 @@ const ProfileTest = () => {
   const openLangSheet = useCallback(() => setIsLangSheetOpen(true), [])
   const closeLangSheet = useCallback(() => setIsLangSheetOpen(false), [])
 
+  const [isThemeSheetOpen, setIsThemeSheetOpen] = useState(false)
+  const openThemeSheet = useCallback(() => setIsThemeSheetOpen(true), [])
+  const closeThemeSheet = useCallback(() => setIsThemeSheetOpen(false), [])
+
   const openScanSheet = useScanSheetStore((s) => s.open)
 
   const openEdit = useCallback(() => {
@@ -393,10 +400,6 @@ const ProfileTest = () => {
 
   const openOrdersHistory = useCallback(() => {
     router.push('/(tabs)/profile/orders-history-placeholder')
-  }, [router])
-
-  const openAccountSettings = useCallback(() => {
-    router.push('/(tabs)/profile/account-settings-placeholder')
   }, [router])
 
   const openGiftCard = useCallback(() => {
@@ -484,7 +487,7 @@ const ProfileTest = () => {
               { paddingTop: HEADER_HEIGHT + STATIC_TOP_INSET + 12 },
             ]}
             onScroll={handleScroll}
-            scrollEventThrottle={16}
+            scrollEventThrottle={32}
           >
             {/* Group 1: Profile customization */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
@@ -515,8 +518,8 @@ const ProfileTest = () => {
             {/* Group 3: General features */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <MenuItem
-                icon={Folder}
-                iconColor={ICON_COLORS.blue}
+                icon={ClipboardList}
+                iconColor={ICON_COLORS.purple}
                 title={t('profile.orderHistory.title', 'Lịch sử đơn hàng')}
                 onPress={openOrdersHistory}
                 textColor={theme.text}
@@ -560,8 +563,8 @@ const ProfileTest = () => {
             {/* Group 4: Settings */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <MenuItem
-                icon={Globe}
-                iconColor={ICON_COLORS.blue}
+                icon={Languages}
+                iconColor={ICON_COLORS.teal}
                 title={t('profile.language.title', 'Ngôn ngữ')}
                 onPress={openLangSheet}
                 textColor={theme.text}
@@ -569,19 +572,10 @@ const ProfileTest = () => {
               />
               <View style={[styles.menuItemDivider, { backgroundColor: theme.divider }]} />
               <MenuItem
-                icon={Bell}
-                iconColor={ICON_COLORS.red}
-                title={t('profile.notification', 'Thông báo và Âm báo')}
-                onPress={openAccountSettings}
-                textColor={theme.text}
-                textMuted={theme.textMuted}
-              />
-              <View style={[styles.menuItemDivider, { backgroundColor: theme.divider }]} />
-              <MenuItem
-                icon={Settings}
-                iconColor={ICON_COLORS.blue}
-                title="Cài đặt tài khoản"
-                onPress={openAccountSettings}
+                icon={SunMoon}
+                iconColor={ICON_COLORS.indigo}
+                title={t('profile.theme.title', 'Giao diện')}
+                onPress={openThemeSheet}
                 textColor={theme.text}
                 textMuted={theme.textMuted}
               />
@@ -608,6 +602,12 @@ const ProfileTest = () => {
       <LanguageSheet
         visible={isLangSheetOpen}
         onClose={closeLangSheet}
+        isDark={isDark}
+        primaryColor={isDark ? colors.primary.dark : colors.primary.light}
+      />
+      <ThemeSheet
+        visible={isThemeSheetOpen}
+        onClose={closeThemeSheet}
         isDark={isDark}
         primaryColor={isDark ? colors.primary.dark : colors.primary.light}
       />

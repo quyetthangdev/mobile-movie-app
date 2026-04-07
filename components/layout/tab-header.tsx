@@ -36,7 +36,7 @@ const LOGO_WIDTH = 120
 const LOGO_HEIGHT = 32
 const HEADER_PADDING_H = 16
 const HEADER_PADDING_BOTTOM = 12
-const HEADER_PADDING_TOP = 8
+const HEADER_PADDING_TOP = 4
 
 export const TabHeader = memo(function TabHeader({
   variant,

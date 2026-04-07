@@ -9,19 +9,19 @@ import { navigateNative } from '@/lib/navigation/navigation-engine'
 import { useBranchStore, useOrderFlowStore, useUpdateOrderStore, useUserStore } from '@/stores'
 import type { ICreateOrderRequest } from '@/types'
 import { calculateCartDisplayAndTotals, formatCurrency, parseKm, showErrorToast, showToast } from '@/utils'
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetFooter,
   type BottomSheetFooterProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import { useQueryClient } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useShallow } from 'zustand/react/shallow'
 
 const CONFIRM_ORDER_SNAP = ['65%']
@@ -37,7 +37,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
   isDark: boolean
   primaryColor: string
 }) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { bottom: bottomInset } = useSafeAreaInsets()
   const { t } = useTranslation('menu')
   const { t: tToast } = useTranslation('toast')
@@ -157,17 +157,17 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
     ),
     [],
   )
-  const handleChange = useCallback(
-    (index: number) => { if (index === -1) onClose() },
-    [onClose],
-  )
+  useEffect(() => {
+    if (visible && order) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible, order])
 
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
       <BottomSheetFooter {...props} bottomInset={bottomInset}>
-        <View style={[confirmOrderStyles.footer, { backgroundColor: isDark ? colors.gray[900] : colors.white.light, borderTopColor: isDark ? colors.gray[700] : '#e5e7eb' }]}>
+        <View style={[confirmOrderStyles.footer, { backgroundColor: isDark ? colors.gray[900] : colors.white.light, borderTopColor: isDark ? colors.gray[700] : colors.border.light }]}>
           <Pressable
-            onPress={() => sheetRef.current?.close()}
+            onPress={() => sheetRef.current?.dismiss()}
             disabled={isSubmitting}
             style={[confirmOrderStyles.cancelBtn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], opacity: isSubmitting ? 0.5 : 1 }]}
           >
@@ -195,23 +195,20 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
   const totalWithDelivery = cartTotals.finalTotal + (deliveryFee?.deliveryFee || 0)
 
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={() => sheetRef.current?.close()}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={CONFIRM_ORDER_SNAP}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          onChange={handleChange}
-          footerComponent={renderFooter}
-        >
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={CONFIRM_ORDER_SNAP}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      onDismiss={onClose}
+      footerComponent={renderFooter}
+    >
           {/* Header */}
-          <View style={confirmOrderStyles.header}>
+          <View style={[confirmOrderStyles.header, { borderBottomColor: isDark ? colors.gray[700] : colors.border.light }]}>
             <Text style={[confirmOrderStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
               {t('order.confirmOrder', 'Xác nhận đơn hàng')}
             </Text>
@@ -246,7 +243,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
             </View>
 
             {/* Items */}
-            <View style={confirmOrderStyles.itemsSection}>
+            <View style={[confirmOrderStyles.itemsSection, { borderTopColor: isDark ? colors.gray[700] : colors.border.light }]}>
               {displayItems.map((item, idx) => (
                 <View key={idx} style={confirmOrderStyles.itemRow}>
                   <View style={{ flex: 1 }}>
@@ -265,7 +262,7 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
             </View>
 
             {/* Totals */}
-            <View style={confirmOrderStyles.totalsSection}>
+            <View style={[confirmOrderStyles.totalsSection, { borderTopColor: isDark ? colors.gray[700] : colors.border.light }]}>
               <View style={confirmOrderStyles.totalRow}>
                 <Text style={{ fontSize: 13, color: isDark ? colors.gray[400] : colors.gray[500] }}>{t('order.subtotal', 'Tạm tính')}</Text>
                 <Text style={{ fontSize: 13, color: isDark ? colors.gray[400] : colors.gray[500] }}>{formatCurrency(cartTotals.subTotalBeforeDiscount)}</Text>
@@ -288,15 +285,13 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
                   <Text style={{ fontSize: 13, color: isDark ? colors.gray[400] : colors.gray[500] }}>{formatCurrency(deliveryFee?.deliveryFee || 0)}</Text>
                 </View>
               )}
-              <View style={[confirmOrderStyles.totalRow, confirmOrderStyles.finalRow]}>
+              <View style={[confirmOrderStyles.totalRow, confirmOrderStyles.finalRow, { borderTopColor: isDark ? colors.gray[700] : colors.border.light }]}>
                 <Text style={[confirmOrderStyles.finalLabel, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{t('order.totalPayment', 'Tổng thanh toán')}</Text>
                 <Text style={[confirmOrderStyles.finalValue, { color: primaryColor }]}>{formatCurrency(totalWithDelivery)}</Text>
               </View>
             </View>
           </BottomSheetScrollView>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 
@@ -306,7 +301,6 @@ const confirmOrderStyles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
   },
   title: {
     fontSize: 17,
@@ -339,7 +333,6 @@ const confirmOrderStyles = StyleSheet.create({
     gap: 10,
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e5e7eb',
     borderStyle: 'dashed',
   },
   itemRow: {
@@ -359,7 +352,6 @@ const confirmOrderStyles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e5e7eb',
   },
   totalRow: {
     flexDirection: 'row',
@@ -369,7 +361,6 @@ const confirmOrderStyles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   finalLabel: {
     fontSize: 15,

@@ -5,8 +5,9 @@
  * Hiển thị lịch sử đơn hàng thẻ quà của khách với filter theo type.
  * Tap vào đơn → navigate tới order-success/[slug] để xem chi tiết.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
 import { FlashList, type FlashListRef, type ListRenderItem } from '@shopify/flash-list'
@@ -26,7 +27,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -36,10 +36,7 @@ import {
   View,
 } from 'react-native'
 import DatePicker from 'react-native-date-picker'
-import {
-  GestureHandlerRootView,
-  TouchableOpacity as GHTouchable,
-} from 'react-native-gesture-handler'
+import { TouchableOpacity as GHTouchable } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { GiftCardOrderDetailSheet } from '@/components/gift-card/gift-card-order-detail-sheet'
@@ -241,7 +238,7 @@ const DateFilterSheet = memo(function DateFilterSheet({
   onClose: () => void
   onApply: (v: DateFilter) => void
 }) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { bottom } = useSafeAreaInsets()
   const { t } = useTranslation('giftCard')
   const { t: tCommon } = useTranslation('common')
@@ -267,32 +264,32 @@ const DateFilterSheet = memo(function DateFilterSheet({
 
   const handleApply = useCallback(() => {
     onApply({ fromDate: localFrom, toDate: localTo })
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
   }, [localFrom, localTo, onApply])
 
   const handleReset = useCallback(() => {
     onApply({ fromDate: null, toDate: null })
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
   }, [onApply])
 
-  if (!visible) return null
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
 
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={() => sheetRef.current?.close()}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={DATE_SNAP}
-          enablePanDownToClose
-          enableDynamicSizing={false}
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: bg }}
-          handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-          onChange={(i) => { if (i === -1) onClose() }}
-        >
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={DATE_SNAP}
+      enablePanDownToClose
+      enableDynamicSizing={false}
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{ backgroundColor: bg }}
+      handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
+      onDismiss={onClose}
+    >
           <View style={[ds.content, { paddingBottom: bottom + 16 }]}>
             <View>
               <Text style={[ds.title, { color: textColor }]}>{t('orders.filterTitle')}</Text>
@@ -380,9 +377,7 @@ const DateFilterSheet = memo(function DateFilterSheet({
             confirmText={tCommon('common.confirm')} cancelText={tCommon('common.cancel')}
             theme={isDark ? 'dark' : 'light'}
           />
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 

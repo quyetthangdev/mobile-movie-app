@@ -1,19 +1,18 @@
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   BottomSheetScrollView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
 import { X } from 'lucide-react-native'
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
   useColorScheme,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import QRCode from 'react-native-qrcode-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -102,21 +101,14 @@ const QrContent = memo(function QrContent({
 
 const ScanSheetPortal = memo(function ScanSheetPortal() {
   const { visible, close } = useScanSheetStore()
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const isDark = useColorScheme() === 'dark'
   const { bottom: bottomInset } = useSafeAreaInsets()
 
-  // Sync store → sheet khi visible thay đổi từ ngoài (ví dụ: deep link close)
   useEffect(() => {
-    if (!visible) sheetRef.current?.close()
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
   }, [visible])
-
-  const handleChange = useCallback(
-    (index: number) => {
-      if (index === -1) close()
-    },
-    [close],
-  )
 
   const bgStyle = useMemo(
     () => ({ backgroundColor: isDark ? colors.gray[900] : colors.white.light }),
@@ -136,43 +128,29 @@ const ScanSheetPortal = memo(function ScanSheetPortal() {
     [],
   )
 
-  if (!visible) return null
-
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={() => sheetRef.current?.close()}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={SNAP_POINTS}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      onDismiss={close}
     >
-      <GestureHandlerRootView style={s.flex}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SNAP_POINTS}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          onChange={handleChange}
-        >
-          <BottomSheetScrollView
-            contentContainerStyle={[s.scroll, { paddingBottom: bottomInset + 16 }]}
-            showsVerticalScrollIndicator={false}
-          >
-            <QrContent isDark={isDark} onClose={() => sheetRef.current?.close()} />
-          </BottomSheetScrollView>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+      <BottomSheetScrollView
+        contentContainerStyle={[s.scroll, { paddingBottom: bottomInset + 16 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <QrContent isDark={isDark} onClose={() => sheetRef.current?.dismiss()} />
+      </BottomSheetScrollView>
+    </BottomSheetModal>
   )
 })
 
 const s = StyleSheet.create({
-  flex: { flex: 1 },
   scroll: { flexGrow: 1 },
   content: {
     paddingHorizontal: 24,

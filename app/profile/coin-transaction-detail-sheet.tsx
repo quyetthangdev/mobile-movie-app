@@ -4,9 +4,10 @@
  * - IN + GIFT_CARD: hiển thị panel thẻ quà tặng (ảnh, tên, serial)
  * - OUT + CARD_ORDER: hiển thị mã đơn # + button xem chi tiết đơn thẻ
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
@@ -21,19 +22,17 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   Clipboard,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   useColorScheme,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors, PointTransactionObjectType, PointTransactionType } from '@/constants'
@@ -147,7 +146,7 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
   transaction,
   onClose,
 }: Props) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { bottom } = useSafeAreaInsets()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
@@ -216,22 +215,22 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
     }
   }, [onClose, router, transaction.objectSlug, txObjType])
 
-  if (!visible) return null
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
 
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SNAP_POINTS}
-          enablePanDownToClose
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: bg }}
-          handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-          onChange={(i) => { if (i === -1) onClose() }}
-        >
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={SNAP_POINTS}
+      enablePanDownToClose
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{ backgroundColor: bg }}
+      handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
+      onDismiss={onClose}
+    >
           <BottomSheetScrollView
             contentContainerStyle={[s.content, { paddingBottom: isOutCardOrder ? bottom + 80 : bottom + 24 }]}
             showsVerticalScrollIndicator={false}
@@ -316,9 +315,7 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
               </Pressable>
             </View>
           )}
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 

@@ -9,18 +9,18 @@
  * Local state only — committed to parent via onApply.
  * Re-mounts each open (parent renders null when !visible) → reads value prop fresh.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
 import { ArrowRight, CalendarDays, X } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
-import { Modal, StyleSheet, Text, View } from 'react-native'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import DatePicker from 'react-native-date-picker'
 import {
-  GestureHandlerRootView,
   TouchableOpacity as GHTouchable,
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -70,7 +70,12 @@ export const GiftCardFilterSheet = memo(function GiftCardFilterSheet({
   isDark,
 }: Props) {
   const insets = useSafeAreaInsets()
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
+
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
   const { t } = useTranslation('giftCard')
   const { t: tCommon } = useTranslation('common')
 
@@ -109,35 +114,19 @@ export const GiftCardFilterSheet = memo(function GiftCardFilterSheet({
     [],
   )
 
-  const handleSheetChange = useCallback(
-    (index: number) => { if (index === -1) onClose() },
-    [onClose],
-  )
-
   const handleApply = useCallback(() => {
     onApply({ status: localStatus, fromDate: localFromDate, toDate: localToDate })
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
   }, [localStatus, localFromDate, localToDate, onApply])
 
   const handleReset = useCallback(() => {
     onApply(DEFAULT_GIFT_CARD_FILTER)
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
   }, [onApply])
 
-  if (!visible) return null
-
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={() => sheetRef.current?.close()}
-    >
-      <GestureHandlerRootView style={fs.root}>
-        <BottomSheet
+        <BottomSheetModal
           ref={sheetRef}
-          index={0}
           snapPoints={SNAP_POINTS}
           enablePanDownToClose
           enableDynamicSizing={false}
@@ -146,7 +135,7 @@ export const GiftCardFilterSheet = memo(function GiftCardFilterSheet({
           backdropComponent={renderBackdrop}
           backgroundStyle={{ backgroundColor: bg }}
           handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-          onChange={handleSheetChange}
+          onDismiss={onClose}
         >
           <View style={[fs.content, { paddingBottom: insets.bottom + 16 }]}>
 
@@ -293,9 +282,7 @@ export const GiftCardFilterSheet = memo(function GiftCardFilterSheet({
             cancelText={tCommon('cancel')}
             theme={isDark ? 'dark' : 'light'}
           />
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+        </BottomSheetModal>
   )
 })
 

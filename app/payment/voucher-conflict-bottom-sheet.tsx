@@ -1,19 +1,18 @@
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import { TriangleAlert } from 'lucide-react-native'
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
 
   StyleSheet,
   Text,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
@@ -41,14 +40,14 @@ const VoucherConflictBottomSheet = memo(function VoucherConflictBottomSheet({
   onKeepVoucher,
   onRemoveVoucher,
 }: VoucherConflictBottomSheetProps) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { bottom: bottomInset } = useSafeAreaInsets()
 
   useEffect(() => {
     if (visible) {
-      sheetRef.current?.expand()
+      sheetRef.current?.present()
     } else {
-      sheetRef.current?.close()
+      sheetRef.current?.dismiss()
     }
   }, [visible])
 
@@ -71,39 +70,21 @@ const VoucherConflictBottomSheet = memo(function VoucherConflictBottomSheet({
     [onKeepVoucher],
   )
 
-  const handleSheetChange = useCallback(
-    (index: number) => {
-      if (index === -1) onKeepVoucher()
-    },
-    [onKeepVoucher],
-  )
-
   const textColor = isDark ? colors.gray[50] : colors.gray[900]
   const subColor = isDark ? colors.gray[400] : colors.gray[500]
   const borderColor = isDark ? colors.gray[700] : colors.gray[200]
 
-  if (!visible) return null
-
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={onKeepVoucher}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={SNAP_POINTS}
+      enablePanDownToClose
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
+      onDismiss={onKeepVoucher}
     >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SNAP_POINTS}
-          enablePanDownToClose
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-          onChange={handleSheetChange}
-        >
           <View style={s.sheetInner}>
             {/* Content */}
             <View style={s.content}>
@@ -147,9 +128,7 @@ const VoucherConflictBottomSheet = memo(function VoucherConflictBottomSheet({
               </Pressable>
             </View>
           </View>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 

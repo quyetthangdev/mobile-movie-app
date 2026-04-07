@@ -1,5 +1,5 @@
-import dayjs from 'dayjs'
 import { formatCurrencyNative } from 'cart-price-calc'
+import dayjs from 'dayjs'
 import { Plus } from 'lucide-react-native'
 import React, { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,10 +8,10 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { MenuItemImage } from '@/components/menu/menu-item-image'
 import { colors, publicFileURL } from '@/constants'
-import { capitalizeFirst, showToast } from '@/utils'
 import { scheduleStoreUpdate } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 import { IMenuItem, IOrderItem } from '@/types'
+import { capitalizeFirst, showToast } from '@/utils'
 
 interface ClientMenuItemForUpdateOrderProps {
   item: IMenuItem

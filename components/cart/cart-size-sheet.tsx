@@ -8,16 +8,16 @@ import { colors } from '@/constants'
 import { cartActions } from '@/stores/cart.store'
 import { useOrderFlowStore } from '@/stores'
 import type { IProductVariant } from '@/types'
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetFlatList,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { formatCurrencyNative } from 'cart-price-calc'
 import { capitalizeFirst } from '@/utils'
 
@@ -39,7 +39,7 @@ export const CartSizeSheet = memo(function CartSizeSheet({
   isDark,
   primaryColor,
 }: CartSizeSheetProps) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { t } = useTranslation('product')
 
   // Single selector — one .find() instead of two, useShallow for stable ref
@@ -66,16 +66,16 @@ export const CartSizeSheet = memo(function CartSizeSheet({
     [],
   )
 
-  const handleChange = useCallback(
-    (index: number) => { if (index === -1) onClose() },
-    [onClose],
-  )
+  useEffect(() => {
+    if (visible && itemId) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible, itemId])
 
   const handleSelect = useCallback(
     (variant: IProductVariant) => {
       if (!itemId) return
       cartActions.updateVariant(itemId, variant)
-      sheetRef.current?.close()
+      sheetRef.current?.dismiss()
     },
     [itemId],
   )
@@ -99,21 +99,18 @@ export const CartSizeSheet = memo(function CartSizeSheet({
   if (!visible || !itemId) return null
 
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={() => sheetRef.current?.close()}>
-      <GestureHandlerRootView style={sizeSheetStyles.flex}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SIZE_SHEET_SNAP}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          onChange={handleChange}
-        >
-          <View style={sizeSheetStyles.header}>
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={SIZE_SHEET_SNAP}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      onDismiss={onClose}
+    >
+          <View style={[sizeSheetStyles.header, { borderBottomColor: isDark ? colors.gray[700] : colors.border.light }]}>
             <Text style={[sizeSheetStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
               {t('product.selectSize', 'Chọn size')}
             </Text>
@@ -138,9 +135,7 @@ export const CartSizeSheet = memo(function CartSizeSheet({
               </Text>
             </View>
           )}
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 
@@ -196,7 +191,6 @@ const sizeSheetStyles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
   },
   title: {
     fontSize: 16,

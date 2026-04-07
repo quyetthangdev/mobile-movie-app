@@ -31,6 +31,7 @@ type Colors = {
   primary: string
   mutedForeground: string
   background: string
+  card: string
 }
 
 type AnimatedTabBarProps = {
@@ -135,10 +136,11 @@ export const AnimatedTabBar = React.memo(function AnimatedTabBar({
   return (
     <View style={[styles.tabBar, { backgroundColor: 'transparent' }]}>
       <View
-        style={[styles.pill, { paddingHorizontal: paddingH }]}
+        style={[styles.pill, { paddingHorizontal: paddingH, backgroundColor: colors.card }]}
         onLayout={onPillLayout}
       >
         <Animated.View
+          renderToHardwareTextureAndroid
           style={[
             styles.slidingIndicator,
             {
@@ -190,7 +192,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     borderRadius: 9999,
     paddingVertical: PADDING_V,
-    backgroundColor: '#ffffff',
     position: 'relative',
   },
   slidingIndicator: {

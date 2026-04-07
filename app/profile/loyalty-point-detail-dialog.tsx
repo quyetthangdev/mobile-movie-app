@@ -2,9 +2,10 @@
  * LoyaltyPointDetailSheet — ZaloPay-style chi tiết giao dịch điểm tích lũy.
  * Hero căn giữa → info card → order section → nút xem chi tiết
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
@@ -22,14 +23,12 @@ import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   Clipboard,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   useColorScheme,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -177,7 +176,7 @@ export const LoyaltyPointDetailHistoryDialog = memo(function LoyaltyPointDetailH
   history,
   onCloseSheet,
 }: Props) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { bottom } = useSafeAreaInsets()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
@@ -185,8 +184,8 @@ export const LoyaltyPointDetailHistoryDialog = memo(function LoyaltyPointDetailH
   const { t } = useTranslation('profile')
 
   useEffect(() => {
-    if (isOpen) sheetRef.current?.expand()
-    else sheetRef.current?.close()
+    if (isOpen) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
   }, [isOpen])
 
   const handleClose = useCallback(() => {
@@ -252,22 +251,17 @@ export const LoyaltyPointDetailHistoryDialog = memo(function LoyaltyPointDetailH
     ? (ORDER_STATUS_CFG[order.status] ?? { bg: cardBg, text: subColor, label: order.status })
     : null
 
-  if (!isOpen) return null
-
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={handleClose}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SNAP_POINTS}
-          enablePanDownToClose
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: bg }}
-          handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-          onChange={(i) => { if (i === -1) handleClose() }}
-        >
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={SNAP_POINTS}
+      enablePanDownToClose
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{ backgroundColor: bg }}
+      handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
+      onDismiss={handleClose}
+    >
           <BottomSheetScrollView
             contentContainerStyle={[s.content, { paddingBottom: bottom + 24 }]}
             showsVerticalScrollIndicator={false}
@@ -406,9 +400,7 @@ export const LoyaltyPointDetailHistoryDialog = memo(function LoyaltyPointDetailH
               </>
             )}
           </BottomSheetScrollView>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 

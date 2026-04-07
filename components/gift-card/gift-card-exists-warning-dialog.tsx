@@ -1,10 +1,9 @@
-import BottomSheet, { BottomSheetBackdrop, type BottomSheetBackdropProps } from '@gorhom/bottom-sheet'
+import { BottomSheetBackdrop, type BottomSheetBackdropProps, BottomSheetModal } from '@gorhom/bottom-sheet'
 import { TriangleAlert } from 'lucide-react-native'
 import { memo, useCallback, useEffect, useRef } from 'react'
-import { Modal, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import { StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { TouchableOpacity as GHTouchable } from 'react-native-gesture-handler'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
@@ -35,7 +34,7 @@ export const GiftCardExistsWarningDialog = memo(
   }: GiftCardExistsWarningDialogProps) {
     const isDark = useColorScheme() === 'dark'
     const insets = useSafeAreaInsets()
-    const sheetRef = useRef<BottomSheet>(null)
+    const sheetRef = useRef<BottomSheetModal>(null)
 
     const textColor = isDark ? colors.gray[50] : colors.gray[900]
     const subColor = isDark ? colors.gray[400] : colors.gray[500]
@@ -44,9 +43,9 @@ export const GiftCardExistsWarningDialog = memo(
 
     useEffect(() => {
       if (open) {
-        sheetRef.current?.expand()
+        sheetRef.current?.present()
       } else {
-        sheetRef.current?.close()
+        sheetRef.current?.dismiss()
       }
     }, [open])
 
@@ -63,26 +62,16 @@ export const GiftCardExistsWarningDialog = memo(
       [],
     )
 
-    const handleChange = useCallback(
-      (index: number) => { if (index === -1) onCancel() },
-      [onCancel],
-    )
-
-    const closeSheet = useCallback(() => sheetRef.current?.close(), [])
+    const closeSheet = useCallback(() => sheetRef.current?.dismiss(), [])
 
     const handleReplace = useCallback(() => {
       onReplace()
       closeSheet()
     }, [onReplace, closeSheet])
 
-    if (!open) return null
-
     return (
-      <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={closeSheet}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <BottomSheet
+          <BottomSheetModal
             ref={sheetRef}
-            index={0}
             snapPoints={SNAP_POINTS}
             enablePanDownToClose
             enableContentPanningGesture={false}
@@ -91,7 +80,7 @@ export const GiftCardExistsWarningDialog = memo(
             backdropComponent={renderBackdrop}
             backgroundStyle={{ backgroundColor: isDark ? colors.gray[900] : colors.white.light }}
             handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-            onChange={handleChange}
+            onDismiss={onCancel}
           >
             <View style={[s.content, { paddingBottom: insets.bottom + 16 }]}>
               {/* Body */}
@@ -151,9 +140,7 @@ export const GiftCardExistsWarningDialog = memo(
                 </View>
               </View>
             </View>
-          </BottomSheet>
-        </GestureHandlerRootView>
-      </Modal>
+          </BottomSheetModal>
     )
   },
 )

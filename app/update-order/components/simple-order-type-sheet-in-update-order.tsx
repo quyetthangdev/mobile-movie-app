@@ -1,12 +1,12 @@
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import { Bike, PackageCheck, UtensilsCrossed } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { colors } from '@/constants'
 import { useOrderFlowStore } from '@/stores'
@@ -26,7 +26,7 @@ export const SimpleOrderTypeSheetInUpdateOrder = memo(
     isDark: boolean
     primaryColor: string
   }) {
-    const sheetRef = useRef<BottomSheet>(null)
+    const sheetRef = useRef<BottomSheetModal>(null)
     const { t } = useTranslation('menu')
     const selectedType = useOrderFlowStore(
       (s) => s.updatingData?.updateDraft?.type as OrderTypeEnum | undefined,
@@ -60,44 +60,34 @@ export const SimpleOrderTypeSheetInUpdateOrder = memo(
       [],
     )
 
-    const handleSheetChange = useCallback(
-      (index: number) => {
-        if (index === -1) onClose()
-      },
-      [onClose],
-    )
+    useEffect(() => {
+      if (visible) {
+        sheetRef.current?.present()
+      } else {
+        sheetRef.current?.dismiss()
+      }
+    }, [visible])
 
     const handleSelect = useCallback(
       (value: OrderTypeEnum) => {
         setDraftType(value)
-        sheetRef.current?.close()
+        sheetRef.current?.dismiss()
       },
       [setDraftType],
     )
 
-    if (!visible) return null
-
     return (
-      <Modal
-        transparent
-        visible
-        statusBarTranslucent
-        animationType="none"
-        onRequestClose={() => sheetRef.current?.close()}
+      <BottomSheetModal
+        ref={sheetRef}
+        snapPoints={SNAP_POINTS}
+        enablePanDownToClose
+        enableContentPanningGesture={false}
+        enableHandlePanningGesture
+        enableDynamicSizing={false}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={bgStyle}
+        onDismiss={onClose}
       >
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <BottomSheet
-            ref={sheetRef}
-            index={0}
-            snapPoints={SNAP_POINTS}
-            enablePanDownToClose
-            enableContentPanningGesture={false}
-            enableHandlePanningGesture
-            enableDynamicSizing={false}
-            backdropComponent={renderBackdrop}
-            backgroundStyle={bgStyle}
-            onChange={handleSheetChange}
-          >
             <View style={s.content}>
               <Text style={[s.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
                 {t('menu.orderType')}
@@ -152,9 +142,7 @@ export const SimpleOrderTypeSheetInUpdateOrder = memo(
                 )
               })}
             </View>
-          </BottomSheet>
-        </GestureHandlerRootView>
-      </Modal>
+      </BottomSheetModal>
     )
   },
 )

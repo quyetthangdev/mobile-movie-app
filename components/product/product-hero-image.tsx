@@ -1,9 +1,11 @@
 import { Image } from 'expo-image'
 import React from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { StyleSheet, Text, View, useColorScheme, useWindowDimensions } from 'react-native'
 import Animated from 'react-native-reanimated'
 import Carousel, { type CarouselRenderItem } from 'react-native-reanimated-carousel'
+
+import { colors } from '@/constants'
 
 const AnimatedExpoImage = Animated.createAnimatedComponent(Image)
 const HERO_IMAGE_BLURHASH = '|rF?hV%2WCj[ayj[a}ayfQfQfQfQj[j[fQfQfQfQfQfQfQfQfQ'
@@ -35,8 +37,10 @@ type ProductHeroImageProps = {
 
 const HeroSlideImage = React.memo(function HeroSlideImage({
   url,
+  bgColor,
 }: {
   url: string
+  bgColor: string
 }) {
   const [transitionMs, setTransitionMs] = React.useState(() =>
     knownCachedUrls.has(url) ? 0 : 120,
@@ -71,7 +75,7 @@ const HeroSlideImage = React.memo(function HeroSlideImage({
   return (
     <AnimatedExpoImage
       source={{ uri: url }}
-      style={styles.image}
+      style={[styles.image, { backgroundColor: bgColor }]}
       contentFit="cover"
       placeholder={HERO_IMAGE_BLURHASH}
       transition={transitionMs}
@@ -91,6 +95,8 @@ export function ProductHeroImage({
 }: ProductHeroImageProps) {
   const { width: screenWidth } = useWindowDimensions()
   const [currentIndex, setCurrentIndex] = React.useState(0)
+  const isDark = useColorScheme() === 'dark'
+  const placeholderBg = isDark ? colors.gray[800] : colors.gray[200]
 
   const sources = React.useMemo(() => {
     const merged = [imageUrl, ...(imageUrls ?? [])].filter(
@@ -104,24 +110,24 @@ export function ProductHeroImage({
   }, [sources.length])
 
   const renderItem: CarouselRenderItem<string> = React.useCallback(
-    ({ item }) => <HeroSlideImage url={item} />,
-    [],
+    ({ item }) => <HeroSlideImage url={item} bgColor={placeholderBg} />,
+    [placeholderBg],
   )
 
   if (sources.length === 0) {
-    return <Animated.View style={[styles.fallback, style]} />
+    return <Animated.View style={[styles.fallback, { backgroundColor: placeholderBg }, style]} />
   }
 
   if (sources.length === 1) {
     return (
-      <Animated.View style={[styles.container, style]}>
-        <HeroSlideImage url={sources[0]} />
+      <Animated.View style={[styles.container, { backgroundColor: placeholderBg }, style]}>
+        <HeroSlideImage url={sources[0]} bgColor={placeholderBg} />
       </Animated.View>
     )
   }
 
   return (
-    <Animated.View style={[styles.container, style]}>
+    <Animated.View style={[styles.container, { backgroundColor: placeholderBg }, style]}>
       <Carousel
         width={screenWidth}
         height={HERO_HEIGHT}
@@ -146,18 +152,15 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     height: HERO_HEIGHT,
-    backgroundColor: '#e5e7eb',
     overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: HERO_HEIGHT,
-    backgroundColor: '#e5e7eb',
   },
   fallback: {
     width: '100%',
     height: HERO_HEIGHT,
-    backgroundColor: '#e5e7eb',
   },
   counterWrap: {
     position: 'absolute',

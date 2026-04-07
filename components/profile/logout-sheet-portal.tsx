@@ -1,15 +1,15 @@
 /**
- * Logout sheet — Modal + BottomSheet pattern (giống cart confirm order sheet).
- * Store-driven: visible từ useLogoutSheetStore, mount Modal chỉ khi mở.
+ * Logout sheet — BottomSheetModal pattern.
+ * Store-driven: visible từ useLogoutSheetStore.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
@@ -19,18 +19,16 @@ const LOGOUT_SHEET_SNAP = ['30%']
 
 const LogoutSheetPortal = () => {
   const { visible, onConfirm, close } = useLogoutSheetStore()
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const isDark = useColorScheme() === 'dark'
 
-  const handleChange = useCallback(
-    (index: number) => {
-      if (index === -1) close()
-    },
-    [close],
-  )
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
 
   const handleConfirm = useCallback(() => {
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
     onConfirm?.()
   }, [onConfirm])
 
@@ -52,37 +50,24 @@ const LogoutSheetPortal = () => {
     [],
   )
 
-  if (!visible) return null
-
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={() => sheetRef.current?.close()}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={LOGOUT_SHEET_SNAP}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      onDismiss={close}
     >
-      <GestureHandlerRootView style={s.flex}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={LOGOUT_SHEET_SNAP}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          onChange={handleChange}
-        >
-          <LogoutSheetContent
-            onCancel={() => sheetRef.current?.close()}
-            onConfirm={handleConfirm}
-            isDark={isDark}
-          />
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+      <LogoutSheetContent
+        onCancel={() => sheetRef.current?.dismiss()}
+        onConfirm={handleConfirm}
+        isDark={isDark}
+      />
+    </BottomSheetModal>
   )
 }
 
@@ -131,7 +116,6 @@ const LogoutSheetContent = memo(function LogoutSheetContent({
 })
 
 const s = StyleSheet.create({
-  flex: { flex: 1 },
   content: {
     flex: 1,
     paddingHorizontal: 20,

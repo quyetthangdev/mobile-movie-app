@@ -1,25 +1,32 @@
 import { useRouter } from 'expo-router'
 import React from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native'
 
 import { ScreenContainer } from '@/components/layout'
+import { colors } from '@/constants'
 
 export default function GeneralInfoPlaceholder() {
   const router = useRouter()
+  const isDark = useColorScheme() === 'dark'
+  const textColor = isDark ? colors.gray[50] : colors.gray[900]
+  const mutedColor = isDark ? colors.gray[400] : colors.gray[500]
 
   return (
     <ScreenContainer edges={['top']} className="flex-1">
-      <View style={styles.header}>
+      <View style={[styles.header, {
+        backgroundColor: isDark ? colors.card.dark : colors.card.light,
+        borderBottomColor: isDark ? colors.border.dark : colors.border.light,
+      }]}>
         <Pressable style={styles.backHitSlop} onPress={() => router.back()}>
-          <Text style={styles.backLabel}>{'‹'}</Text>
+          <Text style={[styles.backLabel, { color: textColor }]}>{'‹'}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Thông tin chung</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]}>Thông tin chung</Text>
         <View style={styles.headerRightSpacer} />
       </View>
 
       <View style={styles.center}>
-        <Text style={styles.title}>Thông tin chung</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: textColor }]}>Thông tin chung</Text>
+        <Text style={[styles.subtitle, { color: mutedColor }]}>
           Trang rỗng để kiểm tra transition hãm phanh.
         </Text>
       </View>
@@ -34,8 +41,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
   },
   backHitSlop: {
     width: 40,
@@ -45,14 +50,12 @@ const styles = StyleSheet.create({
   },
   backLabel: {
     fontSize: 24,
-    color: '#111827',
   },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
   },
   headerRightSpacer: {
     width: 40,
@@ -67,11 +70,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 8,
-    color: '#111827',
   },
   subtitle: {
     fontSize: 14,
-    color: '#6b7280',
     textAlign: 'center',
   },
 })

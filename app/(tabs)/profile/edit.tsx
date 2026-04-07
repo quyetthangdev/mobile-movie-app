@@ -244,7 +244,7 @@ function EditHeader({
 }) {
   const pageBg = isDark ? '#1F2B3E' : colors.background.light
   const gradientColors = useMemo(
-    () => [`${pageBg}F0`, `${pageBg}AA`, `${pageBg}00`] as const,
+    () => [pageBg, `${pageBg}E6`, `${pageBg}B0`, `${pageBg}50`, `${pageBg}00`] as const,
     [pageBg],
   )
   const confirmBg = isDirty
@@ -256,18 +256,20 @@ function EditHeader({
 
   return (
     <View style={ehStyles.container} pointerEvents="box-none">
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          intensity={20}
-          tint={isDark ? 'dark' : 'light'}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {Platform.OS !== 'ios' ? (
+          <BlurView
+            intensity={20}
+            tint={isDark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <LinearGradient
+          colors={gradientColors}
+          locations={[0, 0.3, 0.62, 0.85, 1]}
           style={StyleSheet.absoluteFill}
         />
-      ) : null}
-      <LinearGradient
-        colors={gradientColors}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      </View>
       <View
         style={[ehStyles.row, { paddingTop: STATIC_TOP_INSET + 10 }]}
         pointerEvents="auto"

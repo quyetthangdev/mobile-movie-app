@@ -7,16 +7,16 @@
  * - visible → expand/close qua useEffect + ref
  * - unmount khi !visible (return null)
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import { Image } from 'expo-image'
 import { Gift, Minus, Plus } from 'lucide-react-native'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
@@ -45,7 +45,7 @@ export const GiftCardSelectedSheet = memo(
     onClose,
     onAdded,
   }: GiftCardSelectedSheetProps) {
-    const sheetRef = useRef<BottomSheet>(null)
+    const sheetRef = useRef<BottomSheetModal>(null)
     const { bottom: bottomInset } = useSafeAreaInsets()
     const [quantity, setQuantity] = useState(1)
     const [showWarning, setShowWarning] = useState(false)
@@ -63,8 +63,8 @@ export const GiftCardSelectedSheet = memo(
     }
 
     useEffect(() => {
-      if (visible) sheetRef.current?.expand()
-      else sheetRef.current?.close()
+      if (visible) sheetRef.current?.present()
+      else sheetRef.current?.dismiss()
     }, [visible])
 
     const renderBackdrop = useCallback(
@@ -78,13 +78,6 @@ export const GiftCardSelectedSheet = memo(
           onPress={onClose}
         />
       ),
-      [onClose],
-    )
-
-    const handleSheetChange = useCallback(
-      (index: number) => {
-        if (index === -1) onClose()
-      },
       [onClose],
     )
 
@@ -149,28 +142,19 @@ export const GiftCardSelectedSheet = memo(
     const totalAmount = card ? card.price * quantity : 0
     const totalPoints = card ? card.points * quantity : 0
 
-    if (!visible || !card) return null
+    if (!card) return null
 
     return (
       <>
-        <Modal
-          transparent
-          visible
-          statusBarTranslucent
-          animationType="none"
-          onRequestClose={onClose}
-        >
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <BottomSheet
+            <BottomSheetModal
               ref={sheetRef}
-              index={0}
               snapPoints={SNAP_POINTS}
               enablePanDownToClose
               enableDynamicSizing={false}
               backdropComponent={renderBackdrop}
               backgroundStyle={bgStyle}
               handleIndicatorStyle={{ backgroundColor: colors.gray[300] }}
-              onChange={handleSheetChange}
+              onDismiss={onClose}
             >
               <View style={[s.sheetInner, { paddingBottom: bottomInset + 16 }]}>
                 {/* Card preview */}
@@ -243,11 +227,9 @@ export const GiftCardSelectedSheet = memo(
                   <Text style={s.addBtnText}>{t('selectedSheet.addToCart')}</Text>
                 </Pressable>
               </View>
-            </BottomSheet>
-          </GestureHandlerRootView>
-        </Modal>
+            </BottomSheetModal>
 
-        {/* Replace warning — rendered outside Modal to avoid z-index issues */}
+        {/* Replace warning */}
         {existingItem && showWarning && (
           <GiftCardExistsWarningDialog
             open={showWarning}

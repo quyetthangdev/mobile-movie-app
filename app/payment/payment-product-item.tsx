@@ -57,7 +57,7 @@ export const PaymentProductItem = React.memo(function PaymentProductItem({
   }, [item.variant, item.quantity, displayItem, voucher])
 
   return (
-    <View style={!isLast ? [pItemStyles.row, pItemStyles.rowBorder] : pItemStyles.row}>
+    <View style={!isLast ? [pItemStyles.row, pItemStyles.rowBorder, { borderBottomColor: isDark ? colors.border.dark : colors.border.light }] : pItemStyles.row}>
       <View style={pItemStyles.contentRow}>
         <View style={pItemStyles.imageWrap}>
           <ExpoImage
@@ -88,14 +88,14 @@ export const PaymentProductItem = React.memo(function PaymentProductItem({
 
         <View style={pItemStyles.priceCol}>
           {shouldShowLineThrough && (
-            <Text style={pItemStyles.priceStrike}>{formatCurrency(original * item.quantity)}</Text>
+            <Text style={[pItemStyles.priceStrike, { color: isDark ? colors.gray[500] : colors.gray[400] }]}>{formatCurrency(original * item.quantity)}</Text>
           )}
           <Text style={[pItemStyles.priceMain, { color: primaryColor }]}>{formatCurrency(displayPrice)}</Text>
         </View>
       </View>
 
       {item.note ? (
-        <View style={[pItemStyles.noteWrap, { backgroundColor: isDark ? colors.gray[700] : '#f9fafb' }]}>
+        <View style={[pItemStyles.noteWrap, { backgroundColor: isDark ? colors.gray[700] : colors.gray[50] }]}>
           <TextInput
             value={item.note}
             editable={false}
@@ -111,7 +111,7 @@ export const PaymentProductItem = React.memo(function PaymentProductItem({
 
 export const pItemStyles = StyleSheet.create({
   row: {},
-  rowBorder: { marginBottom: 16, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' },
+  rowBorder: { marginBottom: 16, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth },
   contentRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
   imageWrap: { position: 'relative', width: 64, height: 64 },
   image: { width: 64, height: 64, borderRadius: 8 },
@@ -122,7 +122,7 @@ export const pItemStyles = StyleSheet.create({
   sizeBadge: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   sizeText: { fontSize: 12, fontWeight: '500' },
   priceCol: { alignItems: 'flex-end' },
-  priceStrike: { fontSize: 14, color: '#9ca3af', textDecorationLine: 'line-through', marginBottom: 2 },
+  priceStrike: { fontSize: 14, textDecorationLine: 'line-through', marginBottom: 2 },
   priceMain: { fontSize: 14, fontWeight: '600' },
   noteWrap: { marginTop: 8, borderRadius: 8 },
   noteInput: { width: '100%', fontSize: 12, padding: 8, fontFamily: 'BeVietnamPro_400Regular' },

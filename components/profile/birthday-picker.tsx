@@ -1,20 +1,31 @@
 /**
- * Chọn ngày sinh bằng react-native-date-picker (dạng spinner).
- * Chỉ cập nhật state khi nhấn Confirm hoặc khi cuộn đã dừng (debounce onDateChange).
- * Màu chữ/theme khớp Dark/Light của Profile.
+ * Chọn ngày sinh — modal date picker.
+ * iOS: Modal custom với DateTimePicker spinner + nút Xác nhận / Huỷ.
+ * Android: DateTimePickerAndroid.open() (imperative, không render UI).
+ * Dùng @react-native-community/datetimepicker (tương thích iOS 26+).
  */
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from '@react-native-community/datetimepicker'
 import dayjs from 'dayjs'
 import React, {
   forwardRef,
   useCallback,
   useImperativeHandle,
-  useRef,
   useState,
 } from 'react'
-import { useColorScheme } from 'react-native'
-import DatePicker from 'react-native-date-picker'
+import {
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native'
 
-const DEBOUNCE_MS = 500
+import { colors } from '@/constants'
 
 export type BirthdayPickerRef = {
   open: () => void
@@ -59,36 +70,42 @@ export const BirthdayPicker = forwardRef<BirthdayPickerRef, Props>(
     },
     ref,
   ) {
-    const colorScheme = useColorScheme()
-    const isDark = colorScheme === 'dark'
+    const isDark = useColorScheme() === 'dark'
     const theme = themeColors ?? {
-      text: isDark ? '#f3f4f6' : '#111827',
-      textMuted: isDark ? '#9ca3af' : '#6b7280',
-      editBtn: isDark ? '#3D4F66' : '#e5e7eb',
+      text: isDark ? colors.gray[50] : colors.gray[900],
+      textMuted: isDark ? colors.gray[400] : colors.gray[500],
+      editBtn: isDark ? '#3D4F66' : colors.border.light,
     }
 
-    const [open, setOpen] = useState(false)
+    const primaryColor = isDark ? colors.primary.dark : colors.primary.light
+    const [iosOpen, setIosOpen] = useState(false)
     const [tempDate, setTempDate] = useState(() => parseToDate(value))
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-    const commitDate = useCallback(
-      (date: Date) => {
-        onSelect(formatDate(date))
-      },
-      [onSelect],
-    )
 
     const openPicker = useCallback(() => {
-      setTempDate(parseToDate(value))
-      setOpen(true)
-    }, [value])
+      const initial = parseToDate(value)
+      setTempDate(initial)
+      if (Platform.OS === 'android') {
+        DateTimePickerAndroid.open({
+          value: initial,
+          mode: 'date',
+          maximumDate: new Date(),
+          onChange: (event, date) => {
+            if (event.type === 'set' && date) {
+              onSelect(formatDate(date))
+            }
+          },
+        })
+      } else {
+        setIosOpen(true)
+      }
+    }, [value, onSelect])
 
     const closePicker = useCallback(() => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-        debounceRef.current = null
+      if (Platform.OS === 'android') {
+        DateTimePickerAndroid.dismiss('date')
+      } else {
+        setIosOpen(false)
       }
-      setOpen(false)
     }, [])
 
     useImperativeHandle(ref, () => ({ open: openPicker, close: closePicker }), [
@@ -96,50 +113,95 @@ export const BirthdayPicker = forwardRef<BirthdayPickerRef, Props>(
       closePicker,
     ])
 
-    const handleDateChange = useCallback(
-      (date: Date) => {
-        setTempDate(date)
-        if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => {
-          debounceRef.current = null
-          commitDate(date)
-        }, DEBOUNCE_MS)
-      },
-      [commitDate],
-    )
-
     const handleConfirm = useCallback(() => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-        debounceRef.current = null
-      }
-      commitDate(tempDate)
-      closePicker()
-    }, [tempDate, commitDate, closePicker])
+      onSelect(formatDate(tempDate))
+      setIosOpen(false)
+    }, [tempDate, onSelect])
 
     const handleCancel = useCallback(() => {
-      closePicker()
-    }, [closePicker])
+      setIosOpen(false)
+    }, [])
 
-    const pickerTheme = isDark ? 'dark' : 'light'
+    // Android uses imperative API only — no UI to render
+    if (Platform.OS !== 'ios') return null
+
+    const sheetBg = isDark ? colors.card.dark : colors.card.light
+    const handleBg = isDark ? colors.gray[600] : colors.gray[300]
+    const dividerColor = isDark ? colors.gray[700] : colors.gray[200]
 
     return (
-      <DatePicker
-        modal
-        open={open}
-        date={tempDate}
-        mode="date"
-        theme={pickerTheme}
-        minimumDate={dayjs().subtract(120, 'year').toDate()}
-        maximumDate={dayjs().toDate()}
-        onDateChange={handleDateChange}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-        confirmText={confirmText}
-        cancelText={cancelText}
-        buttonColor={theme.editBtn}
-        dividerColor={theme.textMuted}
-      />
+      <Modal
+        visible={iosOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCancel}
+      >
+        <Pressable style={s.backdrop} onPress={handleCancel} />
+        <View style={[s.sheet, { backgroundColor: sheetBg }]}>
+          <View style={[s.handle, { backgroundColor: handleBg }]} />
+
+          <DateTimePicker
+            value={tempDate}
+            mode="date"
+            display="spinner"
+            onChange={(_, date) => { if (date) setTempDate(date) }}
+            themeVariant={isDark ? 'dark' : 'light'}
+            maximumDate={new Date()}
+            style={s.picker}
+          />
+
+          <View style={[s.btnRow, { borderTopColor: dividerColor }]}>
+            <TouchableOpacity style={s.btn} onPress={handleCancel} hitSlop={8}>
+              <Text style={[s.btnText, { color: theme.textMuted }]}>{cancelText}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.btn} onPress={handleConfirm} hitSlop={8}>
+              <Text style={[s.btnText, s.btnConfirm, { color: primaryColor }]}>{confirmText}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     )
   },
 )
+
+const s = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheet: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 32,
+    alignItems: 'center',
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  picker: {
+    width: '100%',
+    height: 216,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    width: '100%',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  btn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  btnText: {
+    fontSize: 16,
+  },
+  btnConfirm: {
+    fontWeight: '600',
+  },
+})

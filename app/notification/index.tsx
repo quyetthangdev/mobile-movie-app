@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { NotificationMessageCode } from '@/constants/notification.constant'
 import { useMarkNotificationAsRead, useNotifications } from '@/hooks/use-notification'
 import { navigateNative } from '@/lib/navigation'
@@ -251,39 +252,24 @@ const NotificationTabHeader = memo(function NotificationTabHeader({
   primaryColor: string
   onTabChange: (tab: 'all' | 'unread') => void
 }) {
+  const inactiveBg = isDark ? colors.gray[800] : '#fff'
+  const inactiveText = isDark ? colors.gray[400] : colors.gray[500]
+
   return (
     <View style={ns.tabs}>
       <Pressable
-        style={[
-          ns.tab,
-          activeTab === 'all' && { borderColor: primaryColor, backgroundColor: `${primaryColor}15` },
-        ]}
+        style={[ns.tab, { backgroundColor: activeTab === 'all' ? primaryColor : inactiveBg }]}
         onPress={() => onTabChange('all')}
       >
-        <Text
-          style={[
-            ns.tabText,
-            { color: isDark ? colors.gray[400] : colors.gray[500] },
-            activeTab === 'all' && { color: primaryColor, fontWeight: '700' },
-          ]}
-        >
+        <Text style={[ns.tabText, { color: activeTab === 'all' ? '#fff' : inactiveText }]}>
           Tất cả
         </Text>
       </Pressable>
       <Pressable
-        style={[
-          ns.tab,
-          activeTab === 'unread' && { borderColor: primaryColor, backgroundColor: `${primaryColor}15` },
-        ]}
+        style={[ns.tab, { backgroundColor: activeTab === 'unread' ? primaryColor : inactiveBg }]}
         onPress={() => onTabChange('unread')}
       >
-        <Text
-          style={[
-            ns.tabText,
-            { color: isDark ? colors.gray[400] : colors.gray[500] },
-            activeTab === 'unread' && { color: primaryColor, fontWeight: '700' },
-          ]}
-        >
+        <Text style={[ns.tabText, { color: activeTab === 'unread' ? '#fff' : inactiveText }]}>
           {unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc'}
         </Text>
       </Pressable>
@@ -404,18 +390,6 @@ export default function NotificationScreen() {
 
   const handleTabChange = useCallback((tab: 'all' | 'unread') => setActiveTab(tab), [])
 
-  const ListHeaderComponent = useMemo(
-    () => (
-      <NotificationTabHeader
-        activeTab={activeTab}
-        unreadCount={unreadCount}
-        isDark={isDark}
-        primaryColor={primaryColor}
-        onTabChange={handleTabChange}
-      />
-    ),
-    [activeTab, unreadCount, isDark, primaryColor, handleTabChange],
-  )
 
   const ListEmptyComponent = useMemo(
     () =>
@@ -459,13 +433,11 @@ export default function NotificationScreen() {
           data={displayedNotifications}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
-          ListHeaderComponent={ListHeaderComponent}
           ListEmptyComponent={ListEmptyComponent}
           ListFooterComponent={ListFooterComponent}
           contentContainerStyle={ns.listPadding}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
-
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
@@ -476,6 +448,17 @@ export default function NotificationScreen() {
           }
         />
       )}
+
+      {/* Fixed tab bar — transparent, nằm trong vùng gradient của FloatingHeader */}
+      <View style={[ns.tabsFixed, { top: STATIC_TOP_INSET + 52 }]} pointerEvents="box-none">
+        <NotificationTabHeader
+          activeTab={activeTab}
+          unreadCount={unreadCount}
+          isDark={isDark}
+          primaryColor={primaryColor}
+          onTabChange={handleTabChange}
+        />
+      </View>
 
       <FloatingHeader
         title="Thông báo"
@@ -502,21 +485,33 @@ export default function NotificationScreen() {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
+const TAB_BAR_TOP = STATIC_TOP_INSET + 52
+const LIST_PADDING_TOP = TAB_BAR_TOP + 52
+
 const ns = StyleSheet.create({
   flex: { flex: 1 },
-  listPadding: { paddingTop: 100, paddingBottom: 32, paddingHorizontal: 16 },
-  skeletonList: { paddingTop: 100, paddingHorizontal: 16, gap: 8 },
+  listPadding: { paddingTop: LIST_PADDING_TOP, paddingBottom: 32, paddingHorizontal: 16 },
+  skeletonList: { paddingTop: LIST_PADDING_TOP, paddingHorizontal: 16, gap: 8 },
+
+  // Fixed tab bar
+  tabsFixed: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 24,
+  },
 
   // Tabs
-  tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  tabs: { flexDirection: 'row', gap: 8 },
   tab: {
     paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 99,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
   },
-  tabText: { fontSize: 13, fontWeight: '500' },
+  tabText: { fontSize: 13, fontWeight: '600' },
 
   // Item
   itemContainer: {

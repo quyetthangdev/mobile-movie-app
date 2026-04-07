@@ -268,7 +268,7 @@ function OrderHistoryPage() {
   const headerBg = isDark ? colors.gray[800] : colors.white.light
   const headerBorder = isDark ? colors.gray[700] : colors.gray[200]
   const gradientColors = useMemo(
-    () => [`${screenBg}F0`, `${screenBg}AA`, `${screenBg}00`] as const,
+    () => [screenBg, `${screenBg}E6`, `${screenBg}B0`, `${screenBg}50`, `${screenBg}00`] as const,
     [screenBg],
   )
 
@@ -330,18 +330,20 @@ ListFooterComponent={ListFooterComponent}
 
         {/* Floating header — blur + gradient overlay */}
         <View style={pageStyles.floatingHeader} pointerEvents="box-none">
-          {Platform.OS === 'ios' ? (
-            <BlurView
-              intensity={20}
-              tint={isDark ? 'dark' : 'light'}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {Platform.OS !== 'ios' ? (
+              <BlurView
+                intensity={20}
+                tint={isDark ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : null}
+            <LinearGradient
+              colors={gradientColors}
+              locations={[0, 0.3, 0.62, 0.85, 1]}
               style={StyleSheet.absoluteFill}
             />
-          ) : null}
-          <LinearGradient
-            colors={gradientColors}
-            locations={[0, 0.5, 1]}
-            style={StyleSheet.absoluteFill}
-          />
+          </View>
 
           {/* Row: back + title + spacer */}
           <View style={[pageStyles.headerRow, { paddingTop: STATIC_TOP_INSET + 10 }]} pointerEvents="auto">

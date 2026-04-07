@@ -158,7 +158,7 @@ export default function TabsLayout() {
   )
 
   const { totalBottomHeight, bottomGap } = useMemo(() => {
-    const gap = Math.max(8, insets.bottom + 8)
+    const gap = Math.max(0, insets.bottom - 8)
     const bgHeight = BAR_HEIGHT + BAR_PADDING + gap
     return {
       bottomGap: gap,
@@ -235,6 +235,7 @@ export default function TabsLayout() {
               primary: colors.primary,
               mutedForeground: colors.mutedForeground,
               background: colors.background,
+              card: colors.card,
             }}
             tabState={resolvedTabState}
             tabRoutes={tabRoutes}

@@ -1,20 +1,19 @@
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import { TriangleAlert } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   useColorScheme,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
@@ -44,16 +43,16 @@ function CancelOrderDialogComponent({
   const isDark = useColorScheme() === 'dark'
   const { bottom: bottomInset } = useSafeAreaInsets()
 
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
 
   const handleOpen = useCallback(() => setVisible(true), [])
   const handleClose = useCallback(() => setVisible(false), [])
 
   useEffect(() => {
     if (visible) {
-      sheetRef.current?.expand()
+      sheetRef.current?.present()
     } else {
-      sheetRef.current?.close()
+      sheetRef.current?.dismiss()
     }
   }, [visible])
 
@@ -89,13 +88,6 @@ function CancelOrderDialogComponent({
     [],
   )
 
-  const handleSheetChange = useCallback(
-    (index: number) => {
-      if (index === -1) handleClose()
-    },
-    [handleClose],
-  )
-
   const textColor = isDark ? colors.gray[50] : colors.gray[900]
   const subColor = isDark ? colors.gray[400] : colors.gray[500]
   const borderColor = isDark ? colors.gray[700] : colors.gray[200]
@@ -116,26 +108,16 @@ function CancelOrderDialogComponent({
         </Pressable>
       )}
 
-      {visible && (
-        <Modal
-          transparent
-          visible
-          statusBarTranslucent
-          animationType="none"
-          onRequestClose={handleClose}
-        >
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <BottomSheet
-              ref={sheetRef}
-              index={0}
-              snapPoints={SNAP_POINTS}
-              enablePanDownToClose
-              enableDynamicSizing={false}
-              backdropComponent={renderBackdrop}
-              backgroundStyle={bgStyle}
-              handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-              onChange={handleSheetChange}
-            >
+      <BottomSheetModal
+        ref={sheetRef}
+        snapPoints={SNAP_POINTS}
+        enablePanDownToClose
+        enableDynamicSizing={false}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={bgStyle}
+        handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
+        onDismiss={handleClose}
+      >
               <View style={s.sheetInner}>
                 <View style={s.content}>
                   <View style={s.iconRow}>
@@ -182,10 +164,7 @@ function CancelOrderDialogComponent({
                   </Pressable>
                 </View>
               </View>
-            </BottomSheet>
-          </GestureHandlerRootView>
-        </Modal>
-      )}
+      </BottomSheetModal>
     </>
   )
 }

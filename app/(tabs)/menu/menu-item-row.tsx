@@ -1,11 +1,11 @@
 import { MenuItemImage } from '@/components/menu/menu-item-image'
+import { colors } from '@/constants'
 import type { IMenuItem } from '@/types'
 import { capitalizeFirst } from '@/utils'
-import { colors } from '@/constants'
+import { formatCurrencyNative } from 'cart-price-calc'
 import { Plus } from 'lucide-react-native'
 import React, { createContext, memo, useCallback, useContext } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { formatCurrencyNative } from 'cart-price-calc'
+import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native'
 
 export const MenuImagePhaseContext = createContext(false)
 
@@ -61,6 +61,7 @@ export const MenuItemRow = memo(
     onDetail: (id: string) => void
     onAddToCart: (id: string) => void
   }) {
+    const isDark = useColorScheme() === 'dark'
     const showImage = useContext(MenuImagePhaseContext)
     const imagePriority =
       showImage && listIndex < MENU_IMAGE_HIGH_PRIORITY_COUNT ? 'high' : 'normal'
@@ -72,9 +73,15 @@ export const MenuItemRow = memo(
     const handlePress = useCallback(() => onDetail(id), [id, onDetail])
     const handleAdd = useCallback(() => onAddToCart(id), [id, onAddToCart])
 
+    const cardBg = isDark ? colors.card.dark : colors.card.light
+    const nameColor = isDark ? colors.gray[50] : colors.gray[900]
+    const discountedColor = isDark ? colors.warning.dark : colors.warning.textLight
+    const originalColor = isDark ? colors.gray[500] : colors.gray[400]
+    const badgeBg = isDark ? colors.destructive.dark : colors.destructive.light
+
     return (
       <Pressable onPress={handlePress} style={styles.wrapper}>
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: cardBg }]}>
           <View style={styles.imageWrap}>
             <View style={styles.imageInner}>
               <MenuItemImage
@@ -83,25 +90,26 @@ export const MenuItemRow = memo(
                 isEnabled={showImage}
                 transitionMs={0}
                 priority={imagePriority}
+                borderRadius={12}
               />
             </View>
           </View>
           <View style={styles.content}>
             <View>
-              <Text style={styles.productName} numberOfLines={1}>
+              <Text style={[styles.productName, { color: nameColor }]} numberOfLines={1}>
                 {capitalizeFirst(name)}
               </Text>
               {hasPromotion ? (
                 <View style={styles.priceRow}>
-                  <Text style={styles.priceDiscounted}>
+                  <Text style={[styles.priceDiscounted, { color: discountedColor }]}>
                     {formatCurrencyNative(discountedPrice)}
                   </Text>
-                  <View style={styles.pricePromotionBadge}>
+                  <View style={[styles.pricePromotionBadge, { backgroundColor: badgeBg }]}>
                     <Text style={styles.pricePromotionText}>
                       -{promotionValue}%
                     </Text>
                   </View>
-                  <Text style={styles.priceOriginal}>
+                  <Text style={[styles.priceOriginal, { color: originalColor }]}>
                     {formatCurrencyNative(rawPrice)}
                   </Text>
                 </View>
@@ -143,7 +151,6 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: colors.white.light,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -155,8 +162,6 @@ const styles = StyleSheet.create({
   },
   imageInner: {
     flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
   },
   content: {
     flex: 1,
@@ -166,7 +171,6 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
   },
   priceRow: {
     flexDirection: 'row',
@@ -177,10 +181,8 @@ const styles = StyleSheet.create({
   priceDiscounted: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.warning.dark,
   },
   pricePromotionBadge: {
-    backgroundColor: colors.destructive.dark,
     borderRadius: 999,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -192,7 +194,6 @@ const styles = StyleSheet.create({
   },
   priceOriginal: {
     fontSize: 12,
-    color: colors.gray[400],
     textDecorationLine: 'line-through',
   },
   priceRegular: {

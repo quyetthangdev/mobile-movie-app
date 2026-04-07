@@ -50,8 +50,12 @@ type FlatItem =
   | { _kind: 'header'; key: string; name: string }
   | { _kind: 'item'; data: MenuDisplayItem }
 
-const MENU_IMAGE_PREFETCH_AHEAD_COUNT = 2
-const MENU_IMAGE_PREFETCH_DEBOUNCE_MS = 220
+function overrideItemLayout(layout: { span?: number; size?: number }, item: FlatItem) {
+  layout.size = item._kind === 'header' ? 40 : 116
+}
+
+const MENU_IMAGE_PREFETCH_AHEAD_COUNT = 5
+const MENU_IMAGE_PREFETCH_DEBOUNCE_MS = 100
 const MENU_ENTRY_FETCH_DELAY_MS = 120
 const MENU_ENTRY_IMAGE_DELAY_MS = 160
 const ENABLE_SCROLL_PREFETCH = true
@@ -310,6 +314,25 @@ export default function MenuPage() {
     itemsRawRef.current = itemsRaw
   }, [itemsRaw])
 
+  // Pre-decode first visible images on the background thread as soon as data
+  // arrives — eliminates Main Thread WebP decode when user scrolls down.
+  const initialPrefetchDoneRef = React.useRef(false)
+  useEffect(() => {
+    if (!imagePhaseReady || itemsRaw.length === 0) return
+    if (initialPrefetchDoneRef.current) return
+    initialPrefetchDoneRef.current = true
+    const INITIAL_PREFETCH_COUNT = 8
+    const urls: string[] = []
+    for (let i = 0; i < Math.min(INITIAL_PREFETCH_COUNT, itemsRaw.length); i++) {
+      const url = itemsRaw[i].imageUrl
+      if (url && !prefetchedImageUrlsRef.current.has(url)) {
+        prefetchedImageUrlsRef.current.add(url)
+        urls.push(url)
+      }
+    }
+    if (urls.length > 0) Image.prefetch(urls).catch(() => {})
+  }, [imagePhaseReady, itemsRaw])
+
   // Client-side filter — no API round-trip, instant UI response.
   const filteredItems = useMemo(() => {
     if (!searchKeyword) return itemsRaw
@@ -347,7 +370,6 @@ export default function MenuPage() {
   const onViewableItemsChanged = useCallback(
     (info: { viewableItems: Array<{ index: number | null }> }) => {
       if (!ENABLE_SCROLL_PREFETCH) return
-      if (!hasUserStartedScrollRef.current) return
 
       if (prefetchTimeoutRef.current) {
         clearTimeout(prefetchTimeoutRef.current)
@@ -557,9 +579,7 @@ export default function MenuPage() {
             item._kind === 'header' ? item.key : item.data.id
           }
           getItemType={(item) => item._kind}
-          overrideItemLayout={(layout: { span?: number; size?: number }, item) => {
-            layout.size = item._kind === 'header' ? 40 : 116
-          }}
+          overrideItemLayout={overrideItemLayout}
           drawDistance={300}
           keyboardDismissMode="on-drag"
           refreshControl={

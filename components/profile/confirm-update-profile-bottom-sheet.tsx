@@ -1,13 +1,14 @@
 /**
  * Bottom sheet xác nhận cập nhật thông tin cá nhân — pattern giống ClearCartSheet.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
-import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, StyleSheet, Text, useColorScheme, View } from 'react-native'
-import { GestureHandlerRootView, TouchableOpacity as GHTouchable } from 'react-native-gesture-handler'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import { TouchableOpacity as GHTouchable } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 
@@ -31,17 +32,18 @@ const ConfirmUpdateProfileBottomSheetBase = forwardRef<
   const { t: tCommon } = useTranslation('common')
   const isDark = useColorScheme() === 'dark'
   const insets = useSafeAreaInsets()
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const [visible, setVisible] = useState(false)
 
   const open = useCallback(() => setVisible(true), [])
-  const close = useCallback(() => sheetRef.current?.close(), [])
+  const close = useCallback(() => sheetRef.current?.dismiss(), [])
 
   useImperativeHandle(ref, () => ({ open, close }), [open, close])
 
-  const handleChange = useCallback((index: number) => {
-    if (index === -1) setVisible(false)
-  }, [])
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
 
   const handleConfirm = useCallback(() => {
     onConfirm()
@@ -69,32 +71,21 @@ const ConfirmUpdateProfileBottomSheetBase = forwardRef<
     [isDark],
   )
 
-  if (!visible) return null
-
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={close}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={SNAP_POINTS}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      activeOffsetY={[-10, 10]}
+      failOffsetX={[-5, 5]}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      handleIndicatorStyle={handleIndicator}
+      onDismiss={() => setVisible(false)}
     >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SNAP_POINTS}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          activeOffsetY={[-10, 10]}
-          failOffsetX={[-5, 5]}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          handleIndicatorStyle={handleIndicator}
-          onChange={handleChange}
-        >
           <View style={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
             <View style={styles.body}>
               <Text style={[styles.title, { color: isDark ? '#F9FAFB' : '#111827' }]}>
@@ -134,9 +125,7 @@ const ConfirmUpdateProfileBottomSheetBase = forwardRef<
               </View>
             </View>
           </View>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 

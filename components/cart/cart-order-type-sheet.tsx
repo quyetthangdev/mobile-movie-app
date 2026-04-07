@@ -1,17 +1,15 @@
 import { colors } from '@/constants'
 import { type OrderTypeOption, useOrderTypeOptions } from '@/hooks/use-order-type-options'
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import { Bike, PackageCheck, UtensilsCrossed } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, StyleSheet, Text, View } from 'react-native'
-import {
-  GestureHandlerRootView,
-  TouchableOpacity,
-} from 'react-native-gesture-handler'
+import { StyleSheet, Text, View } from 'react-native'
+import { TouchableOpacity } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const ORDER_TYPE_SHEET_BASE_HEIGHT = 280
@@ -27,7 +25,7 @@ export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
   isDark: boolean
   primaryColor: string
 }) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { t } = useTranslation('menu')
   const { bottom: bottomInset } = useSafeAreaInsets()
   // Fetch feature flags only when sheet is visible — defer pattern
@@ -49,33 +47,28 @@ export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
     ),
     [],
   )
-  const handleSheetChange = useCallback(
-    (index: number) => { if (index === -1) onClose() },
-    [onClose],
-  )
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
 
   const handleSelect = useCallback((value: string) => {
     selectType(value)
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
   }, [selectType])
 
-  if (!visible) return null
-
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={() => sheetRef.current?.close()}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={snapPoints}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          onChange={handleSheetChange}
-        >
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      onDismiss={onClose}
+    >
           <View style={[orderTypeSheetStyles.content, { paddingBottom: bottomInset }]}>
             <Text style={[orderTypeSheetStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
               {t('menu.orderType')}
@@ -114,9 +107,7 @@ export const SimpleOrderTypeSheet = memo(function SimpleOrderTypeSheet({
               )
             })}
           </View>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 

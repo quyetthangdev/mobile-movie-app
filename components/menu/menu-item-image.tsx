@@ -1,8 +1,9 @@
 import { Image } from 'expo-image'
 import React from 'react'
-import { Image as RNImage, StyleSheet, View } from 'react-native'
+import { Image as RNImage, StyleSheet, View, useColorScheme } from 'react-native'
 
 import { Images } from '@/assets/images'
+import { colors } from '@/constants'
 
 type MenuItemImageProps = {
   id: string
@@ -10,6 +11,7 @@ type MenuItemImageProps = {
   isEnabled?: boolean
   transitionMs?: number
   priority: 'high' | 'normal'
+  borderRadius?: number
 }
 
 const MENU_ITEM_BLURHASH = '|rF?hV%2WCj[ayj[a}ayfQfQfQfQj[j[fQfQfQfQfQfQfQfQfQ'
@@ -20,10 +22,14 @@ function MenuItemImageBase({
   isEnabled = true,
   transitionMs = 0,
   priority,
+  borderRadius,
 }: MenuItemImageProps) {
+  const isDark = useColorScheme() === 'dark'
+  const placeholderBg = isDark ? colors.gray[700] : colors.gray[100]
+
   // Phase gate chưa ready — giữ View trống để tránh decode storm khi enter tab
   if (!isEnabled) {
-    return <View style={styles.placeholder} />
+    return <View style={[styles.placeholder, { backgroundColor: placeholderBg, borderRadius }]} />
   }
 
   // Không có URL — dùng ảnh mặc định
@@ -31,7 +37,7 @@ function MenuItemImageBase({
     return (
       <RNImage
         source={Images.Food.DefaultProductImage}
-        style={styles.image}
+        style={[styles.image, borderRadius != null ? { borderRadius } : null]}
         resizeMode="cover"
       />
     )
@@ -40,7 +46,7 @@ function MenuItemImageBase({
   return (
     <Image
       source={{ uri: imageUrl }}
-      style={styles.image}
+      style={[styles.image, borderRadius != null ? { borderRadius } : null]}
       contentFit="cover"
       transition={transitionMs}
       placeholder={MENU_ITEM_BLURHASH}
@@ -60,7 +66,8 @@ function areEqual(prev: MenuItemImageProps, next: MenuItemImageProps) {
     prev.imageUrl === next.imageUrl &&
     prev.isEnabled === next.isEnabled &&
     prev.transitionMs === next.transitionMs &&
-    prev.priority === next.priority
+    prev.priority === next.priority &&
+    prev.borderRadius === next.borderRadius
   )
 }
 
@@ -74,6 +81,5 @@ const styles = StyleSheet.create({
   placeholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#f3f4f6',
   },
 })

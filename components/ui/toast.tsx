@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle, Info, XCircle } from 'lucide-react-native'
 import React, { useEffect } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, useColorScheme, View } from 'react-native'
 import Animated, {
   cancelAnimation,
   runOnJS,
@@ -10,9 +10,9 @@ import Animated, {
   withSequence,
   withSpring,
 } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SPRING_CONFIGS, colors } from '@/constants'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ToastData {
   id: string
@@ -27,34 +27,36 @@ interface ToastItemProps {
   onHide: (id: string) => void
 }
 
+const ICON_MAP = {
+  error:   <XCircle   size={16} color="#dc2626" />,
+  success: <CheckCircle size={16} color="#16a34a" />,
+  warning: <AlertCircle size={16} color="#d97706" />,
+  info:    <Info       size={16} color="#2563eb" />,
+} as const
+
 const ToastItem = React.memo(function ToastItem({ toast, onHide }: ToastItemProps) {
-  // Shared values for UI thread animations
-  const translateY = useSharedValue(-100)
-  const opacity = useSharedValue(0)
-  const insets = useSafeAreaInsets()
+  const translateY = useSharedValue(-80)
+  const opacity    = useSharedValue(0)
+  const insets     = useSafeAreaInsets()
+  const isDark     = useColorScheme() === 'dark'
 
   useEffect(() => {
-    // Reset values
-    translateY.value = -100
-    opacity.value = 0
+    translateY.value = -80
+    opacity.value    = 0
 
-    const delayMs = toast.duration * 1000
+    const delayMs    = toast.duration * 1000
     const hideCallback = (finished?: boolean) => {
       'worklet'
       if (finished) runOnJS(onHide)(toast.id)
     }
 
-    // Chuỗi: enter → delay → exit → callback. Toàn bộ trên UI thread, tránh setTimeout đánh thức JS.
     translateY.value = withSequence(
       withSpring(0, SPRING_CONFIGS.modal),
-      withDelay(delayMs, withSpring(-100, SPRING_CONFIGS.modal)),
+      withDelay(delayMs, withSpring(-80, SPRING_CONFIGS.modal)),
     )
     opacity.value = withSequence(
       withSpring(1, SPRING_CONFIGS.modal),
-      withDelay(
-        delayMs,
-        withSpring(0, SPRING_CONFIGS.modal, hideCallback),
-      ),
+      withDelay(delayMs, withSpring(0, SPRING_CONFIGS.modal, hideCallback)),
     )
     return () => {
       cancelAnimation(translateY)
@@ -63,91 +65,60 @@ const ToastItem = React.memo(function ToastItem({ toast, onHide }: ToastItemProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast.id, toast.duration, onHide])
 
-//   const getToastStyle = () => {
-//     switch (toast.type) {
-//       case 'error':
-//         return 'bg-red-50 border-red-200'
-//       case 'success':
-//         return 'bg-green-50 border-green-200'
-//       case 'warning':
-//         return 'bg-yellow-50 border-yellow-200'
-//       default:
-//         return 'bg-blue-50 border-blue-200'
-//     }
-//   }
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
+  }))
 
-//   const getTextColor = () => {
-//     switch (toast.type) {
-//       case 'error':
-//         return 'text-red-900'
-//       case 'success':
-//         return 'text-green-900'
-//       case 'warning':
-//         return 'text-yellow-900'
-//       default:
-//         return 'text-blue-900'
-//     }
-//   }
-
-  const getIcon = () => {
-    switch (toast.type) {
-      case 'error':
-        return <XCircle size={20} color={colors.destructive.dark} fill={`${colors.destructive.dark}20`} />
-      case 'success':
-        return <CheckCircle size={20} color="#16a34a" fill="#16a34a20" />
-      case 'warning':
-        return <AlertCircle size={20} color="#ca8a04" fill="#ca8a0420" />
-      default:
-        return <Info size={20} color="#2563eb" fill="#2563eb20" />
-    }
-  }
-
-  // Animated style running on UI thread
-  const animatedStyle = useAnimatedStyle(() => {
-    'worklet'
-    return {
-      transform: [{ translateY: translateY.value }],
-      opacity: opacity.value,
-    }
-  })
+  const bg = isDark ? colors.gray[800] : '#ffffff'
+  const textColor = isDark ? colors.gray[50] : colors.gray[900]
 
   return (
     <Animated.View
-      style={[
-        styles.toastContainer,
-        {
-          top: insets.top + 10,
-        },
-        animatedStyle,
-      ]}
-      className="pointer-events-none"
+      style={[s.container, { top: insets.top + 12 }, animatedStyle]}
+      pointerEvents="none"
     >
-      <View className="p-3 rounded-full shadow-lg bg-white dark:bg-gray-800" style={styles.toastContent}>
-        <View className="flex-row gap-2 items-center">
-          {getIcon()}
-          {toast.message && (
-            <Text className={`text-sm`}>{toast.message}</Text>
-          )}
-        </View>
+      <View style={[s.pill, { backgroundColor: bg }]}>
+        {ICON_MAP[toast.type]}
+        {toast.message ? (
+          <Text style={[s.message, { color: textColor }]} numberOfLines={2}>
+            {toast.message}
+          </Text>
+        ) : null}
       </View>
     </Animated.View>
   )
 })
 
-const styles = StyleSheet.create({
-  toastContainer: {
+const s = StyleSheet.create({
+  container: {
     position: 'absolute',
     left: 0,
     right: 0,
     zIndex: 9999,
     alignItems: 'center',
   },
-  toastContent: {
-    alignSelf: 'center',
-    paddingHorizontal: 16,
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 999,
+    maxWidth: 320,
+    // Shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  message: {
+    fontSize: 14,
+    fontWeight: '500',
+    flexShrink: 1,
   },
 })
 
 export default ToastItem
 export type { ToastData }
-

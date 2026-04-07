@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
+import { colors } from '@/constants'
 
 interface GlobalLoadingOverlayProps {
   visible: boolean
@@ -31,7 +32,7 @@ export function GlobalLoadingOverlay({ visible }: GlobalLoadingOverlayProps) {
       style={[
         styles.overlay,
         {
-          backgroundColor: '#ffffff',
+          backgroundColor: isDark ? colors.background.dark : colors.background.light,
           bottom: 0, // Full-screen overlay, không còn hở phần xám bên dưới
         },
       ]}
@@ -44,7 +45,7 @@ export function GlobalLoadingOverlay({ visible }: GlobalLoadingOverlayProps) {
         />
         <ActivityIndicator
           size="large"
-          color={isDark ? '#F7A737' : '#e50914'}
+          color={isDark ? colors.primary.dark : colors.primary.light}
           style={styles.spinner}
         />
       </View>

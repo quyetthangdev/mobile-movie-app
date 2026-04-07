@@ -48,14 +48,19 @@ const BranchRow = React.memo(function BranchRow({
     [item.slug, onSelect],
   )
 
+  const textColor = isDark ? colors.gray[50] : colors.gray[900]
+  const mutedColor = isDark ? colors.gray[400] : colors.gray[500]
+  const borderColor = isDark ? colors.gray[700] : colors.gray[100]
+  const selectedBg = isDark ? colors.gray[700] : colors.gray[50]
+
   return (
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.7}
       style={[
         styles.branchRow,
-        !isLast && styles.branchRowBorder,
-        isSelected && styles.branchRowSelected,
+        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: borderColor },
+        isSelected && { backgroundColor: selectedBg },
       ]}
     >
       <View style={styles.pinWrap}>
@@ -64,14 +69,14 @@ const BranchRow = React.memo(function BranchRow({
       <View style={styles.branchInfo}>
         <View style={styles.branchNameRow}>
           <Text
-            style={[styles.branchName, isSelected && { color: primaryColor }]}
+            style={[styles.branchName, { color: isSelected ? primaryColor : textColor }]}
             numberOfLines={1}
           >
             {item.name}
           </Text>
           {isSelected && <Check size={16} color={primaryColor} />}
         </View>
-        <Text style={styles.branchAddress} numberOfLines={2}>
+        <Text style={[styles.branchAddress, { color: mutedColor }]} numberOfLines={2}>
           {item.address}
         </Text>
       </View>
@@ -127,7 +132,9 @@ function SelectBranchDropdown() {
           <Text
             style={[
               styles.triggerText,
-              !branch?.name && styles.triggerPlaceholder,
+              { color: branch?.name
+                ? (isDark ? colors.gray[50] : colors.gray[900])
+                : (isDark ? colors.gray[400] : colors.gray[500]) },
             ]}
             numberOfLines={1}
           >
@@ -137,8 +144,8 @@ function SelectBranchDropdown() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent sideOffset={8}>
-        <View style={styles.contentHeader}>
-          <Text style={styles.contentHeaderText}>
+        <View style={[styles.contentHeader, { borderBottomColor: isDark ? colors.gray[700] : colors.gray[200] }]}>
+          <Text style={[styles.contentHeaderText, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
             {t('branch.chooseBranch', 'Chọn chi nhánh')}
           </Text>
         </View>
@@ -155,7 +162,7 @@ function SelectBranchDropdown() {
             ))
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
                 {fetchEnabled
                   ? t('branch.noBranches', 'Không có chi nhánh nào')
                   : '...'}
@@ -185,22 +192,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: colors.gray[900],
-  },
-  triggerPlaceholder: {
-    color: colors.gray[500],
-    fontWeight: '400',
   },
   contentHeader: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.gray[200],
   },
   contentHeaderText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.gray[900],
   },
   branchList: {
     maxHeight: 400,
@@ -211,13 +211,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
-  },
-  branchRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.gray[100],
-  },
-  branchRowSelected: {
-    backgroundColor: colors.gray[50],
   },
   pinWrap: {
     marginTop: 2,
@@ -235,11 +228,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: colors.gray[900],
   },
   branchAddress: {
     fontSize: 12,
-    color: colors.gray[500],
     lineHeight: 16,
   },
   emptyState: {
@@ -249,6 +240,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: colors.gray[500],
   },
 })

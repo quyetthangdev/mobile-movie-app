@@ -2,9 +2,10 @@
  * GiftCardOrderDetailSheet — ZaloPay-style chi tiết đơn mua thẻ quà tặng.
  * Hero căn giữa → info card → gift cards list (nếu có)
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
@@ -21,14 +22,12 @@ import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   Clipboard,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   useColorScheme,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors, GiftCardType } from '@/constants'
@@ -131,7 +130,7 @@ export const GiftCardOrderDetailSheet = memo(function GiftCardOrderDetailSheet({
   orderSlug,
   onClose,
 }: GiftCardOrderDetailSheetProps) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { bottom } = useSafeAreaInsets()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
@@ -142,8 +141,8 @@ export const GiftCardOrderDetailSheet = memo(function GiftCardOrderDetailSheet({
   )
 
   useEffect(() => {
-    if (visible) sheetRef.current?.expand()
-    else sheetRef.current?.close()
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
   }, [visible])
 
   const renderBackdrop = useCallback(
@@ -189,21 +188,16 @@ export const GiftCardOrderDetailSheet = memo(function GiftCardOrderDetailSheet({
   const giftCards = order?.giftCards ?? []
   const hasGiftCards = giftCards.length > 0 && order?.type === GiftCardType.BUY
 
-  if (!visible) return null
-
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
+        <BottomSheetModal
           ref={sheetRef}
-          index={0}
           snapPoints={SNAP_POINTS}
           enablePanDownToClose
           enableDynamicSizing={false}
           backdropComponent={renderBackdrop}
           backgroundStyle={{ backgroundColor: bg }}
           handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-          onChange={(i) => { if (i === -1) onClose() }}
+          onDismiss={onClose}
         >
           <BottomSheetScrollView
             contentContainerStyle={[s.content, { paddingBottom: bottom + 24 }]}
@@ -325,9 +319,7 @@ export const GiftCardOrderDetailSheet = memo(function GiftCardOrderDetailSheet({
               </>
             )}
           </BottomSheetScrollView>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+        </BottomSheetModal>
   )
 })
 

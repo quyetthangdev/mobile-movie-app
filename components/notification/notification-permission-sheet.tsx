@@ -5,15 +5,15 @@
  * Platform-specific instructions (Android Settings / iOS Settings).
  * Dismiss → lưu flag, không hiện lại session này.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import { Bell, Settings } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Linking,
-  Modal,
 
   Platform,
   Pressable,
@@ -22,7 +22,6 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
@@ -36,7 +35,7 @@ interface Props {
 
 export const NotificationPermissionSheet = memo(
   function NotificationPermissionSheet({ visible, onClose }: Props) {
-    const sheetRef = useRef<BottomSheet>(null)
+    const sheetRef = useRef<BottomSheetModal>(null)
     const isDark = useColorScheme() === 'dark'
     const { bottom: bottomInset } = useSafeAreaInsets()
 
@@ -47,12 +46,13 @@ export const NotificationPermissionSheet = memo(
       [isDark],
     )
 
-    const handleChange = useCallback(
-      (index: number) => {
-        if (index === -1) onClose()
-      },
-      [onClose],
-    )
+    useEffect(() => {
+      if (visible) {
+        sheetRef.current?.present()
+      } else {
+        sheetRef.current?.dismiss()
+      }
+    }, [visible])
 
     const renderBackdrop = useCallback(
       (props: BottomSheetBackdropProps) => (
@@ -72,29 +72,18 @@ export const NotificationPermissionSheet = memo(
       onClose()
     }, [onClose])
 
-    if (!visible) return null
-
     return (
-      <Modal
-        transparent
-        visible
-        statusBarTranslucent
-        animationType="none"
-        onRequestClose={() => sheetRef.current?.close()}
+      <BottomSheetModal
+        ref={sheetRef}
+        snapPoints={SNAP}
+        enablePanDownToClose
+        enableContentPanningGesture={false}
+        enableHandlePanningGesture
+        enableDynamicSizing={false}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={bgStyle}
+        onDismiss={onClose}
       >
-        <GestureHandlerRootView style={s.flex}>
-          <BottomSheet
-            ref={sheetRef}
-            index={0}
-            snapPoints={SNAP}
-            enablePanDownToClose
-            enableContentPanningGesture={false}
-            enableHandlePanningGesture
-            enableDynamicSizing={false}
-            backdropComponent={renderBackdrop}
-            backgroundStyle={bgStyle}
-            onChange={handleChange}
-          >
             <View style={[s.content, { paddingBottom: bottomInset + 8 }]}>
               <View style={s.body}>
                 <View
@@ -175,15 +164,12 @@ export const NotificationPermissionSheet = memo(
                 </Pressable>
               </View>
             </View>
-          </BottomSheet>
-        </GestureHandlerRootView>
-      </Modal>
+      </BottomSheetModal>
     )
   },
 )
 
 const s = StyleSheet.create({
-  flex: { flex: 1 },
   content: {
     flex: 1,
     paddingHorizontal: 20,

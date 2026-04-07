@@ -1,11 +1,11 @@
+import { Image } from 'expo-image'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Image as RNImage, Text, View } from 'react-native'
-import { Image } from 'expo-image'
 
 import { Images } from '@/assets/images'
-import { publicFileURL, ROUTE } from '@/constants'
 import { NativeGesturePressable } from '@/components/navigation'
+import { publicFileURL, ROUTE } from '@/constants'
 import { useIsMobile, usePressInPrefetchMenuItem } from '@/hooks'
 import { useGhostMount } from '@/lib/navigation'
 import { IMenuItem, IProduct } from '@/types'
@@ -79,7 +79,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
   const hasPromotion = item.promotion && item.promotion.value > 0
 
   return (
-    <View className="flex-row sm:flex-col justify-between bg-white border border-gray-200 dark:border-gray-700 rounded-xl min-h-[2rem] dark:bg-gray-800 overflow-hidden">
+    <View className="flex-row sm:flex-col justify-between border border-gray-200 dark:border-gray-700 rounded-xl min-h-[2rem] dark:bg-gray-800 overflow-hidden">
       {/* Image */}
       <NativeGesturePressable
         navigation={{
@@ -141,7 +141,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
       <View className="flex-1 flex-col justify-between px-2 py-3">
         {isMobile ? (
           <View className="flex-col gap-2 items-start">
-            <Text className="flex-1 text-lg font-bold py-1" numberOfLines={1}>
+            <Text className="flex-1 text-lg font-bold py-1 text-foreground" numberOfLines={1}>
               {item.product.name}
             </Text>
             {item.product.isLimit && (
@@ -154,7 +154,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
           </View>
         ) : (
           <View className="h-auto sm:h-fit py-1">
-            <Text className="text-base text-lg font-bold" numberOfLines={1}>
+            <Text className="text-base text-lg font-bold text-foreground" numberOfLines={1}>
               {item.product.name}
             </Text>
           </View>

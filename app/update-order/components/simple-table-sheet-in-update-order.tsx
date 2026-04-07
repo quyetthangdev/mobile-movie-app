@@ -1,13 +1,13 @@
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import { CheckCircle } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { colors } from '@/constants'
 import { useTables } from '@/hooks'
@@ -29,7 +29,7 @@ export const SimpleTableSheetInUpdateOrder = memo(
     isDark: boolean
     primaryColor: string
   }) {
-    const sheetRef = useRef<BottomSheet>(null)
+    const sheetRef = useRef<BottomSheetModal>(null)
     const { t } = useTranslation('table')
 
     const selectedTableSlug = useOrderFlowStore(
@@ -54,7 +54,7 @@ export const SimpleTableSheetInUpdateOrder = memo(
     const handleSelect = useCallback(
       (table: ITable) => {
         setDraftTable(table)
-        sheetRef.current?.close()
+        sheetRef.current?.dismiss()
       },
       [setDraftTable],
     )
@@ -77,36 +77,26 @@ export const SimpleTableSheetInUpdateOrder = memo(
       [],
     )
 
-    const handleChange = useCallback(
-      (index: number) => {
-        if (index === -1) onClose()
-      },
-      [onClose],
-    )
-
-    if (!visible) return null
+    useEffect(() => {
+      if (visible) {
+        sheetRef.current?.present()
+      } else {
+        sheetRef.current?.dismiss()
+      }
+    }, [visible])
 
     return (
-      <Modal
-        transparent
-        visible
-        statusBarTranslucent
-        animationType="none"
-        onRequestClose={() => sheetRef.current?.close()}
+      <BottomSheetModal
+        ref={sheetRef}
+        snapPoints={SNAP_POINTS}
+        enablePanDownToClose
+        enableContentPanningGesture={false}
+        enableHandlePanningGesture
+        enableDynamicSizing={false}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={bgStyle}
+        onDismiss={onClose}
       >
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <BottomSheet
-            ref={sheetRef}
-            index={0}
-            snapPoints={SNAP_POINTS}
-            enablePanDownToClose
-            enableContentPanningGesture={false}
-            enableHandlePanningGesture
-            enableDynamicSizing={false}
-            backdropComponent={renderBackdrop}
-            backgroundStyle={bgStyle}
-            onChange={handleChange}
-          >
             <BottomSheetScrollView
               style={s.scrollView}
               showsVerticalScrollIndicator={false}
@@ -186,9 +176,7 @@ export const SimpleTableSheetInUpdateOrder = memo(
 
               <View style={{ height: 20 }} />
             </BottomSheetScrollView>
-          </BottomSheet>
-        </GestureHandlerRootView>
-      </Modal>
+      </BottomSheetModal>
     )
   },
 )

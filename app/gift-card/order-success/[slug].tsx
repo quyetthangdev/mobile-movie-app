@@ -239,38 +239,52 @@ const rr = StyleSheet.create({
 
 function OrderStatusBadge({ status }: { status: string }) {
   const { t } = useTranslation('giftCard')
-  switch (status) {
-    case CardOrderStatus.COMPLETED:
-      return (
-        <View style={[sb.wrap, { backgroundColor: '#dcfce7' }]}>
-          <CheckCircle2 size={12} color="#16a34a" />
-          <Text style={[sb.text, { color: '#16a34a' }]}>{t('orderStatus.completed')}</Text>
-        </View>
-      )
-    case CardOrderStatus.PENDING:
-      return (
-        <View style={[sb.wrap, { backgroundColor: '#fef3c7' }]}>
-          <Clock size={12} color="#d97706" />
-          <Text style={[sb.text, { color: '#d97706' }]}>{t('orderStatus.pending')}</Text>
-        </View>
-      )
-    case CardOrderStatus.FAILED:
-      return (
-        <View style={[sb.wrap, { backgroundColor: '#fee2e2' }]}>
-          <XCircle size={12} color="#dc2626" />
-          <Text style={[sb.text, { color: '#dc2626' }]}>{t('orderStatus.failed')}</Text>
-        </View>
-      )
-    case CardOrderStatus.CANCELLED:
-      return (
-        <View style={[sb.wrap, { backgroundColor: '#f3f4f6' }]}>
-          <XCircle size={12} color="#6b7280" />
-          <Text style={[sb.text, { color: '#6b7280' }]}>{t('orderStatus.cancelled')}</Text>
-        </View>
-      )
-    default:
-      return null
-  }
+  const isDark = useColorScheme() === 'dark'
+
+  type BadgeConfig = { bg: string; fg: string; Icon: typeof CheckCircle2; label: string }
+  const config: BadgeConfig | null = (() => {
+    switch (status) {
+      case CardOrderStatus.COMPLETED:
+        return {
+          bg: isDark ? colors.success.bgDark : colors.success.bgLight,
+          fg: isDark ? colors.success.dark : colors.success.light,
+          Icon: CheckCircle2,
+          label: t('orderStatus.completed'),
+        }
+      case CardOrderStatus.PENDING:
+        return {
+          bg: isDark ? colors.warning.bgDark : colors.warning.bgLight,
+          fg: isDark ? colors.warning.dark : colors.warning.textLight,
+          Icon: Clock,
+          label: t('orderStatus.pending'),
+        }
+      case CardOrderStatus.FAILED:
+        return {
+          bg: isDark ? 'rgba(127,29,29,0.25)' : '#fee2e2',
+          fg: isDark ? colors.destructive.dark : colors.destructive.light,
+          Icon: XCircle,
+          label: t('orderStatus.failed'),
+        }
+      case CardOrderStatus.CANCELLED:
+        return {
+          bg: isDark ? colors.gray[800] : colors.gray[100],
+          fg: isDark ? colors.gray[400] : colors.gray[500],
+          Icon: XCircle,
+          label: t('orderStatus.cancelled'),
+        }
+      default:
+        return null
+    }
+  })()
+
+  if (!config) return null
+  const { bg, fg, Icon, label } = config
+  return (
+    <View style={[sb.wrap, { backgroundColor: bg }]}>
+      <Icon size={12} color={fg} />
+      <Text style={[sb.text, { color: fg }]}>{label}</Text>
+    </View>
+  )
 }
 
 const sb = StyleSheet.create({

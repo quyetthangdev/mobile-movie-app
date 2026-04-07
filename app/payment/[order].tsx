@@ -526,7 +526,7 @@ function PaymentPageContent() {
 
   // Coin balance — chỉ fetch khi logged in + order PENDING
   const { balance: coinBalance, refetch: refetchCoinBalance } =
-    useCoinBalance(isLoggedIn && order?.status === OrderStatus.PENDING)
+    useCoinBalance(isLoggedIn)
 
   // Loyalty points — chỉ fetch khi logged in + order PENDING
   const loyaltyData = useLoyaltyPoints(

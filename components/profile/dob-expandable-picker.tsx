@@ -1,7 +1,9 @@
 /**
  * Date of birth picker dạng xổ xuống inline với animation.
  * Bấm button để mở/đóng, DatePicker hiển thị bên dưới với animation.
+ * Dùng @react-native-community/datetimepicker (tương thích iOS 26+).
  */
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { colors } from '@/constants'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
@@ -13,7 +15,6 @@ import {
   View,
   useColorScheme,
 } from 'react-native'
-import DatePicker from 'react-native-date-picker'
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -23,7 +24,7 @@ import Animated, {
 
 dayjs.extend(customParseFormat)
 
-const PICKER_HEIGHT = 220
+const PICKER_HEIGHT = 216
 const ANIM_DURATION = 220
 
 /** Chuẩn hóa dob từ API (DD/MM/YYYY hoặc YYYY-MM-DD) sang YYYY-MM-DD */
@@ -96,7 +97,9 @@ export function DobExpandablePicker({
   }, [expanded, progress])
 
   const handleDateChange = useCallback(
-    (d: Date) => onSelect(dayjs(d).format('YYYY-MM-DD')),
+    (_: unknown, d?: Date) => {
+      if (d) onSelect(dayjs(d).format('YYYY-MM-DD'))
+    },
     [onSelect],
   )
 
@@ -130,12 +133,14 @@ export function DobExpandablePicker({
       </TouchableOpacity>
       <Animated.View style={[styles.pickerWrap, animatedStyle]}>
         <View style={styles.pickerInner}>
-          <DatePicker
+          <DateTimePicker
             mode="date"
-            date={safeDate}
-            onDateChange={handleDateChange}
-            maximumDate={dayjs().toDate()}
-            minimumDate={dayjs().subtract(120, 'year').toDate()}
+            value={safeDate}
+            display="spinner"
+            onChange={handleDateChange}
+            themeVariant={isDark ? 'dark' : 'light'}
+            maximumDate={new Date()}
+            style={styles.picker}
           />
         </View>
       </Animated.View>
@@ -161,5 +166,9 @@ const styles = StyleSheet.create({
   pickerInner: {
     height: PICKER_HEIGHT,
     alignItems: 'center',
+  },
+  picker: {
+    width: '100%',
+    height: PICKER_HEIGHT,
   },
 })

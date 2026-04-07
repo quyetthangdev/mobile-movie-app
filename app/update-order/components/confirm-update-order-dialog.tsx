@@ -1,22 +1,21 @@
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import { useQueryClient } from '@tanstack/react-query'
 import { formatCurrencyNative } from 'cart-price-calc'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   useColorScheme,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors, ROUTE } from '@/constants'
@@ -58,7 +57,7 @@ export default memo(function ConfirmUpdateOrderDialog({
   const { t: tToast } = useTranslation('toast')
   const [sheetVisible, setSheetVisible] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const queryClient = useQueryClient()
   const isDark = useColorScheme() === 'dark'
   const { bottom: bottomInset } = useSafeAreaInsets()
@@ -196,7 +195,7 @@ export default memo(function ConfirmUpdateOrderDialog({
       showToast(tToast('toast.updateOrderSuccess'))
       clearUpdatingData()
       queryClient.invalidateQueries({ queryKey: ['order', orderSlug] })
-      sheetRef.current?.close()
+      sheetRef.current?.dismiss()
       onSuccess?.()
       navigateNative.replace(
         `${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug)}` as Parameters<
@@ -228,16 +227,17 @@ export default memo(function ConfirmUpdateOrderDialog({
     ),
     [],
   )
-  const handleSheetChange = useCallback(
-    (index: number) => {
-      if (index === -1) setSheetVisible(false)
-    },
-    [],
-  )
+  useEffect(() => {
+    if (sheetVisible) {
+      sheetRef.current?.present()
+    } else {
+      sheetRef.current?.dismiss()
+    }
+  }, [sheetVisible])
 
   const labelColor = isDark ? colors.gray[400] : colors.gray[500]
   const valueColor = isDark ? colors.gray[50] : colors.gray[900]
-  const dividerColor = isDark ? colors.gray[700] : '#e5e7eb'
+  const dividerColor = isDark ? colors.gray[700] : colors.border.light
 
   const orderTypeLabel =
     orderType === OrderTypeEnum.TAKE_OUT
@@ -264,27 +264,17 @@ export default memo(function ConfirmUpdateOrderDialog({
       </Pressable>
 
       {/* Bottom sheet */}
-      {sheetVisible && (
-        <Modal
-          transparent
-          visible
-          statusBarTranslucent
-          animationType="none"
-          onRequestClose={() => sheetRef.current?.close()}
-        >
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <BottomSheet
-              ref={sheetRef}
-              index={0}
-              snapPoints={SNAP_POINTS}
-              enablePanDownToClose
-              enableContentPanningGesture={false}
-              enableHandlePanningGesture
-              enableDynamicSizing={false}
-              backdropComponent={renderBackdrop}
-              backgroundStyle={bgStyle}
-              onChange={handleSheetChange}
-            >
+      <BottomSheetModal
+        ref={sheetRef}
+        snapPoints={SNAP_POINTS}
+        enablePanDownToClose
+        enableContentPanningGesture={false}
+        enableHandlePanningGesture
+        enableDynamicSizing={false}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={bgStyle}
+        onDismiss={() => setSheetVisible(false)}
+      >
               {/* Header */}
               <View style={[cd.sheetHeader, { borderBottomColor: dividerColor }]}>
                 <Text style={[cd.sheetTitle, { color: valueColor }]}>
@@ -352,20 +342,20 @@ export default memo(function ConfirmUpdateOrderDialog({
                   </View>
                   {(cartTotals?.promotionDiscount ?? 0) > 0 && (
                     <View style={cd.totalRow}>
-                      <Text style={{ fontSize: 13, color: '#eab308' }}>
+                      <Text style={{ fontSize: 13, color: isDark ? colors.warning.dark : colors.warning.textLight }}>
                         {t('order.promotionDiscount', 'Khuyến mãi')}
                       </Text>
-                      <Text style={{ fontSize: 13, color: '#eab308' }}>
+                      <Text style={{ fontSize: 13, color: isDark ? colors.warning.dark : colors.warning.textLight }}>
                         -{formatCurrencyNative(cartTotals?.promotionDiscount ?? 0)}
                       </Text>
                     </View>
                   )}
                   {(cartTotals?.voucherDiscount ?? 0) > 0 && (
                     <View style={cd.totalRow}>
-                      <Text style={{ fontSize: 13, color: '#22c55e' }}>
+                      <Text style={{ fontSize: 13, color: isDark ? colors.success.dark : colors.success.light }}>
                         {t('order.voucherDiscount', 'Voucher')}
                       </Text>
-                      <Text style={{ fontSize: 13, color: '#22c55e' }}>
+                      <Text style={{ fontSize: 13, color: isDark ? colors.success.dark : colors.success.light }}>
                         -{formatCurrencyNative(cartTotals?.voucherDiscount ?? 0)}
                       </Text>
                     </View>
@@ -404,7 +394,7 @@ export default memo(function ConfirmUpdateOrderDialog({
               {/* Footer */}
               <View style={[cd.footer, { paddingBottom: bottomInset + 8 }]}>
                 <Pressable
-                  onPress={() => sheetRef.current?.close()}
+                  onPress={() => sheetRef.current?.dismiss()}
                   style={[
                     cd.cancelBtn,
                     { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] },
@@ -431,10 +421,7 @@ export default memo(function ConfirmUpdateOrderDialog({
                   )}
                 </Pressable>
               </View>
-            </BottomSheet>
-          </GestureHandlerRootView>
-        </Modal>
-      )}
+      </BottomSheetModal>
     </>
   )
 })

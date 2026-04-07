@@ -1,3 +1,4 @@
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { shouldAutoRemoveVoucher } from '@/components/sheet/voucher-validation'
 import { useCartValidation } from '@/hooks/use-cart-validation'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -31,7 +32,7 @@ const ItemSeparator = () => <View style={listStyles.separator} />
 
 const listStyles = StyleSheet.create({
   root: { flex: 1 },
-  content: { paddingTop: 80, paddingBottom: 200 },
+  content: { paddingTop: STATIC_TOP_INSET + 60, paddingBottom: 200 },
   separator: { height: 10 },
 })
 

@@ -9,18 +9,18 @@
  * Local state only — committed to parent via onApply.
  * Re-mounts each open (parent renders null when !visible) → reads value prop fresh.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
 import { ArrowRight, CalendarDays, X } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import DatePicker from 'react-native-date-picker'
 import {
-  GestureHandlerRootView,
   TouchableOpacity as GHTouchable,
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -69,7 +69,7 @@ export const CoinFilterSheet = memo(function CoinFilterSheet({
   isDark,
 }: Props) {
   const insets = useSafeAreaInsets()
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { t } = useTranslation('profile')
   const { t: tCommon } = useTranslation('common')
 
@@ -94,6 +94,14 @@ export const CoinFilterSheet = memo(function CoinFilterSheet({
   const dateBg = isDark ? colors.gray[800] : colors.gray[50]
   const dateBorder = isDark ? colors.gray[700] : colors.gray[200]
 
+  useEffect(() => {
+    if (visible) {
+      sheetRef.current?.present()
+    } else {
+      sheetRef.current?.dismiss()
+    }
+  }, [visible])
+
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
@@ -107,51 +115,35 @@ export const CoinFilterSheet = memo(function CoinFilterSheet({
     [],
   )
 
-  const handleSheetChange = useCallback(
-    (index: number) => { if (index === -1) onClose() },
-    [onClose],
-  )
-
   const handleSelectType = useCallback((type: PointTransactionType | null) => {
     setLocalType(type)
   }, [])
 
   const handleApply = useCallback(() => {
     onApply({ type: localType, fromDate: localFromDate, toDate: localToDate })
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
   }, [localType, localFromDate, localToDate, onApply])
 
   const handleReset = useCallback(() => {
     onApply(DEFAULT_COIN_FILTER)
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
   }, [onApply])
 
-  if (!visible) return null
-
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={() => sheetRef.current?.close()}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={SNAP_POINTS}
+      enablePanDownToClose
+      enableDynamicSizing={false}
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{ backgroundColor: bg }}
+      handleIndicatorStyle={{
+        backgroundColor: isDark ? colors.gray[600] : colors.gray[300],
+      }}
+      onDismiss={onClose}
     >
-      <GestureHandlerRootView style={fs.root}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SNAP_POINTS}
-          enablePanDownToClose
-          enableDynamicSizing={false}
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          backdropComponent={renderBackdrop}
-          backgroundStyle={{ backgroundColor: bg }}
-          handleIndicatorStyle={{
-            backgroundColor: isDark ? colors.gray[600] : colors.gray[300],
-          }}
-          onChange={handleSheetChange}
-        >
           <View style={[fs.content, { paddingBottom: insets.bottom + 16 }]}>
 
             {/* ── Top group ──────────────────────────────────────────────── */}
@@ -346,16 +338,13 @@ export const CoinFilterSheet = memo(function CoinFilterSheet({
             cancelText={tCommon('cancel')}
             theme={isDark ? 'dark' : 'light'}
           />
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const fs = StyleSheet.create({
-  root: { flex: 1 },
   content: {
     flex: 1,
     paddingHorizontal: 20,

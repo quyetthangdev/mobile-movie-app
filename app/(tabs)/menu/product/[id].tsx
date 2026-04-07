@@ -27,7 +27,7 @@ import {
 import { ProductHeroImage } from '@/components/product/product-hero-image'
 import { ProductInfoCard } from '@/components/product/product-info-card'
 import { ProductPriceFooter } from '@/components/product/product-price-footer'
-import { OrderFlowStep } from '@/constants'
+import { OrderFlowStep, colors } from '@/constants'
 import { useSpecificMenuItem } from '@/hooks'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useOrderFlowStore, useUserStore } from '@/stores'
@@ -232,6 +232,11 @@ function ProductDetailContent() {
   )
 
   const handleAddToCart = useCallback(() => {
+    if (!useUserStore.getState().userInfo) {
+      router.push('/auth/login')
+      return
+    }
+
     // Read detail store at call time — zero subscriptions at root
     const detailState = useProductDetailSelectionStore.getState()
     const { selectedVariant: sv, quantity: qty, note: n } = detailState
@@ -286,7 +291,7 @@ function ProductDetailContent() {
     } catch {
       // Silent fail
     }
-  }, [menuItem, product, variants, smallestVariant, setSelection, t])
+  }, [menuItem, product, variants, smallestVariant, setSelection, t, router])
 
   const rootStyle = useMemo(
     () => [detailStyles.root, { backgroundColor: isDark ? '#000000' : '#ffffff' }],
@@ -307,7 +312,7 @@ function ProductDetailContent() {
       <Stack.Screen
         options={{
           statusBarStyle: 'light',
-          contentStyle: { backgroundColor: '#e5e7eb' },
+          contentStyle: { backgroundColor: isDark ? colors.gray[900] : colors.gray[200] },
         }}
       />
 

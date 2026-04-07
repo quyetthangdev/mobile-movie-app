@@ -14,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import LogoutSheetPortal from '@/components/profile/logout-sheet-portal'
 import ScanSheetPortal from '@/components/profile/scan-sheet-portal'
+import { applyTheme, useThemeStore } from '@/stores/theme.store'
 import { useBackHandlerForExit } from '@/hooks'
 import {
   setNavigationBarColorFixed,
@@ -123,6 +124,13 @@ const SPLASH_TIMEOUT_MS = 5000 // Fallback: ẩn splash sau 5s nếu font/init t
 function AppContent() {
   const [fontsLoaded, fontError] = useBeVietnamProFont()
   const ready = fontsLoaded || fontError
+  const savedTheme = useThemeStore((s) => s.theme)
+
+  // Apply saved theme on app start
+  useEffect(() => {
+    applyTheme(savedTheme as Parameters<typeof applyTheme>[0])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const profilerGlobal = globalThis as {

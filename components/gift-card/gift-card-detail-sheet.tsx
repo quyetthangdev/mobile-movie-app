@@ -2,9 +2,10 @@
  * GiftCardDetailSheet — bottom sheet chi tiết thẻ quà tặng.
  * snap: 70% | header đồng bộ với LoyaltyPointDetailSheet
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
@@ -14,14 +15,12 @@ import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   Clipboard,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   useColorScheme,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors, GiftCardUsageStatus } from '@/constants'
@@ -35,12 +34,6 @@ import { showErrorToast, showToast } from '@/utils/toast'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SNAP_POINTS = ['70%']
-
-const _STATUS_CFG = {
-  [GiftCardUsageStatus.AVAILABLE]: { bg: '#dcfce7', text: '#16a34a', label: '' },
-  [GiftCardUsageStatus.USED]:      { bg: '', text: '', label: '' },
-  [GiftCardUsageStatus.EXPIRED]:   { bg: '#fee2e2', text: '#dc2626', label: '' },
-}
 
 // ─── Copy row ─────────────────────────────────────────────────────────────────
 
@@ -76,10 +69,10 @@ function CopyRow({
       <Pressable
         onPress={handleCopy}
         hitSlop={8}
-        style={[cr.btn, { backgroundColor: copied ? '#dcfce7' : `${primaryColor}15` }]}
+        style={[cr.btn, { backgroundColor: copied ? (isDark ? colors.success.bgDark : colors.success.bgLight) : `${primaryColor}15` }]}
       >
         {copied
-          ? <Check size={14} color="#16a34a" />
+          ? <Check size={14} color={isDark ? colors.success.dark : colors.success.light} />
           : <Copy size={14} color={primaryColor} />}
       </Pressable>
     </View>
@@ -109,7 +102,7 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
   giftCardSlug,
   onClose,
 }: GiftCardDetailSheetProps) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { bottom } = useSafeAreaInsets()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
@@ -124,8 +117,8 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
   const { mutate: redeem, isPending: isRedeeming } = useRedeemGiftCard()
 
   useEffect(() => {
-    if (visible) sheetRef.current?.expand()
-    else sheetRef.current?.close()
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
   }, [visible])
 
   const renderBackdrop = useCallback(
@@ -164,10 +157,10 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
   const statusCfg = useMemo(() => {
     if (!card) return null
     if (card.status === GiftCardUsageStatus.AVAILABLE)
-      return { bg: '#dcfce7', text: '#16a34a', label: t('status.available') }
+      return { bg: isDark ? colors.success.bgDark : colors.success.bgLight, text: isDark ? colors.success.dark : colors.success.light, label: t('status.available') }
     if (card.status === GiftCardUsageStatus.USED)
       return { bg: isDark ? colors.gray[700] : colors.gray[200], text: isDark ? colors.gray[400] : colors.gray[500], label: t('status.used') }
-    return { bg: '#fee2e2', text: '#dc2626', label: t('status.expired') }
+    return { bg: isDark ? 'rgba(127,29,29,0.25)' : '#fee2e2', text: isDark ? colors.destructive.dark : colors.destructive.light, label: t('status.expired') }
   }, [card, isDark, t])
 
   const formattedCreated = card?.createdAt
@@ -182,21 +175,16 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
     return isAvailable && days > 0 ? `${date} · còn ${days} ngày` : date
   })()
 
-  if (!visible) return null
-
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
+        <BottomSheetModal
           ref={sheetRef}
-          index={0}
           snapPoints={SNAP_POINTS}
           enablePanDownToClose
           enableDynamicSizing={false}
           backdropComponent={renderBackdrop}
           backgroundStyle={{ backgroundColor: bg }}
           handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-          onChange={(i) => { if (i === -1) onClose() }}
+          onDismiss={onClose}
         >
           <BottomSheetScrollView
             contentContainerStyle={[s.content, { paddingBottom: isAvailable ? 16 : bottom + 24 }]}
@@ -287,9 +275,7 @@ export const GiftCardDetailSheet = memo(function GiftCardDetailSheet({
               </Pressable>
             </View>
           )}
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+        </BottomSheetModal>
   )
 })
 

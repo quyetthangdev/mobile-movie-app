@@ -12,15 +12,15 @@ import {
 import { useOrderFlowStore, useUserStore } from '@/stores'
 import type { IOrderItem, IVoucher } from '@/types'
 import { calculateOrderDisplayAndTotals, showToast, transformOrderItemToOrderDetail } from '@/utils'
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal, StyleSheet } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { StyleSheet } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { InvalidList } from './invalid-list'
@@ -44,7 +44,7 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
   isDark,
   primaryColor,
 }: VoucherSheetInUpdateOrderProps) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const insets = useSafeAreaInsets()
 
   // ── Store ─────────────────────────────────────────────────────────────────
@@ -272,18 +272,21 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
     ),
     [],
   )
-  const handleChange = useCallback(
-    (index: number) => {
-      if (index === -1) {
-        setCode('')
-        setSearchCode('')
-        setSelectedVoucher(null)
-        setConditionVoucher(null)
-        onClose()
-      }
-    },
-    [onClose],
-  )
+  useEffect(() => {
+    if (visible) {
+      sheetRef.current?.present()
+    } else {
+      sheetRef.current?.dismiss()
+    }
+  }, [visible])
+
+  const handleDismiss = useCallback(() => {
+    setCode('')
+    setSearchCode('')
+    setSelectedVoucher(null)
+    setConditionVoucher(null)
+    onClose()
+  }, [onClose])
 
   const handleSearch = useCallback(() => {
     const trimmed = code.trim()
@@ -299,7 +302,7 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
     if (isCurrentApplied) {
       removeDraftVoucher()
       showToast('Đã gỡ mã giảm giá')
-      sheetRef.current?.close()
+      sheetRef.current?.dismiss()
     } else if (selectedVoucher) {
       setValidating(true)
       validateVoucher(
@@ -319,7 +322,7 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
           onSuccess: () => {
             setDraftVoucher(selectedVoucher)
             showToast('Áp dụng mã giảm giá thành công')
-            sheetRef.current?.close()
+            sheetRef.current?.dismiss()
           },
           onError: () => {
             showToast('Voucher không hợp lệ')
@@ -328,7 +331,7 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
         },
       )
     } else {
-      sheetRef.current?.close()
+      sheetRef.current?.dismiss()
     }
   }, [
     isCurrentApplied,
@@ -340,33 +343,23 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
     userSlug,
   ])
 
-  if (!visible) return null
-
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={() => sheetRef.current?.close()}
-    >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SNAP}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          activeOffsetY={[-10, 10]}
-          failOffsetX={[-5, 5]}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          handleIndicatorStyle={indicatorStyle}
-          onChange={handleChange}
-          android_keyboardInputMode="adjustResize"
-        >
+    <>
+      <BottomSheetModal
+        ref={sheetRef}
+        snapPoints={SNAP}
+        enablePanDownToClose
+        enableContentPanningGesture={false}
+        enableHandlePanningGesture
+        enableDynamicSizing={false}
+        activeOffsetY={[-10, 10]}
+        failOffsetX={[-5, 5]}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={bgStyle}
+        handleIndicatorStyle={indicatorStyle}
+        onDismiss={handleDismiss}
+        android_keyboardInputMode="adjustResize"
+      >
           <SearchHeader
             code={code}
             onChangeCode={setCode}
@@ -419,19 +412,18 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
             primaryColor={primaryColor}
             bottomInset={insets.bottom}
           />
-        </BottomSheet>
+      </BottomSheetModal>
 
-        <VoucherConditionModal
-          voucher={conditionVoucher}
-          onClose={() => setConditionVoucher(null)}
-          isDark={isDark}
-          primaryColor={primaryColor}
-          bgStyle={bgStyle}
-          indicatorStyle={indicatorStyle}
-          bottomInset={insets.bottom}
-        />
-      </GestureHandlerRootView>
-    </Modal>
+      <VoucherConditionModal
+        voucher={conditionVoucher}
+        onClose={() => setConditionVoucher(null)}
+        isDark={isDark}
+        primaryColor={primaryColor}
+        bgStyle={bgStyle}
+        indicatorStyle={indicatorStyle}
+        bottomInset={insets.bottom}
+      />
+    </>
   )
 })
 

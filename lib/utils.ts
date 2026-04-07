@@ -40,6 +40,7 @@ export function variants<T extends string>(
 export type ThemeColors = {
   primary: string
   background: string
+  card: string
   foreground: string
   mutedForeground: string
   border: string
@@ -55,6 +56,7 @@ export function getThemeColor(isDark: boolean): ThemeColors {
   return {
     primary: isDark ? colors.primary.dark : colors.primary.light,
     background: isDark ? '#111318' : '#f2f4f6',
+    card: isDark ? colors.card.dark : colors.card.light,
     foreground: isDark ? colors.foreground.dark : colors.foreground.light,
     mutedForeground: isDark ? colors.mutedForeground.dark : colors.mutedForeground.light,
     border: isDark ? colors.border.dark : colors.border.light,

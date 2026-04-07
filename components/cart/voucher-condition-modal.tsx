@@ -1,12 +1,12 @@
 import { colors } from '@/constants'
 import type { IVoucher } from '@/types'
 import { showToast } from '@/utils'
-import BottomSheet, { BottomSheetBackdrop, type BottomSheetBackdropProps } from '@gorhom/bottom-sheet'
+import { BottomSheetBackdrop, type BottomSheetBackdropProps, BottomSheetModal } from '@gorhom/bottom-sheet'
 import { formatCurrencyNative } from 'cart-price-calc'
 import dayjs from 'dayjs'
 import * as Clipboard from 'expo-clipboard'
 import { Copy } from 'lucide-react-native'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useEffect, useRef } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 const CONDITION_SHEET_SNAP = ['60%']
@@ -30,12 +30,15 @@ export const VoucherConditionModal = memo(function VoucherConditionModal({
   indicatorStyle,
   bottomInset,
 }: VoucherConditionModalProps) {
-  const handleChange = useCallback(
-    (i: number) => {
-      if (i === -1) onClose()
-    },
-    [onClose],
-  )
+  const sheetRef = useRef<BottomSheetModal>(null)
+
+  useEffect(() => {
+    if (voucher) {
+      sheetRef.current?.present()
+    } else {
+      sheetRef.current?.dismiss()
+    }
+  }, [voucher])
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -53,8 +56,8 @@ export const VoucherConditionModal = memo(function VoucherConditionModal({
   if (!voucher) return null
 
   return (
-    <BottomSheet
-      index={0}
+    <BottomSheetModal
+      ref={sheetRef}
       snapPoints={CONDITION_SHEET_SNAP}
       enablePanDownToClose
       enableContentPanningGesture={false}
@@ -62,7 +65,7 @@ export const VoucherConditionModal = memo(function VoucherConditionModal({
       enableDynamicSizing={false}
       backgroundStyle={bgStyle}
       handleIndicatorStyle={indicatorStyle}
-      onChange={handleChange}
+      onDismiss={onClose}
       backdropComponent={renderBackdrop}
     >
       <View style={[condStyles.content, { paddingBottom: bottomInset + 16 }]}>
@@ -190,7 +193,7 @@ export const VoucherConditionModal = memo(function VoucherConditionModal({
           )}
         </View>
       </View>
-    </BottomSheet>
+    </BottomSheetModal>
   )
 })
 

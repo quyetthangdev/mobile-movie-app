@@ -6,20 +6,18 @@
  *
  * UI & logic ported from perf/cart.tsx, store bridged to order-flow.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
 import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Stack, useRouter } from 'expo-router'
 import { ChevronLeft, Trash2 } from 'lucide-react-native'
-import React, { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
-import { Modal, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native'
-import {
-  TouchableOpacity as GHTouchable,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler'
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Platform, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native'
+import { TouchableOpacity as GHTouchable } from 'react-native-gesture-handler'
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -50,7 +48,7 @@ function ClearCartSheet({
   isDark: boolean
 }) {
   const insets = useSafeAreaInsets()
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const snapPoints = useMemo(() => [220 + insets.bottom], [insets.bottom])
 
   const bgStyle = useMemo(
@@ -75,46 +73,33 @@ function ClearCartSheet({
     [],
   )
 
-  const handleChange = useCallback(
-    (index: number) => {
-      if (index === -1) onClose()
-    },
-    [onClose],
-  )
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
 
-  const closeSheet = useCallback(() => sheetRef.current?.close(), [])
+  const dismissSheet = useCallback(() => sheetRef.current?.dismiss(), [])
 
   const handleConfirmPress = useCallback(() => {
     onConfirm()
-    closeSheet()
-  }, [onConfirm, closeSheet])
-
-  if (!visible) return null
+    dismissSheet()
+  }, [onConfirm, dismissSheet])
 
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={closeSheet}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      activeOffsetY={[-10, 10]}
+      failOffsetX={[-5, 5]}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      handleIndicatorStyle={handleIndicator}
+      onDismiss={onClose}
     >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={snapPoints}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          activeOffsetY={[-10, 10]}
-          failOffsetX={[-5, 5]}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          handleIndicatorStyle={handleIndicator}
-          onChange={handleChange}
-        >
           <View style={[confirmStyles.content, { paddingBottom: insets.bottom + 16 }]}>
             <View style={confirmStyles.body}>
               <Trash2 size={32} color="#ef4444" />
@@ -129,7 +114,7 @@ function ClearCartSheet({
             <View style={confirmStyles.btnRow}>
               <View style={confirmStyles.btnWrap}>
                 <GHTouchable
-                  onPress={closeSheet}
+                  onPress={dismissSheet}
                   activeOpacity={0.8}
                   style={[confirmStyles.btn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] }]}
                 >
@@ -151,9 +136,7 @@ function ClearCartSheet({
               </View>
             </View>
           </View>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 }
 
@@ -217,7 +200,7 @@ function CartHeader({
 }) {
   const pageBg = isDark ? colors.background.dark : colors.background.light
   const gradientColors = useMemo(
-    () => [`${pageBg}F0`, `${pageBg}AA`, `${pageBg}00`] as const,
+    () => [pageBg, `${pageBg}E6`, `${pageBg}B0`, `${pageBg}50`, `${pageBg}00`] as const,
     [pageBg],
   )
 
@@ -227,18 +210,20 @@ function CartHeader({
 
   return (
     <View style={headerStyles.container} pointerEvents="box-none">
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          intensity={20}
-          tint={isDark ? 'dark' : 'light'}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {Platform.OS !== 'ios' ? (
+          <BlurView
+            intensity={20}
+            tint={isDark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <LinearGradient
+          colors={gradientColors}
+          locations={[0, 0.3, 0.62, 0.85, 1]}
           style={StyleSheet.absoluteFill}
         />
-      ) : null}
-      <LinearGradient
-        colors={gradientColors}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      </View>
 
       <View style={[headerStyles.row, { paddingTop: STATIC_TOP_INSET + 10 }]} pointerEvents="auto">
         <Pressable
@@ -356,7 +341,7 @@ export default function MenuCartScreen() {
 
       {contentReady ? (
         <>
-          <Suspense fallback={<View style={{ flex: 1 }} />}>
+          <Suspense fallback={<View style={{ flex: 1 }} pointerEvents="none" />}>
             <CartContent scrollY={scrollY} />
           </Suspense>
           <CartHeader

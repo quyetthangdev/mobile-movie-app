@@ -2,19 +2,17 @@ import { colors } from '@/constants'
 import { useTables } from '@/hooks/use-table'
 import { useBranchStore, useOrderFlowStore } from '@/stores'
 import type { ITable } from '@/types'
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import { CheckCircle } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native'
-import {
-  GestureHandlerRootView,
-  TouchableOpacity,
-} from 'react-native-gesture-handler'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { TouchableOpacity } from 'react-native-gesture-handler'
 
 const TABLE_SHEET_SNAP = ['50%']
 const TABLE_PAGE_SIZE = 12
@@ -30,7 +28,7 @@ export const SimpleTableSheet = memo(function SimpleTableSheet({
   isDark: boolean
   primaryColor: string
 }) {
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
   const { t } = useTranslation('table')
   const selectedTable = useOrderFlowStore((s) => s.orderingData?.table)
   const branchSlug = useBranchStore((s) => s.branch?.slug)
@@ -52,7 +50,7 @@ export const SimpleTableSheet = memo(function SimpleTableSheet({
 
   const handleSelect = useCallback((table: ITable) => {
     useOrderFlowStore.getState().setOrderingTable(table)
-    sheetRef.current?.close()
+    sheetRef.current?.dismiss()
   }, [])
 
   const bgStyle = useMemo(
@@ -65,28 +63,23 @@ export const SimpleTableSheet = memo(function SimpleTableSheet({
     ),
     [],
   )
-  const handleChange = useCallback(
-    (index: number) => { if (index === -1) onClose() },
-    [onClose],
-  )
-
-  if (!visible) return null
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
 
   return (
-    <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={() => sheetRef.current?.close()}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={TABLE_SHEET_SNAP}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          onChange={handleChange}
-        >
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={TABLE_SHEET_SNAP}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      onDismiss={onClose}
+    >
           <BottomSheetScrollView style={{ paddingHorizontal: 20, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
             <Text style={[tableSheetStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
               {t('table.title', 'Chọn bàn')}
@@ -154,9 +147,7 @@ export const SimpleTableSheet = memo(function SimpleTableSheet({
 
             <View style={{ height: 20 }} />
           </BottomSheetScrollView>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 

@@ -4,15 +4,15 @@
  *
  * No hooks subscribe to stores — all data passed via props from parent.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
+  BottomSheetModal,
 } from '@gorhom/bottom-sheet'
-import React, { memo, useCallback, useMemo, useRef, useState } from 'react'
-import { Modal, StyleSheet, Text, TextInput, View } from 'react-native'
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { colors } from '@/constants'
 import {
-  GestureHandlerRootView,
   TouchableOpacity as GHTouchable,
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -57,7 +57,7 @@ export const PriceFilterSheet = memo(function PriceFilterSheet({
   labels: PriceFilterSheetLabels
 }) {
   const insets = useSafeAreaInsets()
-  const sheetRef = useRef<BottomSheet>(null)
+  const sheetRef = useRef<BottomSheetModal>(null)
 
   const [localMin, setLocalMin] = useState(() => currentMin > 0 ? String(currentMin) : '')
   const [localMax, setLocalMax] = useState(() => currentMax < 300_000 ? String(currentMax) : '')
@@ -84,16 +84,17 @@ export const PriceFilterSheet = memo(function PriceFilterSheet({
     [],
   )
 
-  const handleSheetChange = useCallback(
-    (index: number) => {
-      if (index === -1) onClose()
-    },
-    [onClose],
-  )
+  useEffect(() => {
+    if (visible) {
+      sheetRef.current?.present()
+    } else {
+      sheetRef.current?.dismiss()
+    }
+  }, [visible])
 
   // State reset handled by key prop in parent — remounts when visible changes
 
-  const closeSheet = useCallback(() => sheetRef.current?.close(), [])
+  const closeSheet = useCallback(() => sheetRef.current?.dismiss(), [])
 
   const handlePreset = useCallback((min: number, max: number) => {
     setLocalMin(min > 0 ? String(min) : '')
@@ -118,32 +119,21 @@ export const PriceFilterSheet = memo(function PriceFilterSheet({
   const inputColor = isDark ? colors.gray[50] : colors.gray[900]
   const labelColor = isDark ? colors.gray[400] : colors.gray[500]
 
-  if (!visible) return null
-
   return (
-    <Modal
-      transparent
-      visible
-      statusBarTranslucent
-      animationType="none"
-      onRequestClose={closeSheet}
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={SNAP_POINTS}
+      enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableHandlePanningGesture
+      enableDynamicSizing={false}
+      activeOffsetY={[-10, 10]}
+      failOffsetX={[-5, 5]}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      handleIndicatorStyle={handleIndicator}
+      onDismiss={onClose}
     >
-      <GestureHandlerRootView style={styles.gestureRoot}>
-        <BottomSheet
-          ref={sheetRef}
-          index={0}
-          snapPoints={SNAP_POINTS}
-          enablePanDownToClose
-          enableContentPanningGesture={false}
-          enableHandlePanningGesture
-          enableDynamicSizing={false}
-          activeOffsetY={[-10, 10]}
-          failOffsetX={[-5, 5]}
-          backdropComponent={renderBackdrop}
-          backgroundStyle={bgStyle}
-          handleIndicatorStyle={handleIndicator}
-          onChange={handleSheetChange}
-        >
           <View style={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
             {/* Top section */}
             <View>
@@ -253,16 +243,11 @@ export const PriceFilterSheet = memo(function PriceFilterSheet({
               </View>
             </View>
           </View>
-        </BottomSheet>
-      </GestureHandlerRootView>
-    </Modal>
+    </BottomSheetModal>
   )
 })
 
 const styles = StyleSheet.create({
-  gestureRoot: {
-    flex: 1,
-  },
   content: {
     flex: 1,
     paddingHorizontal: 20,

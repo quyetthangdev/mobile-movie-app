@@ -11,11 +11,12 @@
  * - GIFT mode: qty = sum(recipients.quantity), không cần preset tổng.
  *   Không còn "Còn X thẻ" counter gây nhầm lẫn.
  */
-import BottomSheet, {
+import {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
   BottomSheetFooter,
   type BottomSheetFooterProps,
+  BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import { Redirect } from 'expo-router'
@@ -26,7 +27,6 @@ import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -35,7 +35,6 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { z } from 'zod'
 
@@ -117,7 +116,7 @@ export default function GiftCardCheckoutScreen() {
 
   const [ready, setReady] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const confirmSheetRef = useRef<BottomSheet>(null)
+  const confirmSheetRef = useRef<BottomSheetModal>(null)
 
   useRunAfterTransition(() => setReady(true), [], { androidDelayMs: -20 })
 
@@ -249,10 +248,10 @@ export default function GiftCardCheckoutScreen() {
   const handlePressConfirm = useCallback(() => setShowConfirm(true), [])
   const handleDismissConfirm = useCallback(() => setShowConfirm(false), [])
 
-  // Sync sheet expand/close với state
+  // Sync sheet present/dismiss với state
   useEffect(() => {
-    if (showConfirm) confirmSheetRef.current?.expand()
-    else confirmSheetRef.current?.close()
+    if (showConfirm) confirmSheetRef.current?.present()
+    else confirmSheetRef.current?.dismiss()
   }, [showConfirm])
 
   const renderConfirmBackdrop = useCallback(
@@ -268,7 +267,7 @@ export default function GiftCardCheckoutScreen() {
     [],
   )
 
-  const closeConfirmSheet = useCallback(() => confirmSheetRef.current?.close(), [])
+  const closeConfirmSheet = useCallback(() => confirmSheetRef.current?.dismiss(), [])
 
   const renderConfirmFooter = useCallback(
     (props: BottomSheetFooterProps) => (
@@ -498,12 +497,8 @@ export default function GiftCardCheckoutScreen() {
       </View>
 
       {/* Confirm bottom sheet */}
-      {showConfirm && (
-        <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={closeConfirmSheet}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <BottomSheet
+            <BottomSheetModal
               ref={confirmSheetRef}
-              index={0}
               snapPoints={['65%']}
               enablePanDownToClose
               enableContentPanningGesture={false}
@@ -512,7 +507,7 @@ export default function GiftCardCheckoutScreen() {
               backdropComponent={renderConfirmBackdrop}
               backgroundStyle={{ backgroundColor: isDark ? colors.gray[900] : colors.white.light }}
               handleIndicatorStyle={{ backgroundColor: isDark ? colors.gray[600] : colors.gray[300] }}
-              onChange={(i) => { if (i === -1) handleDismissConfirm() }}
+              onDismiss={handleDismissConfirm}
               footerComponent={renderConfirmFooter}
             >
               {/* Header */}
@@ -548,7 +543,7 @@ export default function GiftCardCheckoutScreen() {
                 </View>
 
                 {/* Item row */}
-                <View style={[cs.itemsSection, { borderTopColor: isDark ? colors.gray[700] : '#e5e7eb' }]}>
+                <View style={[cs.itemsSection, { borderTopColor: isDark ? colors.gray[700] : colors.border.light }]}>
                   <View style={cs.itemRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={[cs.itemName, { color: textColor }]} numberOfLines={1}>
@@ -562,7 +557,7 @@ export default function GiftCardCheckoutScreen() {
                 </View>
 
                 {/* Totals */}
-                <View style={[cs.totalsSection, { borderTopColor: isDark ? colors.gray[700] : '#e5e7eb' }]}>
+                <View style={[cs.totalsSection, { borderTopColor: isDark ? colors.gray[700] : colors.border.light }]}>
                   <View style={cs.totalRow}>
                     <Text style={[{ fontSize: 13, color: subColor }]}>{t('checkout.cardPrice')}</Text>
                     <Text style={[{ fontSize: 13, color: subColor }]}>{formatCurrency(giftCardItem.price)}</Text>
@@ -571,7 +566,7 @@ export default function GiftCardCheckoutScreen() {
                     <Text style={[{ fontSize: 13, color: subColor }]}>{t('checkout.quantity')}</Text>
                     <Text style={[{ fontSize: 13, color: subColor }]}>× {totalQty}</Text>
                   </View>
-                  <View style={[cs.totalRow, cs.finalRow, { borderTopColor: isDark ? colors.gray[700] : '#e5e7eb' }]}>
+                  <View style={[cs.totalRow, cs.finalRow, { borderTopColor: isDark ? colors.gray[700] : colors.border.light }]}>
                     <Text style={[cs.finalLabel, { color: textColor }]}>{t('checkout.confirm.totalPayment')}</Text>
                     <Text style={[cs.finalValue, { color: primaryColor }]}>{formatCurrency(totalAmount)}</Text>
                   </View>
@@ -585,10 +580,7 @@ export default function GiftCardCheckoutScreen() {
                   )}
                 </View>
               </BottomSheetScrollView>
-            </BottomSheet>
-          </GestureHandlerRootView>
-        </Modal>
-      )}
+            </BottomSheetModal>
     </View>
   )
 }

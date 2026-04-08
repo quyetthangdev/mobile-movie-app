@@ -28,6 +28,8 @@ export interface NotificationPayload {
 
 interface NotificationStore {
   notifications: INotification[]
+  /** ISO timestamp — mọi notification có createdAt ≤ giá trị này được coi là đã đọc. */
+  markedAllReadAt: string | null
   addNotification: (
     payload: NotificationPayload,
     options?: { markAsRead?: boolean },
@@ -98,6 +100,7 @@ function transformPayloadToNotification(
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
   notifications: [],
+  markedAllReadAt: null,
 
   addNotification: (payload, options) => {
     set((state) => {
@@ -122,11 +125,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   },
 
   markAllAsRead: () => {
+    const ts = new Date().toISOString()
     set((state) => ({
-      notifications: state.notifications.map((n) => ({
-        ...n,
-        isRead: true,
-      })),
+      markedAllReadAt: ts,
+      notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
     }))
   },
 
@@ -139,7 +141,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }))
   },
 
-  clearAll: () => set({ notifications: [] }),
+  clearAll: () => set({ notifications: [], markedAllReadAt: null }),
 
   getUnreadCount: () => {
     return get().notifications.filter((n) => !n.isRead).length
@@ -148,11 +150,26 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   hydrateFromApi: (items) => {
     if (!items || items.length === 0) return
     set((state) => {
+      const localMap = new Map<string, INotification>()
+      for (const n of state.notifications) localMap.set(n.slug, n)
+
+      const { markedAllReadAt } = state
+
       const map = new Map<string, INotification>()
-      // Existing local notifications first
       for (const n of state.notifications) map.set(n.slug, n)
-      // API data overwrites
-      for (const n of items) map.set(n.slug, n)
+      for (const n of items) {
+        const local = localMap.get(n.slug)
+
+        // isRead priority (highest → lowest):
+        // 1. Local already marked read (optimistic individual/bulk)
+        // 2. createdAt ≤ markedAllReadAt → bulk-read timestamp covers it
+        // 3. Server value
+        const bulkCovered =
+          !!markedAllReadAt && n.createdAt <= markedAllReadAt
+        const isRead = local?.isRead === true || bulkCovered || n.isRead
+
+        map.set(n.slug, { ...n, isRead })
+      }
       const merged = Array.from(map.values())
         .sort(
           (a, b) =>

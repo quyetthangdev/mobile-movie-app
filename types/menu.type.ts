@@ -44,6 +44,9 @@ export interface ISpecificMenuRequest {
   minPrice?: number
   maxPrice?: number
   promotion?: boolean
+  isNewProduct?: boolean
+  isSortTopSell?: boolean
+  isTopSell?: boolean
 }
 
 export interface IUpdateMenuRequest {
@@ -109,6 +112,8 @@ export interface IMenuFilter {
   productName?: string
   minPrice: number
   maxPrice: number
+  isNewProduct?: boolean
+  isTopSell?: boolean
 }
 
 export interface IMenuFilterStore {

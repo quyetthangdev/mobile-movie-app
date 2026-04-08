@@ -1,6 +1,7 @@
 {
   "menu": {
     "addMenuItem": "Thêm món",
+    "emptyCart": "Giỏ hàng trống",
     "addMenuItemDescription": "Vui lòng xác nhận thông tin trước khi thêm vào thực đơn",
     "addToCart": "Thêm vào giỏ",
     "all": "Tất cả",
@@ -118,9 +119,16 @@
     "duration": "Thời gian",
     "deliveryAddress": "Địa chỉ giao hàng",
     "distance": "Khoảng cách",
-    "deliveryPhone": "Số điện thoại giao hàng"
+    "deliveryPhone": "Số điện thoại giao hàng",
+    "isTopSell": "Bán chạy",
+    "isNewProduct": "Mới",
+    "relatedProducts": "Sản phẩm liên quan"
   },
   "cart": {
+    "title": "Giỏ hàng",
+    "confirmTitle": "Xoá giỏ hàng?",
+    "confirmDesc": "Tất cả món trong giỏ sẽ bị xoá và không thể hoàn tác.",
+    "clearAll": "Xoá tất cả",
     "clearCart": "Xoá hết",
     "clearCartDescription": "Hành động này sẽ xoá tất cả món đã chọn.",
     "clearCartSuccess": "Đã xoá giỏ hàng",

@@ -1,4 +1,5 @@
 {
+  "selected": "Đã chọn",
   "status": {
     "available": "Khả dụng",
     "used": "Đã dùng",
@@ -212,6 +213,21 @@
     "replaceWith": "Thay bằng",
     "keepCurrent": "Giữ lại",
     "replace": "Thay thế"
+  },
+  "sortAsc": "Giá tăng dần",
+  "sortDesc": "Giá giảm dần",
+  "paymentStatus": {
+    "completed": "Thành công",
+    "pending": "Chờ thanh toán",
+    "failed": "Thất bại",
+    "cancelled": "Đã huỷ"
+  },
+  "paymentMethod": {
+    "zalopay": "Ví ZaloPay",
+    "cash": "Tiền mặt",
+    "vnpay": "VNPay",
+    "momo": "Ví MoMo",
+    "banking": "Ngân hàng"
   },
   "recipientForm": {
     "recipientTitle": "Người nhận {{index}}",

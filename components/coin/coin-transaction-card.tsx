@@ -147,7 +147,7 @@ export const CoinTransactionCard = memo(function CoinTransactionCard({
 
       {/* Points */}
       <Text style={[s.pointsText, { color: pointsColor }]}>
-        {cfg.prefix}{formatPoints(item.points)} xu
+        {cfg.prefix}{formatPoints(item.points)} {t('profile.coin.unit')}
       </Text>
     </Pressable>
   )

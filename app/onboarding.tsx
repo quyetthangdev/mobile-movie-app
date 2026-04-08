@@ -18,6 +18,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 
 import { colors } from '@/constants'
 import { Images } from '@/assets/images'
@@ -27,24 +28,9 @@ const { width: SCREEN_W } = Dimensions.get('window')
 // ─── Slides ──────────────────────────────────────────────────────────────────
 
 const SLIDES = [
-  {
-    key: 'welcome',
-    image: Images.Highlight.Menu2,
-    title: 'Chào mừng đến\nTrend Coffee & Tea',
-    desc: 'Trải nghiệm thức uống đặc sắc, được pha chế tỉ mỉ từng ly.',
-  },
-  {
-    key: 'order',
-    image: Images.Highlight.Menu4,
-    title: 'Đặt món\ndễ dàng',
-    desc: 'Chọn món, tuỳ chỉnh size và ghi chú — tất cả chỉ trong vài giây.',
-  },
-  {
-    key: 'loyalty',
-    image: Images.Featured.Services1,
-    title: 'Tích điểm\nthưởng hấp dẫn',
-    desc: 'Mỗi đơn hàng đều được tích xu, đổi ưu đãi và quà tặng hấp dẫn.',
-  },
+  { key: 'slide0', image: Images.Highlight.Menu2 },
+  { key: 'slide1', image: Images.Highlight.Menu4 },
+  { key: 'slide2', image: Images.Featured.Services1 },
 ]
 
 // ─── Dot ─────────────────────────────────────────────────────────────────────
@@ -90,6 +76,7 @@ function Slide({
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation('onboarding')
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const isDark = useColorScheme() === 'dark'
@@ -124,7 +111,9 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)/home')
   }, [router])
 
-  const slide = SLIDES[currentIndex]
+  const slideKey = SLIDES[currentIndex]?.key ?? 'slide0'
+  const slideTitle = t(`${slideKey}Title`)
+  const slideDesc = t(`${slideKey}Desc`)
 
   const cardAnimStyle = useAnimatedStyle(() => {
     const idx = scrollX.value / SCREEN_W
@@ -172,7 +161,7 @@ export default function OnboardingScreen() {
         hitSlop={8}
         style={[s.skipBtn, { top: insets.top + 16 }]}
       >
-        <Text style={[s.skipText, { color: '#fff' }]}>Bỏ qua</Text>
+        <Text style={[s.skipText, { color: '#fff' }]}>{t('skip')}</Text>
       </Pressable>
 
       {/* Bottom card */}
@@ -185,10 +174,10 @@ export default function OnboardingScreen() {
       >
         {/* Text */}
         <Text style={[s.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-          {slide.title}
+          {slideTitle}
         </Text>
         <Text style={[s.desc, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-          {slide.desc}
+          {slideDesc}
         </Text>
 
         {/* Dots */}
@@ -204,7 +193,7 @@ export default function OnboardingScreen() {
           style={[s.ctaBtn, { backgroundColor: primaryColor }]}
         >
           <Text style={s.ctaBtnText}>
-            {isLast ? 'Bắt đầu' : 'Tiếp theo'}
+            {isLast ? t('start') : t('next')}
           </Text>
         </Pressable>
 
@@ -212,14 +201,14 @@ export default function OnboardingScreen() {
         {isLast && (
           <View style={s.termsRow}>
             <Text style={[s.termsText, { color: isDark ? colors.gray[500] : colors.gray[400] }]}>
-              Bằng cách tiếp tục, bạn đồng ý với{' '}
+              {t('termsPrefix')}{' '}
             </Text>
             <Pressable onPress={() => Linking.openURL('https://trendcoffee.net/policy')} hitSlop={4}>
-              <Text style={[s.termsLink, { color: primaryColor }]}>Chính sách</Text>
+              <Text style={[s.termsLink, { color: primaryColor }]}>{t('policy')}</Text>
             </Pressable>
-            <Text style={[s.termsText, { color: isDark ? colors.gray[500] : colors.gray[400] }]}> và </Text>
+            <Text style={[s.termsText, { color: isDark ? colors.gray[500] : colors.gray[400] }]}>{t('and')}</Text>
             <Pressable onPress={() => Linking.openURL('https://trendcoffee.net/security')} hitSlop={4}>
-              <Text style={[s.termsLink, { color: primaryColor }]}>Bảo mật</Text>
+              <Text style={[s.termsLink, { color: primaryColor }]}>{t('security')}</Text>
             </Pressable>
           </View>
         )}

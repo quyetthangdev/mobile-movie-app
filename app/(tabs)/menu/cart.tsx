@@ -211,13 +211,13 @@ function CartHeader({
   return (
     <View style={headerStyles.container} pointerEvents="box-none">
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Platform.OS !== 'ios' ? (
+        {Platform.OS === 'ios' && (
           <BlurView
             intensity={20}
             tint={isDark ? 'dark' : 'light'}
             style={StyleSheet.absoluteFill}
           />
-        ) : null}
+        )}
         <LinearGradient
           colors={gradientColors}
           locations={[0, 0.3, 0.62, 0.85, 1]}

@@ -272,11 +272,12 @@ export default function LoyaltyPointScreen() {
     return ALL_TYPES
   }, [quickType, filter.types])
 
+  // Fetch total points ngay lập tức (không chờ ready) để số điểm hiện đúng sớm
   const {
     data: loyaltyPointData,
     isPending: loadingTotal,
     refetch: refetchTotal,
-  } = useLoyaltyPoints(ready ? (userSlug ?? undefined) : undefined)
+  } = useLoyaltyPoints(userSlug ?? undefined)
 
   const totalPoints = loyaltyPointData?.totalPoints ?? 0
 

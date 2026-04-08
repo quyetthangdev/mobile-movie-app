@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Tabs, usePathname } from 'expo-router'
 import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { View, useColorScheme } from 'react-native'
+import { Platform, View, useColorScheme } from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -158,7 +158,10 @@ export default function TabsLayout() {
   )
 
   const { totalBottomHeight, bottomGap } = useMemo(() => {
-    const gap = Math.max(0, insets.bottom - 8)
+    // iOS safe area (~34px) có thể trừ 8px vẫn đủ khoảng cách.
+    // Android gesture nav (~16–24px) không trừ để tránh sát mép.
+    const offset = Platform.OS === 'android' ? 0 : 8
+    const gap = Math.max(0, insets.bottom - offset)
     const bgHeight = BAR_HEIGHT + BAR_PADDING + gap
     return {
       bottomGap: gap,

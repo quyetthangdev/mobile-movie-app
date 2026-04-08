@@ -77,7 +77,7 @@ export default function RegisterForm() {
           if (tokens?.accessToken) {
             await handleAuthSuccess(tokens)
           }
-          showToast(t('register.success', 'Đăng ký thành công. Vui lòng đăng nhập.'))
+          showToast(t('register.success'))
           navigateNative.replace('/auth/login')
         },
         onError: () => {
@@ -92,18 +92,18 @@ export default function RegisterForm() {
   return (
     <View className="flex-1 px-6 pt-8">
       <Text className="mb-2 text-3xl font-sans-bold text-foreground">
-        Đăng ký
+        {t('register.title')}
       </Text>
       <Text className="mb-8 text-base font-sans text-muted-foreground">
-        Tạo tài khoản mới để trải nghiệm đầy đủ tính năng
+        {t('register.subtitle')}
       </Text>
 
       {/* Họ */}
       <FormInput
         control={control}
         name="lastName"
-        label="Họ"
-        placeholder="Nhập họ"
+        label={t('register.lastName')}
+        placeholder={t('register.enterLastName')}
         autoCapitalize="words"
         disabled={isLoading}
         useTextInput
@@ -113,8 +113,8 @@ export default function RegisterForm() {
       <FormInput
         control={control}
         name="firstName"
-        label="Tên"
-        placeholder="Nhập tên"
+        label={t('register.firstName')}
+        placeholder={t('register.enterFirstName')}
         autoCapitalize="words"
         disabled={isLoading}
         useTextInput
@@ -123,12 +123,12 @@ export default function RegisterForm() {
       {/* Ngày sinh */}
       <View className="mb-4">
         <Text className="mb-1 text-xs text-muted-foreground">
-          Ngày sinh
+          {t('register.dob')}
         </Text>
         <DobExpandablePicker
           value={dobValue}
           onSelect={handleDobSelect}
-          placeholder="Chọn ngày sinh"
+          placeholder={t('register.selectDob')}
         />
         {dobError && (
           <Text className="mt-1 text-xs text-destructive">{dobError.message}</Text>
@@ -139,8 +139,8 @@ export default function RegisterForm() {
       <FormInput
         control={control}
         name="phonenumber"
-        label="Số điện thoại"
-        placeholder="Nhập số điện thoại"
+        label={t('register.phoneNumber')}
+        placeholder={t('register.enterPhoneNumber')}
         keyboardType="phone-pad"
         autoCapitalize="none"
         disabled={isLoading}
@@ -151,13 +151,13 @@ export default function RegisterForm() {
       {/* Mật khẩu */}
       <View>
         <Text className="mb-1 text-xs text-muted-foreground">
-          Mật khẩu
+          {t('register.password')}
         </Text>
         <View className="mb-4">
           <FormInput
             control={control}
             name="password"
-            placeholder="Nhập mật khẩu"
+            placeholder={t('register.enterPassword')}
             secureTextEntry={!showPassword}
             autoCapitalize="none"
             disabled={isLoading}
@@ -183,13 +183,13 @@ export default function RegisterForm() {
       {/* Xác nhận mật khẩu */}
       <View>
         <Text className="mb-1 text-xs text-muted-foreground">
-          Xác nhận mật khẩu
+          {t('register.confirmPassword')}
         </Text>
         <View className="mb-8">
           <FormInput
             control={control}
             name="confirmPassword"
-            placeholder="Nhập lại mật khẩu"
+            placeholder={t('register.enterConfirmPassword')}
             secureTextEntry={!showConfirmPassword}
             autoCapitalize="none"
             disabled={isLoading}
@@ -222,7 +222,7 @@ export default function RegisterForm() {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text className="text-base font-sans-semibold text-primary-foreground">
-            Đăng ký
+            {t('register.register')}
           </Text>
         )}
       </TouchableOpacity>
@@ -234,8 +234,8 @@ export default function RegisterForm() {
         disabled={isLoading}
       >
         <Text className="text-sm font-sans text-muted-foreground">
-          Đã có tài khoản?{' '}
-          <Text className="font-sans-semibold text-primary">Đăng nhập</Text>
+          {t('register.haveAccount')}{' '}
+          <Text className="font-sans-semibold text-primary">{t('register.login')}</Text>
         </Text>
       </TouchableOpacity>
 

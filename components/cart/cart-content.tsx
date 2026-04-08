@@ -127,6 +127,7 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
         isDark={isDark}
         onBrowse={handleBrowse}
         browseLabel={t('menu.viewMenu', 'Xem thực đơn')}
+        emptyText={t('menu.emptyCart')}
       />
     )
   }

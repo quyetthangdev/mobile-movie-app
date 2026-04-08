@@ -1,14 +1,19 @@
 /**
- * Date of birth picker dạng xổ xuống inline với animation.
- * Bấm button để mở/đóng, DatePicker hiển thị bên dưới với animation.
+ * Date of birth picker:
+ * - iOS: xổ xuống inline với animation (spinner).
+ * - Android: dùng DateTimePickerAndroid.open() (dialog hệ thống) vì Android
+ *   spinner không bị clip bởi overflow:hidden, tự hiện khi render.
  * Dùng @react-native-community/datetimepicker (tương thích iOS 26+).
  */
-import DateTimePicker from '@react-native-community/datetimepicker'
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from '@react-native-community/datetimepicker'
 import { colors } from '@/constants'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -103,6 +108,23 @@ export function DobExpandablePicker({
     [onSelect],
   )
 
+  const handlePress = useCallback(() => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: safeDate,
+        mode: 'date',
+        maximumDate: new Date(),
+        onChange: (event, d) => {
+          if (event.type === 'set' && d) {
+            onSelect(dayjs(d).format('YYYY-MM-DD'))
+          }
+        },
+      })
+    } else {
+      setExpanded((e) => !e)
+    }
+  }, [safeDate, onSelect])
+
   const animatedStyle = useAnimatedStyle(() => {
     'worklet'
     return {
@@ -119,7 +141,7 @@ export function DobExpandablePicker({
           styles.touchable,
           { backgroundColor: finalTheme.bg, borderColor: finalTheme.editBtn },
         ]}
-        onPress={() => setExpanded((e) => !e)}
+        onPress={handlePress}
         activeOpacity={0.7}
       >
         <Text
@@ -131,19 +153,21 @@ export function DobExpandablePicker({
           {formatDobForDisplay(value) || placeholder}
         </Text>
       </TouchableOpacity>
-      <Animated.View style={[styles.pickerWrap, animatedStyle]}>
-        <View style={styles.pickerInner}>
-          <DateTimePicker
-            mode="date"
-            value={safeDate}
-            display="spinner"
-            onChange={handleDateChange}
-            themeVariant={isDark ? 'dark' : 'light'}
-            maximumDate={new Date()}
-            style={styles.picker}
-          />
-        </View>
-      </Animated.View>
+      {Platform.OS === 'ios' && (
+        <Animated.View style={[styles.pickerWrap, animatedStyle]}>
+          <View style={styles.pickerInner}>
+            <DateTimePicker
+              mode="date"
+              value={safeDate}
+              display="spinner"
+              onChange={handleDateChange}
+              themeVariant={isDark ? 'dark' : 'light'}
+              maximumDate={new Date()}
+              style={styles.picker}
+            />
+          </View>
+        </Animated.View>
+      )}
     </View>
   )
 }

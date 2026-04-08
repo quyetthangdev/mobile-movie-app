@@ -7,6 +7,7 @@ import { colors } from '@/constants'
 import { IGiftCard } from '@/types'
 import { capitalizeFirst, formatCurrency, formatPoints } from '@/utils'
 import { getProductImageUrl } from '@/utils/product-image-url'
+import { useTranslation } from 'react-i18next'
 
 export const GIFT_CARD_ITEM_HEIGHT = 128
 export const GIFT_CARD_IMAGE_SIZE = 128
@@ -24,6 +25,7 @@ export const GiftCardListItem = memo(
     const isDark = useColorScheme() === 'dark'
     const handleSelect = useCallback(() => onSelect(item), [item, onSelect])
     const imageUrl = getProductImageUrl(item.image)
+    const { t } = useTranslation('giftCard')
 
     const cardBg = isDark ? colors.gray[900] : colors.white.light
     const titleColor = isDark ? colors.gray[50] : colors.gray[900]
@@ -84,7 +86,7 @@ export const GiftCardListItem = memo(
               {inCart ? (
                 /* Badge "Đã chọn" thay thế nút + */
                 <View style={[s.selectedBadge, { backgroundColor: primaryColor }]}>
-                  <Text style={[s.selectedBadgeText, { color: colors.white.light }]}>Đã chọn</Text>
+                  <Text style={[s.selectedBadgeText, { color: colors.white.light }]}>{t('selected')}</Text>
                 </View>
               ) : (
                 /* Nút + khi chưa có trong giỏ */

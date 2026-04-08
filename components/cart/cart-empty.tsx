@@ -2,16 +2,17 @@ import { colors } from '@/constants'
 import { ShoppingCart } from 'lucide-react-native'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-export function CartEmpty({ isDark, onBrowse, browseLabel }: {
+export function CartEmpty({ isDark, onBrowse, browseLabel, emptyText }: {
   isDark: boolean
   onBrowse: () => void
   browseLabel: string
+  emptyText: string
 }) {
   return (
     <View style={emptyStyles.container}>
       <ShoppingCart size={48} color={isDark ? colors.gray[600] : colors.gray[300]} />
       <Text style={[emptyStyles.text, { color: isDark ? colors.gray[500] : colors.gray[400] }]}>
-        Giỏ hàng trống
+        {emptyText}
       </Text>
       <Pressable onPress={onBrowse} style={emptyStyles.btn}>
         <Text style={emptyStyles.btnText}>{browseLabel}</Text>

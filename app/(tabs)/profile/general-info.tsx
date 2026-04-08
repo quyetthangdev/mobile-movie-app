@@ -86,13 +86,13 @@ function GIHeader({
   return (
     <View style={hStyles.container} pointerEvents="box-none">
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Platform.OS !== 'ios' ? (
+        {Platform.OS === 'ios' && (
           <BlurView
             intensity={20}
             tint={isDark ? 'dark' : 'light'}
             style={StyleSheet.absoluteFill}
           />
-        ) : null}
+        )}
         <LinearGradient
           colors={gradientColors}
           locations={[0, 0.3, 0.62, 0.85, 1]}
@@ -231,6 +231,7 @@ const VerifiableInfoRow = React.memo(function VerifiableInfoRow({
   verifyLabel: string
   successColor: string
 }) {
+  const { t } = useTranslation('profile')
   return (
     <View style={[styles.infoRow, { alignItems: 'center' }]}>
       <View style={[styles.infoIconWrap, { backgroundColor: iconColor }]}>
@@ -240,10 +241,14 @@ const VerifiableInfoRow = React.memo(function VerifiableInfoRow({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
           <Text style={[styles.infoLabel, { color: theme.textMuted }]}>{label}</Text>
           {isVerified && (
-            <Shield size={11} color={successColor} fill={successColor} />
+            <Text style={[styles.infoLabel, { color: successColor }]}>
+              {t('profile.contactInfo.verified')}
+            </Text>
           )}
           {!isVerified && (
-            <Text style={[styles.infoLabel, { color: '#CA8A04' }]}>• Chưa xác thực</Text>
+            <Text style={[styles.infoLabel, { color: '#CA8A04' }]}>
+              {t('profile.contactInfo.notVerified')}
+            </Text>
           )}
         </View>
         <Text style={[styles.infoValue, { color: theme.text }]} numberOfLines={1}>

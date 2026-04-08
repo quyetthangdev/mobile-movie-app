@@ -12,6 +12,7 @@ import {
 } from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
 import { useRouter } from 'expo-router'
+import { navigateNative } from '@/lib/navigation'
 import {
   ArrowRight,
   Check,
@@ -210,6 +211,8 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
     onClose()
     if (txObjType === PointTransactionObjectType.CARD_ORDER) {
       router.push(`/gift-card/order-success/${transaction.objectSlug}` as never)
+    } else if (txObjType === PointTransactionObjectType.ORDER && transaction.objectSlug) {
+      navigateNative.push(`/order/${transaction.objectSlug}` as Parameters<typeof navigateNative.push>[0])
     } else {
       router.push('/profile/history' as never)
     }
@@ -242,7 +245,7 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
               </View>
               <Text style={[s.heroTypeLabel, { color: typeColor }]}>{typeLabel}</Text>
               <Text style={[s.heroAmount, { color: typeColor }]}>
-                {cfg.prefix}{formatPoints(transaction.points)} xu
+                {cfg.prefix}{formatPoints(transaction.points)} {t('profile.coin.unit')}
               </Text>
             </View>
 

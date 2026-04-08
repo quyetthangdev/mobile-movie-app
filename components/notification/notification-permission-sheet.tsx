@@ -14,7 +14,6 @@ import { Bell, Settings } from 'lucide-react-native'
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Linking,
-
   Platform,
   Pressable,
   StyleSheet,
@@ -23,6 +22,7 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 
 import { colors } from '@/constants'
 
@@ -35,6 +35,7 @@ interface Props {
 
 export const NotificationPermissionSheet = memo(
   function NotificationPermissionSheet({ visible, onClose }: Props) {
+    const { t } = useTranslation('notification')
     const sheetRef = useRef<BottomSheetModal>(null)
     const isDark = useColorScheme() === 'dark'
     const { bottom: bottomInset } = useSafeAreaInsets()
@@ -107,7 +108,7 @@ export const NotificationPermissionSheet = memo(
                     },
                   ]}
                 >
-                  Bật thông báo
+                  {t('enableTitle')}
                 </Text>
 
                 <Text
@@ -119,8 +120,8 @@ export const NotificationPermissionSheet = memo(
                   ]}
                 >
                   {Platform.OS === 'ios'
-                    ? 'Vào Cài đặt → Thông báo → Trend Coffee → Bật thông báo'
-                    : 'Vào Cài đặt → Ứng dụng → Trend Coffee → Thông báo → Bật'}
+                    ? t('enableInstructionIos')
+                    : t('enableInstructionAndroid')}
                 </Text>
               </View>
 
@@ -148,7 +149,7 @@ export const NotificationPermissionSheet = memo(
                       },
                     ]}
                   >
-                    Để sau
+                    {t('enableLater')}
                   </Text>
                 </Pressable>
 
@@ -160,7 +161,7 @@ export const NotificationPermissionSheet = memo(
                   ]}
                 >
                   <Settings size={16} color="#fff" />
-                  <Text style={s.settingsText}>Mở Cài đặt</Text>
+                  <Text style={s.settingsText}>{t('enableOpenSettings')}</Text>
                 </Pressable>
               </View>
             </View>

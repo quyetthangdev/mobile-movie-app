@@ -90,6 +90,7 @@
       "edit": "Chỉnh sửa thông tin",
       "noEmail": "Chưa có email",
       "notUpdated": "Chưa cập nhật",
+      "noPhone": "Chưa cập nhật số điện thoại",
       "verified": "Đã xác minh",
       "notVerified": "Chưa xác minh"
     },
@@ -178,7 +179,7 @@
       "to": "Đến {{date}}",
       "orderTotal": "Tổng đơn hàng",
       "pointsUsedInOrder": "Điểm đã dùng",
-      "viewOrderDetail": "Xem chi tiết đơn hàng",
+      "viewOrderDetail": "Xem chi tiết đơn",
       "orderNotFound": "Không tìm thấy thông tin đơn hàng",
       "status": "Trạng thái",
       "transactionDate": "Ngày giao dịch",
@@ -278,7 +279,7 @@
     "hideBalance": "Ẩn số dư",
     "showBalance": "Hiện số dư",
     "giftCard": {
-      "title": "Thẻ quà tặng",
+      "title": "Thẻ quà tặng & Xu",
       "code": "Mã thẻ quà tặng",
       "copyCode": "Sao chép mã",
       "createdAt": "Tạo vào lúc",
@@ -293,6 +294,7 @@
       "owner": "Chủ sở hữu",
       "points": "điểm",
       "pointsReceived": "Xu nhận được",
+      "selected": "Đã chọn",
       "serial": "Số seri",
       "status": {
         "all": "Tất cả trạng thái",
@@ -328,7 +330,6 @@
     "notification": "Thông báo",
     "oldPassword": "Mật khẩu hiện tại",
     "orderCode": "Mã đơn hàng",
-    "orderType": "Loại đơn hàng",
     "otpCode": "Mã OTP",
     "otpDescription": "Vui lòng nhập mã OTP 6 số đã được gửi đến email của bạn",
     "otpExpiredIn": "Mã OTP sẽ hết hạn sau",
@@ -396,6 +397,33 @@
     "language": {
       "title": "Ngôn ngữ",
       "subtitle": "Chọn ngôn ngữ hiển thị"
+    },
+    "giftCardAndCoin": {
+      "title": "Thẻ quà tặng & Xu"
+    },
+    "theme": {
+      "title": "Giao diện"
+    },
+    "changeAvatar": "Đổi ảnh đại diện",
+    "avatarPermissionRequired": "Cần quyền truy cập thư viện ảnh",
+    "avatarTooLarge": "Ảnh phải nhỏ hơn 5MB",
+    "avatarUpdated": "Cập nhật ảnh đại diện thành công",
+    "avatarUpdateFailed": "Không thể tải ảnh lên, vui lòng thử lại",
+    "qr": {
+      "title": "Mã QR của tôi",
+      "subtitle": "Xuất trình mã này để nhân viên xác nhận tài khoản",
+      "notLoggedIn": "Chưa đăng nhập"
+    },
+    "orderStatus": {
+      "completed": "Hoàn thành",
+      "pending": "Chờ xử lý",
+      "shipping": "Đang giao",
+      "failed": "Thất bại"
+    },
+    "orderType": {
+      "atTable": "Tại bàn",
+      "takeOut": "Mang về",
+      "delivery": "Giao hàng"
     }
   }
 }

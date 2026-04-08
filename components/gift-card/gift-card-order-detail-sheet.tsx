@@ -17,7 +17,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react-native'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
@@ -39,20 +39,12 @@ import { formatCurrency } from '@/utils'
 
 const SNAP_POINTS = ['80%']
 
-const PAYMENT_STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  COMPLETED: { bg: '#dcfce7', text: '#16a34a', label: 'Thành công' },
-  PAID:      { bg: '#dcfce7', text: '#16a34a', label: 'Thành công' },
-  PENDING:   { bg: '#fef9c3', text: '#b45309', label: 'Chờ thanh toán' },
-  FAILED:    { bg: '#fee2e2', text: '#dc2626', label: 'Thất bại' },
-  CANCELLED: { bg: '#fee2e2', text: '#dc2626', label: 'Đã huỷ' },
-}
-
-const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  ZALOPAY: 'Ví ZaloPay',
-  CASH:    'Tiền mặt',
-  VNPAY:   'VNPay',
-  MOMO:    'Ví MoMo',
-  BANKING: 'Ngân hàng',
+const PAYMENT_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  COMPLETED: { bg: '#dcfce7', text: '#16a34a' },
+  PAID:      { bg: '#dcfce7', text: '#16a34a' },
+  PENDING:   { bg: '#fef9c3', text: '#b45309' },
+  FAILED:    { bg: '#fee2e2', text: '#dc2626' },
+  CANCELLED: { bg: '#fee2e2', text: '#dc2626' },
 }
 
 // ─── CopyableInline ───────────────────────────────────────────────────────────
@@ -159,11 +151,30 @@ export const GiftCardOrderDetailSheet = memo(function GiftCardOrderDetailSheet({
   const borderColor = isDark ? colors.gray[700] : colors.gray[200]
   const cardBg      = isDark ? colors.gray[800] : colors.gray[50]
 
-  const statusCfg = order
-    ? (PAYMENT_STATUS_CFG[(order.paymentStatus ?? '').toUpperCase()] ?? {
-        bg: cardBg, text: subColor, label: order.paymentStatus,
-      })
-    : null
+  const paymentStatusLabelMap = useMemo(() => ({
+    COMPLETED: t('paymentStatus.completed'),
+    PAID:      t('paymentStatus.completed'),
+    PENDING:   t('paymentStatus.pending'),
+    FAILED:    t('paymentStatus.failed'),
+    CANCELLED: t('paymentStatus.cancelled'),
+  }), [t])
+
+  const paymentMethodLabelMap = useMemo(() => ({
+    ZALOPAY: t('paymentMethod.zalopay'),
+    CASH:    t('paymentMethod.cash'),
+    VNPAY:   t('paymentMethod.vnpay'),
+    MOMO:    t('paymentMethod.momo'),
+    BANKING: t('paymentMethod.banking'),
+  }), [t])
+
+  const statusCfg = useMemo(() => {
+    if (!order) return null
+    const key = (order.paymentStatus ?? '').toUpperCase()
+    const colors = PAYMENT_STATUS_COLORS[key]
+    return colors
+      ? { ...colors, label: paymentStatusLabelMap[key as keyof typeof paymentStatusLabelMap] ?? order.paymentStatus }
+      : { bg: cardBg, text: subColor, label: order.paymentStatus }
+  }, [order, paymentStatusLabelMap, cardBg, subColor])
 
   const typeLabel =
     order?.type === GiftCardType.GIFT ? t('type.gift')
@@ -181,9 +192,11 @@ export const GiftCardOrderDetailSheet = memo(function GiftCardOrderDetailSheet({
       ? dayjs(order.createdAt).format('HH:mm · DD/MM/YYYY')
       : '—'
 
-  const paymentMethodLabel = order?.paymentMethod
-    ? (PAYMENT_METHOD_LABEL[(order.paymentMethod ?? '').toUpperCase()] ?? order.paymentMethod)
-    : '—'
+  const paymentMethodLabel = useMemo(() => {
+    if (!order?.paymentMethod) return '—'
+    const key = (order.paymentMethod ?? '').toUpperCase()
+    return paymentMethodLabelMap[key as keyof typeof paymentMethodLabelMap] ?? order.paymentMethod
+  }, [order?.paymentMethod, paymentMethodLabelMap])
 
   const giftCards = order?.giftCards ?? []
   const hasGiftCards = giftCards.length > 0 && order?.type === GiftCardType.BUY

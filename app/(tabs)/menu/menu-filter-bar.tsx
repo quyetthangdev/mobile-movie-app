@@ -13,24 +13,43 @@ import { colors } from '@/constants/colors.constant'
 
 export type CatalogChipData = { slug: string; name: string }
 
+type SpecialChipKey = 'isTopSell' | 'isNewProduct'
+
 // Chips extracted as memo — won't re-render when searchText changes
 const CatalogChips = memo(function CatalogChips({
   catalogs,
   selectedCatalog,
+  isNewProduct,
+  isTopSell,
   primaryColor,
   chipBg,
   chipColor,
   allLabel,
+  specialChipLabels,
   onCatalogSelect,
+  onSpecialFilterSelect,
 }: {
   catalogs: CatalogChipData[]
   selectedCatalog: string | undefined
+  isNewProduct: boolean | undefined
+  isTopSell: boolean | undefined
   primaryColor: string
   chipBg: string
   chipColor: string
   allLabel: string
+  specialChipLabels: { isTopSell: string; isNewProduct: string }
   onCatalogSelect: (slug: string | undefined) => void
+  onSpecialFilterSelect: (key: SpecialChipKey) => void
 }) {
+  const specialActive = { isNewProduct: !!isNewProduct, isTopSell: !!isTopSell }
+  const hasSpecial = specialActive.isNewProduct || specialActive.isTopSell
+  const allActive = !selectedCatalog && !hasSpecial
+
+  const SPECIAL_CHIPS: { key: SpecialChipKey; label: string }[] = [
+    { key: 'isTopSell', label: specialChipLabels.isTopSell },
+    { key: 'isNewProduct', label: specialChipLabels.isNewProduct },
+  ]
+
   return (
     <ScrollView
       horizontal
@@ -38,26 +57,49 @@ const CatalogChips = memo(function CatalogChips({
       contentContainerStyle={filterStyles.chipScroll}
       keyboardShouldPersistTaps="always"
     >
+      {/* Tất cả */}
       <Pressable
-        onPress={() => onCatalogSelect(undefined)}
+        onPress={() => { onCatalogSelect(undefined) }}
         style={[
           filterStyles.chip,
-          !selectedCatalog
-            ? { backgroundColor: primaryColor }
-            : { backgroundColor: chipBg },
+          { backgroundColor: allActive ? primaryColor : chipBg },
         ]}
       >
         <Text
           style={[
             filterStyles.chipText,
-            !selectedCatalog
-              ? filterStyles.chipTextActive
-              : { color: chipColor },
+            allActive ? filterStyles.chipTextActive : { color: chipColor },
           ]}
         >
           {allLabel}
         </Text>
       </Pressable>
+
+      {/* Special chips */}
+      {SPECIAL_CHIPS.map(({ key, label }) => {
+        const active = specialActive[key]
+        return (
+          <Pressable
+            key={key}
+            onPress={() => onSpecialFilterSelect(key)}
+            style={[
+              filterStyles.chip,
+              { backgroundColor: active ? primaryColor : chipBg },
+            ]}
+          >
+            <Text
+              style={[
+                filterStyles.chipText,
+                active ? filterStyles.chipTextActive : { color: chipColor },
+              ]}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        )
+      })}
+
+      {/* Catalog chips */}
       {catalogs.map((c) => {
         const sel = selectedCatalog === c.slug
         return (
@@ -94,6 +136,9 @@ export const MenuFilterBar = memo(function MenuFilterBar({
   catalogs,
   selectedCatalog,
   onCatalogSelect,
+  isNewProduct,
+  isTopSell,
+  onSpecialFilterSelect,
   currentMinPrice,
   currentMaxPrice,
   primaryColor,
@@ -101,6 +146,7 @@ export const MenuFilterBar = memo(function MenuFilterBar({
   onOpenPriceSheet,
   searchPlaceholder,
   allLabel,
+  specialChipLabels,
 }: {
   searchText: string
   onSearchChange: (t: string) => void
@@ -108,6 +154,9 @@ export const MenuFilterBar = memo(function MenuFilterBar({
   catalogs: CatalogChipData[]
   selectedCatalog: string | undefined
   onCatalogSelect: (slug: string | undefined) => void
+  isNewProduct: boolean | undefined
+  isTopSell: boolean | undefined
+  onSpecialFilterSelect: (key: SpecialChipKey) => void
   currentMinPrice: number
   currentMaxPrice: number
   primaryColor: string
@@ -115,6 +164,7 @@ export const MenuFilterBar = memo(function MenuFilterBar({
   onOpenPriceSheet: () => void
   searchPlaceholder: string
   allLabel: string
+  specialChipLabels: { isTopSell: string; isNewProduct: string }
 }) {
   const chipBg = isDark ? colors.gray[800] : colors.gray[100]
   const chipColor = isDark ? colors.gray[300] : colors.gray[600]
@@ -180,11 +230,15 @@ export const MenuFilterBar = memo(function MenuFilterBar({
       <CatalogChips
         catalogs={catalogs}
         selectedCatalog={selectedCatalog}
+        isNewProduct={isNewProduct}
+        isTopSell={isTopSell}
         primaryColor={primaryColor}
         chipBg={chipBg}
         chipColor={chipColor}
         allLabel={allLabel}
+        specialChipLabels={specialChipLabels}
         onCatalogSelect={onCatalogSelect}
+        onSpecialFilterSelect={onSpecialFilterSelect}
       />
     </View>
   )

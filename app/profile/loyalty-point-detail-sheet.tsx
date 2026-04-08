@@ -43,18 +43,12 @@ const TYPE_CFG = {
   [LoyaltyPointHistoryType.REFUND]:  { color: '#b45309', darkColor: '#fbbf24', bgL: '#fef9c3', bgD: '#713f12', prefix: '+', Icon: RefreshCw },
 } as const
 
-const ORDER_STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  [OrderStatus.PAID]:      { bg: '#dcfce7', text: '#16a34a', label: 'Hoàn thành' },
-  [OrderStatus.COMPLETED]: { bg: '#dcfce7', text: '#16a34a', label: 'Hoàn thành' },
-  [OrderStatus.PENDING]:   { bg: '#fef9c3', text: '#b45309', label: 'Chờ xử lý' },
-  [OrderStatus.SHIPPING]:  { bg: '#dbeafe', text: '#1d4ed8', label: 'Đang giao' },
-  [OrderStatus.FAILED]:    { bg: '#fee2e2', text: '#dc2626', label: 'Thất bại' },
-}
-
-const ORDER_TYPE_LABEL: Record<string, string> = {
-  [OrderTypeEnum.AT_TABLE]: 'Tại bàn',
-  [OrderTypeEnum.TAKE_OUT]: 'Mang về',
-  [OrderTypeEnum.DELIVERY]: 'Giao hàng',
+const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  [OrderStatus.PAID]:      { bg: '#dcfce7', text: '#16a34a' },
+  [OrderStatus.COMPLETED]: { bg: '#dcfce7', text: '#16a34a' },
+  [OrderStatus.PENDING]:   { bg: '#fef9c3', text: '#b45309' },
+  [OrderStatus.SHIPPING]:  { bg: '#dbeafe', text: '#1d4ed8' },
+  [OrderStatus.FAILED]:    { bg: '#fee2e2', text: '#dc2626' },
 }
 
 // ─── Order item row ───────────────────────────────────────────────────────────
@@ -176,12 +170,34 @@ export const LoyaltyPointDetailHistorySheet = memo(function LoyaltyPointDetailHi
     return key ? t(key) : (history?.type ?? '—')
   }, [history, t])
 
-  const isPending     = history?.status === LoyaltyPointTransactionStatus.PENDING
-  const hasOrder      = !!orderSlug
-  const orderItems    = order?.orderItems ?? []
-  const orderStatusCfg = order
-    ? (ORDER_STATUS_CFG[order.status] ?? { bg: sectionBg, text: subColor, label: order.status })
-    : null
+  const isPending  = history?.status === LoyaltyPointTransactionStatus.PENDING
+  const hasOrder   = !!orderSlug
+  const orderItems = order?.orderItems ?? []
+
+  const orderStatusCfg = useMemo(() => {
+    if (!order) return null
+    const colors = ORDER_STATUS_COLORS[order.status]
+    const labelMap: Record<string, string> = {
+      [OrderStatus.PAID]:      t('profile.orderStatus.completed'),
+      [OrderStatus.COMPLETED]: t('profile.orderStatus.completed'),
+      [OrderStatus.PENDING]:   t('profile.orderStatus.pending'),
+      [OrderStatus.SHIPPING]:  t('profile.orderStatus.shipping'),
+      [OrderStatus.FAILED]:    t('profile.orderStatus.failed'),
+    }
+    return colors
+      ? { ...colors, label: labelMap[order.status] ?? order.status }
+      : { bg: sectionBg, text: subColor, label: order.status }
+  }, [order, t, sectionBg, subColor])
+
+  const orderTypeLabel = useMemo(() => {
+    if (!order) return ''
+    const typeMap: Record<string, string> = {
+      [OrderTypeEnum.AT_TABLE]: t('profile.orderType.atTable'),
+      [OrderTypeEnum.TAKE_OUT]: t('profile.orderType.takeOut'),
+      [OrderTypeEnum.DELIVERY]: t('profile.orderType.delivery'),
+    }
+    return typeMap[order.type] ?? order.type
+  }, [order, t])
 
   return (
     <BottomSheetModal
@@ -210,7 +226,7 @@ export const LoyaltyPointDetailHistorySheet = memo(function LoyaltyPointDetailHi
                   <Text style={[s.headerTitle, { color: textColor }]}>{typeLabel}</Text>
                   {isPending && (
                     <View style={[s.badge, { backgroundColor: sectionBg }]}>
-                      <Text style={[s.badgeText, { color: subColor }]}>Chờ xử lý</Text>
+                      <Text style={[s.badgeText, { color: subColor }]}>{t('profile.orderStatus.pending')}</Text>
                     </View>
                   )}
                   <Text style={[s.headerDate, { color: subColor }]}>{formattedDate}</Text>
@@ -247,7 +263,7 @@ export const LoyaltyPointDetailHistorySheet = memo(function LoyaltyPointDetailHi
                               #{orderSlug}
                             </Text>
                             <Text style={[s.orderType, { color: subColor }]}>
-                              · {ORDER_TYPE_LABEL[order.type] ?? order.type}
+                              · {orderTypeLabel}
                             </Text>
                             <View style={s.flex1} />
                             <View style={[s.badge, { backgroundColor: orderStatusCfg.bg }]}>

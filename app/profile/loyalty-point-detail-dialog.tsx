@@ -52,18 +52,12 @@ const TYPE_CFG = {
   [LoyaltyPointHistoryType.REFUND]:  { color: colors.warning.textLight, darkColor: colors.warning.dark, bgL: colors.warning.iconBgLight, bgD: colors.warning.iconBgDark, prefix: '+', Icon: RefreshCw },
 } as const
 
-const ORDER_STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
-  [OrderStatus.PAID]:      { bg: colors.success.iconBgLight, text: '#16a34a', label: 'Hoàn thành' },
-  [OrderStatus.COMPLETED]: { bg: colors.success.iconBgLight, text: '#16a34a', label: 'Hoàn thành' },
-  [OrderStatus.PENDING]:   { bg: colors.warning.iconBgLight, text: colors.warning.textLight, label: 'Chờ xử lý' },
-  [OrderStatus.SHIPPING]:  { bg: '#dbeafe', text: '#1d4ed8', label: 'Đang giao' },
-  [OrderStatus.FAILED]:    { bg: '#fee2e2', text: colors.destructive.dark, label: 'Thất bại' },
-}
-
-const ORDER_TYPE_LABEL: Record<string, string> = {
-  [OrderTypeEnum.AT_TABLE]: 'Tại bàn',
-  [OrderTypeEnum.TAKE_OUT]: 'Mang về',
-  [OrderTypeEnum.DELIVERY]: 'Giao hàng',
+const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  [OrderStatus.PAID]:      { bg: colors.success.iconBgLight, text: '#16a34a' },
+  [OrderStatus.COMPLETED]: { bg: colors.success.iconBgLight, text: '#16a34a' },
+  [OrderStatus.PENDING]:   { bg: colors.warning.iconBgLight, text: colors.warning.textLight },
+  [OrderStatus.SHIPPING]:  { bg: '#dbeafe', text: '#1d4ed8' },
+  [OrderStatus.FAILED]:    { bg: '#fee2e2', text: colors.destructive.dark },
 }
 
 // ─── CopyableInline ───────────────────────────────────────────────────────────
@@ -244,12 +238,34 @@ export const LoyaltyPointDetailHistoryDialog = memo(function LoyaltyPointDetailH
     return key ? t(key) : (history?.type ?? '—')
   }, [history, t])
 
-  const isPending       = history?.status === LoyaltyPointTransactionStatus.PENDING
-  const hasOrder        = !!orderSlug
-  const orderItems      = order?.orderItems ?? []
-  const orderStatusCfg  = order
-    ? (ORDER_STATUS_CFG[order.status] ?? { bg: cardBg, text: subColor, label: order.status })
-    : null
+  const isPending  = history?.status === LoyaltyPointTransactionStatus.PENDING
+  const hasOrder   = !!orderSlug
+  const orderItems = order?.orderItems ?? []
+
+  const orderStatusCfg = useMemo(() => {
+    if (!order) return null
+    const statusLabelMap: Record<string, string> = {
+      [OrderStatus.PAID]:      t('profile.orderStatus.completed'),
+      [OrderStatus.COMPLETED]: t('profile.orderStatus.completed'),
+      [OrderStatus.PENDING]:   t('profile.orderStatus.pending'),
+      [OrderStatus.SHIPPING]:  t('profile.orderStatus.shipping'),
+      [OrderStatus.FAILED]:    t('profile.orderStatus.failed'),
+    }
+    const colors = ORDER_STATUS_COLORS[order.status]
+    return colors
+      ? { ...colors, label: statusLabelMap[order.status] ?? order.status }
+      : { bg: cardBg, text: subColor, label: order.status }
+  }, [order, t, cardBg, subColor])
+
+  const orderTypeLabel = useMemo(() => {
+    if (!order) return ''
+    const typeMap: Record<string, string> = {
+      [OrderTypeEnum.AT_TABLE]: t('profile.orderType.atTable'),
+      [OrderTypeEnum.TAKE_OUT]: t('profile.orderType.takeOut'),
+      [OrderTypeEnum.DELIVERY]: t('profile.orderType.delivery'),
+    }
+    return typeMap[order.type] ?? order.type
+  }, [order, t])
 
   return (
     <BottomSheetModal
@@ -331,7 +347,7 @@ export const LoyaltyPointDetailHistoryDialog = memo(function LoyaltyPointDetailH
                           {/* Order header */}
                           <View style={[s.orderHeader, { borderBottomColor: borderColor }]}>
                             <Text style={[s.orderType, { color: subColor }]}>
-                              {ORDER_TYPE_LABEL[order.type] ?? order.type}
+                              {orderTypeLabel}
                             </Text>
                             <View style={[s.badge, { backgroundColor: orderStatusCfg.bg }]}>
                               <Text style={[s.badgeText, { color: orderStatusCfg.text }]}>

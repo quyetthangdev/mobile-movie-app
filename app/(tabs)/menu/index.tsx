@@ -182,7 +182,23 @@ export default function MenuPage() {
   )
   const handleCatalogSelect = useCallback(
     (slug: string | undefined) => {
-      setMenuFilter((prev) => ({ ...prev, catalog: slug }))
+      setMenuFilter((prev) => ({ ...prev, catalog: slug, isNewProduct: undefined, isTopSell: undefined }))
+    },
+    [setMenuFilter],
+  )
+
+  const handleSpecialFilterSelect = useCallback(
+    (key: 'isNewProduct' | 'isTopSell') => {
+      setMenuFilter((prev) => {
+        const active = !!prev[key]
+        return {
+          ...prev,
+          catalog: undefined,
+          isNewProduct: undefined,
+          isTopSell: undefined,
+          [key]: active ? undefined : true,
+        }
+      })
     },
     [setMenuFilter],
   )
@@ -208,6 +224,8 @@ export default function MenuPage() {
   const menuMinPrice = menuFilter.minPrice
   const menuMaxPrice = menuFilter.maxPrice
   const menuSlug = menuFilter.menu
+  const menuIsNewProduct = menuFilter.isNewProduct
+  const menuIsTopSell = menuFilter.isTopSell
 
   const request = useMemo<ISpecificMenuRequest>(
     () => ({
@@ -218,6 +236,8 @@ export default function MenuPage() {
       minPrice: menuMinPrice,
       maxPrice: menuMaxPrice,
       slug: menuSlug,
+      isNewProduct: menuIsNewProduct,
+      isTopSell: menuIsTopSell,
     }),
     [
       menuDate,
@@ -227,6 +247,8 @@ export default function MenuPage() {
       menuMinPrice,
       menuMaxPrice,
       menuSlug,
+      menuIsNewProduct,
+      menuIsTopSell,
       branchSlug,
     ],
   )
@@ -553,6 +575,9 @@ export default function MenuPage() {
             catalogs={catalogList}
             selectedCatalog={menuCatalog}
             onCatalogSelect={handleCatalogSelect}
+            isNewProduct={menuIsNewProduct}
+            isTopSell={menuIsTopSell}
+            onSpecialFilterSelect={handleSpecialFilterSelect}
             currentMinPrice={menuMinPrice ?? 0}
             currentMaxPrice={menuMaxPrice ?? 300_000}
             primaryColor={primaryColor}
@@ -560,6 +585,7 @@ export default function MenuPage() {
             onOpenPriceSheet={handleOpenPriceSheet}
             searchPlaceholder={t('menu.searchProduct')}
             allLabel={t('menu.all')}
+            specialChipLabels={{ isTopSell: t('menu.isTopSell'), isNewProduct: t('menu.isNewProduct') }}
           />
         )}
       </View>

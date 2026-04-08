@@ -20,6 +20,7 @@ import { FlashList } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, Gift, Lock, ShoppingBag, ShoppingCart, Unlock, UserRound, Users } from 'lucide-react-native'
 import React, { startTransition, useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Image as RNImage,
   InteractionManager,
@@ -112,6 +113,7 @@ const sk = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function GiftCardScreen() {
+  const { t } = useTranslation('giftCard')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
   const router = useRouter()
@@ -311,7 +313,7 @@ export default function GiftCardScreen() {
           >
             <ArrowUpNarrowWide size={14} color={sortOrder === 'asc' ? colors.white.light : subColor} />
             <Text style={[s.sortChipText, { color: sortOrder === 'asc' ? colors.white.light : subColor }]}>
-              Giá tăng dần
+              {t('sortAsc')}
             </Text>
           </Pressable>
 
@@ -327,7 +329,7 @@ export default function GiftCardScreen() {
           >
             <ArrowDownNarrowWide size={14} color={sortOrder === 'desc' ? colors.white.light : subColor} />
             <Text style={[s.sortChipText, { color: sortOrder === 'desc' ? colors.white.light : subColor }]}>
-              Giá giảm dần
+              {t('sortDesc')}
             </Text>
           </Pressable>
         </View>
@@ -336,9 +338,9 @@ export default function GiftCardScreen() {
         {flagsLoaded && (
           <View style={s.lockRow}>
             {([
-              { type: 'SELF', label: 'Bản thân', Icon: UserRound },
-              { type: 'GIFT', label: 'Tặng bạn', Icon: Users },
-              { type: 'BUY',  label: 'Mua thêm', Icon: ShoppingBag },
+              { type: 'SELF', label: t('checkout.lockType.self'), Icon: UserRound },
+              { type: 'GIFT', label: t('checkout.lockType.gift'), Icon: Users },
+              { type: 'BUY',  label: t('checkout.lockType.buy'),  Icon: ShoppingBag },
             ] as const).map(({ type, label, Icon }) => {
               const isLocked = lockMap[type] === true
               return (

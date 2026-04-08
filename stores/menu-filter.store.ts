@@ -14,6 +14,8 @@ const defaultMenuFilter: IMenuFilter = {
   catalog: undefined,
   productName: undefined,
   menu: undefined,
+  isNewProduct: undefined,
+  isTopSell: undefined,
 }
 
 export const useMenuFilterStore = create<IMenuFilterStore>()(
@@ -40,6 +42,8 @@ export const useMenuFilterStore = create<IMenuFilterStore>()(
             catalog: undefined,
             productName: undefined,
             menu: undefined,
+            isNewProduct: undefined,
+            isTopSell: undefined,
           },
         })
       },

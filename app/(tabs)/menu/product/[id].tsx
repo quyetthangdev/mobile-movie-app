@@ -7,7 +7,7 @@ import { Image } from 'expo-image'
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AppState, RefreshControl, StyleSheet, View, useColorScheme } from 'react-native'
+import { AppState, Platform, RefreshControl, StyleSheet, View, useColorScheme } from 'react-native'
 import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -39,7 +39,7 @@ import {
   useOrderFlowCartItemCount,
 } from '@/stores/selectors'
 import { IOrderItem } from '@/types'
-import { showToast } from '@/utils'
+import { showErrorToastMessage, showToast } from '@/utils'
 
 /**
  * Isolates useIsFocused() so only this tiny component re-renders on
@@ -233,6 +233,7 @@ function ProductDetailContent() {
 
   const handleAddToCart = useCallback(() => {
     if (!useUserStore.getState().userInfo) {
+      if (Platform.OS === 'android') showErrorToastMessage('toast.unloggedIn')
       router.push('/auth/login')
       return
     }

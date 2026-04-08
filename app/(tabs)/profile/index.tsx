@@ -173,13 +173,13 @@ const ProfileHeader = React.memo(function ProfileHeader({
   return (
     <View style={phStyles.container} pointerEvents="box-none">
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Platform.OS !== 'ios' ? (
+        {Platform.OS === 'ios' && (
           <BlurView
             intensity={20}
             tint={isDark ? 'dark' : 'light'}
             style={StyleSheet.absoluteFill}
           />
-        ) : null}
+        )}
         <LinearGradient
           colors={gradientColors}
           locations={[0, 0.3, 0.62, 0.85, 1]}
@@ -350,7 +350,7 @@ const ProfileTest = () => {
   const handleAvatarPress = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
-      showToast('Cần quyền truy cập thư viện ảnh')
+      showToast(t('profile.avatarPermissionRequired'))
       return
     }
 
@@ -366,7 +366,7 @@ const ProfileTest = () => {
     const asset = result.assets[0]
 
     if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-      showToast('Ảnh phải nhỏ hơn 5MB')
+      showToast(t('profile.avatarTooLarge'))
       return
     }
 
@@ -382,13 +382,13 @@ const ProfileTest = () => {
         if (data.result) {
           setUserInfo(data.result)
         }
-        showToast('Cập nhật ảnh đại diện thành công')
+        showToast(t('profile.avatarUpdated'))
       },
       onError: () => {
-        showToast('Không thể tải ảnh lên, vui lòng thử lại')
+        showToast(t('profile.avatarUpdateFailed'))
       },
     })
-  }, [uploadAvatar, setUserInfo])
+  }, [uploadAvatar, setUserInfo, t])
 
   const openGeneralInfo = useCallback(() => {
     router.push('/(tabs)/profile/general-info')
@@ -494,7 +494,7 @@ const ProfileTest = () => {
               <MenuItem
                 icon={Camera}
                 iconColor={ICON_COLORS.blue}
-                title="Đổi ảnh đại diện"
+                title={t('profile.changeAvatar')}
                 onPress={handleAvatarPress}
                 textColor={theme.text}
                 textMuted={theme.textMuted}
@@ -529,7 +529,7 @@ const ProfileTest = () => {
               <MenuItem
                 icon={Gift}
                 iconColor={ICON_COLORS.orange}
-                title={t('profile.giftCardAndCoin.title', 'Thẻ quà tặng & Xu')}
+                title={t('profile.giftCard.title', 'Thẻ quà tặng & Xu')}
                 onPress={openGiftCard}
                 textColor={theme.text}
                 textMuted={theme.textMuted}

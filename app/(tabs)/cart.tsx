@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router'
 import { ChevronLeft, Trash2 } from 'lucide-react-native'
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { TouchableOpacity as GHTouchable } from 'react-native-gesture-handler'
 import Animated, {
   interpolate,
@@ -48,6 +49,7 @@ function ClearCartSheet({
 }) {
   const insets = useSafeAreaInsets()
   const sheetRef = useRef<BottomSheetModal>(null)
+  const { t } = useTranslation('menu')
   const snapPoints = useMemo(() => [220 + insets.bottom], [insets.bottom])
 
   const bgStyle = useMemo(
@@ -103,10 +105,10 @@ function ClearCartSheet({
         <View style={confirmStyles.body}>
           <Trash2 size={32} color={colors.destructive.light} />
           <Text style={[confirmStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-            Xoá giỏ hàng?
+            {t('cart.confirmTitle')}
           </Text>
           <Text style={[confirmStyles.desc, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-            Tất cả món trong giỏ sẽ bị xoá và không thể hoàn tác.
+            {t('cart.confirmDesc')}
           </Text>
         </View>
 
@@ -118,7 +120,7 @@ function ClearCartSheet({
               style={[confirmStyles.btn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] }]}
             >
               <Text style={[confirmStyles.btnText, { color: isDark ? colors.gray[50] : colors.gray[700] }]}>
-                Huỷ
+                {t('menu.cancel')}
               </Text>
             </GHTouchable>
           </View>
@@ -129,7 +131,7 @@ function ClearCartSheet({
               style={[confirmStyles.btn, { backgroundColor: colors.destructive.light }]}
             >
               <Text style={[confirmStyles.btnText, { color: colors.white.light }]}>
-                Xoá tất cả
+                {t('cart.clearAll')}
               </Text>
             </GHTouchable>
           </View>
@@ -197,6 +199,7 @@ function CartHeader({
   isDark: boolean
   scrollY: SharedValue<number>
 }) {
+  const { t } = useTranslation('menu')
   const pageBg = isDark ? colors.background.dark : colors.background.light
   const gradientColors = useMemo(
     () => [pageBg, `${pageBg}E6`, `${pageBg}B0`, `${pageBg}50`, `${pageBg}00`] as const,
@@ -210,13 +213,13 @@ function CartHeader({
   return (
     <View style={headerStyles.container} pointerEvents="box-none">
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Platform.OS !== 'ios' ? (
+        {Platform.OS === 'ios' && (
           <BlurView
             intensity={20}
             tint={isDark ? 'dark' : 'light'}
             style={StyleSheet.absoluteFill}
           />
-        ) : null}
+        )}
         <LinearGradient
           colors={gradientColors}
           locations={[0, 0.3, 0.62, 0.85, 1]}
@@ -238,7 +241,7 @@ function CartHeader({
         </Pressable>
 
         <Animated.Text style={[headerStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }, titleAnimStyle]}>
-          Giỏ hàng{itemCount > 0 ? ` (${itemCount})` : ''}
+          {t('cart.title')}{itemCount > 0 ? ` (${itemCount})` : ''}
         </Animated.Text>
 
         {itemCount > 0 ? (

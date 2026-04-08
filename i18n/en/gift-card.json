@@ -1,4 +1,5 @@
 {
+  "selected": "Selected",
   "status": {
     "available": "Available",
     "used": "Used",
@@ -212,6 +213,21 @@
     "replaceWith": "Replace with",
     "keepCurrent": "Keep current",
     "replace": "Replace"
+  },
+  "sortAsc": "Price: Low to High",
+  "sortDesc": "Price: High to Low",
+  "paymentStatus": {
+    "completed": "Successful",
+    "pending": "Pending payment",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "paymentMethod": {
+    "zalopay": "ZaloPay Wallet",
+    "cash": "Cash",
+    "vnpay": "VNPay",
+    "momo": "MoMo Wallet",
+    "banking": "Bank transfer"
   },
   "recipientForm": {
     "recipientTitle": "Recipient {{index}}",

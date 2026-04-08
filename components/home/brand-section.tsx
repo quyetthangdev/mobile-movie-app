@@ -4,7 +4,7 @@
  */
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, Text, View, useColorScheme } from 'react-native'
+import { Text, View, useColorScheme } from 'react-native'
 
 import { Images } from '@/assets/images'
 import { colors } from '@/constants'
@@ -103,15 +103,7 @@ export const BrandSection = React.memo(function BrandSection() {
         {t('homeDescription2')}
       </Text>
 
-      {/* CTA */}
-      <Pressable
-        className="self-center rounded-full px-8 py-3 mb-7"
-        style={{ backgroundColor: primaryColor }}
-      >
-        <Text className="text-white text-sm font-semibold">
-          {t('learnMore')}
-        </Text>
-      </Pressable>
+      {/* CTA removed — "Tìm hiểu thêm" ẩn, chờ link đích xác định */}
 
       {/* Store carousel với L-bracket corner decorators */}
       <View style={{ position: 'relative', marginHorizontal: 8 }}>

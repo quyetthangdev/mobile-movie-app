@@ -1,4 +1,5 @@
 /** Tab Home. */
+import { useRouter } from 'expo-router'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -51,6 +52,7 @@ const FALLBACK_BANNER: IBanner = {
 
 export default function HomeScreen() {
   const { t } = useTranslation('home')
+  const router = useRouter()
   const isDark = useColorScheme() === 'dark'
   const { height: screenHeight } = useWindowDimensions()
   const primaryColor = usePrimaryColor()
@@ -149,22 +151,24 @@ export default function HomeScreen() {
         )}
 
         {/* 3. Sản phẩm nổi bật */}
-        <Animated.View
-          style={s.sectionSpacing}
-          entering={FadeInDown.duration(350).delay(ready ? 140 : 9999)}
-        >
-          <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: primaryColor }]}>
-              {t('exploreMenu')}
-            </Text>
-            <Pressable>
-              <Text style={[s.sectionLink, { color: primaryColor }]}>
-                {t('viewMenu')}
+        {ready && (
+          <Animated.View
+            style={s.sectionSpacing}
+            entering={FadeInDown.duration(350).delay(140)}
+          >
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: primaryColor }]}>
+                {t('exploreMenu')}
               </Text>
-            </Pressable>
-          </View>
-          <HighlightMenuCarousel primaryColor={primaryColor} />
-        </Animated.View>
+              <Pressable onPress={() => router.push('/(tabs)/menu' as never)}>
+                <Text style={[s.sectionLink, { color: primaryColor }]}>
+                  {t('viewMenu')}
+                </Text>
+              </Pressable>
+            </View>
+            <HighlightMenuCarousel primaryColor={primaryColor} />
+          </Animated.View>
+        )}
 
         {/* 4. YouTube / Member Guide */}
         {ready && youtubeVideoId && (

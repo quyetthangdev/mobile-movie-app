@@ -1,9 +1,9 @@
 /**
- * Notification List Screen — paginated, pull-to-refresh, tab filter, undo mark-all.
+ * Notification List Screen — paginated, pull-to-refresh, tab filter.
  */
 import { FlashList } from '@shopify/flash-list'
 import { Bell } from 'lucide-react-native'
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -13,14 +13,13 @@ import {
   useColorScheme,
   View,
 } from 'react-native'
-import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors } from '@/constants'
-import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { NotificationMessageCode } from '@/constants/notification.constant'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useMarkNotificationAsRead, useNotifications } from '@/hooks/use-notification'
 import { navigateNative } from '@/lib/navigation'
 import { useUserStore } from '@/stores'
@@ -29,55 +28,57 @@ import type { INotification } from '@/types/notification.type'
 
 // ─── Notification helpers ────────────────────────────────────────────────────
 
-function getNotificationTitle(message: string): string {
+type TFn = (key: string, opts?: Record<string, unknown>) => string
+
+function getNotificationTitle(message: string, t: TFn): string {
   switch (message) {
-    case NotificationMessageCode.ORDER_NEEDS_PROCESSED: return 'Đơn hàng cần xử lý'
-    case NotificationMessageCode.ORDER_NEEDS_DELIVERED: return 'Đơn hàng cần giao'
-    case NotificationMessageCode.ORDER_NEEDS_READY_TO_GET: return 'Đơn hàng sẵn sàng'
-    case NotificationMessageCode.ORDER_NEEDS_CANCELLED: return 'Đơn hàng đã huỷ'
-    case NotificationMessageCode.ORDER_BILL_FAILED_PRINTING: return 'In hoá đơn lỗi'
-    case NotificationMessageCode.ORDER_CHEF_ORDER_FAILED_PRINTING: return 'In đơn bếp lỗi'
-    case NotificationMessageCode.ORDER_LABEL_TICKET_FAILED_PRINTING: return 'In nhãn dán lỗi'
-    case NotificationMessageCode.ORDER_PAID: return 'Đơn hàng đã thanh toán'
-    case NotificationMessageCode.CARD_ORDER_PAID: return 'Thẻ quà tặng đã thanh toán'
-    default: return message || 'Thông báo'
+    case NotificationMessageCode.ORDER_NEEDS_PROCESSED: return t('titleOrderNeedsProcessed')
+    case NotificationMessageCode.ORDER_NEEDS_DELIVERED: return t('titleOrderNeedsDelivered')
+    case NotificationMessageCode.ORDER_NEEDS_READY_TO_GET: return t('titleOrderNeedsReadyToGet')
+    case NotificationMessageCode.ORDER_NEEDS_CANCELLED: return t('titleOrderNeedsCancelled')
+    case NotificationMessageCode.ORDER_BILL_FAILED_PRINTING: return t('titleOrderBillFailedPrinting')
+    case NotificationMessageCode.ORDER_CHEF_ORDER_FAILED_PRINTING: return t('titleOrderChefOrderFailedPrinting')
+    case NotificationMessageCode.ORDER_LABEL_TICKET_FAILED_PRINTING: return t('titleOrderLabelTicketFailedPrinting')
+    case NotificationMessageCode.ORDER_PAID: return t('titleOrderPaid')
+    case NotificationMessageCode.CARD_ORDER_PAID: return t('titleCardOrderPaid')
+    default: return message || t('titleDefault')
   }
 }
 
-function getNotificationBody(message: string, orderSlug: string): string {
+function getNotificationBody(message: string, orderSlug: string, t: TFn): string {
   const ref = orderSlug ? `#${orderSlug}` : ''
   switch (message) {
     case NotificationMessageCode.ORDER_NEEDS_PROCESSED:
-      return `Đơn ${ref} đang chờ xử lý`
+      return t('bodyOrderNeedsProcessed', { ref })
     case NotificationMessageCode.ORDER_NEEDS_DELIVERED:
-      return `Đơn ${ref} cần được giao`
+      return t('bodyOrderNeedsDelivered', { ref })
     case NotificationMessageCode.ORDER_NEEDS_READY_TO_GET:
-      return `Đơn ${ref} đã sẵn sàng để lấy`
+      return t('bodyOrderNeedsReadyToGet', { ref })
     case NotificationMessageCode.ORDER_NEEDS_CANCELLED:
-      return `Đơn ${ref} đã bị huỷ`
+      return t('bodyOrderNeedsCancelled', { ref })
     case NotificationMessageCode.ORDER_BILL_FAILED_PRINTING:
-      return `Hoá đơn ${ref} in thất bại`
+      return t('bodyOrderBillFailedPrinting', { ref })
     case NotificationMessageCode.ORDER_CHEF_ORDER_FAILED_PRINTING:
-      return `Phiếu bếp ${ref} in thất bại`
+      return t('bodyOrderChefOrderFailedPrinting', { ref })
     case NotificationMessageCode.ORDER_LABEL_TICKET_FAILED_PRINTING:
-      return `Nhãn dán ${ref} in thất bại`
+      return t('bodyOrderLabelTicketFailedPrinting', { ref })
     case NotificationMessageCode.ORDER_PAID:
     case NotificationMessageCode.CARD_ORDER_PAID:
-      return `Đơn ${ref} đã được thanh toán`
+      return t('bodyOrderPaid', { ref })
     default:
       return ''
   }
 }
 
-function formatTimeAgo(createdAt: string): string {
+function formatTimeAgo(createdAt: string, t: TFn): string {
   const diff = Date.now() - new Date(createdAt).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Vừa xong'
-  if (mins < 60) return `${mins} phút trước`
+  if (mins < 1) return t('timeJustNow')
+  if (mins < 60) return t('timeMinutesAgo', { count: mins })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} giờ trước`
+  if (hours < 24) return t('timeHoursAgo', { count: hours })
   const days = Math.floor(hours / 24)
-  return `${days} ngày trước`
+  return t('timeDaysAgo', { count: days })
 }
 
 // ─── Skeleton item ───────────────────────────────────────────────────────────
@@ -110,6 +111,8 @@ const NotificationItem = memo(function NotificationItem({
   primaryColor: string
   onMarkRead: (slug: string) => void
 }) {
+  const { t } = useTranslation('notification')
+
   const handlePress = useCallback(() => {
     onMarkRead(item.slug)
     const orderSlug = item.metadata?.order
@@ -118,13 +121,13 @@ const NotificationItem = memo(function NotificationItem({
     }
   }, [item.slug, item.metadata?.order, onMarkRead])
 
-  const title = useMemo(() => getNotificationTitle(item.message), [item.message])
+  const title = useMemo(() => getNotificationTitle(item.message, t), [item.message, t])
   const orderSlug = item.metadata?.order ?? ''
   const body = useMemo(
-    () => getNotificationBody(item.message, orderSlug),
-    [item.message, orderSlug],
+    () => getNotificationBody(item.message, orderSlug, t),
+    [item.message, orderSlug, t],
   )
-  const timeAgo = useMemo(() => formatTimeAgo(item.createdAt), [item.createdAt])
+  const timeAgo = useMemo(() => formatTimeAgo(item.createdAt, t), [item.createdAt, t])
 
   const cardBg = item.isRead
     ? (isDark ? colors.gray[900] : '#fff')
@@ -173,7 +176,7 @@ const NotificationItem = memo(function NotificationItem({
             </Text>
             {!item.isRead && (
               <Text style={[ns.statusLabel, { color: primaryColor }]}>
-                Chưa đọc
+                {t('statusUnread')}
               </Text>
             )}
           </View>
@@ -181,60 +184,6 @@ const NotificationItem = memo(function NotificationItem({
       </View>
     </Pressable>
   )
-})
-
-// ─── Undo snackbar ───────────────────────────────────────────────────────────
-
-const UndoSnackbar = memo(function UndoSnackbar({
-  onUndo,
-  isDark,
-  primaryColor,
-  bottomInset,
-}: {
-  onUndo: () => void
-  isDark: boolean
-  primaryColor: string
-  bottomInset: number
-}) {
-  return (
-    <Animated.View
-      entering={FadeInDown.duration(200)}
-      exiting={FadeOutDown.duration(200)}
-      style={[
-        snackStyles.container,
-        {
-          backgroundColor: isDark ? colors.gray[800] : colors.gray[900],
-          bottom: bottomInset + 16,
-        },
-      ]}
-    >
-      <Text style={snackStyles.label}>Đã đọc tất cả thông báo</Text>
-      <Pressable onPress={onUndo} hitSlop={8}>
-        <Text style={[snackStyles.undoBtn, { color: primaryColor }]}>Hoàn tác</Text>
-      </Pressable>
-    </Animated.View>
-  )
-})
-
-const snackStyles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-  },
-  label: { fontSize: 13, color: '#fff', flex: 1 },
-  undoBtn: { fontSize: 13, fontWeight: '700', marginLeft: 12 },
 })
 
 // ─── Tab header ──────────────────────────────────────────────────────────────
@@ -252,6 +201,7 @@ const NotificationTabHeader = memo(function NotificationTabHeader({
   primaryColor: string
   onTabChange: (tab: 'all' | 'unread') => void
 }) {
+  const { t } = useTranslation('notification')
   const inactiveBg = isDark ? colors.gray[800] : '#fff'
   const inactiveText = isDark ? colors.gray[400] : colors.gray[500]
 
@@ -262,7 +212,7 @@ const NotificationTabHeader = memo(function NotificationTabHeader({
         onPress={() => onTabChange('all')}
       >
         <Text style={[ns.tabText, { color: activeTab === 'all' ? '#fff' : inactiveText }]}>
-          Tất cả
+          {t('tabAll')}
         </Text>
       </Pressable>
       <Pressable
@@ -270,7 +220,7 @@ const NotificationTabHeader = memo(function NotificationTabHeader({
         onPress={() => onTabChange('unread')}
       >
         <Text style={[ns.tabText, { color: activeTab === 'unread' ? '#fff' : inactiveText }]}>
-          {unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc'}
+          {unreadCount > 0 ? t('tabUnreadCount', { count: unreadCount }) : t('tabUnread')}
         </Text>
       </Pressable>
     </View>
@@ -280,13 +230,12 @@ const NotificationTabHeader = memo(function NotificationTabHeader({
 // ─── Screen ─────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 15
-const UNDO_DURATION = 5000
 
 export default function NotificationScreen() {
+  const { t } = useTranslation('notification')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
   const screenBg = isDark ? colors.background.dark : colors.background.light
-  const { bottom: bottomInset } = useSafeAreaInsets()
 
   const notifications = useNotificationStore((s) => s.notifications)
   const unreadCount = useNotificationStore(
@@ -332,47 +281,6 @@ export default function NotificationScreen() {
   const { mutate: markReadApi } = useMarkNotificationAsRead()
   const handleMarkRead = useCallback((slug: string) => { markReadApi(slug) }, [markReadApi])
 
-  // ── Mark all read with undo ─────────────────────────────────────────────
-  const [undoPending, setUndoPending] = useState(false)
-  const prevUnreadSlugsRef = useRef<string[]>([])
-  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-
-  const handleMarkAllRead = useCallback(() => {
-    const unreadSlugs = useNotificationStore
-      .getState()
-      .notifications.filter((n) => !n.isRead)
-      .map((n) => n.slug)
-    if (unreadSlugs.length === 0) return
-
-    prevUnreadSlugsRef.current = unreadSlugs
-    useNotificationStore.getState().markAllAsRead()
-    setUndoPending(true)
-
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-    undoTimerRef.current = setTimeout(() => {
-      setUndoPending(false)
-      prevUnreadSlugsRef.current = []
-    }, UNDO_DURATION)
-  }, [])
-
-  const handleUndo = useCallback(() => {
-    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-    const slugs = prevUnreadSlugsRef.current
-    if (slugs.length > 0) {
-      useNotificationStore.getState().setReadStates(
-        slugs.map((slug) => ({ slug, isRead: false })),
-      )
-    }
-    prevUnreadSlugsRef.current = []
-    setUndoPending(false)
-  }, [])
-
-  useEffect(() => {
-    return () => {
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-    }
-  }, [])
-
   // ── Render helpers ──────────────────────────────────────────────────────
   const renderItem = useCallback(
     ({ item }: { item: INotification }) => (
@@ -390,23 +298,20 @@ export default function NotificationScreen() {
 
   const handleTabChange = useCallback((tab: 'all' | 'unread') => setActiveTab(tab), [])
 
-
   const ListEmptyComponent = useMemo(
     () =>
       isFirstLoad ? null : (
         <View style={ns.emptyWrap}>
           <Bell size={56} color={isDark ? colors.gray[600] : colors.gray[300]} />
           <Text style={[ns.emptyTitle, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-            {activeTab === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo'}
+            {activeTab === 'unread' ? t('emptyUnreadTitle') : t('emptyTitle')}
           </Text>
           <Text style={[ns.emptyDesc, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-            {activeTab === 'unread'
-              ? 'Bạn đã đọc tất cả thông báo'
-              : 'Thông báo mới sẽ hiển thị tại đây'}
+            {activeTab === 'unread' ? t('emptyUnreadDesc') : t('emptyDesc')}
           </Text>
         </View>
       ),
-    [isDark, isFirstLoad, activeTab],
+    [isDark, isFirstLoad, activeTab, t],
   )
 
   const ListFooterComponent = useMemo(() => {
@@ -460,25 +365,7 @@ export default function NotificationScreen() {
         />
       </View>
 
-      <FloatingHeader
-        title="Thông báo"
-        rightElement={
-          unreadCount > 0 ? (
-            <Pressable onPress={handleMarkAllRead} hitSlop={8} style={ns.markAllBtn}>
-              <Text style={[ns.markAllText, { color: primaryColor }]}>Đọc tất cả</Text>
-            </Pressable>
-          ) : undefined
-        }
-      />
-
-      {undoPending && (
-        <UndoSnackbar
-          onUndo={handleUndo}
-          isDark={isDark}
-          primaryColor={primaryColor}
-          bottomInset={bottomInset}
-        />
-      )}
+      <FloatingHeader title={t('title')} />
     </View>
   )
 }
@@ -544,8 +431,6 @@ const ns = StyleSheet.create({
   statusLabel: { fontSize: 11, fontWeight: '600' },
 
   // Helpers
-  markAllBtn: { paddingHorizontal: 8, paddingVertical: 8, alignItems: 'flex-end' },
-  markAllText: { fontSize: 13, fontWeight: '600' },
   loadingMore: { paddingVertical: 16, alignItems: 'center' },
   emptyWrap: {
     alignItems: 'center',

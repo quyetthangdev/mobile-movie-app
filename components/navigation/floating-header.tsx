@@ -46,13 +46,15 @@ export const FloatingHeader = memo(function FloatingHeader({
   return (
     <View style={s.container} pointerEvents="box-none">
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Platform.OS !== 'ios' ? (
+        {/* BlurView chỉ trên iOS — Android không hỗ trợ native blur, tinted layer
+            sẽ che gradient fade. iOS đã đạt fade tốt với LinearGradient đơn thuần. */}
+        {Platform.OS === 'ios' && (
           <BlurView
             intensity={20}
             tint={isDark ? 'dark' : 'light'}
             style={StyleSheet.absoluteFill}
           />
-        ) : null}
+        )}
         <LinearGradient
           colors={gradientColors}
           locations={[0, 0.3, 0.62, 0.85, 1]}

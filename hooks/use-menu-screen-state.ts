@@ -10,6 +10,7 @@ import {
   useMenuFilterStore,
   useUserStore,
 } from '@/stores'
+import type { IMenuFilter } from '@/types'
 
 /** Chỉ subscribe UserStore — primitive userSlug. Dùng khi chỉ cần user/auth. */
 export function useMenuUserState() {
@@ -27,13 +28,15 @@ export function useMenuFilterState() {
   const minPrice = useMenuFilterStore((s) => s.menuFilter.minPrice)
   const maxPrice = useMenuFilterStore((s) => s.menuFilter.maxPrice)
   const menu = useMenuFilterStore((s) => s.menuFilter.menu)
+  const isNewProduct = useMenuFilterStore((s) => s.menuFilter.isNewProduct)
+  const isTopSell = useMenuFilterStore((s) => s.menuFilter.isTopSell)
   const setMenuFilter = useMenuFilterStore((s) => s.setMenuFilter)
 
   // Stable reference — chỉ tạo object mới khi giá trị thực sự thay đổi.
   // Tránh menuRequest useMemo recompute mỗi render do object reference mới.
-  const menuFilter = useMemo(
-    () => ({ date, branch, catalog, productName, minPrice, maxPrice, menu }),
-    [date, branch, catalog, productName, minPrice, maxPrice, menu],
+  const menuFilter = useMemo<IMenuFilter>(
+    () => ({ date, branch, catalog, productName, minPrice, maxPrice, menu, isNewProduct, isTopSell }),
+    [date, branch, catalog, productName, minPrice, maxPrice, menu, isNewProduct, isTopSell],
   )
 
   return { menuFilter, setMenuFilter }

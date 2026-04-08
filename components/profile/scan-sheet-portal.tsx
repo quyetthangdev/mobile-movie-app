@@ -6,6 +6,7 @@ import {
 } from '@gorhom/bottom-sheet'
 import { X } from 'lucide-react-native'
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Pressable,
   StyleSheet,
@@ -32,6 +33,7 @@ const QrContent = memo(function QrContent({
   isDark: boolean
   onClose: () => void
 }) {
+  const { t } = useTranslation('profile')
   const userInfo = useUserStore((s) => s.userInfo)
 
   const primary = isDark ? colors.primary.dark : colors.primary.light
@@ -49,7 +51,7 @@ const QrContent = memo(function QrContent({
     <View style={s.content}>
       {/* Header */}
       <View style={s.header}>
-        <Text style={[s.title, { color: textColor }]}>Mã QR của tôi</Text>
+        <Text style={[s.title, { color: textColor }]}>{t('profile.qr.title')}</Text>
         <Pressable onPress={onClose} hitSlop={10} style={s.closeBtn}>
           <X size={20} color={mutedColor} />
         </Pressable>
@@ -57,7 +59,7 @@ const QrContent = memo(function QrContent({
 
       {/* Subtitle */}
       <Text style={[s.subtitle, { color: mutedColor }]}>
-        Xuất trình mã này để nhân viên xác nhận tài khoản
+        {t('profile.qr.subtitle')}
       </Text>
 
       {/* QR Container */}
@@ -76,7 +78,7 @@ const QrContent = memo(function QrContent({
         ) : (
           <View style={s.qrPlaceholder}>
             <Text style={[s.errorText, { color: mutedColor }]}>
-              Chưa đăng nhập
+              {t('profile.qr.notLoggedIn')}
             </Text>
           </View>
         )}

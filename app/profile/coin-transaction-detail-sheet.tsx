@@ -11,10 +11,7 @@ import {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import dayjs from 'dayjs'
-import { useRouter } from 'expo-router'
-import { navigateNative } from '@/lib/navigation'
 import {
-  ArrowRight,
   Check,
   Clipboard as ClipboardIcon,
   Gift,
@@ -152,7 +149,7 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
   const { t } = useTranslation('profile')
-  const router = useRouter()
+  // const router = useRouter()
   const userSlug = useUserStore((s) => s.userInfo?.slug)
 
   const renderBackdrop = useCallback(
@@ -207,16 +204,16 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
     return key ? t(key) : transaction.type
   }, [txType, transaction.type, t])
 
-  const handleViewOrder = useCallback(() => {
-    onClose()
-    if (txObjType === PointTransactionObjectType.CARD_ORDER) {
-      router.push(`/gift-card/order-success/${transaction.objectSlug}` as never)
-    } else if (txObjType === PointTransactionObjectType.ORDER && transaction.objectSlug) {
-      navigateNative.push(`/order/${transaction.objectSlug}` as Parameters<typeof navigateNative.push>[0])
-    } else {
-      router.push('/profile/history' as never)
-    }
-  }, [onClose, router, transaction.objectSlug, txObjType])
+  // const handleViewOrder = useCallback(() => {
+  //   onClose()
+  //   if (txObjType === PointTransactionObjectType.CARD_ORDER) {
+  //     router.push(`/gift-card/order-success/${transaction.objectSlug}` as never)
+  //   } else if (txObjType === PointTransactionObjectType.ORDER && transaction.objectSlug) {
+  //     navigateNative.push(`/order/${transaction.objectSlug}` as Parameters<typeof navigateNative.push>[0])
+  //   } else {
+  //     router.push('/profile/history' as never)
+  //   }
+  // }, [onClose, router, transaction.objectSlug, txObjType])
 
   useEffect(() => {
     if (visible) sheetRef.current?.present()
@@ -269,11 +266,11 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
                       <Text style={[s.rowVal, { color: textColor }]}>
                         #{transaction.objectSlug}
                       </Text>
-                      <Pressable onPress={handleViewOrder} hitSlop={8}>
+                      {/* <Pressable onPress={handleViewOrder} hitSlop={8}>
                         <Text style={[s.viewDetailLink, { color: primaryColor }]}>
                           {t('profile.coin.viewOrder')}
                         </Text>
-                      </Pressable>
+                      </Pressable> */}
                     </View>
                   </InfoRow>
                 </>
@@ -309,13 +306,13 @@ export const CoinTransactionDetailSheet = memo(function CoinTransactionDetailShe
           {/* ── View order button — chỉ hiện cho OUT + CARD_ORDER ──────── */}
           {isOutCardOrder && (
             <View style={[s.footer, { paddingBottom: bottom + 12, borderTopColor: borderColor }]}>
-              <Pressable
+              {/* <Pressable
                 onPress={handleViewOrder}
                 style={[s.viewOrderBtn, { backgroundColor: primaryColor }]}
               >
                 <Text style={s.viewOrderText}>{t('profile.coin.viewOrder')}</Text>
                 <ArrowRight size={16} color={colors.white.light} />
-              </Pressable>
+              </Pressable> */}
             </View>
           )}
     </BottomSheetModal>
@@ -343,10 +340,10 @@ const s = StyleSheet.create({
 
   // Order code row
   orderCodeRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  viewDetailLink: { fontSize: 12, fontWeight: '600' },
+  // viewDetailLink: { fontSize: 12, fontWeight: '600' },
 
   // Footer button
   footer:        { paddingHorizontal: 16, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
-  viewOrderBtn:  { height: 50, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  viewOrderText: { fontSize: 15, fontWeight: '700', color: colors.white.light },
+  // viewOrderBtn:  { height: 50, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  // viewOrderText: { fontSize: 15, fontWeight: '700', color: colors.white.light },
 })

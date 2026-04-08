@@ -50,14 +50,23 @@ This project uses **NativeWind 4.2** (Tailwind CSS for React Native) with CSS va
 
 ### Theme Variables (Light/Dark)
 
-| Token | Light | Dark |
-|-------|-------|------|
-| `--background` | `hsl(210, 16%, 96%)` | `hsl(220, 12%, 7%)` |
-| `--foreground` | `hsl(20, 14.3%, 4.1%)` | `hsl(60, 9.1%, 97.8%)` |
-| `--primary` | `hsl(35, 93%, 55%)` | `hsl(35, 70%, 53%)` |
-| `--destructive` | `hsl(0, 84.2%, 60.2%)` | `hsl(355, 87%, 47%)` |
-| `--border` | `hsl(20, 5.9%, 90%)` | `hsl(0, 0%, 18%)` |
-| `--card` | `hsl(0, 0%, 100%)` | `hsl(0, 0%, 12.55%)` |
+All tokens defined in [app/global.css](app/global.css) as HSL space-separated values for NativeWind.
+Programmatic access (non-Tailwind): use `colors` from `@/constants/colors.constant`.
+
+| Token | Tailwind class | Light | Dark |
+|-------|---------------|-------|------|
+| `--background` | `bg-background` | `hsl(210,16%,96%)` `#F0F2F5` | `hsl(220,12%,7%)` `#0F0F10` |
+| `--foreground` | `text-foreground` | `hsl(20,14.3%,4.1%)` `#0a0a0a` | `hsl(60,9.1%,97.8%)` `#fafafa` |
+| `--card` | `bg-card` | `hsl(0,0%,100%)` `#ffffff` | `hsl(0,0%,12.55%)` `#1c1c1e` |
+| `--primary` | `bg-primary` `text-primary` | `hsl(35,93%,55%)` `#F7A737` | `hsl(35,70%,53%)` `#D68910` |
+| `--secondary` | `bg-secondary` | `hsl(60,4.8%,95.9%)` | `hsl(0,0%,18%)` |
+| `--muted` | `bg-muted` | `hsl(60,4.8%,95.9%)` | `hsl(0,0%,18%)` |
+| `--muted-foreground` | `text-muted-foreground` | `hsl(25,5.3%,44.7%)` `#6b7280` | `hsl(24,5.4%,63.9%)` `#9ca3af` |
+| `--accent` | `bg-accent` | `hsl(60,4.8%,95.9%)` | `hsl(0,0%,18%)` |
+| `--destructive` | `bg-destructive` `text-destructive` | `hsl(0,84.2%,60.2%)` `#ef4444` | `hsl(355,87%,47%)` `#dc2626` |
+| `--border` | `border-border` | `hsl(20,5.9%,90%)` `#e5e7eb` | `hsl(0,0%,18%)` `#2e2e2e` |
+| `--input` | `border-input` | same as `--border` | same as `--border` |
+| `--ring` | `ring` (focus) | `hsl(20,14.3%,4.1%)` | `hsl(24,5.7%,82.9%)` |
 
 ## Typography
 
@@ -110,10 +119,27 @@ gap-2, gap-3, gap-4, gap-5, gap-6   (flex/grid gaps)
 
 ## Shadows
 
-Use Tailwind's built-in shadow utilities:
-- `shadow-sm` — Light shadow (cards, subtle elevation)
-- `shadow-md` — Medium shadow (modals, elevated surfaces)
-- `shadow-lg` — Large shadow (prominent depth)
+> **Android caveat:** NativeWind `shadow-*` classes only render on **iOS**. For Android use `elevation` via inline style or a wrapper.
+
+```tsx
+// ✅ Cross-platform shadow
+<View
+  className="shadow-md"                    // iOS
+  style={{ elevation: 4 }}                 // Android
+>
+
+// ✅ iOS only (cards in modal sheets — Android uses bg contrast instead)
+<View className="shadow-sm bg-card rounded-lg" />
+
+// ❌ Don't rely on shadow-* for Android visibility
+<View className="shadow-lg" /> // invisible on Android
+```
+
+| Class | iOS effect | Android equivalent |
+|---|---|---|
+| `shadow-sm` | Subtle (cards) | `elevation: 2` |
+| `shadow-md` | Medium (modals) | `elevation: 4` |
+| `shadow-lg` | Prominent | `elevation: 8` |
 
 ## Usage Patterns
 

@@ -19,28 +19,34 @@ This project follows **TypeScript strict mode**, **React 19**, and **NativeWind*
 
 ### Files & Folders
 
-| Type | Case | Example |
-|------|------|---------|
-| Component | PascalCase | `Button.tsx`, `MenuItem.tsx` |
-| Hook | kebab-case | `use-auth.ts`, `use-cart.ts` |
-| Service/API | kebab-case | `menu.ts`, `order.ts` |
-| Util | kebab-case | `cn.ts`, `format.ts` |
-| Type/Interface | PascalCase | `types/user.ts`, `types/order.ts` |
-| Constant | PascalCase | `constants/colors.constant.ts` |
-| Store | kebab-case | `user.store.ts`, `cart.store.ts` |
+| Type | File name | Export name | Example |
+|------|-----------|-------------|---------|
+| Component | kebab-case | PascalCase | `button.tsx` → `export const Button` |
+| Component (compound) | kebab-case | PascalCase | `cart-item-row.tsx` → `export const CartItemRow` |
+| Hook | kebab-case | camelCase | `use-auth.ts` → `export function useAuth` |
+| Service/API | kebab-case | camelCase | `order.ts` → `export async function createOrder` |
+| Util | kebab-case | camelCase | `cn.ts` → `export function cn` |
+| Type/Interface file | kebab-case | PascalCase | `types/order.ts` → `export interface IOrder` |
+| Constant file | kebab-case | camelCase | `colors.constant.ts` → `export const colors` |
+| Store | kebab-case | camelCase | `user.store.ts` → `export const useUserStore` |
 
 ### Components
 
 ```tsx
-// File: Button.tsx
-export interface ButtonProps extends React.ComponentPropsWithoutRef<...> {
-  variant?: 'primary' | 'secondary' | 'destructive'
-  size?: 'sm' | 'md' | 'lg'
+// File: button.tsx
+import { forwardRef } from 'react'
+import { Pressable, type PressableProps } from 'react-native'
+import { cn } from '@/utils/cn'
+
+export interface ButtonProps extends PressableProps {
+  variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'ghost'
+  size?: 'sm' | 'md' | 'lg' | 'icon'
   loading?: boolean
+  className?: string
 }
 
-export const Button = React.forwardRef<React.ElementRef<...>, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', ...props }, ref) => {
+export const Button = forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>(
+  ({ className, variant = 'default', size = 'md', ...props }, ref) => {
     // Component logic
   },
 )
@@ -59,30 +65,37 @@ Button.displayName = 'Button'
 
 ```tsx
 // File: use-auth.ts
+import { useState, useCallback } from 'react'
+import { useAuthStore } from '@/stores/auth.store'
+
 export function useAuth() {
-  const store = useAuthStore()
+  // ✅ Select only the fields needed — never spread the whole store
+  // Spreading triggers re-render on ANY store change
+  const setToken = useAuthStore(s => s.setToken)
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const [isLoading, setIsLoading] = useState(false)
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true)
     try {
       const result = await authService.login(email, password)
-      store.setToken(result.token)
+      setToken(result.token)
       return result
     } finally {
       setIsLoading(false)
     }
-  }, [store])
+  }, [setToken])
 
-  return { ...store, login, isLoading }
+  return { isAuthenticated, login, isLoading }
 }
 ```
 
 **Key points**:
 - Custom hooks start with `use` prefix
+- **Never** `return { ...useStore() }` — subscribe only to specific slices via selectors
 - Wrap callbacks with `useCallback` when passed to children
 - Use `useMemo` for complex derived state
-- Return object with all state and methods
+- Return only the fields the consumer needs
 
 ### Services / API Functions
 
@@ -227,8 +240,9 @@ export const useUserStore = create<UserState>((set) => ({
 
 ```tsx
 // 1. React & React Native
-import React, { useState, useCallback } from 'react'
-import { View, Text, FlatList } from 'react-native'
+// React 19: no default import needed — import named exports only
+import { useState, useCallback, memo } from 'react'
+import { View, Text } from 'react-native'
 
 // 2. External libraries
 import { useQuery } from '@tanstack/react-query'
@@ -259,7 +273,7 @@ interface OrderDetailProps {
   orderId: string
 }
 
-export const OrderDetail = React.memo<OrderDetailProps>(
+export const OrderDetail = memo<OrderDetailProps>(
   ({ orderId }) => {
     // Hooks
     const { isAuthenticated } = useAuth()
@@ -296,7 +310,7 @@ OrderDetail.displayName = 'OrderDetail'
 
 ```tsx
 // ✅ Memoize expensive components
-const MenuItem = React.memo<MenuItemProps>(({ item }) => {
+const MenuItem = memo<MenuItemProps>(({ item }) => {
   return <View>{/* render */}</View>
 })
 

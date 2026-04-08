@@ -494,29 +494,47 @@ export function LoginScreen() {
 ### List Item Pattern
 
 ```tsx
+import { useCallback, memo } from 'react'
 import { FlashList } from '@shopify/flash-list'
-import { Pressable } from 'react-native'
+import { Pressable, useColorScheme } from 'react-native'
+
+// ✅ Extract renderItem to a memoized component outside the list parent.
+// This prevents the component from being recreated on every parent render.
+// Pass isDark as a prop instead of calling useColorScheme() inside the item
+// to avoid hook overhead in recycled cells.
+const OrderItem = memo(({ item, onPress, isDark }: {
+  item: IOrder
+  onPress: (id: string) => void
+  isDark: boolean
+}) => (
+  <Pressable onPress={() => onPress(item.id)}>
+    <View className="p-3 border-b border-border">
+      <Text className="font-semibold text-foreground">{item.id}</Text>
+      {/* text-muted-foreground = --muted-foreground token from global.css */}
+      <Text className="text-sm text-muted-foreground">
+        {item.total.toLocaleString('vi-VN')}đ
+      </Text>
+    </View>
+  </Pressable>
+))
 
 export function OrderList({ orders }: { orders: IOrder[] }) {
+  const isDark = useColorScheme() === 'dark'
+
   const handlePress = useCallback((orderId: string) => {
-    navigation.navigate('OrderDetail', { orderId })
-  }, [navigation])
+    router.push({ pathname: '/payment/[order]', params: { order: orderId } })
+  }, [])
+
+  const renderItem = useCallback(({ item }: { item: IOrder }) => (
+    <OrderItem item={item} onPress={handlePress} isDark={isDark} />
+  ), [handlePress, isDark])
 
   return (
     <FlashList
       data={orders}
-      renderItem={({ item }) => (
-        <Pressable onPress={() => handlePress(item.id)}>
-          <View className="p-3 border-b border-gray-200">
-            <Text className="font-semibold">{item.id}</Text>
-            <Text className="text-sm text-muted-foreground">
-              ${item.total}
-            </Text>
-          </View>
-        </Pressable>
-      )}
+      renderItem={renderItem}
       keyExtractor={(item) => item.id}
-      estimatedItemSize={80}
+      estimatedItemSize={68}  // measure actual rendered height, don't guess
     />
   )
 }
@@ -663,17 +681,28 @@ Always include:
 
 ## Dark Mode Support
 
-Use `useColorScheme()`:
+NativeWind `dark:` prefix is the preferred approach — no hook needed:
 
 ```tsx
+// ✅ Preferred: Tailwind dark: prefix (zero hook overhead)
+<View className="bg-white dark:bg-gray-900">
+  <Text className="text-foreground">Auto theme</Text>
+  <Text className="text-muted-foreground">Subtitle</Text>
+</View>
+
+// ✅ When you need the value imperatively (native props, colors constant)
 import { useColorScheme } from 'react-native'
+import { colors } from '@/constants/colors.constant'
 
 const isDark = useColorScheme() === 'dark'
+<ActivityIndicator color={isDark ? colors.primary.dark : colors.primary.light} />
 
-<View className={isDark ? 'bg-gray-900' : 'bg-white'}>
-  {/* Or use Tailwind dark: prefix */}
-  <View className="bg-white dark:bg-gray-900" />
-</View>
+// ⚠️ Avoid calling useColorScheme() inside FlashList renderItem components.
+// Call it in the parent list and pass isDark as a prop to avoid
+// re-running the hook in every recycled cell.
+
+// ❌ Static/header layouts — use STATIC_TOP_INSET, not hooks
+// (see CLAUDE.md Layout Conventions)
 ```
 
 ---

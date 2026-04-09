@@ -13,12 +13,12 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { getPublicSpecificMenu, getSpecificMenu } from '@/api'
 import { getLoyaltyPoints } from '@/api/loyalty-point'
 import { AnimatedTabBar, FloatingCartButton } from '@/components/navigation'
-import { QUERYKEY, tabsScreenOptions } from '@/constants'
+import { MOTION, QUERYKEY, tabsScreenOptions } from '@/constants'
+import { STATIC_BOTTOM_INSET } from '@/constants/status-bar'
 import { usePredictivePrefetch } from '@/hooks'
 import { useNotifications } from '@/hooks/use-notification'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
@@ -47,7 +47,6 @@ export default function TabsLayout() {
   const pathname = usePathname()
   usePredictivePrefetch()
   const isDark = useColorScheme() === 'dark'
-  const insets = useSafeAreaInsets()
   const prevPathnameRef = useRef(pathname)
   const masterTransition = useMasterTransitionOptional()
   const queryClient = useQueryClient()
@@ -121,31 +120,51 @@ export default function TabsLayout() {
   const isProfileLoginForm = pathname?.includes('/profile') && !isAuthenticated
   const isProfileSubRoute = isAuthenticated && pathname?.includes('/profile/')
   const isProductDetail = pathname?.includes('/product')
-  /** Ẩn bar khi ở product detail, form đăng nhập profile, route con của profile, hoặc trang giỏ hàng. */
+  // Stack screens ngoài /(tabs)/ — tab bar không nên visible vì user không
+  // ở trong context tab. Trước đây tab bar hiện lên và indicator trỏ sai
+  // (isHomeActive fallback = true) → visible desync.
+  const isStackRoute =
+    pathname?.startsWith('/update-order/') ||
+    pathname?.startsWith('/payment/') ||
+    pathname?.startsWith('/notification') ||
+    pathname?.startsWith('/auth/') ||
+    pathname?.startsWith('/system/')
+  /** Ẩn bar khi ở product detail, form đăng nhập profile, route con của profile, giỏ hàng, hoặc bất kỳ stack screen nào ngoài tabs. */
   const shouldHideBottomBar =
-    isProductDetail || isCartPage || isProfileLoginForm || isProfileSubRoute
+    isProductDetail ||
+    isCartPage ||
+    isProfileLoginForm ||
+    isProfileSubRoute ||
+    isStackRoute
 
   const colors = useMemo(() => getThemeColor(isDark), [isDark])
-  const tabState = useMemo(
-    () => ({
-      isMenuActive: pathname?.includes('/menu'),
-      isGiftCardActive: pathname?.includes('/gift-card'),
-      isProfileActive: pathname?.includes('/profile'),
-      isHomeActive: false,
-    }),
-    [pathname],
-  )
-  const isHomeActive = useMemo(
-    () =>
-      !tabState.isMenuActive &&
-      !tabState.isGiftCardActive &&
-      !tabState.isProfileActive,
-    [tabState],
-  )
-  const resolvedTabState = useMemo(
-    () => ({ ...tabState, isHomeActive }),
-    [tabState, isHomeActive],
-  )
+  // Exhaustive match — không dùng fallback `isHomeActive = !others`.
+  //
+  // QUAN TRỌNG: expo-router's usePathname() strip group segments — pathname
+  // trả về '/home', '/menu', '/menu/product/xxx' (KHÔNG có '/(tabs)/' prefix).
+  // Xem node_modules/expo-router/build/matchers.js stripGroupSegmentsFromPath.
+  //
+  // Trước đây dùng '/(tabs)/menu' → không bao giờ match → indicator stuck.
+  // Trước đó nữa dùng fallback isHomeActive = !others → khi ở /cart hay
+  // /update-order/xxx, indicator trỏ sai HOME.
+  //
+  // Giờ match chính xác theo path sau strip group. activeIndex=-1 khi không
+  // match tab nào (vd: /update-order/, /payment/) → indicator giữ position cũ.
+  const resolvedTabState = useMemo(() => {
+    const p = pathname ?? ''
+    const isHomeActive =
+      p === '/' || p === '/home' || p.startsWith('/home/')
+    const isMenuActive = p === '/menu' || p.startsWith('/menu/')
+    const isGiftCardActive =
+      p === '/gift-card' || p.startsWith('/gift-card/')
+    const isProfileActive = p === '/profile' || p.startsWith('/profile/')
+    return {
+      isHomeActive,
+      isMenuActive,
+      isGiftCardActive,
+      isProfileActive,
+    }
+  }, [pathname])
 
   const tabRoutes = useMemo(
     () => ({
@@ -160,19 +179,24 @@ export default function TabsLayout() {
   const { totalBottomHeight, bottomGap } = useMemo(() => {
     // iOS safe area (~34px) có thể trừ 8px vẫn đủ khoảng cách.
     // Android gesture nav (~16–24px) không trừ để tránh sát mép.
+    // Dùng STATIC_BOTTOM_INSET (tính 1 lần lúc khởi động) thay vì useSafeAreaInsets()
+    // để tránh re-render tab bar trong lúc transition đang chạy.
     const offset = Platform.OS === 'android' ? 0 : 8
-    const gap = Math.max(0, insets.bottom - offset)
+    const gap = Math.max(0, STATIC_BOTTOM_INSET - offset)
     const bgHeight = BAR_HEIGHT + BAR_PADDING + gap
     return {
       bottomGap: gap,
       totalBottomHeight: FADE_HEIGHT + bgHeight,
     }
-  }, [insets.bottom])
+  }, [])
 
   const barOpacity = useSharedValue(shouldHideBottomBar ? 0 : 1)
   useEffect(() => {
+    // Sync duration với stack transition để tab bar fade đồng bộ với slide —
+    // nếu ngắn hơn (trước là 150ms), bar biến mất trước khi slide xong, cảm
+    // giác disconnect.
     barOpacity.value = withTiming(shouldHideBottomBar ? 0 : 1, {
-      duration: 150,
+      duration: MOTION.nativeStack.durationMs,
     })
   }, [shouldHideBottomBar, barOpacity])
 
@@ -304,9 +328,14 @@ export default function TabsLayout() {
         </View>
       </Animated.View>
 
-      {/* detachInactiveScreens=true — giảm RAM ~100MB. Revert nếu flash UI (expo/expo#35116) */}
+      {/* detachInactiveScreens=false — trade RAM ~100MB để fix stuck bug với
+          nested CustomStack trong profile tab. Rapid tab switch gây detach queue
+          race trong react-native-screens (expo/expo#35116): sau ~3 lần switch,
+          profile's inner stack view stuck visible dù outer tab đã inactive.
+          Nested stack + panGesture + BottomSheetModal làm profile tab dễ trigger
+          bug này nhất (menu có nested stack nhưng không có gesture layer). */}
       <Tabs
-        detachInactiveScreens={true}
+        detachInactiveScreens={false}
         screenOptions={{
           ...tabsScreenOptions,
           headerShown: false,

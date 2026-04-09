@@ -284,6 +284,8 @@ export default function ForgotPasswordByPhoneScreen() {
         onError: (err: unknown) => {
           const code =
             (err as { response?: { data?: { code?: number; statusCode?: number } } })
+              ?.response?.data?.code ??
+            (err as { response?: { data?: { code?: number; statusCode?: number } } })
               ?.response?.data?.statusCode
           if (expireTime && new Date(expireTime).getTime() > Date.now()) {
             setStep(2)

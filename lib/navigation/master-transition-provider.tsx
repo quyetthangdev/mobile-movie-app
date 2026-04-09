@@ -25,7 +25,6 @@ import { useSharedValue } from 'react-native-reanimated'
 import { markCartFlowEvent } from '@/lib/qa/cart-flow-benchmark'
 import { useSharedElementOptional } from '@/lib/shared-element'
 import { ParallaxDriverProvider } from '@/lib/transitions/reanimated-parallax-driver'
-import { useGhostMount } from './ghost-mount-provider'
 import {
   cancelScheduledUnlockTimers,
   unlockNavigation,
@@ -107,8 +106,16 @@ export function MasterTransitionProvider({
   const queryClient = useQueryClient()
   const transitionProgress = useSharedValue(0)
   const isTransitioning = useSharedValue(false)
-  const { clearPreload } = useGhostMount()
   const sharedElement = useSharedElementOptional()
+  // Ref để onTransitionStart/End luôn đọc sharedElement mới nhất mà không cần
+  // đưa vào deps — tránh recreate callbacks (và screenListeners) mỗi khi
+  // SharedElementProvider re-render trong lúc animation đang chạy.
+  // Update trong useEffect để không vi phạm react-hooks/refs (không mutate ref
+  // trong render). Callbacks fired async sau commit → ref đã fresh.
+  const sharedElementRef = useRef(sharedElement)
+  React.useEffect(() => {
+    sharedElementRef.current = sharedElement
+  }, [sharedElement])
   const interactionHandleRef = useRef<ReturnType<
     typeof InteractionManager.createInteractionHandle
   > | null>(null)
@@ -144,9 +151,11 @@ export function MasterTransitionProvider({
       }
       const closing = e.data.closing
 
-      // Shared Element: reverse overlay animation when swiping back
-      if (closing && sharedElement?.isActive.value) {
-        sharedElement.reverseTransition()
+      // Shared Element: reverse overlay animation when swiping back.
+      // Dùng ref thay vì closure để không cần sharedElement trong deps.
+      const se = sharedElementRef.current
+      if (closing && se?.isActive.value) {
+        se.reverseTransition()
       }
 
       runOnUI(() => {
@@ -160,7 +169,7 @@ export function MasterTransitionProvider({
         overlayTimeoutRef.current = null
       }
     },
-    [isTransitioning, transitionProgress, sharedElement, pathname],
+    [isTransitioning, transitionProgress, pathname],
   )
 
   const onTransitionEnd = useCallback(
@@ -181,9 +190,11 @@ export function MasterTransitionProvider({
       unlockNavigation()
       const closing = e.data.closing
 
-      // Shared Element: complete transition when push finishes
-      if (!closing && sharedElement) {
-        sharedElement.completeTransition()
+      // Shared Element: complete transition when push finishes.
+      // Dùng ref thay vì closure để không cần sharedElement trong deps.
+      const se = sharedElementRef.current
+      if (!closing && se) {
+        se.completeTransition()
       }
 
       runOnUI(() => {
@@ -194,7 +205,6 @@ export function MasterTransitionProvider({
       if (shouldEnableTransitionQueueing()) {
         setTransitionQueueing(false)
       }
-      clearPreload()
       // Hiện overlay SAU khi transition xong (push) — tránh chồng lên animation trượt.
       // Bỏ qua overlay nếu đã có cache (product, menu, ...).
       if (!closing) {
@@ -232,10 +242,8 @@ export function MasterTransitionProvider({
       }
     },
     [
-      clearPreload,
       isTransitioning,
       transitionProgress,
-      sharedElement,
       pathname,
       queryClient,
     ],

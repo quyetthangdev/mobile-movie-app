@@ -13,6 +13,10 @@ import * as Notifications from 'expo-notifications'
 import { navigateFromNotification } from '@/lib/notification-navigation'
 import { useNotificationStore } from '@/stores/notification.store'
 
+// Giới hạn số notification ID đã xử lý — tránh Set tăng vô hạn trong session dài.
+// 100 ID gần nhất là đủ để dedup; notification cũ hơn 100 lần không thể bị fire lại.
+const MAX_PROCESSED_IDS = 100
+
 export function useNotificationResponse(enabled = true) {
   const processedRef = useRef<Set<string>>(new Set())
 
@@ -26,6 +30,11 @@ export function useNotificationResponse(enabled = true) {
       // Dedup — avoid processing same notification twice
       if (processedRef.current.has(id)) return
       processedRef.current.add(id)
+      // Trim oldest entries khi vượt giới hạn
+      if (processedRef.current.size > MAX_PROCESSED_IDS) {
+        const oldest = processedRef.current.values().next().value
+        if (oldest !== undefined) processedRef.current.delete(oldest)
+      }
 
       const content = response.notification.request.content
       const data = content.data as Record<string, string> | undefined

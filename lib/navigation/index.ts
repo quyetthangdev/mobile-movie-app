@@ -18,6 +18,7 @@ export {
   navigateNative,
   navigateNativeImmediate,
   navigateSafely,
+  navigateWhenUnlocked,
   setNavigationRouter,
   type HrefLike,
 } from './navigation-engine'
@@ -29,11 +30,6 @@ export {
   scheduleUnlock,
   getNavigationRouter,
 } from './navigation-lock'
-export {
-  GhostMountProvider,
-  useGhostMount,
-  type GhostRouteKey,
-} from './ghost-mount-provider'
 export { TransitionProgressSyncer } from './transition-progress-sync'
 export {
   MasterTransitionProvider,

@@ -7,7 +7,9 @@
  * __DEV__: Merge Transition FPS Monitor.
  */
 import { useMemo } from 'react'
+import { useColorScheme } from 'react-native'
 
+import { colors } from '@/constants'
 import { profileNativeStackScreenOptions } from '@/layouts/custom-stack'
 import { useMasterTransition } from '@/lib/navigation/master-transition-provider'
 import {
@@ -46,14 +48,29 @@ function useTransitionListeners() {
  */
 export function NativeStackWithMasterTransition() {
   const mergedListeners = useTransitionListeners()
+  const isDark = useColorScheme() === 'dark'
+
+  // Override contentStyle + statusBarStyle theo theme hiện tại (reactive).
+  // custom-stack.tsx đọc Appearance.getColorScheme() 1 lần tại module load,
+  // không update khi user đổi theme mid-session. Wrapper hook này patch lại.
+  const screenOptions = useMemo(
+    () => ({
+      ...profileNativeStackScreenOptions,
+      contentStyle: {
+        backgroundColor: isDark
+          ? colors.background.dark
+          : colors.background.light,
+      },
+      statusBarStyle: isDark ? ('light' as const) : ('dark' as const),
+      headerShown: false,
+    }),
+    [isDark],
+  )
 
   return (
     <Stack
       // Native Stack tren react-native-screens tu dong detach/freeze man khong active.
-      screenOptions={{
-        ...profileNativeStackScreenOptions,
-        headerShown: false,
-      }}
+      screenOptions={screenOptions}
       screenListeners={mergedListeners}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

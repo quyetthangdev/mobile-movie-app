@@ -6,7 +6,7 @@ import { ScreenContainer } from '@/components/layout'
 import { useQueryClient } from '@tanstack/react-query'
 import { LoginForm } from '@/components/auth'
 import { BannerPage } from '@/constants'
-import { navigateNative } from '@/lib/navigation'
+import { navigateWhenUnlocked } from '@/lib/navigation'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { useAuthStore } from '@/stores'
 
@@ -19,11 +19,9 @@ export default function LoginScreen() {
     const homeCached = !!queryClient.getQueryData(['banners', BannerPage.HOME])
     const overlayMs = homeCached ? 100 : 250
     masterTransition?.showLoadingFor(overlayMs)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        navigateNative.replace('/(tabs)/home')
-      })
-    })
+    // navigateWhenUnlocked: retry nếu navigation lock đang active (vd: bottom sheet
+    // đang đóng khi user tap Login) thay vì silent drop như navigateNative.replace.
+    navigateWhenUnlocked.replace('/(tabs)/home')
   }, [masterTransition, queryClient])
 
   if (isAuthenticated) {

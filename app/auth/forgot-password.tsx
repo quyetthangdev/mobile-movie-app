@@ -88,7 +88,7 @@ export default function ForgotPasswordScreen() {
 
           {/* Back to Login */}
           <TouchableOpacity
-            onPress={() => navigateNative.push(ROUTE.LOGIN)}
+            onPress={() => navigateNative.replace(ROUTE.LOGIN)}
             className="mt-6"
           >
             <Text className="text-center text-sm font-sans-medium text-primary">

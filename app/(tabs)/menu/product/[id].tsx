@@ -4,7 +4,7 @@
  */
 import { useFocusEffect, useIsFocused } from '@react-navigation/native'
 import { Image } from 'expo-image'
-import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppState, Platform, RefreshControl, StyleSheet, View, useColorScheme } from 'react-native'
@@ -151,11 +151,8 @@ function ProductDetailContent() {
     [variants],
   )
   const description = menuItem?.product?.description ?? ''
-  const catalogSlugRaw = menuItem?.product?.catalog?.slug ?? ''
-  const [catalogSlug, setCatalogSlug] = useState(catalogSlugRaw)
-  if (catalogSlugRaw && catalogSlug !== catalogSlugRaw) {
-    setCatalogSlug(catalogSlugRaw)
-  }
+  // catalogSlug là derived value thuần túy — không cần state, dùng biến để tránh double render
+  const catalogSlug = menuItem?.product?.catalog?.slug ?? ''
   const isLocked = menuItem?.isLocked ?? false
   const isLimit = menuItem?.product?.isLimit ?? false
   const currentStock = menuItem?.currentStock ?? 0
@@ -402,16 +399,24 @@ function ProductDetailContent() {
 }
 
 export default function ProductDetailPage() {
-  const navigation = useNavigation()
-
-  useEffect(() => {
-    navigation.setOptions({
-      fullScreenGestureEnabled: false,
-      fullScreenGestureShadowEnabled: false,
-    })
-  }, [navigation])
-
-  return <ProductDetailContent />
+  return (
+    <>
+      {/*
+       * fullScreenGestureEnabled: false đặt ở đây thay vì useEffect để option
+       * được apply TRƯỚC khi native gesture recognizer attach — tránh race condition
+       * khi user vuốt back ngay trong ~16ms đầu trước khi useEffect chạy.
+       * Menu stack kế thừa profileNativeStackScreenOptions (fullScreenGestureEnabled: true)
+       * nên cần explicit override tại màn này.
+       */}
+      <Stack.Screen
+        options={{
+          fullScreenGestureEnabled: false,
+          fullScreenGestureShadowEnabled: false,
+        }}
+      />
+      <ProductDetailContent />
+    </>
+  )
 }
 
 const detailStyles = StyleSheet.create({

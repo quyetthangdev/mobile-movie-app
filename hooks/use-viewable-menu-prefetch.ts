@@ -1,5 +1,5 @@
 /**
- * Viewable Menu Prefetch — Prefetch Detail data + ảnh + ghost mount cho món đang trong viewport.
+ * Viewable Menu Prefetch — Prefetch Detail data + ảnh cho món đang trong viewport.
  * Dùng onViewableItemsChanged của FlashList để đón đầu hành động user.
  */
 import { Image } from 'expo-image'
@@ -7,7 +7,6 @@ import { useCallback, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { getSpecificMenuItem } from '@/api/menu'
-import { useGhostMount } from '@/lib/navigation'
 import { getProductImageUrl } from '@/utils/product-image-url'
 
 const QUERY_KEY = ['specific-menu-item'] as const
@@ -25,14 +24,12 @@ function getSlugFromItem(item: ViewableItem): string | null {
 
 export function useViewableMenuPrefetch() {
   const queryClient = useQueryClient()
-  const { preload } = useGhostMount()
   const lastPrefetchRef = useRef<Record<string, number>>({})
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const prefetchForSlugs = useCallback(
     (slugs: string[]) => {
       const unique = [...new Set(slugs)].slice(0, PREFETCH_LIMIT)
-      if (unique.length > 0) preload('menu-item')
 
       const now = Date.now()
       unique.forEach((slug) => {
@@ -57,7 +54,7 @@ export function useViewableMenuPrefetch() {
           .catch(() => {})
       })
     },
-    [queryClient, preload],
+    [queryClient],
   )
 
   const onViewableItemsChanged = useCallback(

@@ -2,11 +2,9 @@
  * Task 4 — Total Thread Isolation (Steel Curtain).
  *
  * Global Task Queue: Side effects (Analytics, Storage Write, Heavy Selectors)
- * được queue khi isTransitioning = true.
- * Flush sau transitionProgress === 1 + 100ms để frame ổn định.
+ * được queue khi isTransitioning = true. Flush đồng bộ tại transitionEnd để
+ * preserve FIFO ordering (xem setTransitionQueueing comment).
  */
-const FLUSH_DELAY_MS = 100
-
 const queue: Array<() => void> = []
 let isQueueing = false
 let flushTimeoutId: ReturnType<typeof setTimeout> | null = null
@@ -34,18 +32,30 @@ function flush() {
   })
 }
 
-function scheduleFlush() {
-  clearFlushTimeout()
-  flushTimeoutId = setTimeout(flush, FLUSH_DELAY_MS)
-}
-
 /**
- * Gọi khi transition bắt đầu. Side effects sẽ được queue.
+ * Gọi khi transition bắt đầu hoặc kết thúc.
+ *
+ * enabled=true (transitionStart): cancel flush đang pending từ transition trước.
+ * Nếu không cancel, flush của transition B có thể fire giữa transition C,
+ * gây state update bất ngờ trong lúc animation đang chạy.
+ *
+ * enabled=false (transitionEnd): flush đồng bộ NGAY (không schedule delay).
+ * Flush sync bảo đảm FIFO ordering: tasks queue trong khi transition luôn
+ * chạy trước các tasks sync mới đến sau khi transition kết thúc. Nếu schedule
+ * flush 100ms sau, tasks sync mới trong 100ms window sẽ chạy trước tasks đã
+ * queue → sai order.
  */
 export function setTransitionQueueing(enabled: boolean) {
-  isQueueing = enabled
-  if (!enabled) {
-    scheduleFlush()
+  if (enabled) {
+    isQueueing = true
+    // Transition mới bắt đầu — hủy flush từ transition trước.
+    // Tasks đã queue vẫn còn trong queue, sẽ flush khi transition hiện tại kết thúc.
+    clearFlushTimeout()
+  } else {
+    // Flush sync TRƯỚC khi disable queueing để preserve FIFO ordering.
+    // Nếu disable trước rồi flush async, tasks sync mới có thể "cắt hàng".
+    isQueueing = false
+    flush()
   }
 }
 

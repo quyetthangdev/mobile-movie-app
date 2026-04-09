@@ -20,10 +20,15 @@ const CONTENT_HEIGHT = 32 + 14 + 12
 const PILL_RADIUS = (PADDING_V * 2 + CONTENT_HEIGHT) / 2
 const PADDING_H_DEFAULT = 10
 
+// Spring config nhanh — settle trong ~100-120ms.
+// Trước đây stiffness 280/damping 26/mass 0.4 settle ~200-300ms, lag sau
+// content swap (Tabs animation: 'none' → 16-33ms). Khi user tap rapid, indicator
+// chase content với visible lag, trông như tab bar và content desync.
+// Spring nhanh hơn + overshootClamping giữ cảm giác đàn hồi mà không lag.
 const INDICATOR_SPRING = {
-  stiffness: 280,
-  damping: 26,
-  mass: 0.4,
+  stiffness: 500,
+  damping: 32,
+  mass: 0.25,
   overshootClamping: true,
 }
 
@@ -68,25 +73,30 @@ export const AnimatedTabBar = React.memo(function AnimatedTabBar({
   const indicatorX = useSharedValue(0)
   const hasAnimatedRef = useRef(false)
 
+  // activeIndex = -1 khi user ở route không thuộc tab nào (vd: /cart,
+  // /update-order/xxx, /payment/xxx). Trong trường hợp đó, indicator giữ
+  // position cũ thay vì nhảy về Home (fallback behavior cũ gây desync).
   const activeIndex = tabState.isHomeActive
     ? 0
     : tabState.isMenuActive
       ? 1
       : tabState.isGiftCardActive
         ? 2
-        : 3
+        : tabState.isProfileActive
+          ? 3
+          : -1
 
   const itemWidth = pillWidth > 0 ? (pillWidth - 2 * paddingH) / 4 : ITEM_WIDTH
 
   useEffect(() => {
-    if (pillWidth > 0) {
-      const targetX = paddingH + activeIndex * itemWidth
-      if (!hasAnimatedRef.current) {
-        indicatorX.value = targetX
-        hasAnimatedRef.current = true
-      } else {
-        indicatorX.value = withSpring(targetX, INDICATOR_SPRING)
-      }
+    // Skip nếu chưa layout hoặc không match tab nào (giữ position cũ).
+    if (pillWidth <= 0 || activeIndex < 0) return
+    const targetX = paddingH + activeIndex * itemWidth
+    if (!hasAnimatedRef.current) {
+      indicatorX.value = targetX
+      hasAnimatedRef.current = true
+    } else {
+      indicatorX.value = withSpring(targetX, INDICATOR_SPRING)
     }
   }, [activeIndex, paddingH, itemWidth, pillWidth, indicatorX])
 

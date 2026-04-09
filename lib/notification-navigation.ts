@@ -7,7 +7,7 @@
  * - Notification list (user taps item in list)
  */
 import { NotificationMessageCode } from '@/constants'
-import { navigateNative } from '@/lib/navigation'
+import { isNavigationLocked, navigateNative } from '@/lib/navigation'
 
 interface NotificationRouteData {
   message?: string
@@ -64,6 +64,16 @@ function getRouteForMessage(
   }
 }
 
+// Module-level state — cho phép cancel pending notification nav khi có nav mới,
+// và cho phép _layout.tsx check pending state để defer focusManager refetch.
+let pendingNotificationTimeout: ReturnType<typeof setTimeout> | null = null
+let pendingNotificationRoute: string | null = null
+
+/** Dùng trong _layout.tsx để biết có notification cold-start nav đang pending. */
+export function isNotificationNavigationPending(): boolean {
+  return pendingNotificationRoute !== null
+}
+
 /**
  * Navigate to the screen associated with a notification.
  * Returns true if navigation was performed.
@@ -76,10 +86,39 @@ export function navigateFromNotification(
 
   if (!route) return false
 
-  // Small delay to ensure app is mounted (cold start case)
-  setTimeout(() => {
-    navigateNative.push(route)
-  }, 300)
+  // Nếu đã có notification nav pending, cancel cái cũ — notification mới ghi đè.
+  // Không dedupe: user có thể tap notification khác nhau liên tiếp, ưu tiên cái cuối.
+  if (pendingNotificationTimeout) {
+    clearTimeout(pendingNotificationTimeout)
+  }
+
+  pendingNotificationRoute = route
+
+  // Delay để đảm bảo app đã mount xong trước khi navigate.
+  // Cold start trên iOS: JS bundle load + React mount + NavigationEngineProvider
+  // mất 400-700ms. Navigation engine retry thêm ~330ms (20 rAF frames), nên
+  // tổng cộng cần ít nhất 500ms trước khi gọi push để tránh router null.
+  pendingNotificationTimeout = setTimeout(() => {
+    pendingNotificationTimeout = null
+
+    // Retry nếu navigation đang lock (vd: user vừa tap push khác ngay trước
+    // khi timer fire). Tối đa 3 lần × 120ms = 360ms, đủ cho 1 stack transition.
+    let retries = 0
+    const tryPush = () => {
+      if (!isNavigationLocked()) {
+        pendingNotificationRoute = null
+        navigateNative.push(route)
+        return
+      }
+      if (retries++ < 3) {
+        setTimeout(tryPush, 120)
+        return
+      }
+      // Lock vẫn active sau 360ms — bỏ cuộc để tránh navigate vào screen sai
+      pendingNotificationRoute = null
+    }
+    tryPush()
+  }, 600)
 
   return true
 }

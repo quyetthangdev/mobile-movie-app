@@ -7,7 +7,6 @@ import { Images } from '@/assets/images'
 import { NativeGesturePressable } from '@/components/navigation'
 import { publicFileURL, ROUTE } from '@/constants'
 import { useIsMobile, usePressInPrefetchMenuItem } from '@/hooks'
-import { useGhostMount } from '@/lib/navigation'
 import { IMenuItem, IProduct } from '@/types'
 import { formatCurrency } from '@/utils'
 
@@ -48,7 +47,6 @@ function clientMenuItemAreEqual(
 export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddToCart }: IClientMenuItemProps) {
   const { t } = useTranslation('menu')
   const prefetchMenuItem = usePressInPrefetchMenuItem()
-  const { preload } = useGhostMount()
   const isMobile = useIsMobile()
 
   const imageUrl = useMemo(() => {
@@ -87,7 +85,6 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
           href: { pathname: ROUTE.CLIENT_PRODUCT_DETAIL, params: { id: item.slug } },
         }}
         onPressIn={() => {
-          preload('menu-item')
           prefetchMenuItem(item.slug)
           if (item.product.image && imageUrl) {
             const urls = new Set<string>([imageUrl])

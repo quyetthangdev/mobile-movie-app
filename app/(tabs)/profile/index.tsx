@@ -16,7 +16,7 @@ import {
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import {
   Camera,
   ChevronRight,
@@ -367,8 +367,19 @@ const ProfileTest = () => {
 
   const { t } = useTranslation('profile')
   const handleBack = useCallback(() => router.back(), [router])
-  const { animatedStyle, panGesture } =
+  const { animatedStyle, panGesture, resetPosition } =
     useProfileAnimation(handleBack)
+
+  // Reset translateX về 0 mỗi khi profile tab gains focus.
+  // Tránh stuck state: nếu gesture trước bị cancel giữa chừng (rapid tab
+  // switch + touch leak từ tab bar), translateX có thể stuck ở intermediate
+  // value. Sharedvalue persist qua freeze/unfreeze (lazy + freezeOnBlur không
+  // unmount) nên cần explicit reset mỗi lần focus.
+  useFocusEffect(
+    useCallback(() => {
+      resetPosition()
+    }, [resetPosition]),
+  )
   const needsUserInfo = useAuthStore((state) => state.needsUserInfo())
   const userInfo = useUserStore((state) => state.userInfo)
   const setUserInfo = useUserStore((state) => state.setUserInfo)

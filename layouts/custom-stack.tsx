@@ -22,9 +22,15 @@ import {
   type NativeStackNavigationOptions,
 } from '@react-navigation/native-stack'
 import { withLayoutContext } from 'expo-router'
-import { Platform } from 'react-native'
+import { Appearance, Platform } from 'react-native'
 
-import { colors } from '@/constants'
+import { colors, MOTION } from '@/constants'
+import { GESTURE_RESPONSE_DISTANCE } from '@/lib/navigation/interactive-transition'
+
+// Đọc color scheme 1 lần lúc module load — đủ để tránh flash khi push.
+// Không reactive (không update nếu user đổi theme mid-session), nhưng acceptable
+// vì contentStyle chỉ visible trong ~50ms đầu của push animation.
+const _isDark = Appearance.getColorScheme() === 'dark'
 
 const { Navigator } = createNativeStackNavigator()
 
@@ -38,15 +44,27 @@ export const CustomStack = withLayoutContext<
 export const nativeStackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   animation: 'simple_push',
-  animationDuration: 250,
+  // Dùng MOTION.nativeStack.durationMs để đồng bộ với navigation-lock và STACK_TRANSITION_DURATION_MS
+  animationDuration: MOTION.nativeStack.durationMs,
   animationTypeForReplace: 'push',
   presentation: 'card',
-  contentStyle: { backgroundColor: colors.background.light },
-  statusBarStyle: 'dark',
+  // Đồng bộ với color scheme để tránh white flash khi push sang màn mới trên dark mode.
+  // contentStyle render trước React — nếu hardcode light sẽ flash trắng ~50-100ms.
+  contentStyle: {
+    backgroundColor: _isDark ? colors.background.dark : colors.background.light,
+  },
+  // 'dark' = text đen, 'light' = text trắng.
+  // Dark mode cần 'light' để giờ/wifi/pin đọc được trên nền tối.
+  statusBarStyle: _isDark ? 'light' : 'dark',
   statusBarTranslucent: true,
   // Bỏ gesture/shadow options tạm thời — tránh lỗi "expected boolean, had string" trên native bridge
   // gestureEnabled, fullScreenGestureEnabled, animationMatchesGesture, fullScreenGestureShadowEnabled
   ...(Platform.OS === 'android' && { headerTranslucent: true }),
+  // Giới hạn vùng swipe-back từ cạnh trái để tránh xung đột với horizontal scroll.
+  // `start` = khoảng cách từ leading edge (cạnh trái) nơi gesture có thể bắt đầu.
+  ...(Platform.OS === 'ios' && {
+    gestureResponseDistance: { start: GESTURE_RESPONSE_DISTANCE },
+  }),
 }
 
 /**
@@ -57,12 +75,20 @@ export const nativeStackScreenOptions: NativeStackNavigationOptions = {
 export const profileNativeStackScreenOptions: NativeStackNavigationOptions = {
   ...nativeStackScreenOptions,
   animation: 'slide_from_right',
-  animationDuration: 250,
+  animationDuration: MOTION.nativeStack.durationMs,
   /**
    * Giữ gesture toàn màn + animation bám theo ngón tay để cảm giác kéo-thả như Telegram.
    */
   fullScreenGestureEnabled: true,
   animationMatchesGesture: true,
+  // Full-screen gesture cần response distance = toàn màn để vuốt từ bất kỳ đâu.
+  // Dùng const lớn thay vì Dimensions.get() — Dimensions capture tại module load
+  // không react với iPad Split View/rotation, gây gesture hit area stale.
+  // 10000 đủ lớn cho mọi device (iPad Pro 12.9" = 1366px landscape).
+  // `start` = khoảng cách từ leading edge; giá trị lớn = toàn màn có thể bắt đầu gesture.
+  ...(Platform.OS === 'ios' && {
+    gestureResponseDistance: { start: 10000 },
+  }),
   /**
    * Giữ presentation dạng card với shadow (kế thừa từ nativeStackScreenOptions) để tạo chiều sâu khi trượt.
    */

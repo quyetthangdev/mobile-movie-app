@@ -87,6 +87,11 @@ export const NativeGesturePressable = React.forwardRef<
     if (onPress) setImmediate(onPress)
   }, [beforeNavigate, navigation, onPress])
 
+  // Tab navigate (type='navigate') không qua navigation lock — tab switch
+  // instant, expo-router Tabs tự xử lý concurrent navigate calls. Stack
+  // push/replace/back phải qua lock để tránh race.
+  const isTabNavigate = navigation?.type === 'navigate'
+
   const tapGesture = useMemo(() => {
     const gesture = Gesture.Tap()
       .enabled(!disabled)
@@ -103,10 +108,25 @@ export const NativeGesturePressable = React.forwardRef<
       .onStart(() => {
         'worklet'
         // Khi Tap được công nhận (finger up, không bị scroll), mới trigger navigate.
+
+        // Tab navigate: skip lock check — tab switches phải instant, expo-router
+        // tự dedupe/handle concurrent calls. Lock check ở đây sẽ drop legitimate
+        // rapid taps giữa các tab khác nhau.
+        if (isTabNavigate) {
+          runOnJS(triggerAction)()
+          pressScale.value = withSpring(1, SPRING_CONFIGS.press)
+          return
+        }
+
+        // Stack push/replace/back: atomic lock check + set trong worklet.
+        // SET lock NGAY trong worklet (không đợi runOnJS → executeNav →
+        // lockNavigation) để tap tiếp theo trong <16ms thấy lock đã acquired.
+        // Nếu set qua JS thread, có race window ~1 frame giữa 2 taps liên tiếp.
         if (isLockedShared.value === 1) {
           pressScale.value = withSpring(1, SPRING_CONFIGS.press)
           return
         }
+        isLockedShared.value = 1
         runOnJS(triggerAction)()
         pressScale.value = withSpring(1, SPRING_CONFIGS.press)
       })
@@ -119,7 +139,7 @@ export const NativeGesturePressable = React.forwardRef<
       })
 
     return gesture
-  }, [disabled, onPressOut, triggerAction, pressScale, onPressIn])
+  }, [disabled, onPressOut, triggerAction, pressScale, onPressIn, isTabNavigate])
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],

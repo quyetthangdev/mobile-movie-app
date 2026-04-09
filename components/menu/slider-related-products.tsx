@@ -20,7 +20,7 @@ import {
   usePublicSpecificMenu,
   useSpecificMenu,
 } from '@/hooks'
-import { navigateNative, useGhostMount } from '@/lib/navigation'
+import { navigateNative } from '@/lib/navigation'
 import { useOrderFlowStore, useBranchStore, useUserStore } from '@/stores'
 import type { IMenuItem, IOrderItem } from '@/types'
 import { formatCurrency, showToast } from '@/utils'
@@ -168,7 +168,6 @@ export default function SliderRelatedProducts({
   const { t } = useTranslation('menu')
   const primaryColor = usePrimaryColor()
   const prefetchMenuItem = usePressInPrefetchMenuItem()
-  const { preload } = useGhostMount()
   const branchSlug = useBranchStore((s) => s.branch?.slug)
   const userSlug = useUserStore((s) => s.userInfo?.slug)
   // Ref for O(1) lookup — avoids closing over relatedProductsData in callbacks
@@ -275,9 +274,8 @@ export default function SliderRelatedProducts({
   const handlePressIn = useCallback(
     (slug: string) => {
       prefetchMenuItem(slug)
-      setTimeout(() => preload('menu-item', { slug }), 0)
     },
-    [prefetchMenuItem, preload],
+    [prefetchMenuItem],
   )
 
   const handleAdd = useCallback(

@@ -8,7 +8,12 @@ import { useBeVietnamProFont } from '@/lib/fonts/be-vietnam-pro'
 import { MasterTransitionProvider } from '@/lib/navigation/master-transition-provider'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect } from 'react'
-import { AppState, InteractionManager, Platform } from 'react-native'
+import {
+  AppState,
+  InteractionManager,
+  Platform,
+  useColorScheme,
+} from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
@@ -22,7 +27,8 @@ import {
   useNavigationBarFixed,
 } from '@/hooks/use-navigation-bar-fixed'
 import '@/lib/http-setup'
-import { GhostMountProvider, NavigationEngineProvider } from '@/lib/navigation'
+import { NavigationEngineProvider } from '@/lib/navigation'
+import { isNotificationNavigationPending } from '@/lib/notification-navigation'
 import { SharedElementProvider } from '@/lib/shared-element'
 import '@/lib/store-sync-setup'
 import { AppToastProvider, I18nProvider } from '@/providers'
@@ -152,12 +158,14 @@ function AppContent() {
   }, [ready])
 
   // Fallback: ẩn splash sau timeout nếu font loading treo (mạng chậm, CDN block...)
+  // Skip nếu ready đã true — không cần set timer vô ích.
   useEffect(() => {
+    if (ready) return
     const t = setTimeout(() => {
       SplashScreen.hideAsync().catch(() => {})
     }, SPLASH_TIMEOUT_MS)
     return () => clearTimeout(t)
-  }, [])
+  }, [ready])
 
   if (!ready) {
     return null
@@ -173,17 +181,15 @@ function AppContent() {
             <ScanSheetPortal />
             <NotificationProvider />
             <I18nProvider>
-              <GhostMountProvider>
-                <NavigationEngineProvider>
-                  <MasterTransitionProvider>
-                    <AppToastProvider>
-                      <SharedElementProvider>
-                        <NativeStackWithMasterTransition />
-                      </SharedElementProvider>
-                    </AppToastProvider>
-                  </MasterTransitionProvider>
-                </NavigationEngineProvider>
-              </GhostMountProvider>
+              <NavigationEngineProvider>
+                <MasterTransitionProvider>
+                  <AppToastProvider>
+                    <SharedElementProvider>
+                      <NativeStackWithMasterTransition />
+                    </SharedElementProvider>
+                  </AppToastProvider>
+                </MasterTransitionProvider>
+              </NavigationEngineProvider>
             </I18nProvider>
           </BottomSheetModalProvider>
         </QueryClientProvider>
@@ -195,34 +201,75 @@ function AppContent() {
 export default function RootLayout() {
   useNavigationBarFixed('#FFFFFF', true, true)
   useBackHandlerForExit()
+  const isDark = useColorScheme() === 'dark'
 
   // Sync TanStack Query focusManager với AppState của React Native
   // Khi app về foreground → các query có refetchOnWindowFocus: true sẽ tự refetch nếu stale
+  //
+  // Lưu ý iOS:
+  // 1. 'inactive' state fire khi user pull Control Center / nhận call alert — app
+  //    vẫn visible, không nên blur query. Chỉ treat 'background' là thực sự blur.
+  // 2. Nếu đang có notification cold-start navigation pending (600ms delay), defer
+  //    focus để tránh refetch query trong lúc transition đang pending — tránh flicker
+  //    loading state trên destination screen.
   useEffect(() => {
+    let deferFocusTimeout: ReturnType<typeof setTimeout> | null = null
+
     const sub = AppState.addEventListener('change', (state) => {
-      focusManager.setFocused(state === 'active')
+      const focused = state !== 'background'
+
+      if (deferFocusTimeout) {
+        clearTimeout(deferFocusTimeout)
+        deferFocusTimeout = null
+      }
+
+      if (focused && isNotificationNavigationPending()) {
+        // Defer tới sau khi notification nav pending window đã xong (600ms + buffer)
+        deferFocusTimeout = setTimeout(() => {
+          deferFocusTimeout = null
+          focusManager.setFocused(true)
+        }, 700)
+        return
+      }
+
+      focusManager.setFocused(focused)
     })
-    return () => sub.remove()
+
+    return () => {
+      if (deferFocusTimeout) clearTimeout(deferFocusTimeout)
+      sub.remove()
+    }
   }, [])
 
   useEffect(() => {
+    let innerTimeout: ReturnType<typeof setTimeout> | null = null
     const task = InteractionManager.runAfterInteractions(() => {
       SystemUI.setBackgroundColorAsync('#ffffff').catch(() => {})
 
       if (Platform.OS === 'android') {
-        setTimeout(() => {
+        innerTimeout = setTimeout(() => {
+          innerTimeout = null
           setNavigationBarColorFixed('#FFFFFF', true, true).catch(() => {})
         }, 800)
       }
     })
-    return () => task.cancel()
+    return () => {
+      task.cancel()
+      if (innerTimeout) clearTimeout(innerTimeout)
+    }
   }, [])
 
   return (
     <>
       {/* Global edge-to-edge: Android enters translucent mode at app startup,
-          so no screen ever sees a layout shift when statusBarTranslucent toggles. */}
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
+          so no screen ever sees a layout shift when statusBarTranslucent toggles.
+          Style reactive theo system theme — khi user đổi Light/Dark mid-session,
+          status bar (giờ, wifi, pin) đổi màu theo content mới. */}
+      <StatusBar
+        style={isDark ? 'light' : 'dark'}
+        translucent
+        backgroundColor="transparent"
+      />
       <AppContent />
     </>
   )

@@ -6,7 +6,15 @@
  *
  * Flow: measure source → show overlay → navigate → measure dest → animate → crossfade
  */
-import React, { createContext, useContext, useState } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { StyleSheet } from 'react-native'
 import { Image } from 'expo-image'
 import Animated, {
@@ -72,12 +80,26 @@ function useSharedElementApi(setDisplayUri: (uri: string) => void) {
   const [jsIsActive, setJsIsActive] = useState(false)
   const [jsSourceImageUri, setJsSourceImageUri] = useState('')
 
-  const hideOverlay = () => {
+  // Mount guard — animation callbacks (spring completion → runOnJS(hideOverlay))
+  // có thể fire sau khi provider unmount (vd: iOS low-memory warning teardown,
+  // app background giữa chừng animation). Ref ngăn setState trên unmounted.
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  // Tất cả deps là SharedValue hoặc setState setter — đều stable references.
+  // useCallback với [] để api object không recreate mỗi render, tránh cascade
+  // re-render qua MasterTransitionProvider → screenListeners → Stack.
+  const hideOverlay = useCallback(() => {
+    if (!isMountedRef.current) return
     overlayVisible.value = false
     setJsIsActive(false)
-  }
+  }, [overlayVisible])
 
-  const triggerTransition = (source: ElementRect, imageUri: string) => {
+  const triggerTransition = useCallback((source: ElementRect, imageUri: string) => {
     sourceRect.value = source
     sourceImageUri.value = imageUri
     setJsSourceImageUri(imageUri)
@@ -86,14 +108,14 @@ function useSharedElementApi(setDisplayUri: (uri: string) => void) {
     isActive.value = true
     setJsIsActive(true)
     overlayVisible.value = true
-  }
+  }, [sourceRect, sourceImageUri, animationProgress, isActive, overlayVisible, setDisplayUri])
 
-  const setDest = (dest: ElementRect) => {
+  const setDest = useCallback((dest: ElementRect) => {
     destRect.value = dest
     animationProgress.value = withSpring(1, SHARED_SPRING)
-  }
+  }, [destRect, animationProgress])
 
-  const completeTransition = () => {
+  const completeTransition = useCallback(() => {
     animationProgress.value = withSpring(1, SHARED_SPRING, (finished) => {
       'worklet'
       if (finished) {
@@ -101,9 +123,9 @@ function useSharedElementApi(setDisplayUri: (uri: string) => void) {
         runOnJS(hideOverlay)()
       }
     })
-  }
+  }, [animationProgress, isActive, hideOverlay])
 
-  const reverseTransition = () => {
+  const reverseTransition = useCallback(() => {
     overlayVisible.value = true
     isActive.value = true
     animationProgress.value = withSpring(0, SHARED_SPRING, (finished) => {
@@ -113,7 +135,7 @@ function useSharedElementApi(setDisplayUri: (uri: string) => void) {
         runOnJS(hideOverlay)()
       }
     })
-  }
+  }, [overlayVisible, isActive, animationProgress, hideOverlay])
 
   const overlayStyle = useAnimatedStyle(() => {
     'worklet'
@@ -144,8 +166,12 @@ function useSharedElementApi(setDisplayUri: (uri: string) => void) {
     }
   })
 
-  return {
-    api: {
+  // useMemo: api object chỉ recreate khi jsIsActive/jsSourceImageUri thay đổi.
+  // Tất cả functions đã stable (useCallback []), SharedValues luôn stable.
+  // Điều này ngăn MasterTransitionProvider recreate onTransitionStart/End
+  // và screenListeners mỗi khi SharedElementProvider re-render.
+  const api = useMemo<SharedElementContextValue>(
+    () => ({
       triggerTransition,
       setDestRect: setDest,
       completeTransition,
@@ -155,9 +181,12 @@ function useSharedElementApi(setDisplayUri: (uri: string) => void) {
       sourceImageUri,
       jsIsActive,
       jsSourceImageUri,
-    } satisfies SharedElementContextValue,
-    overlayStyle,
-  }
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [jsIsActive, jsSourceImageUri],
+  )
+
+  return { api, overlayStyle }
 }
 
 export function SharedElementProvider({ children }: { children: React.ReactNode }) {

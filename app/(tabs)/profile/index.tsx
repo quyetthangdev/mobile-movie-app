@@ -1,14 +1,18 @@
 import { LoginForm } from '@/components/auth'
 import { LanguageSheet, ThemeSheet } from '@/components/profile'
 import { Skeleton } from '@/components/ui'
-import { colors } from '@/constants/colors.constant'
+import { colors, publicFileURL } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useLoyaltyPoints, useRunAfterTransition, useUploadAvatar } from '@/hooks'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
 import { useScanSheetStore } from '@/stores/scan-sheet.store'
 import { showToast } from '@/utils'
-import { BlurView } from 'expo-blur'
+import {
+  BottomSheetBackdrop,
+  type BottomSheetBackdropProps,
+  BottomSheetModal,
+} from '@gorhom/bottom-sheet'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -18,13 +22,14 @@ import {
   ChevronRight,
   ClipboardList,
   Gift,
+  ImageIcon,
   Languages,
   ScanLine,
   SunMoon,
   Trophy,
   User,
 } from 'lucide-react-native'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AppState,
@@ -35,29 +40,15 @@ import {
   TouchableOpacity,
   View,
   useColorScheme,
-  useWindowDimensions,
 } from 'react-native'
 import { GestureDetector, ScrollView as GestureScrollView } from 'react-native-gesture-handler'
-import Animated, {
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-} from 'react-native-reanimated'
+import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useProfileAnimation } from './use-profile-animation'
 
-const AnimatedGestureScrollView = Animated.createAnimatedComponent(GestureScrollView)
 
-const HEADER_HEIGHT = 280
 const AVATAR_SIZE = 100
 const AVATAR_TOP = 60
-const SCROLL_RANGE = 140
-// nameTravel: distance the name text slides up to dock at the header toolbar.
-// Derivation: nameCenterY - headerNameY
-//   = (insets.top + AVATAR_TOP + AVATAR_SIZE + 24) - (insets.top + 28)
-//   = AVATAR_TOP + AVATAR_SIZE + 24 - 28 = 156 → travel = -156 (upward)
-// insets.top cancels, so this is a fixed constant regardless of device safe-area.
-const NAME_TRAVEL = -(AVATAR_TOP + AVATAR_SIZE + 24 - 28) // -156
 
 const PROFILE_THEME = {
   light: {
@@ -153,6 +144,121 @@ const MenuItem = React.memo(function MenuItem({
   )
 })
 
+// ─── Avatar Picker Sheet ──────────────────────────────────────────────────────
+
+const AvatarPickerSheet = React.memo(function AvatarPickerSheet({
+  visible,
+  onClose,
+  onCamera,
+  onLibrary,
+  isDark,
+}: {
+  visible: boolean
+  onClose: () => void
+  onCamera: () => void
+  onLibrary: () => void
+  isDark: boolean
+}) {
+  const { t } = useTranslation('profile')
+  const sheetRef = useRef<BottomSheetModal>(null)
+  const { bottom } = useSafeAreaInsets()
+
+  const bgStyle = useMemo(
+    () => ({ backgroundColor: isDark ? colors.gray[900] : colors.white.light }),
+    [isDark],
+  )
+  const snapPoints = useMemo(() => [220 + bottom], [bottom])
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.4} pressBehavior="close" />
+    ),
+    [],
+  )
+
+  useEffect(() => {
+    if (visible) sheetRef.current?.present()
+    else sheetRef.current?.dismiss()
+  }, [visible])
+
+  const primaryColor = isDark ? colors.primary.dark : colors.primary.light
+  const textColor = isDark ? colors.gray[50] : colors.gray[900]
+
+  return (
+    <BottomSheetModal
+      ref={sheetRef}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      enableDynamicSizing={false}
+      enableContentPanningGesture={false}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={bgStyle}
+      onDismiss={onClose}
+    >
+      <View style={[apStyles.container, { paddingBottom: bottom + 16 }]}>
+        <Text style={[apStyles.title, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
+          {t('profile.avatarPickerTitle')}
+        </Text>
+        <View style={apStyles.optionsCol}>
+          <TouchableOpacity style={apStyles.option} onPress={onCamera} activeOpacity={0.7}>
+            <View style={[apStyles.iconWrap, { backgroundColor: `${primaryColor}18` }]}>
+              <Camera size={24} color={primaryColor} />
+            </View>
+            <Text style={[apStyles.optionLabel, { color: textColor }]}>
+              {t('profile.avatarPickerCamera')}
+            </Text>
+          </TouchableOpacity>
+          <View style={[apStyles.divider, { backgroundColor: isDark ? colors.gray[800] : colors.gray[100] }]} />
+          <TouchableOpacity style={apStyles.option} onPress={onLibrary} activeOpacity={0.7}>
+            <View style={[apStyles.iconWrap, { backgroundColor: `${primaryColor}18` }]}>
+              <ImageIcon size={24} color={primaryColor} />
+            </View>
+            <Text style={[apStyles.optionLabel, { color: textColor }]}>
+              {t('profile.avatarPickerLibrary')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </BottomSheetModal>
+  )
+})
+
+const apStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+  },
+  title: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  optionsCol: {
+    gap: 0,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingVertical: 14,
+  },
+  iconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
+  optionLabel: {
+    fontSize: 16,
+    fontWeight: '400',
+    flex: 1,
+  },
+})
+
 // ─── Profile Header — copied 100% from CartHeader, 2 buttons changed ────────
 
 const ProfileHeader = React.memo(function ProfileHeader({
@@ -173,13 +279,6 @@ const ProfileHeader = React.memo(function ProfileHeader({
   return (
     <View style={phStyles.container} pointerEvents="box-none">
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Platform.OS === 'ios' && (
-          <BlurView
-            intensity={20}
-            tint={isDark ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
         <LinearGradient
           colors={gradientColors}
           locations={[0, 0.3, 0.62, 0.85, 1]}
@@ -261,46 +360,10 @@ const phStyles = StyleSheet.create({
 // ─── Profile Screen ───────────────────────────────────────────────────────────
 
 const ProfileTest = () => {
-  const { width: screenWidth } = useWindowDimensions()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const theme = PROFILE_THEME[isDark ? 'dark' : 'light']
   const router = useRouter()
-  const scrollY = useSharedValue(0)
-
-  const handleScroll = useAnimatedScrollHandler({
-    onScroll: (e) => {
-      'worklet'
-      scrollY.value = e.contentOffset.y
-    },
-  })
-
-  const avatarTop = STATIC_TOP_INSET + AVATAR_TOP
-  const nameTop = avatarTop + AVATAR_SIZE + 12
-
-  // Single derived progress 0→1
-  const progress = useDerivedValue(() => {
-    'worklet'
-    const p = scrollY.value / SCROLL_RANGE
-    return p < 0 ? 0 : p > 1 ? 1 : p
-  })
-
-  // Avatar + phone: fade out + translate up — same linear driver as nameStyle for sync
-  const avatarPhoneStyle = useAnimatedStyle(() => {
-    'worklet'
-    return {
-      opacity: 1 - progress.value,
-      transform: [{ translateY: NAME_TRAVEL * progress.value }],
-    }
-  })
-
-  // Name: slides up to dock at header toolbar position
-  const nameStyle = useAnimatedStyle(() => {
-    'worklet'
-    return {
-      transform: [{ translateY: NAME_TRAVEL * progress.value }],
-    }
-  })
 
   const { t } = useTranslation('profile')
   const handleBack = useCallback(() => router.back(), [router])
@@ -347,41 +410,24 @@ const ProfileTest = () => {
     router.push('/(tabs)/profile/edit')
   }, [router])
 
-  const handleAvatarPress = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') {
-      showToast(t('profile.avatarPermissionRequired'))
-      return
-    }
+  const [isAvatarSheetOpen, setIsAvatarSheetOpen] = useState(false)
+  const openAvatarSheet = useCallback(() => setIsAvatarSheetOpen(true), [])
+  const closeAvatarSheet = useCallback(() => setIsAvatarSheetOpen(false), [])
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    })
-
-    if (result.canceled) return
-
-    const asset = result.assets[0]
-
+  const uploadAvatarAsset = useCallback((asset: ImagePicker.ImagePickerAsset) => {
     if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
       showToast(t('profile.avatarTooLarge'))
       return
     }
-
     const formData = new FormData()
     formData.append('file', {
       uri: asset.uri,
       type: asset.mimeType ?? 'image/jpeg',
       name: asset.fileName ?? `avatar-${Date.now()}.jpg`,
     } as never)
-
     uploadAvatar(formData, {
       onSuccess: (data) => {
-        if (data.result) {
-          setUserInfo(data.result)
-        }
+        if (data.result) setUserInfo(data.result)
         showToast(t('profile.avatarUpdated'))
       },
       onError: () => {
@@ -389,6 +435,45 @@ const ProfileTest = () => {
       },
     })
   }, [uploadAvatar, setUserInfo, t])
+
+  const handleAvatarCamera = useCallback(() => {
+    setIsAvatarSheetOpen(false)
+    // Delay để sheet dismiss animation hoàn tất trước khi mở system dialog
+    setTimeout(async () => {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync()
+      if (status !== 'granted') {
+        showToast(t('profile.cameraPermissionRequired'))
+        return
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: Platform.OS === 'ios',
+        aspect: [1, 1],
+        quality: 0.8,
+      })
+      if (result.canceled) return
+      uploadAvatarAsset(result.assets[0])
+    }, 350)
+  }, [uploadAvatarAsset, t])
+
+  const handleAvatarLibrary = useCallback(() => {
+    setIsAvatarSheetOpen(false)
+    setTimeout(async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (status !== 'granted') {
+        showToast(t('profile.avatarPermissionRequired'))
+        return
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: Platform.OS === 'ios',
+        aspect: [1, 1],
+        quality: 0.8,
+      })
+      if (result.canceled) return
+      uploadAvatarAsset(result.assets[0])
+    }, 350)
+  }, [uploadAvatarAsset, t])
 
   const openGeneralInfo = useCallback(() => {
     router.push('/(tabs)/profile/general-info')
@@ -432,70 +517,50 @@ const ProfileTest = () => {
           style={[styles.profileCard, { backgroundColor: theme.bg }, animatedStyle]}
           renderToHardwareTextureAndroid
         >
-          {/* Avatar — absolutely positioned, fades + moves up on scroll */}
-          <Animated.View
-            style={[
-              styles.avatarWrap,
-              {
-                width: AVATAR_SIZE,
-                height: AVATAR_SIZE,
-                left: (screenWidth - AVATAR_SIZE) / 2,
-                top: avatarTop,
-              },
-              avatarPhoneStyle,
-            ]}
+          <GestureScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
           >
-            {userInfo?.image ? (
-              <Image
-                source={{ uri: userInfo.image, width: AVATAR_SIZE * 2, height: AVATAR_SIZE * 2 }}
-                style={styles.avatarImage}
-                contentFit="cover"
-                cachePolicy="disk"
-              />
-            ) : (
-              <View style={[styles.avatarFallback, { backgroundColor: theme.avatarFallback }]}>
-                <Text style={[styles.avatarFallbackText, { color: theme.textMuted }]}>
-                  {initials || 'U'}
-                </Text>
+            {/* Avatar + tên + sđt — scroll cùng nội dung */}
+            <View style={[styles.profileHero, { paddingTop: STATIC_TOP_INSET + AVATAR_TOP }]}>
+              <View style={[styles.avatarWrap, { width: AVATAR_SIZE, height: AVATAR_SIZE }]}>
+                {userInfo?.image ? (
+                  <Image
+                    source={{
+                      uri: /^https?:\/\//i.test(userInfo.image)
+                        ? userInfo.image
+                        : `${publicFileURL}/${userInfo.image.replace(/^\//, '')}`,
+                      width: AVATAR_SIZE * 2,
+                      height: AVATAR_SIZE * 2,
+                    }}
+                    style={styles.avatarImage}
+                    contentFit="cover"
+                    cachePolicy="disk"
+                  />
+                ) : (
+                  <View style={[styles.avatarFallback, { backgroundColor: theme.avatarFallback }]}>
+                    <Text style={[styles.avatarFallbackText, { color: theme.textMuted }]}>
+                      {initials || 'U'}
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
-          </Animated.View>
-          {/* Tên + SĐT: overlay riêng, tên dừng ở header, SĐT mờ cùng avatar */}
-          <View style={[styles.namePhoneWrap, { top: nameTop }]} pointerEvents="none">
-            <Animated.Text
-              style={[styles.nameText, nameStyle, { color: theme.text }]}
-              numberOfLines={1}
-            >
-              {userInfo?.firstName} {userInfo?.lastName}
-            </Animated.Text>
-            <Animated.View style={avatarPhoneStyle}>
-              <Text
-                style={[styles.phoneText, { color: theme.textMuted }]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.nameText, { color: theme.text }]} numberOfLines={1}>
+                {userInfo?.firstName} {userInfo?.lastName}
+              </Text>
+              <Text style={[styles.phoneText, { color: theme.textMuted }]} numberOfLines={1}>
                 {userInfo?.phonenumber ||
                   t('profile.contactInfo.noPhone', 'Chưa cập nhật số điện thoại')}
               </Text>
-            </Animated.View>
-          </View>
-
-          <AnimatedGestureScrollView
-            style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingTop: HEADER_HEIGHT + STATIC_TOP_INSET + 12 },
-            ]}
-            onScroll={handleScroll}
-            scrollEventThrottle={32}
-          >
+            </View>
             {/* Group 1: Profile customization */}
             <View style={[styles.card, { backgroundColor: theme.card }]}>
               <MenuItem
                 icon={Camera}
                 iconColor={ICON_COLORS.blue}
                 title={t('profile.changeAvatar')}
-                onPress={handleAvatarPress}
+                onPress={openAvatarSheet}
                 textColor={theme.text}
                 textMuted={theme.textMuted}
                 variant="primary"
@@ -592,13 +657,20 @@ const ProfileTest = () => {
                 {t('profile.logout.title', 'Đăng xuất')}
               </Text>
             </TouchableOpacity>
-          </AnimatedGestureScrollView>
+          </GestureScrollView>
 
           {/* ProfileHeader — 100% CartHeader structure, LayoutGrid + Pencil buttons */}
           <ProfileHeader onEdit={openEdit} onScan={openScanSheet} isDark={isDark} />
         </Animated.View>
       </GestureDetector>
 
+      <AvatarPickerSheet
+        visible={isAvatarSheetOpen}
+        onClose={closeAvatarSheet}
+        onCamera={handleAvatarCamera}
+        onLibrary={handleAvatarLibrary}
+        isDark={isDark}
+      />
       <LanguageSheet
         visible={isLangSheetOpen}
         onClose={closeLangSheet}
@@ -624,10 +696,15 @@ const styles = StyleSheet.create({
   },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 120 },
+  profileHero: {
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
+  },
   avatarWrap: {
-    position: 'absolute',
     borderRadius: 999,
     overflow: 'hidden',
+    marginBottom: 4,
   },
   avatarImage: {
     width: '100%',
@@ -642,13 +719,6 @@ const styles = StyleSheet.create({
   avatarFallbackText: {
     fontSize: 36,
     fontWeight: '700',
-  },
-  namePhoneWrap: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
-    alignItems: 'center',
-    zIndex: 15,
   },
   nameText: {
     fontSize: 22,

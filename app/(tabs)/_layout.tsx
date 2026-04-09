@@ -184,6 +184,7 @@ export default function TabsLayout() {
     <View style={{ flex: 1 }}>
       <Animated.View
         renderToHardwareTextureAndroid
+        shouldRasterizeIOS
         style={[
           {
             position: 'absolute',

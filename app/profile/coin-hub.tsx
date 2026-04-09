@@ -395,15 +395,16 @@ export default function CoinHubScreen() {
         />
       )}
 
-      <CoinFilterSheet
-        key={filterSheetOpen ? 'open' : 'closed'}
-        visible={filterSheetOpen}
-        value={filter}
-        primaryColor={primaryColor}
-        isDark={isDark}
-        onClose={() => setFilterSheetOpen(false)}
-        onApply={handleApplyFilter}
-      />
+      {filterSheetOpen && (
+        <CoinFilterSheet
+          visible
+          value={filter}
+          primaryColor={primaryColor}
+          isDark={isDark}
+          onClose={() => setFilterSheetOpen(false)}
+          onApply={handleApplyFilter}
+        />
+      )}
     </View>
   )
 }
@@ -509,7 +510,7 @@ const s = StyleSheet.create({
   // ── List header
   listHeader:   { gap: 10, marginBottom: 12 },
   sectionTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  statsCard:    { borderRadius: 12, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
+  statsCard:    { borderRadius: 12, borderWidth: 1, flexDirection: 'row' },
   statItem:     { flex: 1, paddingVertical: 12, paddingHorizontal: 14, gap: 4 },
   statLabel:    { fontSize: 11, fontWeight: '500' },
   statValue:    { fontSize: 15, fontWeight: '700' },

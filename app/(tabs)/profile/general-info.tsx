@@ -1,7 +1,7 @@
 /**
  * Thông tin cá nhân — UI giống Profile: avatar, 2 nút header, các trường thông tin bên dưới.
  */
-import { colors } from '@/constants/colors.constant'
+import { colors, publicFileURL } from '@/constants'
 import { ROUTE } from '@/constants/route.contstant'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { navigateNative } from '@/lib/navigation'
@@ -339,7 +339,9 @@ export default function GeneralInfo() {
         {userInfo.image ? (
           <Image
             source={{
-              uri: userInfo.image,
+              uri: /^https?:\/\//i.test(userInfo.image)
+                ? userInfo.image
+                : `${publicFileURL}/${userInfo.image.replace(/^\//, '')}`,
               width: AVATAR_SIZE * 2,
               height: AVATAR_SIZE * 2,
             }}

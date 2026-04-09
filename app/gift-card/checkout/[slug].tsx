@@ -49,7 +49,7 @@ import { useCountdown } from '@/hooks/use-countdown'
 import { useCancelCardOrder } from '@/hooks/use-card-order'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useGiftCardStore } from '@/stores'
-import { navigateNative } from '@/lib/navigation'
+import { navigateNative, scheduleTransitionTask } from '@/lib/navigation'
 import { formatCurrency, formatPoints, showErrorToastMessage } from '@/utils'
 
 // Payment QR expires 15 minutes after initiation
@@ -234,10 +234,10 @@ export default function GiftCardPaymentScreen() {
       slug
     ) {
       hasNavigatedRef.current = true
-      clearGiftCard(false)
       navigateNative.replace(
         `/gift-card/order-success/${slug}` as Parameters<typeof navigateNative.replace>[0],
       )
+      scheduleTransitionTask(() => clearGiftCard(false))
     }
   }, [order?.paymentStatus, slug, clearGiftCard])
 
@@ -299,7 +299,9 @@ export default function GiftCardPaymentScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: bg }]}>
-      <FloatingHeader title="Thanh toán" />
+      <FloatingHeader title="Thanh toán" 
+          disableBlur
+        />
 
       {isPending ? (
         <View style={{ marginTop: insets.top + 56 }}>

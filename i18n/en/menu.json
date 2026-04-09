@@ -168,7 +168,9 @@
     "distance": "Distance",
     "km": "km",
     "time": "Time",
-    "noAddressSelected": "No address selected"
+    "noAddressSelected": "No address selected",
+    "orderNotePlaceholder": "Add order note...",
+    "itemNotePlaceholder": "Add item note..."
   },
   "order": {
     "added": "Added",

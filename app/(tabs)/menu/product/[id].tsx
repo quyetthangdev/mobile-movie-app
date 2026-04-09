@@ -9,6 +9,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppState, Platform, RefreshControl, StyleSheet, View, useColorScheme } from 'react-native'
 import Animated, {
+  Extrapolation,
+  interpolate,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -149,7 +151,11 @@ function ProductDetailContent() {
     [variants],
   )
   const description = menuItem?.product?.description ?? ''
-  const catalogSlug = menuItem?.product?.catalog?.slug ?? ''
+  const catalogSlugRaw = menuItem?.product?.catalog?.slug ?? ''
+  const [catalogSlug, setCatalogSlug] = useState(catalogSlugRaw)
+  if (catalogSlugRaw && catalogSlug !== catalogSlugRaw) {
+    setCatalogSlug(catalogSlugRaw)
+  }
   const isLocked = menuItem?.isLocked ?? false
   const isLimit = menuItem?.product?.isLimit ?? false
   const currentStock = menuItem?.currentStock ?? 0
@@ -202,11 +208,8 @@ function ProductDetailContent() {
   })
 
   const headerStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { scale: scrollY.value < 0 ? 1.1 : 1 },
-      ],
-    }
+    const scale = interpolate(scrollY.value, [-120, 0], [1.1, 1], Extrapolation.CLAMP)
+    return { transform: [{ scale }] }
   })
 
   useFocusEffect(

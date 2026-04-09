@@ -64,7 +64,7 @@ export function useRegisterDeviceToken(enabled = true) {
           setDeviceToken(token)
         } else {
           // eslint-disable-next-line no-console
-          console.log('[FCM] ❌ Registration failed:', result.error)
+          console.error('[FCM] ❌ Registration failed (all retries exhausted):', result.error)
         }
       } finally {
         isRegistering.current = false

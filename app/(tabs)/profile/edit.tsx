@@ -7,8 +7,7 @@ import { getProfile, updateProfile } from '@/api/profile'
 import {
   ConfirmUpdateProfileBottomSheet,
   type ConfirmUpdateProfileBottomSheetRef,
-  DateOfBirthWheelPicker,
-  type DateOfBirthWheelPickerRef,
+  DobExpandablePicker,
 } from '@/components/profile'
 import { Input } from '@/components/ui'
 import { colors } from '@/constants/colors.constant'
@@ -18,10 +17,9 @@ import type { IUserInfo } from '@/types'
 import { showToast } from '@/utils'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
-import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { Check, ChevronDown } from 'lucide-react-native'
+import { Check } from 'lucide-react-native'
 import React, {
   useCallback,
   useEffect,
@@ -37,17 +35,9 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   useColorScheme,
 } from 'react-native'
-import DatePicker from 'react-native-date-picker'
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 dayjs.extend(customParseFormat)
@@ -62,103 +52,6 @@ function normalizeDob(value: string | null | undefined): string {
   return ''
 }
 
-/** Ngày mặc định an toàn để tránh "Date value out of bounds" */
-function getSafeDate(value: string): Date {
-  const normalized = normalizeDob(value) || value
-  if (normalized && dayjs(normalized).isValid()) {
-    const d = dayjs(normalized).toDate()
-    if (!Number.isNaN(d.getTime())) return d
-  }
-  return dayjs().subtract(25, 'year').toDate()
-}
-
-/** Format dob để hiển thị (chấp nhận DD/MM/YYYY hoặc YYYY-MM-DD) */
-function formatDobForDisplay(value: string | null | undefined): string {
-  const normalized = normalizeDob(value) || value
-  if (!normalized || !dayjs(normalized).isValid()) return ''
-  return dayjs(normalized).format('DD/MM/YYYY')
-}
-
-const DOB_PICKER_HEIGHT = 220
-const ANIM_DURATION = 220
-
-/** Component DOB mẫu inline — bấm để xổ/đóng, animation chạy trên UI thread */
-function DobSamplePicker({
-  value,
-  onSelect,
-  theme,
-  placeholder,
-}: {
-  value: string
-  onSelect: (date: string) => void
-  theme: { bg: string; card: string; editBtn: string; text: string; textMuted: string }
-  placeholder: string
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const progress = useSharedValue(0)
-  const safeDate = getSafeDate(value)
-
-  useEffect(() => {
-    progress.value = withTiming(expanded ? 1 : 0, {
-      duration: ANIM_DURATION,
-    })
-  }, [expanded, progress])
-
-  const handleDateChange = useCallback(
-    (d: Date) => onSelect(dayjs(d).format('YYYY-MM-DD')),
-    [onSelect],
-  )
-
-  const animatedStyle = useAnimatedStyle(() => {
-    'worklet'
-    return {
-      height: interpolate(progress.value, [0, 1], [0, DOB_PICKER_HEIGHT]),
-      opacity: interpolate(progress.value, [0, 0.5, 1], [0, 0.5, 1]),
-      overflow: 'hidden' as const,
-    }
-  })
-
-  return (
-    <View>
-      <TouchableOpacity
-        style={[
-          styles.dobTouchable,
-          {
-            backgroundColor: theme.card,
-            borderColor: expanded ? theme.text : theme.editBtn,
-          },
-        ]}
-        onPress={() => setExpanded((e) => !e)}
-        activeOpacity={0.7}
-      >
-        <Text
-          style={[
-            styles.dobText,
-            { color: value ? theme.text : theme.textMuted, flex: 1 },
-          ]}
-        >
-          {formatDobForDisplay(value) || placeholder}
-        </Text>
-        <ChevronDown
-          size={16}
-          color={theme.textMuted}
-          style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}
-        />
-      </TouchableOpacity>
-      <Animated.View style={[styles.dobPickerWrap, animatedStyle]}>
-        <View style={styles.dobPickerInner}>
-          <DatePicker
-            mode="date"
-            date={safeDate}
-            onDateChange={handleDateChange}
-            maximumDate={dayjs().toDate()}
-            minimumDate={dayjs().subtract(120, 'year').toDate()}
-          />
-        </View>
-      </Animated.View>
-    </View>
-  )
-}
 
 const PROFILE_THEME = {
   light: {
@@ -242,6 +135,7 @@ function EditHeader({
   isDirty: boolean
   isDark: boolean
 }) {
+  const { t } = useTranslation('profile')
   const pageBg = isDark ? '#1F2B3E' : colors.background.light
   const gradientColors = useMemo(
     () => [pageBg, `${pageBg}E6`, `${pageBg}B0`, `${pageBg}50`, `${pageBg}00`] as const,
@@ -257,13 +151,6 @@ function EditHeader({
   return (
     <View style={ehStyles.container} pointerEvents="box-none">
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Platform.OS === 'ios' && (
-          <BlurView
-            intensity={20}
-            tint={isDark ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
         <LinearGradient
           colors={gradientColors}
           locations={[0, 0.3, 0.62, 0.85, 1]}
@@ -284,7 +171,7 @@ function EditHeader({
           ]}
         >
           <Text style={[ehStyles.cancelText, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-            Huỷ
+            {t('profile.cancel')}
           </Text>
         </Pressable>
         <View
@@ -393,7 +280,6 @@ const ProfileEditForm = React.memo(function ProfileEditForm({ userInfo }: { user
   })
 
   const confirmSheetRef = useRef<ConfirmUpdateProfileBottomSheetRef>(null)
-  const dobPickerRef = useRef<DateOfBirthWheelPickerRef>(null)
 
   const { t: tToast } = useTranslation('toast')
 
@@ -444,10 +330,10 @@ const ProfileEditForm = React.memo(function ProfileEditForm({ userInfo }: { user
       const res: Awaited<ReturnType<typeof updateProfile>> = await updateProfile(payload)
       if (res?.result) setUserInfo?.(res.result)
       else setUserInfo?.({ ...userInfo, ...payload })
-      showToast(tToast('updateProfileSuccess', 'Cập nhật thông tin cá nhân thành công'))
+      showToast(tToast('toast.updateProfileSuccess'))
       router.back()
     } catch {
-      showToast(tToast('updateProfileFailed', 'Cập nhật thất bại, vui lòng thử lại'))
+      showToast(tToast('toast.updateProfileFailed'))
     } finally {
       isUpdatingRef.current = false
       setIsUpdating(false)
@@ -471,48 +357,53 @@ const ProfileEditForm = React.memo(function ProfileEditForm({ userInfo }: { user
       >
         {/* Mục: Thông tin cơ bản */}
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-          {t('generalInfo.basicInfo', 'Thông tin cơ bản')}
+          {t('profile.generalInfo.basicInfo')}
         </Text>
         <View style={[styles.section, { backgroundColor: theme.card }]}>
           <FormField
-            label={t('lastName', 'Họ')}
+            label={t('profile.lastName')}
             value={userInfo.lastName ?? ''}
             onChangeRef={lastNameRef}
-            placeholder={t('enterLastName', 'Nhập họ')}
+            placeholder={t('profile.enterLastName')}
             labelColor={theme.textMuted}
             autoCapitalize="words"
             onChange={checkDirty}
           />
           <FormField
-            label={t('firstName', 'Tên')}
+            label={t('profile.firstName')}
             value={userInfo.firstName ?? ''}
             onChangeRef={firstNameRef}
-            placeholder={t('enterFirstName', 'Nhập tên')}
+            placeholder={t('profile.enterFirstName')}
             labelColor={theme.textMuted}
             autoCapitalize="words"
             onChange={checkDirty}
           />
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textMuted }]}>
-              {t('dob', 'Ngày sinh')}
+              {t('profile.dob')}
             </Text>
-            <DobSamplePicker
+            <DobExpandablePicker
               value={dob}
               onSelect={handleDobChange}
-              theme={theme}
-              placeholder={t('enterDob', 'Chọn ngày sinh')}
+              theme={{
+                bg: theme.card,
+                editBtn: theme.editBtn,
+                text: theme.text,
+                textMuted: theme.textMuted,
+              }}
+              placeholder={t('profile.enterDob')}
             />
           </View>
         </View>
 
         {/* Mục: Số điện thoại & Email (chỉ đọc) */}
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-          {t('contactInfo.title', 'Thông tin liên hệ')}
+          {t('profile.contactInfo.title')}
         </Text>
         <View style={[styles.section, { backgroundColor: theme.card }]}>
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textMuted }]}>
-              {t('contactInfo.phone', 'Số điện thoại')}
+              {t('profile.contactInfo.phone')}
             </Text>
             <Input
               value={userInfo.phonenumber ?? ''}
@@ -522,7 +413,7 @@ const ProfileEditForm = React.memo(function ProfileEditForm({ userInfo }: { user
           </View>
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textMuted }]}>
-              {t('contactInfo.email', 'Email')}
+              {t('profile.contactInfo.email')}
             </Text>
             <Input
               value={userInfo.email ?? ''}
@@ -534,26 +425,20 @@ const ProfileEditForm = React.memo(function ProfileEditForm({ userInfo }: { user
 
         {/* Mục: Địa chỉ */}
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-          {t('addressInfo', 'Thông tin địa chỉ')}
+          {t('profile.addressInfo')}
         </Text>
         <View style={[styles.section, { backgroundColor: theme.card }]}>
           <FormField
-            label={t('contactInfo.address', 'Địa chỉ')}
+            label={t('profile.contactInfo.address')}
             value={userInfo.address ?? ''}
             onChangeRef={addressRef}
-            placeholder={t('enterAddress', 'Nhập địa chỉ')}
+            placeholder={t('profile.enterAddress')}
             labelColor={theme.textMuted}
             onChange={checkDirty}
           />
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
-
-      <DateOfBirthWheelPicker
-        ref={dobPickerRef}
-        value={dob}
-        onSelect={handleDobChange}
-      />
 
       <ConfirmUpdateProfileBottomSheet
         ref={confirmSheetRef}
@@ -562,7 +447,7 @@ const ProfileEditForm = React.memo(function ProfileEditForm({ userInfo }: { user
       />
 
       <EditHeader
-        title={t('contactInfo.edit', 'Chỉnh sửa thông tin')}
+        title={t('profile.contactInfo.edit')}
         onCancel={handleCancel}
         onConfirm={handleConfirmPress}
         isDirty={isDirty}
@@ -656,24 +541,5 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     marginBottom: 6,
-  },
-  dobTouchable: {
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  dobPickerWrap: {
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  dobPickerInner: {
-    height: DOB_PICKER_HEIGHT,
-    alignItems: 'center',
-  },
-  dobText: {
-    fontSize: 16,
   },
 })

@@ -252,6 +252,7 @@
     "date": "Ngày",
     "description": "Mô tả",
     "dob": "Ngày sinh",
+    "enterDob": "Chọn ngày sinh",
     "dobInvalid": "Ngày sinh không hợp lệ",
     "dobRequired": "Ngày sinh không được để trống",
     "email": "Email",
@@ -402,9 +403,17 @@
       "title": "Thẻ quà tặng & Xu"
     },
     "theme": {
-      "title": "Giao diện"
+      "title": "Giao diện",
+      "light": "Sáng",
+      "dark": "Tối",
+      "system": "Tự động"
     },
+    "cancel": "Huỷ",
     "changeAvatar": "Đổi ảnh đại diện",
+    "avatarPickerTitle": "Cập nhật ảnh đại diện",
+    "avatarPickerCamera": "Chụp ảnh",
+    "avatarPickerLibrary": "Chọn từ thư viện",
+    "cameraPermissionRequired": "Cần quyền truy cập camera",
     "avatarPermissionRequired": "Cần quyền truy cập thư viện ảnh",
     "avatarTooLarge": "Ảnh phải nhỏ hơn 5MB",
     "avatarUpdated": "Cập nhật ảnh đại diện thành công",

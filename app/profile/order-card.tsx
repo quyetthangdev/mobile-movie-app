@@ -59,7 +59,7 @@ const OrderCard = memo(function OrderCard({
   return (
     <Pressable
       onPress={handlePress}
-      style={[
+style={[
         cardStyles.card,
         {
           backgroundColor: isDark ? colors.gray[800] : colors.white.light,
@@ -159,8 +159,8 @@ const OrderCard = memo(function OrderCard({
 )
 
 export const cardStyles = StyleSheet.create({
-  card: { marginBottom: 16, borderRadius: 12, overflow: 'hidden' },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  card: { marginBottom: 16, borderRadius: 12 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
   dateText: { fontSize: 12 },
   statusBadge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   statusText: { fontSize: 12, fontWeight: '500' },

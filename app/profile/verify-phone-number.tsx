@@ -1,12 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import { ChevronLeft } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -71,14 +69,7 @@ const VerifyPhoneHeader = React.memo(function VerifyPhoneHeader({
 
   return (
     <View style={headerStyles.container} pointerEvents="box-none">
-      {Platform.OS === 'ios' && (
-        <BlurView
-          intensity={20}
-          tint={isDark ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
-      <LinearGradient
+<LinearGradient
         colors={gradientColors}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFill}

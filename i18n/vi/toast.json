@@ -309,6 +309,7 @@
 				"updateProductVariantSuccess": "Cập nhật phân loại món ăn thành công",
 				"updateProfilePictureSuccess": "Cập nhật ảnh đại diện thành công",
 				"updateProfileSuccess": "Cập nhật thông tin cá nhân thành công",
+				"updateProfileFailed": "Cập nhật thất bại, vui lòng thử lại",
 				"updatePromotionSuccess": "Cập nhật khuyến mãi thành công",
 				"updateQuantitySuccess": "Cập nhật số lượng thành công",
 				"updateRoleSuccess": "Cập nhật vai trò thành công",

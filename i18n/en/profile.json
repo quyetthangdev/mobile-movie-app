@@ -253,6 +253,7 @@
     "date": "Date",
     "description": "Description",
     "dob": "Date of Birth",
+    "enterDob": "Select date of birth",
     "dobInvalid": "Invalid date of birth",
     "dobRequired": "Date of birth is required",
     "email": "Email",
@@ -403,9 +404,17 @@
       "title": "Gift Cards & Coins"
     },
     "theme": {
-      "title": "Interface"
+      "title": "Appearance",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
     },
+    "cancel": "Cancel",
     "changeAvatar": "Change Avatar",
+    "avatarPickerTitle": "Update Avatar",
+    "avatarPickerCamera": "Take Photo",
+    "avatarPickerLibrary": "Choose from Library",
+    "cameraPermissionRequired": "Camera access required",
     "avatarPermissionRequired": "Photo library access required",
     "avatarTooLarge": "Image must be smaller than 5MB",
     "avatarUpdated": "Avatar updated successfully",

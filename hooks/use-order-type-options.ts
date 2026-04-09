@@ -70,7 +70,6 @@ export function useOrderTypeOptions(options?: UseOrderTypeOptionsOptions) {
     const orderTypeToFeatureMap: Record<string, string> = {
       [OrderTypeEnum.AT_TABLE]: SystemLockFeatureChild.AT_TABLE,
       [OrderTypeEnum.TAKE_OUT]: SystemLockFeatureChild.TAKE_OUT,
-      [OrderTypeEnum.DELIVERY]: SystemLockFeatureChild.DELIVERY,
     }
 
     const allTypes: OrderTypeOption[] = [
@@ -84,22 +83,7 @@ export function useOrderTypeOptions(options?: UseOrderTypeOptionsOptions) {
       },
     ]
 
-    // Check if DELIVERY exists in relevant parent's children
-    const hasDeliveryInFeature = relevantParentFeature?.children?.some(
-      (child) => child.name === SystemLockFeatureChild.DELIVERY
-    )
-    // Only add delivery option if:
-    // 1. User is logged in (isUserLoggedIn)
-    // 2. DELIVERY exists in the relevant parent feature (CREATE_PRIVATE has DELIVERY, CREATE_PUBLIC doesn't)
-    if (isUserLoggedIn && hasDeliveryInFeature) {
-      allTypes.push({
-        value: OrderTypeEnum.DELIVERY,
-        label: t('menu.delivery'),
-      })
-    }
-
     // Lọc bỏ các order type bị locked (isLocked = true)
-    // Map từ OrderTypeEnum value ('at-table') sang SystemLockFeatureChild key ('AT_TABLE')
     const availableTypes = allTypes.filter((type) => {
       const featureKey = orderTypeToFeatureMap[type.value]
       const isLocked = orderTypeLockStatus[featureKey] === true
@@ -107,7 +91,7 @@ export function useOrderTypeOptions(options?: UseOrderTypeOptionsOptions) {
     })
 
     return availableTypes
-  }, [t, isUserLoggedIn, orderTypeLockStatus, relevantParentFeature])
+  }, [t, orderTypeLockStatus])
 
   const selectedType = useMemo(() => {
     if (cartItems?.type) {

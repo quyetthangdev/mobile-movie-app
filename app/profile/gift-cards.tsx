@@ -441,6 +441,7 @@ export default function GiftCardsScreen() {
             </Pressable>
           </View>
         }
+        disableBlur
       />
 
       {/* ── Fixed status filter bar ─────────────────────────────────── */}

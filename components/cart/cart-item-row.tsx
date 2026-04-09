@@ -8,6 +8,7 @@ import { formatCurrencyNative } from 'cart-price-calc'
 import { Image } from 'expo-image'
 import { NotebookText } from 'lucide-react-native'
 import React, { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
 import type { CartDisplayItem } from './cart-display-item'
@@ -64,6 +65,7 @@ export const CartItemRow = memo(
     onDelete: (cartKey?: string) => void
     onSizePress?: (cartKey: string) => void
   }) {
+    const { t } = useTranslation('menu')
     const voucherDiscountPerUnit = useCartItemVoucherDiscount(item.cartKey)
     const updateQuantity = cartActions.updateQuantity
 
@@ -225,7 +227,7 @@ export const CartItemRow = memo(
             <TextInput
               value={localNote}
               onChangeText={handleNoteChange}
-              placeholder="Ghi chú món..."
+              placeholder={t('cart.itemNotePlaceholder')}
               placeholderTextColor={themeStyles.notePlaceholderColor}
               style={[rowStyles.noteInput, themeStyles.noteInputColor]}
               multiline

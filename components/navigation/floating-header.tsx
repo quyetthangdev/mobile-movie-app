@@ -26,12 +26,15 @@ interface FloatingHeaderProps {
   title: string
   onBack?: () => void
   rightElement?: React.ReactNode
+  /** iOS only: bỏ BlurView, chỉ dùng LinearGradient fade thuần */
+  disableBlur?: boolean
 }
 
 export const FloatingHeader = memo(function FloatingHeader({
   title,
   onBack,
   rightElement,
+  disableBlur = false,
 }: FloatingHeaderProps) {
   const isDark = useColorScheme() === 'dark'
   const pageBg = isDark ? colors.background.dark : colors.background.light
@@ -48,7 +51,7 @@ export const FloatingHeader = memo(function FloatingHeader({
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {/* BlurView chỉ trên iOS — Android không hỗ trợ native blur, tinted layer
             sẽ che gradient fade. iOS đã đạt fade tốt với LinearGradient đơn thuần. */}
-        {Platform.OS === 'ios' && (
+        {Platform.OS === 'ios' && !disableBlur && (
           <BlurView
             intensity={20}
             tint={isDark ? 'dark' : 'light'}

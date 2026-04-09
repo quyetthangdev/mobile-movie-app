@@ -1,7 +1,7 @@
 import { Image } from 'expo-image'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image as RNImage, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 
 import { Images } from '@/assets/images'
 import { NativeGesturePressable } from '@/components/navigation'
@@ -114,9 +114,9 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
               style={{ width: '100%', height: '100%', borderRadius: 12 }}
             />
           ) : (
-            <RNImage
+            <Image
               source={Images.Food.DefaultProductImage}
-              resizeMode="cover"
+              contentFit="cover"
               style={{ width: '100%', height: '100%', borderRadius: 12 }}
             />
           )}
@@ -153,11 +153,9 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
             )}
           </View>
         ) : (
-          <View className="h-auto sm:h-fit py-1">
-            <Text className="text-base text-lg font-bold text-foreground" numberOfLines={1}>
-              {item.product.name}
-            </Text>
-          </View>
+          <Text className="text-base text-lg font-bold text-foreground py-1" numberOfLines={1}>
+            {item.product.name}
+          </Text>
         )}
 
         {/* Mobile: Price and Button */}
@@ -167,7 +165,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
               <View className="flex-1 py-1">
                 {item.product.variants.length > 0 ? (
                   hasPromotion ? (
-                    <View className="flex-col">
+                    <>
                       <Text className="text-xs line-through text-gray-500 dark:text-gray-400">
                         {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
                       </Text>
@@ -178,7 +176,7 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
                             )
                           : formatCurrency(0)}
                       </Text>
-                    </View>
+                    </>
                   ) : (
                     <Text className="text-sm font-bold text-primary">
                       {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
@@ -191,15 +189,12 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
                 )}
               </View>
             )}
-            <View>
-              <MenuItemQuantityControl item={item} hasStock={hasStock} isMobile={true} onAddToCart={onAddToCart} />
-            </View>
+            <MenuItemQuantityControl item={item} hasStock={hasStock} isMobile={true} onAddToCart={onAddToCart} />
           </View>
         ) : (
           item.product.variants.length > 0 ? (
-            <View className="flex-col gap-1 py-1">
-              <View className="flex-col">
-                {hasPromotion ? (
+            <View className="gap-1 py-1">
+              {hasPromotion ? (
                   <View className="flex-row gap-2 items-center">
                     <Text className="text-xs sm:text-sm line-through text-gray-500 dark:text-gray-400">
                       {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
@@ -217,7 +212,6 @@ export const ClientMenuItem = React.memo(function ClientMenuItem({ item, onAddTo
                     {priceRange ? formatCurrency(priceRange.min) : formatCurrency(0)}
                   </Text>
                 )}
-              </View>
             </View>
           ) : (
             <Text className="text-sm font-bold text-primary py-1">

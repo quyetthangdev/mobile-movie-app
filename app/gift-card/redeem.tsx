@@ -200,7 +200,9 @@ export default function RedeemGiftCardScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: bg }]}>
-      <FloatingHeader title={t('redeem.title')} />
+      <FloatingHeader title={t('redeem.title')} 
+          disableBlur
+        />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView

@@ -9,6 +9,7 @@
 import { FlashList, type FlashListRef, type ListRenderItem } from '@shopify/flash-list'
 import dayjs from 'dayjs'
 import { Coins, SlidersHorizontal, Trophy } from 'lucide-react-native'
+import { useFocusEffect } from '@react-navigation/native'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -311,6 +312,13 @@ export default function LoyaltyPointScreen() {
     void refetchHistory()
   }, [refetchTotal, refetchHistory])
 
+  useFocusEffect(
+    useCallback(() => {
+      void refetchTotal()
+      void refetchHistory()
+    }, [refetchTotal, refetchHistory]),
+  )
+
   const handleRowPress = useCallback((item: ILoyaltyPointHistory) => {
     setSelectedHistory(item)
     setIsDetailOpen(true)
@@ -422,6 +430,7 @@ export default function LoyaltyPointScreen() {
             )}
           </Pressable>
         }
+        disableBlur
       />
 
       {isLoading ? (

@@ -28,7 +28,19 @@ export function useMarkNotificationAsRead() {
       // Optimistic: mark as read in local store immediately.
       // No onSuccess invalidation — the local store is the source of truth here;
       // server state will sync naturally on the next page load / pull-to-refresh.
+      const prev = useNotificationStore
+        .getState()
+        .notifications.find((n) => n.slug === slug)
       useNotificationStore.getState().markAsRead(slug)
+      // Return previous isRead for rollback in onError
+      return { slug, wasRead: prev?.isRead ?? false }
+    },
+    onError: (_err, _slug, context) => {
+      if (context && !context.wasRead) {
+        useNotificationStore
+          .getState()
+          .setReadStates([{ slug: context.slug, isRead: false }])
+      }
     },
   })
 }

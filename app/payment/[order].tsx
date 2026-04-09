@@ -413,9 +413,13 @@ function PaymentPageContent() {
   const primaryColor = isDark ? colors.primary.dark : colors.primary.light
 
   const insets = useSafeAreaInsets()
-  const { data: orderResponse, isPending, refetch: refetchOrder } = useOrderBySlug(orderSlug)
+  const { data: orderResponse, isPending, isError: isOrderError, refetch: refetchOrder } = useOrderBySlug(orderSlug)
   const order = orderResponse?.result
   const screenBg = isDark ? colors.background.dark : colors.background.light
+
+  // Defer non-critical sections until after navigation transition
+  const [transitionReady, setTransitionReady] = useState(false)
+  useRunAfterTransition(() => setTransitionReady(true), [])
 
   // ─── Debug Logging ───
   // useEffect(() => {
@@ -433,13 +437,21 @@ function PaymentPageContent() {
   // }, [orderSlug, isPending, order, orderError])
 
   // Show success screen when:
-  // 1. Foreground FCM arrived → unread ORDER_PAID notification in store, OR
+  // 1. Foreground FCM arrived → unread ORDER_PAID / CARD_ORDER_PAID notification in store, OR
   // 2. order.status already PAID (e.g. background FCM + refetch, or staff POS confirm)
+  const PAID_NOTIFICATION_CODES = useMemo(
+    () =>
+      new Set([
+        NotificationMessageCode.ORDER_PAID,
+        NotificationMessageCode.CARD_ORDER_PAID,
+      ]),
+    [],
+  )
   const hasOrderPaidNotification = useNotificationStore((s) =>
     s.notifications.some(
       (n) =>
         !n.isRead &&
-        n.message === NotificationMessageCode.ORDER_PAID &&
+        PAID_NOTIFICATION_CODES.has(n.message as NotificationMessageCode) &&
         n.metadata?.order === orderSlug,
     ),
   )
@@ -451,12 +463,12 @@ function PaymentPageContent() {
       .getState()
       .notifications.find(
         (n) =>
-          n.message === NotificationMessageCode.ORDER_PAID &&
+          PAID_NOTIFICATION_CODES.has(n.message as NotificationMessageCode) &&
           n.metadata?.order === orderSlug,
       )
     if (paid) markNotificationRead(paid.slug)
     navigateNative.replace(`/order/${orderSlug}` as Parameters<typeof navigateNative.replace>[0])
-  }, [markNotificationRead, orderSlug])
+  }, [PAID_NOTIFICATION_CODES, markNotificationRead, orderSlug])
 
   // Auto-refetch when FCM "order paid" notification arrives for this order
   const processedRef = useRef<Set<string>>(new Set())
@@ -465,13 +477,13 @@ function PaymentPageContent() {
     if (!latestNotification || latestNotification.isRead) return
     if (processedRef.current.has(latestNotification.slug)) return
     if (
-      latestNotification.message === NotificationMessageCode.ORDER_PAID &&
+      PAID_NOTIFICATION_CODES.has(latestNotification.message as NotificationMessageCode) &&
       latestNotification.metadata?.order === orderSlug
     ) {
       processedRef.current.add(latestNotification.slug)
       refetchOrder()
     }
-  }, [latestNotification, orderSlug, refetchOrder])
+  }, [PAID_NOTIFICATION_CODES, latestNotification, orderSlug, refetchOrder])
 
   const orderItems = useMemo(() => order?.orderItems || [], [order?.orderItems])
   const voucher = useMemo(() => order?.voucher ?? null, [order?.voucher])
@@ -533,6 +545,17 @@ function PaymentPageContent() {
     order?.status === OrderStatus.PENDING && isLoggedIn ? (userInfo?.slug ?? undefined) : undefined,
   )
   const userTotalPoints = loyaltyData.data?.totalPoints ?? 0
+  const refetchLoyalty = loyaltyData.refetch
+
+  // Refetch coin balance + loyalty points on screen focus to get fresh data
+  useFocusEffect(
+    useCallback(() => {
+      if (isLoggedIn) {
+        void refetchCoinBalance()
+        void refetchLoyalty()
+      }
+    }, [isLoggedIn, refetchCoinBalance, refetchLoyalty]),
+  )
 
   const { mutate: initiatePaymentAuth, isPending: isInitiatingPaymentAuth } = useInitiatePayment()
   const { mutate: initiatePaymentPublic, isPending: isInitiatingPaymentPublic } = useInitiatePublicPayment()
@@ -565,6 +588,13 @@ function PaymentPageContent() {
   const selectedPaymentMethod = paymentForm.method
   const selectedTransactionId = paymentForm.transactionId
   const qrCode = paymentForm.qrCode
+
+  // Fallback polling when QR is visible — covers FCM delivery failures
+  useEffect(() => {
+    if (!qrCode || showSuccess) return
+    const id = setInterval(() => void refetchOrder(), 10_000)
+    return () => clearInterval(id)
+  }, [qrCode, showSuccess, refetchOrder])
 
   const handleMethodChange = useCallback((method: PaymentMethod, transactionId?: string) => {
     dispatchPaymentForm({ type: 'SET_METHOD', method, transactionId })
@@ -645,9 +675,10 @@ function PaymentPageContent() {
     initiatePayment(payload, {
       onSuccess: (response) => {
         if (response?.result?.qrCode) dispatchPaymentForm({ type: 'SET_QR', qrCode: response.result.qrCode })
-        refetchOrder()
+        void refetchOrder()
         if (selectedPaymentMethod === PaymentMethod.POINT) {
-          refetchCoinBalance()
+          showToast(t('paymentMethod.coinPaymentSubmitted', 'Đã thanh toán bằng xu thành công'))
+          void refetchCoinBalance()
         }
       },
       onError: (error: unknown) => {
@@ -699,6 +730,22 @@ function PaymentPageContent() {
         isDark={isDark}
         onViewDetail={handleViewDetail}
       />
+    )
+  }
+
+  if (isOrderError) {
+    return (
+      <ScreenContainer edges={['top']} style={[{ flex: 1, backgroundColor: screenBg }]}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
+          <CircleX size={64} color={isDark ? colors.gray[400] : colors.gray[500]} />
+          <Text style={{ marginTop: 16, textAlign: 'center', color: isDark ? colors.gray[400] : colors.gray[600] }}>
+            {t('payment.loadFailed', 'Không thể tải đơn hàng. Vui lòng thử lại.')}
+          </Text>
+          <Pressable onPress={() => void refetchOrder()} style={[ps.checkoutBtn, { backgroundColor: primaryColor, marginTop: 16, paddingHorizontal: 24 }]}>
+            <Text style={ps.checkoutBtnText}>{tCommon('common.retry', 'Thử lại')}</Text>
+          </Pressable>
+        </View>
+      </ScreenContainer>
     )
   }
 
@@ -871,8 +918,8 @@ function PaymentPageContent() {
             </Pressable>
           )}
 
-          {/* Loyalty Points Input */}
-          {isLoggedIn && order.status === OrderStatus.PENDING && (
+          {/* Loyalty Points Input — deferred until after navigation transition */}
+          {transitionReady && isLoggedIn && order.status === OrderStatus.PENDING && (
             <LoyaltyPointsInput
               orderSlug={orderSlug ?? ''}
               orderTotal={(order.subtotal ?? 0) + (order.accumulatedPointsToUse ?? 0)}
@@ -986,8 +1033,8 @@ function PaymentPageContent() {
             </View>
           </View>
 
-          {/* Invoice — isolated component */}
-          <InvoiceSection order={order} primaryColor={primaryColor} isDark={isDark} />
+          {/* Invoice — deferred until after navigation transition */}
+          {transitionReady && <InvoiceSection order={order} primaryColor={primaryColor} isDark={isDark} />}
         </View>
         </GestureScrollView>
 
@@ -1008,6 +1055,8 @@ function PaymentPageContent() {
           title={t('order.payment', 'Thanh toán')}
           onBack={handleBack}
           rightElement={countdownRight}
+        
+          disableBlur
         />
         {showVoucherSheet && (
           <VoucherSheetInPayment
@@ -1021,17 +1070,19 @@ function PaymentPageContent() {
             onVoucherRemoved={handleVoucherRemoved}
           />
         )}
-        <VoucherConflictBottomSheet
-          visible={showConflictSheet}
-          voucherCode={order.voucher?.code ?? ''}
-          paymentMethodLabel={getPaymentMethodLabel(conflictPendingMethod)}
-          isDark={isDark}
-          primaryColor={primaryColor}
-          isRemoving={isRemovingVoucher}
-          onKeepVoucher={handleKeepVoucher}
-          onRemoveVoucher={handleRemoveVoucherForConflict}
-        />
-        <LightweightDialog
+        {showConflictSheet && (
+          <VoucherConflictBottomSheet
+            visible={showConflictSheet}
+            voucherCode={order.voucher?.code ?? ''}
+            paymentMethodLabel={getPaymentMethodLabel(conflictPendingMethod)}
+            isDark={isDark}
+            primaryColor={primaryColor}
+            isRemoving={isRemovingVoucher}
+            onKeepVoucher={handleKeepVoucher}
+            onRemoveVoucher={handleRemoveVoucherForConflict}
+          />
+        )}
+        {showPointConfirm && <LightweightDialog
           visible={showPointConfirm}
           onClose={() => setShowPointConfirm(false)}
         >
@@ -1087,7 +1138,7 @@ function PaymentPageContent() {
               </View>
             </View>
           )}
-        </LightweightDialog>
+        </LightweightDialog>}
       </ScreenContainer>
     </View>
   )

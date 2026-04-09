@@ -83,8 +83,9 @@ async function checkAndRefresh(): Promise<void> {
     if (result.success) {
       await setStoredTimestamp(Date.now())
     }
-  } catch {
-    // Silent — will retry next interval
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[FCM] Token refresh failed:', error instanceof Error ? error.message : error)
   }
 }
 

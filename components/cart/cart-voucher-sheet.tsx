@@ -275,7 +275,7 @@ export const VoucherSheet = memo(function VoucherSheet({
   const handleFooterPress = useCallback(() => {
     if (isCurrentApplied) {
       cartActions.setVoucher(null)
-      showToast('Đã gỡ mã giảm giá')
+      showToast(tVoucher('voucher.voucherRemoved'))
       sheetRef.current?.dismiss()
     } else if (selectedVoucher) {
       // 2.2 — Validate with server before applying
@@ -298,7 +298,7 @@ export const VoucherSheet = memo(function VoucherSheet({
             sheetRef.current?.dismiss()
           },
           onError: () => {
-            showToast('Voucher không hợp lệ')
+            showToast(tVoucher('voucher.voucherInvalid'))
           },
           onSettled: () => setValidating(false),
         },
@@ -306,7 +306,7 @@ export const VoucherSheet = memo(function VoucherSheet({
     } else {
       sheetRef.current?.dismiss()
     }
-  }, [selectedVoucher, isCurrentApplied, onApply, validateVoucher, items, userSlug])
+  }, [selectedVoucher, isCurrentApplied, onApply, validateVoucher, items, userSlug, tVoucher])
 
   const handleViewCondition = useCallback((v: IVoucher) => {
     setConditionVoucher(v)
@@ -338,13 +338,13 @@ export const VoucherSheet = memo(function VoucherSheet({
                   : isDark ? colors.gray[300] : colors.gray[600],
               },
             ]}>
-              {isCurrentApplied ? 'Gỡ mã' : isNewSelection ? 'Áp dụng' : 'Đóng'}
+              {isCurrentApplied ? tVoucher('voucher.removeVoucher') : isNewSelection ? tVoucher('voucher.apply') : tVoucher('voucher.close')}
             </Text>
           </Pressable>
         </View>
       </BottomSheetFooter>
     ),
-    [isDark, primaryColor, isCurrentApplied, isNewSelection, handleFooterPress, insets.bottom],
+    [isDark, primaryColor, isCurrentApplied, isNewSelection, handleFooterPress, insets.bottom, tVoucher],
   )
 
   return (
@@ -368,7 +368,7 @@ export const VoucherSheet = memo(function VoucherSheet({
           {/* Fixed header */}
           <View style={voucherSheetStyles.fixedHeader}>
             <Text style={[voucherSheetStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-              Mã giảm giá
+              {tVoucher('voucher.code')}
             </Text>
 
             <View style={voucherSheetStyles.inputRow}>
@@ -380,7 +380,7 @@ export const VoucherSheet = memo(function VoucherSheet({
                 <BottomSheetTextInput
                   value={code}
                   onChangeText={setCode}
-                  placeholder="Nhập mã voucher"
+                  placeholder={tVoucher('voucher.enterCode')}
                   placeholderTextColor={isDark ? colors.gray[600] : colors.gray[400]}
                   autoCapitalize="sentences"
                   autoCorrect={false}

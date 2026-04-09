@@ -516,7 +516,9 @@ export default function GiftCardOrdersScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: bg }]}>
-      <FloatingHeader title={t('orders.title')} />
+      <FloatingHeader title={t('orders.title')} 
+          disableBlur
+        />
 
       {/* ── Fixed filter bar ─────────────────────────────────────────── */}
       <View style={[s.filterBarFixed, { paddingTop: insets.top + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>

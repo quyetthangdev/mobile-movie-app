@@ -7,7 +7,8 @@ import { Plus } from 'lucide-react-native'
 import React, { createContext, memo, useCallback, useContext } from 'react'
 import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native'
 
-export const MenuImagePhaseContext = createContext(false)
+/** Number of items allowed to show images (listIndex < value). 0 = none. */
+export const MenuImagePhaseContext = createContext(0)
 
 export type MenuDisplayItem = {
   id: string
@@ -62,7 +63,8 @@ export const MenuItemRow = memo(
     onAddToCart: (id: string) => void
   }) {
     const isDark = useColorScheme() === 'dark'
-    const showImage = useContext(MenuImagePhaseContext)
+    const phaseCount = useContext(MenuImagePhaseContext)
+    const showImage = listIndex < phaseCount
     const imagePriority =
       showImage && listIndex < MENU_IMAGE_HIGH_PRIORITY_COUNT ? 'high' : 'normal'
     const hasPromotion = promotionValue > 0 && rawPrice > 0
@@ -95,11 +97,10 @@ export const MenuItemRow = memo(
             </View>
           </View>
           <View style={styles.content}>
-            <View>
-              <Text style={[styles.productName, { color: nameColor }]} numberOfLines={1}>
-                {capitalizeFirst(name)}
-              </Text>
-              {hasPromotion ? (
+            <Text style={[styles.productName, { color: nameColor }]} numberOfLines={1}>
+              {capitalizeFirst(name)}
+            </Text>
+            {hasPromotion ? (
                 <View style={styles.priceRow}>
                   <Text style={[styles.priceDiscounted, { color: discountedColor }]}>
                     {formatCurrencyNative(discountedPrice)}
@@ -118,7 +119,6 @@ export const MenuItemRow = memo(
                   {formatCurrencyNative(rawPrice)}
                 </Text>
               )}
-            </View>
             <View style={styles.addButtonWrap}>
               <Pressable
                 onPress={handleAdd}

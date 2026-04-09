@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   Trophy,
 } from 'lucide-react-native'
+import { useFocusEffect } from '@react-navigation/native'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -209,6 +210,15 @@ export default function LoyaltyPointHubScreen() {
     void refetchHistory()
   }, [refetchTotal, refetchHistory])
 
+  useFocusEffect(
+    useCallback(() => {
+      if (ready) {
+        void refetchTotal()
+        void refetchHistory()
+      }
+    }, [ready, refetchTotal, refetchHistory]),
+  )
+
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) void fetchNextPage()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
@@ -368,22 +378,25 @@ export default function LoyaltyPointHubScreen() {
         )}
       </View>
 
-      <LoyaltyPointDetailHistoryDialog
-        isOpen={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-        history={selectedHistory}
-        onCloseSheet={() => setSelectedHistory(null)}
-      />
+      {selectedHistory && (
+        <LoyaltyPointDetailHistoryDialog
+          isOpen={isDetailOpen}
+          onOpenChange={setIsDetailOpen}
+          history={selectedHistory}
+          onCloseSheet={() => setSelectedHistory(null)}
+        />
+      )}
 
-      <LoyaltyPointFilterSheet
-        key={filterSheetOpen ? 'open' : 'closed'}
-        visible={filterSheetOpen}
-        value={filter}
-        primaryColor={primaryColor}
-        isDark={isDark}
-        onClose={() => setFilterSheetOpen(false)}
-        onApply={handleApplyFilter}
-      />
+      {filterSheetOpen && (
+        <LoyaltyPointFilterSheet
+          visible
+          value={filter}
+          primaryColor={primaryColor}
+          isDark={isDark}
+          onClose={() => setFilterSheetOpen(false)}
+          onApply={handleApplyFilter}
+        />
+      )}
     </View>
   )
 }

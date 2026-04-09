@@ -365,7 +365,7 @@ export default function NotificationScreen() {
         />
       </View>
 
-      <FloatingHeader title={t('title')} />
+      <FloatingHeader title={t('title')} disableBlur />
     </View>
   )
 }

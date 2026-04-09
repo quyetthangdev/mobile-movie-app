@@ -5,7 +5,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Dimensions,
-  Image as RNImage,
   InteractionManager,
   Pressable,
   ScrollView,
@@ -101,9 +100,9 @@ const RelatedProductItem = React.memo(
                   priority="low"
                 />
               ) : (
-                <RNImage
+                <Image
                   source={Images.Food.DefaultProductImage}
-                  resizeMode="cover"
+                  contentFit="cover"
                   style={{ width: '100%', height: '100%' }}
                 />
               )}

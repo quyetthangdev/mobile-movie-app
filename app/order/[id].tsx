@@ -146,7 +146,9 @@ function OrderDetailContent() {
   if (isPending) {
     return (
       <ScreenContainer edges={['top']} style={{ flex: 1, backgroundColor: screenBg }}>
-        <FloatingHeader title={t('order.orderDetail', 'Chi tiết đơn hàng')} onBack={navigateNative.back} />
+        <FloatingHeader title={t('order.orderDetail', 'Chi tiết đơn hàng')} onBack={navigateNative.back} 
+          disableBlur
+        />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={primaryColor} />
         </View>
@@ -157,7 +159,9 @@ function OrderDetailContent() {
   if (!order) {
     return (
       <ScreenContainer edges={['top']} style={{ flex: 1, backgroundColor: screenBg }}>
-        <FloatingHeader title={t('order.orderDetail', 'Chi tiết đơn hàng')} onBack={navigateNative.back} />
+        <FloatingHeader title={t('order.orderDetail', 'Chi tiết đơn hàng')} onBack={navigateNative.back} 
+          disableBlur
+        />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={{ color: isDark ? colors.gray[400] : colors.gray[600] }}>
             {t('order.orderNotFound', 'Không tìm thấy đơn hàng')}
@@ -397,7 +401,9 @@ function OrderDetailContent() {
             </View>
           </View>
         )}
-        <FloatingHeader title={t('order.orderDetail', 'Chi tiết đơn hàng')} onBack={navigateNative.back} />
+        <FloatingHeader title={t('order.orderDetail', 'Chi tiết đơn hàng')} onBack={navigateNative.back} 
+          disableBlur
+        />
       </ScreenContainer>
     </View>
   )

@@ -27,7 +27,7 @@ import {
   useUpdateOrderType,
   useUpdateVoucherInOrder,
 } from '@/hooks'
-import { navigateNative } from '@/lib/navigation'
+import { navigateNative, scheduleTransitionTask } from '@/lib/navigation'
 import { useOrderFlowStore } from '@/stores'
 import { OrderTypeEnum } from '@/types'
 import { IOrderItemsParam } from '@/types/voucher.type'
@@ -192,16 +192,18 @@ export default memo(function ConfirmUpdateOrderDialog({
         })
       }
 
-      showToast(tToast('toast.updateOrderSuccess'))
-      clearUpdatingData()
-      queryClient.invalidateQueries({ queryKey: ['order', orderSlug] })
-      sheetRef.current?.dismiss()
-      onSuccess?.()
       navigateNative.replace(
         `${ROUTE.CLIENT_PAYMENT.replace('[order]', orderSlug)}` as Parameters<
           typeof navigateNative.replace
         >[0],
       )
+      scheduleTransitionTask(() => {
+        clearUpdatingData()
+        queryClient.invalidateQueries({ queryKey: ['order', orderSlug] })
+        showToast(tToast('toast.updateOrderSuccess'))
+        sheetRef.current?.dismiss()
+        onSuccess?.()
+      })
     } catch {
       showErrorToastMessage(t('order.updateOrderFailed', 'Cập nhật thất bại, vui lòng thử lại'))
     } finally {

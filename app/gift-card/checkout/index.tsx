@@ -48,7 +48,7 @@ import { useGiftCardTypeOptions } from '@/hooks/use-gift-card-type-options'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useRunAfterTransition } from '@/hooks/use-run-after-transition'
 import { useZodForm } from '@/hooks/use-zod-form'
-import { navigateNative } from '@/lib/navigation'
+import { navigateNative, scheduleTransitionTask } from '@/lib/navigation'
 import { useGiftCardStore, useUserStore } from '@/stores'
 import { capitalizeFirst, formatCurrency, formatPoints, showErrorToastMessage } from '@/utils'
 
@@ -223,10 +223,10 @@ export default function GiftCardCheckoutScreen() {
           onSuccess: (res) => {
             const slug = res.result?.slug
             if (slug) {
-              clearGiftCard(false)
               navigateNative.push(
                 `/gift-card/checkout/${slug}` as Parameters<typeof navigateNative.push>[0],
               )
+              scheduleTransitionTask(() => clearGiftCard(false))
             }
           },
           onError: (error: Error) => {
@@ -248,11 +248,7 @@ export default function GiftCardCheckoutScreen() {
   const handlePressConfirm = useCallback(() => setShowConfirm(true), [])
   const handleDismissConfirm = useCallback(() => setShowConfirm(false), [])
 
-  // Sync sheet present/dismiss với state
-  useEffect(() => {
-    if (showConfirm) confirmSheetRef.current?.present()
-    else confirmSheetRef.current?.dismiss()
-  }, [showConfirm])
+  // Sheet mounts only when showConfirm=true — present via ref callback instead of effect
 
   const renderConfirmBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -313,7 +309,9 @@ export default function GiftCardCheckoutScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: bg }]}>
-      <FloatingHeader title={t('checkout.title')} />
+      <FloatingHeader title={t('checkout.title')} 
+          disableBlur
+        />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -496,9 +494,12 @@ export default function GiftCardCheckoutScreen() {
         </Pressable>
       </View>
 
-      {/* Confirm bottom sheet */}
-            <BottomSheetModal
-              ref={confirmSheetRef}
+      {/* Confirm bottom sheet — only mount after transition + when user opens */}
+      {ready && showConfirm && <BottomSheetModal
+              ref={(node) => {
+                (confirmSheetRef as React.RefObject<BottomSheetModal | null>).current = node
+                node?.present()
+              }}
               snapPoints={['65%']}
               enablePanDownToClose
               enableContentPanningGesture={false}
@@ -580,7 +581,7 @@ export default function GiftCardCheckoutScreen() {
                   )}
                 </View>
               </BottomSheetScrollView>
-            </BottomSheetModal>
+            </BottomSheetModal>}
     </View>
   )
 }

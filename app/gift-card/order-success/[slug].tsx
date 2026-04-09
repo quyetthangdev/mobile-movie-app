@@ -395,7 +395,9 @@ export default function GiftCardOrderSuccessScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: bg }]}>
-      <FloatingHeader title={t('orderSuccess.title')} />
+      <FloatingHeader title={t('orderSuccess.title')} 
+          disableBlur
+        />
 
       {isPending || !allowFetch ? (
         <View style={{ marginTop: insets.top + 56 }}>

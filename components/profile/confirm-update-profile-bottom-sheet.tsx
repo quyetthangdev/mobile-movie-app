@@ -89,10 +89,10 @@ const ConfirmUpdateProfileBottomSheetBase = forwardRef<
           <View style={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
             <View style={styles.body}>
               <Text style={[styles.title, { color: isDark ? '#F9FAFB' : '#111827' }]}>
-                {t('updateProfile', 'Cập nhật hồ sơ')}
+                {t('profile.updateProfile')}
               </Text>
               <Text style={[styles.desc, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                {t('confirmUpdateProfile', 'Bạn có chắc muốn lưu thay đổi thông tin cá nhân?')}
+                {t('profile.confirmUpdateProfile')}
               </Text>
             </View>
 

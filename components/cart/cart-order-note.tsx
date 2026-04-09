@@ -7,6 +7,7 @@ import { cartActions } from '@/stores/cart.store'
 import { useOrderFlowStore } from '@/stores'
 import { NotebookText } from 'lucide-react-native'
 import React, { memo, useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 
 const DEBOUNCE_MS = 400
@@ -16,6 +17,7 @@ export const CartOrderNote = memo(function CartOrderNote({
 }: {
   isDark: boolean
 }) {
+  const { t } = useTranslation('menu')
   const initialNote = useOrderFlowStore((s) => s.orderingData?.description ?? '')
   const [localNote, setLocalNote] = useState(initialNote)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -35,13 +37,13 @@ export const CartOrderNote = memo(function CartOrderNote({
         <View style={styles.titleRow}>
           <NotebookText size={14} color={isDark ? colors.gray[400] : colors.gray[500]} />
           <Text style={[styles.title, { color: isDark ? colors.gray[300] : colors.gray[600] }]}>
-            Ghi chú đơn hàng
+            {t('order.orderNote')}
           </Text>
         </View>
         <TextInput
           value={localNote}
           onChangeText={handleChange}
-          placeholder="Thêm ghi chú cho đơn hàng..."
+          placeholder={t('cart.orderNotePlaceholder')}
           placeholderTextColor={isDark ? colors.gray[600] : colors.gray[400]}
           style={[
             styles.input,

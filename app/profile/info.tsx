@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
   ChevronLeft,
@@ -12,7 +11,6 @@ import {
 import { Image } from 'expo-image'
 import React, { useEffect, useMemo } from 'react'
 import {
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -48,13 +46,7 @@ function InfoHeader({
 
   return (
     <View style={phStyles.container} pointerEvents="box-none">
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          intensity={20}
-          tint={isDark ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : null}
+
       <LinearGradient
         colors={gradientColors}
         locations={[0, 0.5, 1]}

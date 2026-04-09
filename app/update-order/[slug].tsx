@@ -238,6 +238,8 @@ export default function UpdateOrderScreen() {
         <FloatingHeader
           title={t('order.updateOrder', 'Cập nhật đơn hàng')}
           onBack={handleBack}
+        
+          disableBlur
         />
       </ScreenContainer>
     </View>

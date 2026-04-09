@@ -50,6 +50,7 @@ function getRouteForMessage(
       return order ? `/payment/${order}` : null
 
     case NotificationMessageCode.ORDER_PAID:
+    case NotificationMessageCode.CARD_ORDER_PAID:
       return order ? `/payment/${order}` : null
 
     case NotificationMessageCode.ORDER_BILL_FAILED_PRINTING:

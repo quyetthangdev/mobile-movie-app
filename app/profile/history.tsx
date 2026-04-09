@@ -1,13 +1,11 @@
 import { ScreenContainer } from '@/components/layout'
 import { FlashList } from '@shopify/flash-list'
 import { useQueryClient } from '@tanstack/react-query'
-import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import { ChevronLeft, Package } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -320,7 +318,7 @@ function OrderHistoryPage() {
           data={orders}
           renderItem={renderOrderItem}
           keyExtractor={keyExtractor}
-ListFooterComponent={ListFooterComponent}
+          ListFooterComponent={ListFooterComponent}
           ListEmptyComponent={ListEmptyComponent}
           contentContainerStyle={pageStyles.listPadding}
           refreshControl={
@@ -331,14 +329,7 @@ ListFooterComponent={ListFooterComponent}
         {/* Floating header — blur + gradient overlay */}
         <View style={pageStyles.floatingHeader} pointerEvents="box-none">
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            {Platform.OS === 'ios' && (
-              <BlurView
-                intensity={20}
-                tint={isDark ? 'dark' : 'light'}
-                style={StyleSheet.absoluteFill}
-              />
-            )}
-            <LinearGradient
+<LinearGradient
               colors={gradientColors}
               locations={[0, 0.3, 0.62, 0.85, 1]}
               style={StyleSheet.absoluteFill}

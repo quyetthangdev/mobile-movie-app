@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router'
 import React, { useCallback } from 'react'
-import { ScrollView } from 'react-native'
+import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { ScreenContainer } from '@/components/layout'
 
 import { useQueryClient } from '@tanstack/react-query'
@@ -32,9 +32,18 @@ export default function LoginScreen() {
 
   return (
     <ScreenContainer edges={['top']} className="flex-1">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <LoginForm onLoginSuccess={handleLoginSuccess} />
-      </ScrollView>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <LoginForm onLoginSuccess={handleLoginSuccess} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   )
 }

@@ -309,6 +309,7 @@
     "updateProductVariantSuccess": "Product variant updated successfully",
     "updateProfilePictureSuccess": "Profile picture updated successfully",
     "updateProfileSuccess": "Profile updated successfully",
+    "updateProfileFailed": "Failed to update, please try again",
     "updatePromotionSuccess": "Promotion updated successfully",
     "updateQuantitySuccess": "Quantity updated successfully",
     "updateRoleSuccess": "Role updated successfully",

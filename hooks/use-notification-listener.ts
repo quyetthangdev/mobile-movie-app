@@ -99,7 +99,10 @@ export function useNotificationListener(enabled = true) {
         // Sound
         // eslint-disable-next-line no-console
         console.log('[FCM] Playing notification sound...')
-        playNotificationSound()
+        playNotificationSound().catch((e: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[FCM] Sound playback failed:', e)
+        })
       })
 
     // eslint-disable-next-line no-console

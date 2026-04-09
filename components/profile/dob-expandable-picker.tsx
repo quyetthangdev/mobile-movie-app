@@ -12,6 +12,7 @@ import { colors } from '@/constants'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Platform,
   StyleSheet,
@@ -77,8 +78,10 @@ export function DobExpandablePicker({
   value,
   onSelect,
   theme,
-  placeholder = 'Chọn ngày sinh',
+  placeholder,
 }: Props) {
+  const { t } = useTranslation('profile')
+  const resolvedPlaceholder = placeholder ?? t('profile.enterDob')
   const isDark = useColorScheme() === 'dark'
   const defaultTheme: DobExpandablePickerTheme = useMemo(
     () => ({
@@ -150,10 +153,10 @@ export function DobExpandablePicker({
             { color: value ? finalTheme.text : finalTheme.textMuted },
           ]}
         >
-          {formatDobForDisplay(value) || placeholder}
+          {formatDobForDisplay(value) || resolvedPlaceholder}
         </Text>
       </TouchableOpacity>
-      {Platform.OS === 'ios' && (
+      {Platform.OS === 'ios' && expanded && (
         <Animated.View style={[styles.pickerWrap, animatedStyle]}>
           <View style={styles.pickerInner}>
             <DateTimePicker

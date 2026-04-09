@@ -6,6 +6,7 @@ import {
   useCreateOrderWithoutLogin,
 } from '@/hooks'
 import { navigateNative } from '@/lib/navigation/navigation-engine'
+import { scheduleTransitionTask } from '@/lib/navigation'
 import { useBranchStore, useOrderFlowStore, useUpdateOrderStore, useUserStore } from '@/stores'
 import type { ICreateOrderRequest } from '@/types'
 import { calculateCartDisplayAndTotals, formatCurrency, parseKm, showErrorToast, showToast } from '@/utils'
@@ -120,11 +121,13 @@ export const ConfirmOrderSheet = memo(function ConfirmOrderSheet({
         queryFn: () => getOrderBySlug(orderSlug),
       })
       navigateNative.push({ pathname: hasUser ? paymentRoute : ROUTE.CLIENT_PAYMENT, params: { order: orderSlug } })
-      transitionToPayment(orderSlug)
-      useOrderFlowStore.getState().clearOrderingData()
-      clearUpdateOrderStore()
-      onClose()
-      showToast(tToast('toast.createOrderSuccess'))
+      scheduleTransitionTask(() => {
+        transitionToPayment(orderSlug)
+        useOrderFlowStore.getState().clearOrderingData()
+        clearUpdateOrderStore()
+        onClose()
+        showToast(tToast('toast.createOrderSuccess'))
+      })
     }
 
     const onError = (error: unknown) => {

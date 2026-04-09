@@ -42,6 +42,7 @@ import { MenuFilterBar } from './menu-filter-bar'
 import type { MenuDisplayItem } from './menu-item-row'
 import {
   MenuImagePhaseContext,
+  MENU_ITEM_ESTIMATED_HEIGHT,
   MenuItemRow,
   menuViewabilityConfig,
 } from './menu-item-row'
@@ -51,13 +52,13 @@ type FlatItem =
   | { _kind: 'item'; data: MenuDisplayItem }
 
 function overrideItemLayout(layout: { span?: number; size?: number }, item: FlatItem) {
-  layout.size = item._kind === 'header' ? 40 : 116
+  layout.size = item._kind === 'header' ? 40 : MENU_ITEM_ESTIMATED_HEIGHT
 }
 
 const MENU_IMAGE_PREFETCH_AHEAD_COUNT = 5
 const MENU_IMAGE_PREFETCH_DEBOUNCE_MS = 100
 const MENU_ENTRY_FETCH_DELAY_MS = 120
-const MENU_ENTRY_IMAGE_DELAY_MS = 160
+const MENU_ENTRY_IMAGE_DELAY_MS = 300
 const ENABLE_SCROLL_PREFETCH = true
 const SEARCH_DEBOUNCE_MS = 300
 const PREFETCH_URL_CACHE_MAX = 256
@@ -84,7 +85,7 @@ export default function MenuPage() {
     useMenuScreenState()
   const setMenuFilter = useSetMenuFilter()
   const [allowFetch, setAllowFetch] = useState(false)
-  const [imagePhaseReady, setImagePhaseReady] = useState(false)
+  const [imagePhaseCount, setImagePhaseCount] = useState(0)
 
   // ── Order flow store bridge (read via getState to avoid re-render deps) ──
 
@@ -126,16 +127,15 @@ export default function MenuPage() {
     useCallback(() => {
       setAllowFetch(false)
       const isFirstLoad = !hasLoadedImagesOnceRef.current
-      if (isFirstLoad) setImagePhaseReady(false)
+      if (isFirstLoad) setImagePhaseCount(0)
 
       let timer: ReturnType<typeof setTimeout> | null = null
       const task = InteractionManager.runAfterInteractions(() => {
-        // Single timeout: batch fetch + image enable to reduce re-renders
         timer = setTimeout(() => {
           startTransition(() => {
             setAllowFetch(true)
             if (isFirstLoad) {
-              setImagePhaseReady(true)
+              setImagePhaseCount(Infinity)
               hasLoadedImagesOnceRef.current = true
             }
           })
@@ -340,7 +340,7 @@ export default function MenuPage() {
   // arrives — eliminates Main Thread WebP decode when user scrolls down.
   const initialPrefetchDoneRef = React.useRef(false)
   useEffect(() => {
-    if (!imagePhaseReady || itemsRaw.length === 0) return
+    if (imagePhaseCount === 0 || itemsRaw.length === 0) return
     if (initialPrefetchDoneRef.current) return
     initialPrefetchDoneRef.current = true
     const INITIAL_PREFETCH_COUNT = 8
@@ -353,7 +353,7 @@ export default function MenuPage() {
       }
     }
     if (urls.length > 0) Image.prefetch(urls).catch(() => {})
-  }, [imagePhaseReady, itemsRaw])
+  }, [imagePhaseCount, itemsRaw])
 
   // Client-side filter — no API round-trip, instant UI response.
   const filteredItems = useMemo(() => {
@@ -597,7 +597,7 @@ export default function MenuPage() {
           </Text>
         </View>
       ) : (
-        <MenuImagePhaseContext.Provider value={imagePhaseReady}>
+        <MenuImagePhaseContext.Provider value={imagePhaseCount}>
         <FlashList
           data={flatItems}
           renderItem={renderItem}

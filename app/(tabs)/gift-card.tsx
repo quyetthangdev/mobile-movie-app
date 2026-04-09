@@ -18,7 +18,7 @@
  */
 import { FlashList } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
-import { ArrowDownNarrowWide, ArrowUpNarrowWide, Gift, Lock, ShoppingBag, ShoppingCart, Unlock, UserRound, Users } from 'lucide-react-native'
+import { ArrowDownNarrowWide, ArrowUpNarrowWide, Gift, ShoppingCart } from 'lucide-react-native'
 import React, { startTransition, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -44,7 +44,6 @@ import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { TabScreenLayout } from '@/components/layout'
 import { showErrorToastMessage } from '@/utils/toast'
 import { useGiftCards } from '@/hooks/use-gift-cards'
-import { useGiftCardTypeOptions } from '@/hooks/use-gift-card-type-options'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useGiftCardStore, useUserStore } from '@/stores'
 import type { IGiftCard } from '@/types'
@@ -143,8 +142,6 @@ export default function GiftCardScreen() {
       }
     }, []),
   )
-
-  const { lockMap, isLoaded: flagsLoaded, refetch: refetchFlags } = useGiftCardTypeOptions()
 
   const { data, isPending, refetch, isRefetching } = useGiftCards(
     undefined,
@@ -334,46 +331,6 @@ export default function GiftCardScreen() {
           </Pressable>
         </View>
 
-        {/* Lock status strip — chỉ hiện sau khi flags load */}
-        {flagsLoaded && (
-          <View style={s.lockRow}>
-            {([
-              { type: 'SELF', label: t('checkout.lockType.self'), Icon: UserRound },
-              { type: 'GIFT', label: t('checkout.lockType.gift'), Icon: Users },
-              { type: 'BUY',  label: t('checkout.lockType.buy'),  Icon: ShoppingBag },
-            ] as const).map(({ type, label, Icon }) => {
-              const isLocked = lockMap[type] === true
-              return (
-                <View
-                  key={type}
-                  style={[
-                    s.lockChip,
-                    {
-                      backgroundColor: isLocked
-                        ? isDark ? colors.gray[800] : colors.gray[100]
-                        : `${primaryColor}15`,
-                      borderColor: isLocked
-                        ? isDark ? colors.gray[700] : colors.gray[200]
-                        : `${primaryColor}50`,
-                    },
-                  ]}
-                >
-                  <Icon
-                    size={12}
-                    color={isLocked ? (isDark ? colors.gray[500] : colors.gray[400]) : primaryColor}
-                  />
-                  <Text style={[s.lockChipText, { color: isLocked ? (isDark ? colors.gray[500] : colors.gray[400]) : primaryColor }]}>
-                    {label}
-                  </Text>
-                  {isLocked
-                    ? <Lock size={10} color={isDark ? colors.gray[600] : colors.gray[400]} />
-                    : <Unlock size={10} color={primaryColor} />
-                  }
-                </View>
-              )
-            })}
-          </View>
-        )}
       </View>
 
       {/* Content */}
@@ -394,7 +351,7 @@ export default function GiftCardScreen() {
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
-              onRefresh={() => { refetch(); refetchFlags() }}
+              onRefresh={refetch}
               tintColor={primaryColor}
             />
           }
@@ -474,23 +431,23 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  lockRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  lockChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  lockChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
+  // lockRow: {
+  //   flexDirection: 'row',
+  //   gap: 6,
+  // },
+  // lockChip: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   gap: 4,
+  //   paddingHorizontal: 8,
+  //   paddingVertical: 4,
+  //   borderRadius: 999,
+  //   borderWidth: 1,
+  // },
+  // lockChipText: {
+  //   fontSize: 11,
+  //   fontWeight: '600',
+  // },
   sortChip: {
     flexDirection: 'row',
     alignItems: 'center',

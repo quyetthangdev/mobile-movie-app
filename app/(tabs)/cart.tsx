@@ -8,26 +8,19 @@ import {
   type BottomSheetBackdropProps,
   BottomSheetModal,
 } from '@gorhom/bottom-sheet'
-import { BlurView } from 'expo-blur'
-import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { ChevronLeft, Trash2 } from 'lucide-react-native'
+import { Trash2 } from 'lucide-react-native'
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Platform, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native'
+import { Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { TouchableOpacity as GHTouchable } from 'react-native-gesture-handler'
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  type SharedValue,
-} from 'react-native-reanimated'
+import { useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
-import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { TAB_ROUTES } from '@/constants/navigation.config'
 import { TabScreenLayout } from '@/components/layout'
+import { FloatingHeader } from '@/components/navigation/floating-header'
 import { useRunAfterTransition } from '@/hooks'
 import { useOrderFlowStore } from '@/stores'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
@@ -182,107 +175,36 @@ const confirmStyles = StyleSheet.create({
   },
 })
 
-// ─── Cart Header (absolute overlay, animated bg) ─────────────────────────────
+// ─── Clear button (right element cho FloatingHeader) ─────────────────────────
 
-const HEADER_FADE_DISTANCE = 60
-
-function CartHeader({
-  onBack,
-  onClearAll,
+function CartClearBtn({
   itemCount,
-  isDark,
-  scrollY,
+  onClearAll,
 }: {
-  onBack: () => void
-  onClearAll: () => void
   itemCount: number
+  onClearAll: () => void
   isDark: boolean
-  scrollY: SharedValue<number>
 }) {
-  const { t } = useTranslation('menu')
-  const pageBg = isDark ? colors.background.dark : colors.background.light
-  const gradientColors = useMemo(
-    () => [pageBg, `${pageBg}E6`, `${pageBg}B0`, `${pageBg}50`, `${pageBg}00`] as const,
-    [pageBg],
-  )
-
-  const titleAnimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, HEADER_FADE_DISTANCE], [0.6, 1], 'clamp'),
-  }))
-
+  if (itemCount === 0) return <View style={clearBtnStyles.placeholder} />
   return (
-    <View style={headerStyles.container} pointerEvents="box-none">
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Platform.OS === 'ios' && (
-          <BlurView
-            intensity={20}
-            tint={isDark ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
-        <LinearGradient
-          colors={gradientColors}
-          locations={[0, 0.3, 0.62, 0.85, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
-
-      <View style={[headerStyles.row, { paddingTop: STATIC_TOP_INSET + 10 }]} pointerEvents="auto">
-        <Pressable
-          onPress={onBack}
-          hitSlop={8}
-          style={[
-            headerStyles.circleBtn,
-            { backgroundColor: isDark ? colors.gray[800] : colors.white.light },
-            headerStyles.shadow,
-          ]}
-        >
-          <ChevronLeft size={20} color={isDark ? colors.gray[50] : colors.gray[900]} />
-        </Pressable>
-
-        <Animated.Text style={[headerStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }, titleAnimStyle]}>
-          {t('cart.title')}{itemCount > 0 ? ` (${itemCount})` : ''}
-        </Animated.Text>
-
-        {itemCount > 0 ? (
-          <Pressable
-            onPress={onClearAll}
-            hitSlop={8}
-            style={[headerStyles.circleBtn, headerStyles.deleteBtnBg, headerStyles.shadow]}
-          >
-            <Trash2 size={16} color={colors.white.light} />
-          </Pressable>
-        ) : (
-          <View style={headerStyles.circleBtn} />
-        )}
-      </View>
-    </View>
+    <Pressable
+      onPress={onClearAll}
+      hitSlop={8}
+      style={[clearBtnStyles.btn, clearBtnStyles.shadow]}
+    >
+      <Trash2 size={16} color={colors.white.light} />
+    </Pressable>
   )
 }
 
-const headerStyles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    paddingBottom: 24,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  circleBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+const clearBtnStyles = StyleSheet.create({
+  placeholder: { width: 38, height: 38 },
+  btn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  deleteBtnBg: {
     backgroundColor: colors.destructive.light,
   },
   shadow: {
@@ -292,19 +214,16 @@ const headerStyles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 2,
   },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
 })
 
 // ─── Skeleton Shell ──────────────────────────────────────────────────────────
 
-function CartShell({ onBack, isDark, scrollY }: { onBack: () => void; isDark: boolean; scrollY: SharedValue<number> }) {
+function CartShell({ onBack, isDark }: { onBack: () => void; isDark: boolean }) {
+  const { t } = useTranslation('menu')
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? colors.background.dark : colors.background.light }}>
-      <CartHeader onBack={onBack} onClearAll={() => {}} itemCount={0} isDark={isDark} scrollY={scrollY} />
-      <View style={{ padding: 16, gap: 12 }}>
+      <FloatingHeader title={t('cart.title')} onBack={onBack} disableBlur />
+      <View style={{ padding: 16, gap: 12, paddingTop: 80 }}>
         <View style={{ height: 88, borderRadius: 14, backgroundColor: isDark ? colors.gray[800] : colors.gray[100] }} />
         <View style={{ height: 88, borderRadius: 14, backgroundColor: isDark ? colors.gray[800] : colors.gray[100] }} />
       </View>
@@ -320,6 +239,7 @@ export default function CartScreen() {
   const itemCount = useOrderFlowCartItemCount()
   const clearCart = useOrderFlowStore((s) => s.clearCart)
   const scrollY = useSharedValue(0)
+  const { t } = useTranslation('menu')
   const [contentReady, setContentReady] = useState(false)
   const [clearSheetVisible, setClearSheetVisible] = useState(false)
 
@@ -344,16 +264,21 @@ export default function CartScreen() {
           <Suspense fallback={<View style={{ flex: 1 }} pointerEvents="none" />}>
             <CartContent scrollY={scrollY} />
           </Suspense>
-          <CartHeader
+          <FloatingHeader
+            title={`${t('cart.title')}${itemCount > 0 ? ` (${itemCount})` : ''}`}
             onBack={handleBack}
-            onClearAll={handleOpenClearSheet}
-            itemCount={itemCount}
-            isDark={isDark}
-            scrollY={scrollY}
+            disableBlur
+            rightElement={
+              <CartClearBtn
+                itemCount={itemCount}
+                onClearAll={handleOpenClearSheet}
+                isDark={isDark}
+              />
+            }
           />
         </>
       ) : (
-        <CartShell onBack={handleBack} isDark={isDark} scrollY={scrollY} />
+        <CartShell onBack={handleBack} isDark={isDark} />
       )}
 
       <ClearCartSheet

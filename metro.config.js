@@ -36,12 +36,14 @@ config.resolver = {
 // Optimize transformer for faster builds
 // Set ANALYZE_BUNDLE=true to enable source maps for bundle analysis (dev only)
 const ANALYZE_BUNDLE = process.env.ANALYZE_BUNDLE === 'true';
+// Keep names in dev/analyze for readable stack traces; strip in production for smaller bundle
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 config.transformer = {
   ...config.transformer,
   minifierConfig: {
     ...config.transformer?.minifierConfig,
-    keep_classnames: true,
-    keep_fnames: true,
+    keep_classnames: !IS_PRODUCTION,
+    keep_fnames: !IS_PRODUCTION,
   },
   // Enable inline requires for faster startup
   inlineRequires: true,

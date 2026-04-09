@@ -27,6 +27,7 @@ import { navigateNative } from '@/lib/navigation'
 import { useNotificationStore, useUserStore } from '@/stores'
 import type { IOrder } from '@/types'
 import { OrderStatus } from '@/types'
+import { paymentStatus } from '@/constants'
 import { calculateOrderDisplayAndTotals } from '@/utils'
 
 import OrderCard from './order-card'
@@ -47,7 +48,7 @@ const FilterBar = React.memo(function FilterBar({
   primaryColor: string
   isDark: boolean
   onSelect: (s: OrderStatus) => void
-  labels: { all: string; pending: string; shipping: string; completed: string }
+  labels: { all: string; pending: string; completed: string }
 }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={pageStyles.filterScroll}>
@@ -56,7 +57,6 @@ const FilterBar = React.memo(function FilterBar({
         const label =
           opt.labelKey === 'all' ? labels.all
           : opt.labelKey === 'pending' ? labels.pending
-          : opt.labelKey === 'shipping' ? labels.shipping
           : labels.completed
         return (
           <Pressable
@@ -157,24 +157,14 @@ function OrderHistoryPage() {
     [queryClient],
   )
 
-  // getStatusLabel depends on t — stays as hook
+  // Badge chỉ thể hiện trạng thái thanh toán
   const getStatusLabel = useCallback(
-    (status: OrderStatus) => {
-      const s = typeof status === 'string' ? status.toLowerCase() : status
-      switch (s) {
-        case OrderStatus.PENDING:
-          return t('order.pending', 'Chờ xử lý')
-        case OrderStatus.SHIPPING:
-          return t('order.shipping', 'Đang giao')
-        case OrderStatus.COMPLETED:
-          return t('order.completed', 'Hoàn thành')
-        case OrderStatus.PAID:
-          return t('order.paid', 'Đã thanh toán')
-        case OrderStatus.FAILED:
-          return t('order.failed', 'Thất bại')
-        default:
-          return status
+    (order: IOrder) => {
+      const pStatus = order.payment?.statusCode
+      if (pStatus === paymentStatus.COMPLETED) {
+        return t('order.paid', 'Đã thanh toán')
       }
+      return t('order.unpaid', 'Chưa thanh toán')
     },
     [t],
   )
@@ -191,15 +181,15 @@ function OrderHistoryPage() {
 
   const filterBarLabels = useMemo(() => ({
     all: tProfile('profile.all', 'Tất cả'),
-    pending: t('order.pending', 'Chờ xử lý'),
-    shipping: tProfile('profile.shipping', 'Đang giao'),
-    completed: tProfile('profile.completed', 'Hoàn thành'),
+    pending: t('order.unpaid', 'Chưa thanh toán'),
+    completed: t('order.paid', 'Đã thanh toán'),
   }), [t, tProfile])
 
   const handleFilterSelect = useCallback((s: OrderStatus) => {
     setStatus(s)
     setPage(1)
   }, [])
+
 
   const renderOrderItem = useCallback(
     ({ item: orderItem }: { item: IOrder }) => (
@@ -208,7 +198,7 @@ function OrderHistoryPage() {
         displayData={orderDisplayMap.get(orderItem.slug) ?? null}
         primaryColor={primaryColor}
         isDark={isDark}
-        statusLabel={getStatusLabel(orderItem.status)}
+        statusLabel={getStatusLabel(orderItem)}
         onPress={handleOrderPress}
         labels={orderCardLabels}
       />
@@ -378,8 +368,7 @@ export default React.memo(OrderHistoryPage)
 const STATUS_FILTER_OPTIONS = [
   { value: OrderStatus.ALL, labelKey: 'all' as const },
   { value: OrderStatus.PENDING, labelKey: 'pending' as const },
-  { value: OrderStatus.SHIPPING, labelKey: 'shipping' as const },
-  { value: OrderStatus.COMPLETED, labelKey: 'completed' as const },
+  { value: OrderStatus.PAID, labelKey: 'completed' as const },
 ]
 
 const pageStyles = StyleSheet.create({

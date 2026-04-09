@@ -1,5 +1,4 @@
 import { AuthState, IAuthStore } from '@/types'
-import { isAfter, isBefore } from 'date-fns'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
@@ -26,12 +25,12 @@ export const useAuthStore = create<IAuthStore>()(
         const refreshExpiresAt = new Date(expireTimeRefreshToken)
 
         // Nếu refresh token đã hết hạn thì chắc chắn not authenticated
-        if (isAfter(now, refreshExpiresAt)) {
+        if (now.valueOf() > refreshExpiresAt.valueOf()) {
           return false
         }
 
         // Nếu access token vẫn còn hạn thì OK
-        if (isBefore(now, tokenExpiresAt)) {
+        if (now.valueOf() < tokenExpiresAt.valueOf()) {
           return true
         }
 
@@ -54,12 +53,12 @@ export const useAuthStore = create<IAuthStore>()(
         const refreshExpiresAt = new Date(expireTimeRefreshToken)
 
         // Nếu refresh token đã hết hạn thì token invalid
-        if (isAfter(now, refreshExpiresAt)) {
+        if (now.valueOf() > refreshExpiresAt.valueOf()) {
           return false
         }
 
         // Nếu access token vẫn còn hạn thì valid
-        if (isBefore(now, tokenExpiresAt)) {
+        if (now.valueOf() < tokenExpiresAt.valueOf()) {
           return true
         }
 

@@ -454,7 +454,7 @@ export default function GiftCardOrdersScreen() {
     [allItems, selectedType],
   )
 
-  // Reset scroll khi đổi filter
+  // Reset scroll khi đổi filter / sort
   useEffect(() => {
     flashListRef.current?.scrollToOffset({ offset: 0, animated: false })
   }, [selectedType])
@@ -462,6 +462,7 @@ export default function GiftCardOrdersScreen() {
   useEffect(() => {
     flashListRef.current?.scrollToOffset({ offset: 0, animated: false })
   }, [dateFilter])
+
 
   const bg = isDark ? colors.background.dark : colors.background.light
   const textColor = isDark ? colors.gray[50] : colors.gray[900]
@@ -516,29 +517,30 @@ export default function GiftCardOrdersScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: bg }]}>
-      <FloatingHeader title={t('orders.title')} 
-          disableBlur
-        />
-
-      {/* ── Fixed filter bar ─────────────────────────────────────────── */}
-      <View style={[s.filterBarFixed, { paddingTop: insets.top + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>
-        <View style={s.filterRow}>
-          <View style={{ flex: 1 }}>
-            <FilterBar
-              selected={selectedType}
-              primaryColor={primaryColor}
-              isDark={isDark}
-              onSelect={handleTypeSelect}
-              filters={TYPE_FILTERS}
-            />
-          </View>
+      <FloatingHeader
+        title={t('orders.title')}
+        disableBlur
+        rightElement={
           <Pressable
             onPress={handleFilterOpen}
-            style={[s.filterIconBtn, { backgroundColor: isDateActive ? `${primaryColor}15` : (isDark ? colors.gray[800] : colors.gray[100]) }]}
+            style={[s.headerIconBtn, { backgroundColor: isDateActive ? `${primaryColor}15` : (isDark ? colors.gray[800] : colors.white.light) }]}
           >
             <SlidersHorizontal size={16} color={isDateActive ? primaryColor : (isDark ? colors.gray[300] : colors.gray[600])} />
             {isDateActive && <View style={[s.activeDot, { backgroundColor: primaryColor }]} />}
           </Pressable>
+        }
+      />
+
+      {/* ── Fixed filter bar ─────────────────────────────────────────── */}
+      <View style={[s.filterBarFixed, { paddingTop: insets.top + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>
+        <View style={s.filterRow}>
+          <FilterBar
+            selected={selectedType}
+            primaryColor={primaryColor}
+            isDark={isDark}
+            onSelect={handleTypeSelect}
+            filters={TYPE_FILTERS}
+          />
         </View>
         {isDateActive && (
           <View style={s.dateChipRow}>
@@ -615,10 +617,9 @@ const s = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   filterRow: { flexDirection: 'row', alignItems: 'center', paddingRight: 12 },
-  filterIconBtn: {
+  headerIconBtn: {
     width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
-    marginLeft: 8, flexShrink: 0,
   },
   activeDot: {
     width: 6, height: 6, borderRadius: 3,

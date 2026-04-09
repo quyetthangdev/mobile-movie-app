@@ -12,10 +12,14 @@ import { ILoyaltyPointHistoryQuery } from '@/types'
 export const useLoyaltyPoints = (q?: string) => {
   return useQuery({
     queryKey: [QUERYKEY.loyaltyPoints, 'total', { slug: q || '' }],
-    queryFn: () => getLoyaltyPoints(q as string),
+    queryFn: () => {
+      if (!q) return Promise.resolve({ result: { totalPoints: 0 } } as never)
+      return getLoyaltyPoints(q)
+    },
     placeholderData: keepPreviousData,
     select: (data) => data.result,
     enabled: !!q,
+    meta: { skipGlobalError: true },
   })
 }
 

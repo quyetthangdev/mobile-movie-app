@@ -48,7 +48,6 @@
     "cart-price-calc": "file:./modules/cart-price-calc",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
     "dayjs": "^1.11.19",
     "expo": "~54.0.30",
     "expo-av": "~16.0.8",

@@ -49,7 +49,7 @@ const OrderCard = memo(function OrderCard({
   const orderItems = order.orderItems || []
   const voucher = order.voucher || null
   const cartTotals = displayData?.cartTotals ?? null
-  const statusColors = getStatusBadgeColors(order.status)
+  const statusColors = getStatusBadgeColors(order.payment?.statusCode)
 
   const handlePress = useCallback(
     () => onPress(order.slug),

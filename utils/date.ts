@@ -1,5 +1,13 @@
-import { format } from 'date-fns'
-import { vi } from 'date-fns/locale'
+import dayjs from 'dayjs'
+import 'dayjs/locale/vi'
+
+dayjs.locale('vi')
+
+function toDate(date: string | Date | number | null | undefined): dayjs.Dayjs | null {
+  if (!date) return null
+  const d = dayjs(date)
+  return d.isValid() ? d : null
+}
 
 /**
  * Format date to Vietnamese format: hh:mm dd/mm/yyyy
@@ -7,19 +15,8 @@ import { vi } from 'date-fns/locale'
  * @returns Formatted string (e.g., "14:30 25/12/2024")
  */
 export function formatDateTime(date: string | Date | number | null | undefined): string {
-  if (!date) return '-'
-  
-  try {
-    const dateObj = typeof date === 'string' ? new Date(date) : typeof date === 'number' ? new Date(date) : date
-    
-    if (isNaN(dateObj.getTime())) {
-      return '-'
-    }
-    
-    return format(dateObj, 'HH:mm dd/MM/yyyy', { locale: vi })
-  } catch {
-    return '-'
-  }
+  const d = toDate(date)
+  return d ? d.format('HH:mm DD/MM/YYYY') : '-'
 }
 
 /**
@@ -28,19 +25,8 @@ export function formatDateTime(date: string | Date | number | null | undefined):
  * @returns Formatted string (e.g., "25/12/2024")
  */
 export function formatDate(date: string | Date | number | null | undefined): string {
-  if (!date) return '-'
-  
-  try {
-    const dateObj = typeof date === 'string' ? new Date(date) : typeof date === 'number' ? new Date(date) : date
-    
-    if (isNaN(dateObj.getTime())) {
-      return '-'
-    }
-    
-    return format(dateObj, 'dd/MM/yyyy', { locale: vi })
-  } catch {
-    return '-'
-  }
+  const d = toDate(date)
+  return d ? d.format('DD/MM/YYYY') : '-'
 }
 
 /**
@@ -49,18 +35,6 @@ export function formatDate(date: string | Date | number | null | undefined): str
  * @returns Formatted string (e.g., "14:30:25 25/12/2024")
  */
 export function formatDateTimeWithSeconds(date: string | Date | number | null | undefined): string {
-  if (!date) return '-'
-  
-  try {
-    const dateObj = typeof date === 'string' ? new Date(date) : typeof date === 'number' ? new Date(date) : date
-    
-    if (isNaN(dateObj.getTime())) {
-      return '-'
-    }
-    
-    return format(dateObj, 'HH:mm:ss dd/MM/yyyy', { locale: vi })
-  } catch {
-    return '-'
-  }
+  const d = toDate(date)
+  return d ? d.format('HH:mm:ss DD/MM/YYYY') : '-'
 }
-

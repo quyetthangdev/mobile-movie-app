@@ -3,9 +3,8 @@ import React, { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { Images } from '@/assets/images'
-import { APPLICABILITY_RULE, colors, publicFileURL, VOUCHER_TYPE } from '@/constants'
+import { APPLICABILITY_RULE, colors, publicFileURL, VOUCHER_TYPE, paymentStatus } from '@/constants'
 import type { IOrder, IOrderItems } from '@/types'
-import { OrderStatus } from '@/types'
 import {
   calculateOrderDisplayAndTotals,
   capitalizeFirstLetter,
@@ -16,20 +15,11 @@ import {
 
 export type StatusBadgeColors = { bg: string; text: string }
 
-export function getStatusBadgeColors(status: OrderStatus): StatusBadgeColors {
-  switch (status) {
-    case OrderStatus.PENDING:
-      return { bg: '#eab308', text: colors.white.light }
-    case OrderStatus.SHIPPING:
-      return { bg: '#3b82f6', text: colors.white.light }
-    case OrderStatus.COMPLETED:
-    case OrderStatus.PAID:
-      return { bg: colors.success.light, text: colors.white.light }
-    case OrderStatus.FAILED:
-      return { bg: colors.destructive.light, text: colors.white.light }
-    default:
-      return { bg: colors.gray[500], text: colors.white.light }
+export function getStatusBadgeColors(pStatus: string | undefined): StatusBadgeColors {
+  if (pStatus === paymentStatus.COMPLETED) {
+    return { bg: colors.success.light, text: colors.white.light }
   }
+  return { bg: '#eab308', text: colors.white.light }
 }
 
 export type OrderDisplayData = {

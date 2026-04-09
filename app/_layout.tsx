@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import LogoutSheetPortal from '@/components/profile/logout-sheet-portal'
+import QRSelectionSheet from '@/components/profile/qr-selection-sheet'
 import ScanSheetPortal from '@/components/profile/scan-sheet-portal'
 import { applyTheme, useThemeStore } from '@/stores/theme.store'
 import { useBackHandlerForExit } from '@/hooks'
@@ -168,6 +169,7 @@ function AppContent() {
         <QueryClientProvider client={queryClient}>
           <BottomSheetModalProvider>
             <LogoutSheetPortal />
+            <QRSelectionSheet />
             <ScanSheetPortal />
             <NotificationProvider />
             <I18nProvider>

@@ -6,7 +6,7 @@ import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useLoyaltyPoints, useRunAfterTransition, useUploadAvatar } from '@/hooks'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useLogoutSheetStore } from '@/stores/logout-sheet.store'
-import { useScanSheetStore } from '@/stores/scan-sheet.store'
+import { useQRSelectionSheetStore } from '@/stores/qr-selection-sheet.store'
 import { showToast } from '@/utils'
 import {
   BottomSheetBackdrop,
@@ -404,7 +404,7 @@ const ProfileTest = () => {
   const openThemeSheet = useCallback(() => setIsThemeSheetOpen(true), [])
   const closeThemeSheet = useCallback(() => setIsThemeSheetOpen(false), [])
 
-  const openScanSheet = useScanSheetStore((s) => s.open)
+  const openQRSelection = useQRSelectionSheetStore((s) => s.open)
 
   const openEdit = useCallback(() => {
     router.push('/(tabs)/profile/edit')
@@ -660,7 +660,7 @@ const ProfileTest = () => {
           </GestureScrollView>
 
           {/* ProfileHeader — 100% CartHeader structure, LayoutGrid + Pencil buttons */}
-          <ProfileHeader onEdit={openEdit} onScan={openScanSheet} isDark={isDark} />
+          <ProfileHeader onEdit={openEdit} onScan={openQRSelection} isDark={isDark} />
         </Animated.View>
       </GestureDetector>
 

@@ -17,7 +17,7 @@ import {
   Users,
   XCircle,
 } from 'lucide-react-native'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Clipboard,
@@ -68,11 +68,21 @@ const GiftCardCodeItem = memo(function GiftCardCodeItem({
   const borderColor = isDark ? colors.gray[700] : colors.gray[200]
   const bgColor = isDark ? colors.gray[800] : colors.gray[50]
 
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleCopy = useCallback(() => {
     Clipboard.setString(`${item.serial} - ${item.code}`)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    copyTimerRef.current = setTimeout(() => {
+      setCopied(false)
+      copyTimerRef.current = null
+    }, 2000)
   }, [item.serial, item.code])
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    }
+  }, [])
 
   return (
     <View style={[ci.container, { borderColor, backgroundColor: bgColor }]}>

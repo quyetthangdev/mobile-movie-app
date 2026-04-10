@@ -57,12 +57,16 @@ function expoToPayload(
 export function useNotificationListener(enabled = true) {
   const listenerRef = useRef<Notifications.EventSubscription | null>(null)
 
-  // eslint-disable-next-line no-console
-  console.log('[FCM] useNotificationListener called, enabled:', enabled)
+  if (__DEV__) {
+    // eslint-disable-next-line no-console
+    console.log('[FCM] useNotificationListener called, enabled:', enabled)
+  }
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[FCM] useNotificationListener effect running, enabled:', enabled)
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log('[FCM] useNotificationListener effect running, enabled:', enabled)
+    }
     if (!enabled) return
 
     // Foreground notification received
@@ -70,46 +74,60 @@ export function useNotificationListener(enabled = true) {
       Notifications.addNotificationReceivedListener((notification) => {
         const payload = expoToPayload(notification)
 
-        // eslint-disable-next-line no-console
-        console.log('[FCM] 📬 Foreground notification received:', JSON.stringify({
-          title: payload.notification?.title,
-          body: payload.notification?.body,
-          data: payload.data,
-          messageId: payload.messageId,
-        }))
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.log('[FCM] 📬 Foreground notification received:', {
+            title: payload.notification?.title,
+            body: payload.notification?.body,
+            data: payload.data,
+            messageId: payload.messageId,
+          })
+        }
 
         // Add to store
         useNotificationStore
           .getState()
           .addNotification(payload, { markAsRead: false })
 
-        // eslint-disable-next-line no-console
-        console.log('[FCM] Store unread count:', useNotificationStore.getState().getUnreadCount())
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.log('[FCM] Store unread count:', useNotificationStore.getState().getUnreadCount())
+        }
 
         // Toast
         const title =
           payload.notification?.title || 'Thông báo'
         const body = payload.notification?.body || ''
         if (body) {
-          // eslint-disable-next-line no-console
-          console.log('[FCM] Showing toast:', { title, body })
+          if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.log('[FCM] Showing toast:', { title, body })
+          }
           showToast(body, title)
         }
 
         // Sound
-        // eslint-disable-next-line no-console
-        console.log('[FCM] Playing notification sound...')
-        playNotificationSound().catch((e: unknown) => {
+        if (__DEV__) {
           // eslint-disable-next-line no-console
-          console.error('[FCM] Sound playback failed:', e)
+          console.log('[FCM] Playing notification sound...')
+        }
+        playNotificationSound().catch((e: unknown) => {
+          if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.error('[FCM] Sound playback failed:', e)
+          }
         })
       })
 
-    // eslint-disable-next-line no-console
-    console.log('[FCM] ✅ Foreground listener registered')
-    return () => {
+    if (__DEV__) {
       // eslint-disable-next-line no-console
-      console.log('[FCM] Removing foreground listener')
+      console.log('[FCM] ✅ Foreground listener registered')
+    }
+    return () => {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('[FCM] Removing foreground listener')
+      }
       listenerRef.current?.remove()
       listenerRef.current = null
     }

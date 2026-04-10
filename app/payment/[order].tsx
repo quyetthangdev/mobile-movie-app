@@ -589,12 +589,20 @@ function PaymentPageContent() {
   const selectedTransactionId = paymentForm.transactionId
   const qrCode = paymentForm.qrCode
 
-  // Fallback polling when QR is visible — covers FCM delivery failures
+  // Fallback polling when QR is visible — covers FCM delivery failures.
+  // Keep refetchOrder in a ref: react-query returns a new function ref per render,
+  // which would otherwise tear down + recreate the interval on every voucher/state
+  // tick (3-4 teardowns in the first second).
+  const refetchOrderRef = React.useRef(refetchOrder)
+  useEffect(() => {
+    refetchOrderRef.current = refetchOrder
+  }, [refetchOrder])
+
   useEffect(() => {
     if (!qrCode || showSuccess) return
-    const id = setInterval(() => void refetchOrder(), 10_000)
+    const id = setInterval(() => void refetchOrderRef.current(), 10_000)
     return () => clearInterval(id)
-  }, [qrCode, showSuccess, refetchOrder])
+  }, [qrCode, showSuccess])
 
   const handleMethodChange = useCallback((method: PaymentMethod, transactionId?: string) => {
     dispatchPaymentForm({ type: 'SET_METHOD', method, transactionId })

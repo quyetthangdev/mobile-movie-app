@@ -1,6 +1,6 @@
 /** Tab Home. */
 import { useRouter } from 'expo-router'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Pressable,
@@ -70,8 +70,10 @@ export default function HomeScreen() {
   useRunAfterTransition(() => setReady(true), [])
 
 
-  const rawBanners = bannerResponse?.result ?? []
-  const banners: IBanner[] = rawBanners.length > 0 ? rawBanners : [FALLBACK_BANNER]
+  const banners: IBanner[] = useMemo(() => {
+    const raw = bannerResponse?.result
+    return raw && raw.length > 0 ? raw : [FALLBACK_BANNER]
+  }, [bannerResponse?.result])
   const showBannerSkeleton = !ready || isBannerLoading
 
   const handleRefresh = useCallback(async () => {
@@ -79,6 +81,22 @@ export default function HomeScreen() {
     await refetchBanners()
     setRefreshing(false)
   }, [refetchBanners])
+
+  const goMenu = useCallback(() => {
+    router.push('/(tabs)/menu' as never)
+  }, [router])
+
+  const refreshControl = useMemo(
+    () => (
+      <RefreshControl
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        tintColor={primaryColor}
+        colors={[primaryColor]}
+      />
+    ),
+    [refreshing, handleRefresh, primaryColor],
+  )
 
   // ─── Scroll tracking ─────────────────────────────────────────────
   const scrollY = useSharedValue(0)
@@ -123,14 +141,7 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={primaryColor}
-            colors={[primaryColor]}
-          />
-        }
+        refreshControl={refreshControl}
       >
         {/* 1. Hero Banner với parallax */}
         <View style={{ height: BANNER_H, overflow: 'hidden' }}>
@@ -160,7 +171,7 @@ export default function HomeScreen() {
               <Text style={[s.sectionTitle, { color: primaryColor }]}>
                 {t('exploreMenu')}
               </Text>
-              <Pressable onPress={() => router.push('/(tabs)/menu' as never)}>
+              <Pressable onPress={goMenu}>
                 <Text style={[s.sectionLink, { color: primaryColor }]}>
                   {t('viewMenu')}
                 </Text>

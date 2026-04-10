@@ -16,7 +16,6 @@ import {
 } from 'react-native'
 
 import { getOrderBySlug } from '@/api'
-import { Skeleton } from '@/components/ui'
 import {
   colors,
   NotificationMessageCode,
@@ -32,6 +31,7 @@ import { calculateOrderDisplayAndTotals } from '@/utils'
 
 import OrderCard from './order-card'
 import type { OrderDisplayData } from './order-card'
+import { OrderHistorySkeleton } from './order-history-skeleton'
 
 // ─── Filter bar ───────────────────────────────────────────────────────────────
 
@@ -263,40 +263,11 @@ function OrderHistoryPage() {
   const showSkeleton = !allowFetch || (isPending && page === 1)
   if (showSkeleton) {
     return (
-      <ScreenContainer edges={['top', 'bottom']} style={[pageStyles.flex, { backgroundColor: screenBg }]}>
-        <View style={[pageStyles.headerBar, { backgroundColor: headerBg, borderBottomColor: headerBorder }]}>
-          <Skeleton style={{ width: 24, height: 24, borderRadius: 12, marginRight: 12 }} />
-          <Skeleton style={{ width: 160, height: 20, borderRadius: 6 }} />
-        </View>
-        <ScrollView contentContainerStyle={pageStyles.listPadding}>
-          {[1, 2, 3].map((key) => (
-            <View key={key} style={[pageStyles.skeletonCard, { backgroundColor: headerBg, borderColor: headerBorder }]}>
-              <View style={pageStyles.skeletonHeaderRow}>
-                <Skeleton style={{ width: 128, height: 12, borderRadius: 6 }} />
-                <Skeleton style={{ width: 96, height: 24, borderRadius: 12 }} />
-              </View>
-              <View style={pageStyles.skeletonItemRow}>
-                <Skeleton style={{ width: 64, height: 64, borderRadius: 8 }} />
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Skeleton style={{ width: 160, height: 16, borderRadius: 6 }} />
-                  <Skeleton style={{ width: 96, height: 12, borderRadius: 6 }} />
-                  <Skeleton style={{ width: 112, height: 16, borderRadius: 6 }} />
-                </View>
-              </View>
-              <View style={[pageStyles.skeletonSummary, { borderTopColor: headerBorder }]}>
-                <View style={pageStyles.skeletonSummaryRow}>
-                  <Skeleton style={{ width: 96, height: 12, borderRadius: 6 }} />
-                  <Skeleton style={{ width: 80, height: 12, borderRadius: 6 }} />
-                </View>
-                <View style={pageStyles.skeletonSummaryRow}>
-                  <Skeleton style={{ width: 112, height: 16, borderRadius: 6 }} />
-                  <Skeleton style={{ width: 96, height: 16, borderRadius: 6 }} />
-                </View>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-      </ScreenContainer>
+      <OrderHistorySkeleton
+        screenBg={screenBg}
+        headerBg={headerBg}
+        headerBorder={headerBorder}
+      />
     )
   }
 
@@ -374,7 +345,6 @@ const STATUS_FILTER_OPTIONS = [
 const pageStyles = StyleSheet.create({
   flex: { flex: 1 },
   floatingHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, paddingBottom: 24 },
-  headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
   circleBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   shadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 24, elevation: 2 },
@@ -391,9 +361,4 @@ const pageStyles = StyleSheet.create({
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 64 },
   emptyTitle: { marginTop: 16, fontSize: 18, fontWeight: '600' },
   emptyDesc: { marginTop: 8, fontSize: 14, textAlign: 'center' },
-  skeletonCard: { marginBottom: 16, borderRadius: 12, borderWidth: 1, padding: 16 },
-  skeletonHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  skeletonItemRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  skeletonSummary: { marginTop: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
-  skeletonSummaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
 })

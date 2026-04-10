@@ -89,9 +89,26 @@ async function checkAndRefresh(): Promise<void> {
   }
 }
 
+function startInterval(): void {
+  if (intervalId) return
+  intervalId = setInterval(checkAndRefresh, TOKEN_CHECK_INTERVAL)
+}
+
+function stopInterval(): void {
+  if (intervalId) {
+    clearInterval(intervalId)
+    intervalId = null
+  }
+}
+
 function handleAppStateChange(state: AppStateStatus): void {
   if (state === 'active') {
+    // Resume interval + re-check on foreground. Android Doze pauses timers
+    // in background anyway — pausing explicitly releases the closure ref.
+    startInterval()
     checkAndRefresh()
+  } else if (state === 'background') {
+    stopInterval()
   }
 }
 
@@ -102,10 +119,10 @@ export function startTokenRefreshScheduler(): void {
   // Initial check
   checkAndRefresh()
 
-  // Periodic check every 24h
-  intervalId = setInterval(checkAndRefresh, TOKEN_CHECK_INTERVAL)
+  // Periodic check every 24h (only while foreground)
+  startInterval()
 
-  // Re-check when app comes to foreground
+  // Re-check when app comes to foreground, pause when backgrounded
   appStateSubscription = AppState.addEventListener(
     'change',
     handleAppStateChange,
@@ -114,10 +131,7 @@ export function startTokenRefreshScheduler(): void {
 
 /** Stop scheduler + cleanup — call on logout */
 export function stopTokenRefreshScheduler(): void {
-  if (intervalId) {
-    clearInterval(intervalId)
-    intervalId = null
-  }
+  stopInterval()
   if (appStateSubscription) {
     appStateSubscription.remove()
     appStateSubscription = null

@@ -3,7 +3,7 @@
  * Dùng onViewableItemsChanged của FlashList để đón đầu hành động user.
  */
 import { Image } from 'expo-image'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { getSpecificMenuItem } from '@/api/menu'
@@ -70,6 +70,17 @@ export function useViewableMenuPrefetch() {
     },
     [prefetchForSlugs],
   )
+
+  // Clear the pending debounce on unmount so a fire-after-unmount doesn't
+  // call queryClient.setQueryData / Image.prefetch on a stale closure.
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+    }
+  }, [])
 
   const viewabilityConfig = useMemo(
     () => ({

@@ -75,6 +75,12 @@ function OrderTypeSheet({
     return () => {
       clearTimeout(timeoutId1)
       clearTimeout(timeoutId2)
+      // Null out module-level refs to prevent orphan retries from calling
+      // snapToIndex on an unmounted component (and to release ref retention).
+      isComponentMounted = false
+      clearOrderTypeOpenRetries()
+      sheetRef = null
+      openCallback = null
     }
   }, [])
 

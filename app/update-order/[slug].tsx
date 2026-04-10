@@ -96,15 +96,22 @@ export default function UpdateOrderScreen() {
     }
   }, [shouldReinitialize, order, initializeUpdating])
 
-  // Polling when order is PENDING — guard prevents concurrent requests if network is slow
+  // Polling when order is PENDING — guard prevents concurrent requests if network is slow.
+  // Keep refetchOrder in a ref: react-query may return a new function reference per render,
+  // which would otherwise tear down + recreate the interval each time.
+  const refetchOrderRef = React.useRef(refetchOrder)
   useEffect(() => {
-    if (!order || !isDataLoaded || isExpired) return
-    if (order.status !== OrderStatus.PENDING) return
+    refetchOrderRef.current = refetchOrder
+  }, [refetchOrder])
+
+  const isOrderPending = order?.status === OrderStatus.PENDING
+  useEffect(() => {
+    if (!isOrderPending || !isDataLoaded || isExpired) return
     const interval = setInterval(async () => {
       if (isFetchingRef.current) return
       isFetchingRef.current = true
       try {
-        const { data } = await refetchOrder()
+        const { data } = await refetchOrderRef.current()
         const updated = data?.result
         if (updated && updated.status !== OrderStatus.PENDING) {
           setShouldReinitialize(true)
@@ -114,7 +121,7 @@ export default function UpdateOrderScreen() {
       }
     }, 5000)
     return () => clearInterval(interval)
-  }, [order, isDataLoaded, isExpired, refetchOrder])
+  }, [isOrderPending, isDataLoaded, isExpired])
 
   const handleExpire = useCallback(() => {
     setIsExpired(true)

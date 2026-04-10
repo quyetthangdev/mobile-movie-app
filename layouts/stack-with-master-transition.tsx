@@ -10,7 +10,7 @@ import { useMemo } from 'react'
 import { useColorScheme } from 'react-native'
 
 import { colors } from '@/constants'
-import { profileNativeStackScreenOptions } from '@/layouts/custom-stack'
+import { nativeStackScreenOptions } from '@/layouts/custom-stack'
 import { useMasterTransition } from '@/lib/navigation/master-transition-provider'
 import {
   startTransitionFPSMonitor,
@@ -53,9 +53,13 @@ export function NativeStackWithMasterTransition() {
   // Override contentStyle + statusBarStyle theo theme hiện tại (reactive).
   // custom-stack.tsx đọc Appearance.getColorScheme() 1 lần tại module load,
   // không update khi user đổi theme mid-session. Wrapper hook này patch lại.
+  //
+  // Base off nativeStackScreenOptions (NOT profileNativeStackScreenOptions) —
+  // dùng profile sẽ leak `gestureResponseDistance: { start: 10000 }` sang mọi
+  // root screen, steal horizontal FlashList swipe gesture trên iOS.
   const screenOptions = useMemo(
     () => ({
-      ...profileNativeStackScreenOptions,
+      ...nativeStackScreenOptions,
       contentStyle: {
         backgroundColor: isDark
           ? colors.background.dark

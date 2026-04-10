@@ -150,15 +150,15 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   hydrateFromApi: (items) => {
     if (!items || items.length === 0) return
     set((state) => {
-      const localMap = new Map<string, INotification>()
-      for (const n of state.notifications) localMap.set(n.slug, n)
-
       const { markedAllReadAt } = state
 
+      // Build single map seeded with current local state, then overlay incoming
+      // server items. Local isRead always wins (optimistic markings) — see
+      // priority comment below.
       const map = new Map<string, INotification>()
       for (const n of state.notifications) map.set(n.slug, n)
       for (const n of items) {
-        const local = localMap.get(n.slug)
+        const local = map.get(n.slug)
 
         // isRead priority (highest → lowest):
         // 1. Local already marked read (optimistic individual/bulk)

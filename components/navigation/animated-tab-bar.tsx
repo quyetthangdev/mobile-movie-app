@@ -3,7 +3,7 @@
  */
 import type { TFunction } from 'i18next'
 import { Gift, Home, Menu, User } from 'lucide-react-native'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native'
 import Animated, {
   useAnimatedStyle,
@@ -100,14 +100,14 @@ export const AnimatedTabBar = React.memo(function AnimatedTabBar({
     }
   }, [activeIndex, paddingH, itemWidth, pillWidth, indicatorX])
 
-  const onPillLayout = (e: LayoutChangeEvent) => {
+  const onPillLayout = useCallback((e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width
     if (w > 0) {
       setPillWidth(w)
       const ph = (8 * PILL_RADIUS - w) / 6
       setPaddingH(Math.max(4, Math.min(ph, 20)))
     }
-  }
+  }, [])
 
   const slidingIndicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],

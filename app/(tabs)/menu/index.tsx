@@ -55,6 +55,9 @@ function overrideItemLayout(layout: { span?: number; size?: number }, item: Flat
   layout.size = item._kind === 'header' ? 40 : MENU_ITEM_ESTIMATED_HEIGHT
 }
 
+const menuKeyExtractor = (item: FlatItem) =>
+  item._kind === 'header' ? item.key : item.data.id
+
 const MENU_IMAGE_PREFETCH_AHEAD_COUNT = 5
 const MENU_IMAGE_PREFETCH_DEBOUNCE_MS = 100
 const MENU_ENTRY_FETCH_DELAY_MS = 120
@@ -601,9 +604,7 @@ export default function MenuPage() {
         <FlashList
           data={flatItems}
           renderItem={renderItem}
-          keyExtractor={(item) =>
-            item._kind === 'header' ? item.key : item.data.id
-          }
+          keyExtractor={menuKeyExtractor}
           getItemType={(item) => item._kind}
           overrideItemLayout={overrideItemLayout}
           drawDistance={300}

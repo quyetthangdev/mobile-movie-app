@@ -44,9 +44,16 @@ function CancelOrderDialogComponent({
   const { bottom: bottomInset } = useSafeAreaInsets()
 
   const sheetRef = useRef<BottomSheetModal>(null)
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleOpen = useCallback(() => setVisible(true), [])
   const handleClose = useCallback(() => setVisible(false), [])
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (visible) {
@@ -60,11 +67,13 @@ function CancelOrderDialogComponent({
     if (!order?.slug || isDeleting) return
     deleteOrder(order.slug, {
       onSuccess: () => {
-        setTimeout(() => {
+        if (successTimerRef.current) clearTimeout(successTimerRef.current)
+        successTimerRef.current = setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['orders'] })
           queryClient.invalidateQueries({ queryKey: ['order', order.slug] })
           showToast(tToast('toast.handleCancelOrderSuccess'))
           setVisible(false)
+          successTimerRef.current = null
         }, 500)
       },
     })

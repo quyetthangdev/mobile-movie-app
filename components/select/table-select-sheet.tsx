@@ -82,6 +82,9 @@ function TableSelectSheet({
       pendingOpen = false
       clearTimeout(timeoutId1)
       clearTimeout(timeoutId2)
+      // Also clear any pending open-retry timers — otherwise they fire
+      // snapToIndex on an unmounted BottomSheet ref.
+      clearTableOpenRetries()
     }
   }, [])
 

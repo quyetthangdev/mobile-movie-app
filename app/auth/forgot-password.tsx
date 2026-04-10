@@ -177,9 +177,12 @@ export default function ForgotPasswordScreen() {
       const isEmail = method === VerificationMethod.EMAIL
       const identity = value.identity
 
-      // Check if OTP from previous attempt is still valid
+      // Check if OTP from previous attempt is still valid (MUST be same method + same identity)
       const storedIdentity = isEmail ? email : phoneNumber
-      if (expireTime && storedIdentity === identity) {
+      const isSameIdentity = storedIdentity === identity
+      const isSameMethod = verificationMethod === method
+
+      if (expireTime && isSameIdentity && isSameMethod) {
         const timeLeft = Math.floor(
           (new Date(expireTime).getTime() - Date.now()) / 1000,
         )
@@ -191,6 +194,12 @@ export default function ForgotPasswordScreen() {
           setStep(2)
           return
         }
+      }
+
+      // Clear OTP state if switching to different verification method
+      if (verificationMethod !== method) {
+        setExpireTime('')
+        setOtpValue('')
       }
 
       setVerificationMethod(method)
@@ -222,12 +231,30 @@ export default function ForgotPasswordScreen() {
           setStep(2)
         },
         onError: (err: unknown) => {
-          if (
+          const errorCode = extractErrorCode(err)
+          // Backend error code 119009 = OTP already sent
+          const isOTPAlreadySent = errorCode === 119009
+          const isOTPStillValid =
             expireTime &&
             new Date(expireTime).getTime() > Date.now()
-          ) {
+
+          // If OTP already sent (119009) but no local expireTime, set a default timeout
+          if (isOTPAlreadySent && !isOTPStillValid) {
+            // Set 5-minute default expiry for OTP that was already sent
+            setExpireTime(
+              new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+            )
+            setStep(2)
+            // Show user-friendly message
+            showToast(tToast('toast.otpAlreadySent'))
+            return
+          }
+
+          // Original logic: if local expireTime is valid, jump to OTP input
+          if (isOTPStillValid) {
             setStep(2)
           } else {
+            // No valid OTP, show error
             handleMutationError(err)
           }
         },
@@ -238,10 +265,12 @@ export default function ForgotPasswordScreen() {
       email,
       phoneNumber,
       expireTime,
+      verificationMethod,
       setEmail,
       setPhoneNumber,
       setVerificationMethod,
       setExpireTime,
+      setOtpValue,
       setStep,
       initiate,
       tToast,

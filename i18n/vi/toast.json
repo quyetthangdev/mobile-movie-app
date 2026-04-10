@@ -204,6 +204,7 @@
 				"orderTypeUnavailable": "Loại đơn hàng đã bị khoá, vui lòng chọn loại khác",
 				"orderValueLessThanMinOrderValue": "Giá trị đơn hàng phải lớn hơn giá trị tối thiểu",
 				"ordersMustBelongToOneTable": "Đơn hàng phải thuộc về một bàn",
+				"otpAlreadySent": "Mã xác minh đã được gửi. Vui lòng nhập mã để tiếp tục",
 				"ownerNotFound": "Chủ sở hữu không hợp lệ",
 				"ownerNotFoundForVoucher": "Vui lòng đăng nhập để dùng cho voucher này!",
 				"passwordRequired": "Mật khẩu là bắt buộc",

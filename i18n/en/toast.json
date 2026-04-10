@@ -204,6 +204,7 @@
     "orderTypeUnavailable": "This order type is unavailable, please select another",
     "orderValueLessThanMinOrderValue": "Order value is less than minimum required",
     "ordersMustBelongToOneTable": "Orders must belong to one table",
+    "otpAlreadySent": "OTP has already been sent. Please check your email for the code",
     "ownerNotFound": "Invalid owner",
     "ownerNotFoundForVoucher": "Please log in to use this voucher!",
     "passwordRequired": "Password is required",

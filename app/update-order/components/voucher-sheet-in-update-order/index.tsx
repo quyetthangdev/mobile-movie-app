@@ -30,6 +30,7 @@ import { SheetFooter } from './sheet-footer'
 import { ValidList } from './valid-list'
 
 const SNAP = ['90%']
+const MAX_VOUCHERS = 50
 
 interface VoucherSheetInUpdateOrderProps {
   visible: boolean
@@ -163,7 +164,7 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
         const newItems = eligibleRes.result!.items.filter(
           (v: IVoucher) => !slugs.has(v.slug),
         )
-        return [...prev, ...newItems]
+        return [...prev, ...newItems].slice(0, MAX_VOUCHERS)
       })
     }
   }, [eligibleRes?.result, currentPage])
@@ -185,8 +186,9 @@ export const VoucherSheetInUpdateOrder = memo(function VoucherSheetInUpdateOrder
   }, [visible, eligibleRes?.result?.items])
 
   const handleLoadMore = useCallback(() => {
-    if (hasMore && !isLoadingList) setCurrentPage((p) => p + 1)
-  }, [hasMore, isLoadingList])
+    if (hasMore && !isLoadingList && allVouchers.length < MAX_VOUCHERS)
+      setCurrentPage((p) => p + 1)
+  }, [hasMore, isLoadingList, allVouchers.length])
 
   // ── Process voucher list ───────────────────────────────────────────────────
   const cartProductSlugs = useMemo(

@@ -16,6 +16,9 @@ import {
 import { asyncStorage, createSafeStorage } from '@/utils/storage'
 import { showToast } from '@/utils/toast'
 
+/** Single timer ref — prevents stacking when addCartItem is called multiple times */
+let _cartExpirationTimer: ReturnType<typeof setTimeout> | null = null
+
 /** Setup auto clear cart based on expiration time — kept internal to avoid circular dep */
 const setupAutoClearCart = async (): Promise<void> => {
   const { clearCart, getCartItems } = useCartItemStore.getState()
@@ -38,7 +41,12 @@ const setupAutoClearCart = async (): Promise<void> => {
     const timeUntilExpiration =
       parseInt(expirationTime || '0') - dayjs().valueOf()
     if (timeUntilExpiration > 0) {
-      setTimeout(async () => {
+      // Cancel any previously scheduled timer before creating a new one
+      if (_cartExpirationTimer !== null) {
+        clearTimeout(_cartExpirationTimer)
+      }
+      _cartExpirationTimer = setTimeout(async () => {
+        _cartExpirationTimer = null
         try {
           clearCart()
           await asyncStorage.removeItem('cart-expiration-time')

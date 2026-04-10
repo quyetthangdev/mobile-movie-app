@@ -32,6 +32,7 @@ import { SheetFooter } from '../update-order/components/voucher-sheet-in-update-
 import { ValidList } from '../update-order/components/voucher-sheet-in-update-order/valid-list'
 
 const SNAP = ['90%']
+const MAX_VOUCHERS = 50
 
 /** Server trả về variant/promotion có thể là string slug hoặc full object */
 function toSlug(value: { slug?: string } | string | null | undefined): string {
@@ -179,7 +180,7 @@ export const VoucherSheetInPayment = memo(function VoucherSheetInPayment({
         const newItems = eligibleRes.result!.items.filter(
           (v: IVoucher) => !slugs.has(v.slug),
         )
-        return [...prev, ...newItems]
+        return [...prev, ...newItems].slice(0, MAX_VOUCHERS)
       })
     }
   }, [eligibleRes?.result, currentPage])
@@ -201,8 +202,9 @@ export const VoucherSheetInPayment = memo(function VoucherSheetInPayment({
   }, [visible, eligibleRes?.result?.items])
 
   const handleLoadMore = useCallback(() => {
-    if (hasMore && !isLoadingList) setCurrentPage((p) => p + 1)
-  }, [hasMore, isLoadingList])
+    if (hasMore && !isLoadingList && allVouchers.length < MAX_VOUCHERS)
+      setCurrentPage((p) => p + 1)
+  }, [hasMore, isLoadingList, allVouchers.length])
 
   // ── Process voucher list ───────────────────────────────────────────────────
   // IOrderDetail has no productSlug field — product slug is at variant.product.slug

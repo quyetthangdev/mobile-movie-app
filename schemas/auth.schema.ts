@@ -4,6 +4,7 @@ import * as z from 'zod'
 
 import {
   AuthRules,
+  EMAIL_REGEX,
   NAME_REGEX,
   PASSWORD_REGEX,
   PHONE_NUMBER_REGEX,
@@ -59,32 +60,22 @@ export function useRegisterSchema() {
     })
 }
 
-export function useForgotPasswordSchema() {
+export function useForgotPasswordIdentitySchema() {
   const { t } = useTranslation('auth')
   return z.object({
-    email: z.string().email(t('register.invalidEmail')).optional(),
-    phonenumber: z
+    identity: z
       .string()
-      .regex(PHONE_NUMBER_REGEX, t('register.phoneNumberInvalid'))
-      .optional(),
+      .min(1, t('forgotPassword.identityRequired'))
+      .refine(
+        (val) => EMAIL_REGEX.test(val) || PHONE_NUMBER_REGEX.test(val),
+        t('forgotPassword.identityInvalid'),
+      ),
   })
 }
 
-export function useForgotPasswordByEmailSchema() {
-  const { t } = useTranslation('auth')
-  return z.object({
-    email: z.string().email(t('register.invalidEmail')),
-  })
-}
-
-export function useForgotPasswordByPhoneNumberSchema() {
-  const { t } = useTranslation('auth')
-  return z.object({
-    phonenumber: z
-      .string()
-      .regex(PHONE_NUMBER_REGEX, t('register.phoneNumberInvalid')),
-  })
-}
+export type TForgotPasswordIdentitySchema = z.infer<
+  ReturnType<typeof useForgotPasswordIdentitySchema>
+>
 
 export function useResetPasswordSchema() {
   const { t } = useTranslation('auth')
@@ -125,14 +116,4 @@ export type TResetPasswordSchema = z.infer<
   ReturnType<typeof useResetPasswordSchema>
 >
 
-export type TForgotPasswordSchema = z.infer<
-  ReturnType<typeof useForgotPasswordSchema>
->
 export type TVerifyEmailSchema = z.infer<typeof verifyEmailSchema>
-
-export type TForgotPasswordByEmailSchema = z.infer<
-  ReturnType<typeof useForgotPasswordByEmailSchema>
->
-export type TForgotPasswordByPhoneNumberSchema = z.infer<
-  ReturnType<typeof useForgotPasswordByPhoneNumberSchema>
->

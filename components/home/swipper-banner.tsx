@@ -23,6 +23,9 @@ const ROUTE_VALUES = Object.values(ROUTE)
 const DOT_SIZE = 7
 const DOT_ACTIVE_WIDTH = 20
 const DOT_GAP = 5
+// Module-scope spring config — no per-worklet allocation
+const DOT_WIDTH_SPRING = { damping: 15, stiffness: 220 } as const
+const DOT_OPACITY_TIMING = { duration: 180 } as const
 
 // ─── Dot indicator ───────────────────────────────────────────────────────────
 
@@ -30,10 +33,10 @@ const BannerDot = React.memo(function BannerDot({ isActive }: { isActive: boolea
   // Drive width + opacity directly on UI thread — no useEffect / JS-thread hop.
   // useDerivedValue re-runs on UI thread whenever isActive changes (via prop update).
   const width = useDerivedValue(() =>
-    withSpring(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE, { damping: 15, stiffness: 220 }),
+    withSpring(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE, DOT_WIDTH_SPRING),
   )
   const opacity = useDerivedValue(() =>
-    withTiming(isActive ? 1 : 0.45, { duration: 180 }),
+    withTiming(isActive ? 1 : 0.45, DOT_OPACITY_TIMING),
   )
 
   const style = useAnimatedStyle(() => ({

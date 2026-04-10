@@ -3,8 +3,6 @@ export const ROUTE = {
   LOGIN: '/auth/login',
   REGISTER: '/auth/register',
   FORGOT_PASSWORD: '/auth/forgot-password',
-  FORGOT_PASSWORD_EMAIL: '/auth/forgot-password/email',
-  FORGOT_PASSWORD_PHONE: '/auth/forgot-password/phone',
 
   // ===== Client =====
   CLIENT_HOME: '/',

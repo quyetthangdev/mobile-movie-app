@@ -30,7 +30,6 @@ export {
   scheduleUnlock,
   getNavigationRouter,
 } from './navigation-lock'
-export { TransitionProgressSyncer } from './transition-progress-sync'
 export {
   MasterTransitionProvider,
   useMasterTransition,

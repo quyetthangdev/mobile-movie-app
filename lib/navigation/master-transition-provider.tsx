@@ -1,9 +1,11 @@
 /**
  * Task 2 — Transition Progress đồng bộ với react-native-screens.
  *
- * Progress KHÔNG dùng withSpring độc lập — lái theo tiến độ thực từ native stack.
- * TransitionProgressSyncer (trong screen) sync Animated.Value → SharedValue.
- * Parallax interpolate dựa trên progress này → giảm jank.
+ * Progress KHÔNG dùng withSpring độc lập — lái theo tiến độ thực từ native stack
+ * qua transitionStart/End listeners. Parallax interpolate dựa trên progress này.
+ *
+ * Parallax tạm tắt (PARALLAX_ENABLED = false) → không cần frame-by-frame syncer
+ * (chỉ snap 0↔1 ở start/end là đủ cho isTransitioning flag).
  */
 import { useQueryClient } from '@tanstack/react-query'
 import { usePathname } from 'expo-router'
@@ -54,7 +56,7 @@ const MasterTransitionContext =
 
 /** Tạm tắt overlay — bật lại khi cần */
 const OVERLAY_ENABLED = false
-/** P3: Tắt Parallax → bỏ TransitionProgressSyncer listener mỗi frame. Bật lại nếu cần hiệu ứng depth. */
+/** P3: Tắt Parallax — bỏ frame-by-frame progress listener. Bật lại nếu cần hiệu ứng depth. */
 const PARALLAX_ENABLED = false
 /** Delay sau transitionEnd trước khi ẩn overlay — bù khoảng delay skeleton */
 const OVERLAY_HIDE_DELAY_MS = 180

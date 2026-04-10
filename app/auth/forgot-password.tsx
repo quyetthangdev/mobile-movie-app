@@ -1,102 +1,529 @@
-import { Redirect } from 'expo-router'
-import { ChevronRight, Mail, Phone } from 'lucide-react-native'
+import { Redirect, Stack } from 'expo-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'
-import { ScreenContainer } from '@/components/layout'
+import {
+  BackHandler,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 
-import { ROUTE, VerificationMethod, colors } from '@/constants'
+import {
+  OTPStepForgot,
+  ResetStepForgot,
+  SuccessStepForgot,
+} from '@/components/auth'
+import { ForgotPasswordIdentityForm } from '@/components/form'
+import { Button } from '@/components/ui'
+import { ScreenContainer } from '@/components/layout'
+import { EMAIL_REGEX, ROUTE, VerificationMethod } from '@/constants'
+import {
+  useConfirmForgotPassword,
+  useInitiateForgotPassword,
+  useResendOTPForgotPassword,
+  useShakeAnimation,
+  useVerifyOTPForgotPassword,
+} from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
-import { useAuthStore, useForgotPasswordStore } from '@/stores'
+import {
+  type TForgotPasswordIdentitySchema,
+  type TResetPasswordSchema,
+} from '@/schemas'
+import { useAuthStore } from '@/stores'
+import {
+  useEmail,
+  useExpireTime,
+  useIdentityActions,
+  useOTPActions,
+  usePhoneNumber,
+  useStep,
+  useStepActions,
+  useToken,
+  useTokenExpireTime,
+  useVerificationMethod,
+} from '@/stores/selectors/forgot-password'
+import {
+  maskIdentity,
+  showErrorToast,
+  showErrorToastMessage,
+  showToast,
+} from '@/utils'
+
+function extractErrorCode(err: unknown): number | undefined {
+  const data = (
+    err as {
+      response?: { data?: { code?: number; statusCode?: number } }
+    }
+  )?.response?.data
+  return data?.code ?? data?.statusCode
+}
+
+/** Show error toast with fallback for network errors (no response) */
+function handleMutationError(err: unknown) {
+  const code = extractErrorCode(err)
+  if (typeof code === 'number') {
+    showErrorToast(code)
+  } else {
+    showErrorToastMessage('toast.requestFailed')
+  }
+}
+
+function applyOtpBuffer(expiresAt: string): string {
+  const expiresMs = new Date(expiresAt).getTime()
+  if (isNaN(expiresMs)) return '' // G1: guard invalid date
+  const remainingMs = expiresMs - Date.now()
+  if (remainingMs <= 30_000) return expiresAt
+  return new Date(expiresMs - 30_000).toISOString()
+}
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation('auth')
-  const isDark = useColorScheme() === 'dark'
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated())
-  const { setVerificationMethod, setStep } = useForgotPasswordStore()
+  const { t: tToast } = useTranslation('toast')
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
 
-  if (isAuthenticated) {
-    return <Redirect href="/(tabs)/home" />
-  }
+  // Store state
+  const email = useEmail()
+  const phoneNumber = usePhoneNumber()
+  const step = useStep()
+  const token = useToken()
+  const expireTime = useExpireTime()
+  const tokenExpireTime = useTokenExpireTime()
+  const verificationMethod = useVerificationMethod()
 
-  const iconColor = isDark ? colors.primary.dark : colors.primary.light
-  const arrowColor = isDark ? colors.mutedForeground.dark : colors.mutedForeground.light
+  // Store actions
+  const { setEmail, setPhoneNumber, setVerificationMethod } =
+    useIdentityActions()
+  const { setStep, clearForgotPassword } = useStepActions()
+  const { setToken, setTokenExpireTime, setExpireTime } =
+    useOTPActions()
 
-  const handleMethodSelect = (method: VerificationMethod) => {
-    setVerificationMethod(method)
-    setStep(1)
-    if (method === VerificationMethod.EMAIL) {
-      navigateNative.push(ROUTE.FORGOT_PASSWORD_EMAIL)
-    } else {
-      navigateNative.push(ROUTE.FORGOT_PASSWORD_PHONE)
+  // Local state
+  const [otpValue, setOtpValue] = useState('')
+  const [isSuccess, setIsSuccess] = useState(false)
+
+  // Mutations
+  const { mutate: initiate, isPending: isInitiating } =
+    useInitiateForgotPassword()
+  const { mutate: verifyOTP, isPending: isVerifyingOTP } =
+    useVerifyOTPForgotPassword()
+  const { mutate: confirm, isPending: isConfirming } =
+    useConfirmForgotPassword()
+  const { mutate: resendOTP, isPending: isResending } =
+    useResendOTPForgotPassword()
+
+  // Shake animation for OTP error
+  const { translateX: shakeTranslateX, shake } = useShakeAnimation()
+
+  // Ref to prevent double auto-submit
+  const autoSubmitRef = useRef(false)
+
+  // ── Flow recovery on mount ──────────────────────────────────────
+  useEffect(() => {
+    if (expireTime && step === 1) {
+      const timeLeft = Math.floor(
+        (new Date(expireTime).getTime() - Date.now()) / 1000,
+      )
+      if (timeLeft > 0) setStep(2)
+      else setExpireTime('')
     }
-  }
+    if (tokenExpireTime && step === 3) {
+      const timeLeft = Math.floor(
+        (new Date(tokenExpireTime).getTime() - Date.now()) / 1000,
+      )
+      if (timeLeft <= 0) {
+        setToken('')
+        setTokenExpireTime('')
+        setStep(1)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── F4: Android back button intercept at step 2/3 ──────────────
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    if (step !== 2 && step !== 3) return
+
+    const onBackPress = () => {
+      handleBack()
+      return true // prevent default back
+    }
+
+    const sub = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onBackPress,
+    )
+    return () => sub.remove()
+    // handleBack depends on step — re-subscribe when step changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
+  // ── Auto-detect verification method ─────────────────────────────
+  const detectMethod = useCallback(
+    (identity: string): VerificationMethod =>
+      EMAIL_REGEX.test(identity)
+        ? VerificationMethod.EMAIL
+        : VerificationMethod.PHONE_NUMBER,
+    [],
+  )
+
+  // ── Step 1: Submit identity ─────────────────────────────────────
+  const handleSubmit = useCallback(
+    (value: TForgotPasswordIdentitySchema) => {
+      const method = detectMethod(value.identity)
+      const isEmail = method === VerificationMethod.EMAIL
+      const identity = value.identity
+
+      // Check if OTP from previous attempt is still valid
+      const storedIdentity = isEmail ? email : phoneNumber
+      if (expireTime && storedIdentity === identity) {
+        const timeLeft = Math.floor(
+          (new Date(expireTime).getTime() - Date.now()) / 1000,
+        )
+        if (timeLeft > 0) {
+          showToast(tToast('toast.otpStillValid'))
+          setVerificationMethod(method)
+          if (isEmail) setEmail(identity)
+          else setPhoneNumber(identity)
+          setStep(2)
+          return
+        }
+      }
+
+      setVerificationMethod(method)
+      if (isEmail) setEmail(identity)
+      else setPhoneNumber(identity)
+
+      const payload = isEmail
+        ? { email: identity, verificationMethod: method }
+        : { phonenumber: identity, verificationMethod: method }
+
+      initiate(payload, {
+        onSuccess: (response) => {
+          const buffered = applyOtpBuffer(
+            response?.result?.expiresAt || '',
+          )
+          // G1: guard empty/invalid expiresAt
+          if (!buffered) {
+            showErrorToastMessage('toast.requestFailed')
+            return
+          }
+          showToast(
+            tToast(
+              isEmail
+                ? 'toast.sendVerifyEmailSuccess'
+                : 'toast.sendVerifyPhoneNumberSuccess',
+            ),
+          )
+          setExpireTime(buffered)
+          setStep(2)
+        },
+        onError: (err: unknown) => {
+          if (
+            expireTime &&
+            new Date(expireTime).getTime() > Date.now()
+          ) {
+            setStep(2)
+          } else {
+            handleMutationError(err)
+          }
+        },
+      })
+    },
+    [
+      detectMethod,
+      email,
+      phoneNumber,
+      expireTime,
+      setEmail,
+      setPhoneNumber,
+      setVerificationMethod,
+      setExpireTime,
+      setStep,
+      initiate,
+      tToast,
+    ],
+  )
+
+  // ── Step 2: Verify OTP ──────────────────────────────────────────
+  const handleVerifyOTP = useCallback(() => {
+    if (otpValue.length !== 6 || isVerifyingOTP) return
+    autoSubmitRef.current = false
+
+    verifyOTP(
+      { code: otpValue },
+      {
+        onSuccess: (response) => {
+          const receivedToken = response?.result?.token
+          // G2: guard empty token
+          if (!receivedToken) {
+            showErrorToastMessage('toast.requestFailed')
+            return
+          }
+          showToast(tToast('toast.verifyOTPSuccess'))
+          setToken(receivedToken)
+          setTokenExpireTime(
+            new Date(Date.now() + 270_000).toISOString(),
+          )
+          setOtpValue('')
+          setStep(3)
+        },
+        onError: (err: unknown) => {
+          shake()
+          setOtpValue('')
+          handleMutationError(err)
+        },
+      },
+    )
+  }, [
+    otpValue,
+    isVerifyingOTP,
+    verifyOTP,
+    setToken,
+    setTokenExpireTime,
+    setStep,
+    shake,
+    tToast,
+  ])
+
+  // ── Auto-submit OTP when 6 digits entered ───────────────────────
+  useEffect(() => {
+    if (
+      otpValue.length === 6 &&
+      !isVerifyingOTP &&
+      !autoSubmitRef.current
+    ) {
+      autoSubmitRef.current = true
+      handleVerifyOTP()
+    }
+  }, [otpValue, isVerifyingOTP, handleVerifyOTP])
+
+  // ── Step 3: Confirm new password ────────────────────────────────
+  const handleConfirm = useCallback(
+    (data: TResetPasswordSchema) => {
+      confirm(
+        { newPassword: data.newPassword, token: data.token },
+        {
+          onSuccess: () => {
+            clearForgotPassword()
+            setIsSuccess(true)
+          },
+          onError: handleMutationError,
+        },
+      )
+    },
+    [confirm, clearForgotPassword],
+  )
+
+  // ── Resend OTP ──────────────────────────────────────────────────
+  const handleResendOTP = useCallback(() => {
+    const isEmail =
+      verificationMethod === VerificationMethod.EMAIL
+    const payload = isEmail
+      ? { email, verificationMethod }
+      : { phonenumber: phoneNumber, verificationMethod }
+
+    resendOTP(payload, {
+      onSuccess: (response) => {
+        const buffered = applyOtpBuffer(
+          response?.result?.expiresAt || '',
+        )
+        if (!buffered) {
+          showErrorToastMessage('toast.requestFailed')
+          return
+        }
+        showToast(
+          tToast(
+            isEmail
+              ? 'toast.sendVerifyEmailSuccess'
+              : 'toast.sendVerifyPhoneNumberSuccess',
+          ),
+        )
+        setExpireTime(buffered)
+        setOtpValue('')
+      },
+      onError: handleMutationError,
+    })
+  }, [
+    email,
+    phoneNumber,
+    verificationMethod,
+    resendOTP,
+    setExpireTime,
+    tToast,
+  ])
+
+  // ── Navigation handlers ─────────────────────────────────────────
+  const handleBack = useCallback(() => {
+    if (step === 2) {
+      setStep(1)
+      setOtpValue('')
+      setExpireTime('')
+    } else if (step === 3) {
+      setStep(1)
+      setOtpValue('')
+      setExpireTime('')
+      setToken('')
+      setTokenExpireTime('')
+    } else {
+      navigateNative.back()
+    }
+  }, [step, setStep, setExpireTime, setToken, setTokenExpireTime])
+
+  const handleOtpChange = useCallback(
+    (v: string) => setOtpValue(v),
+    [],
+  )
+
+  const handleStartOver = useCallback(() => {
+    clearForgotPassword()
+    setStep(1)
+  }, [clearForgotPassword, setStep])
+
+  const handleGoToLogin = useCallback(() => {
+    navigateNative.replace(ROUTE.LOGIN)
+  }, [])
+
+  // no-op: step components manage expired UI internally
+  const handleOtpExpired = useCallback(() => {}, [])
+  const handleTokenExpired = useCallback(() => {}, [])
+
+  // ── Derived values ──────────────────────────────────────────────
+  const currentIdentity = email || phoneNumber
+  const maskedId = useMemo(
+    () =>
+      currentIdentity
+        ? maskIdentity(currentIdentity, verificationMethod)
+        : '',
+    [currentIdentity, verificationMethod],
+  )
+
+  const title = useMemo(() => {
+    if (isSuccess) return ''
+    if (step === 2) return t('forgotPassword.otpInputTitle')
+    if (step === 3) return t('forgotPassword.resetPassword')
+    return t('forgotPassword.title')
+  }, [step, isSuccess, t])
+
+  const description = useMemo(() => {
+    if (isSuccess) return ''
+    if (step === 2) return t('forgotPassword.otpInputDescription')
+    if (step === 3)
+      return t('forgotPassword.resetPasswordDescription')
+    return ''
+  }, [step, isSuccess, t])
+
+  // ── Render ──────────────────────────────────────────────────────
+  if (isAuthenticated) return <Redirect href="/(tabs)/home" />
+
+  // Determine current visible step
+  const activeStep = isSuccess ? 4 : step
+  const gestureEnabled = activeStep === 1 || activeStep === 4
 
   return (
-    <ScreenContainer edges={['top']} className="flex-1">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="flex-1 px-6 pt-8">
-          <Text className="mb-2 text-3xl font-sans-bold text-foreground">
-            {t('forgotPassword.title')}
-          </Text>
-          <Text className="mb-8 text-base font-sans text-muted-foreground">
-            Chọn phương thức để đặt lại mật khẩu
-          </Text>
-
-          <View className="gap-4">
-            {/* Email Option */}
-            <TouchableOpacity
-              onPress={() => handleMethodSelect(VerificationMethod.EMAIL)}
-              className="flex-row items-center justify-between rounded-lg border border-border bg-card p-4 active:opacity-80"
-            >
-              <View className="flex-1 flex-row items-center gap-3">
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Mail size={20} color={iconColor} />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-sans-medium text-foreground">
-                    {t('forgotPassword.useEmail')}
-                  </Text>
-                  <Text className="mt-1 text-sm font-sans text-muted-foreground">
-                    {t('forgotPassword.useEmailDescription')}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={20} color={arrowColor} />
-            </TouchableOpacity>
-
-            {/* Phone Option */}
-            <TouchableOpacity
-              onPress={() => handleMethodSelect(VerificationMethod.PHONE_NUMBER)}
-              className="flex-row items-center justify-between rounded-lg border border-border bg-card p-4 active:opacity-80"
-            >
-              <View className="flex-1 flex-row items-center gap-3">
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Phone size={20} color={iconColor} />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-sans-medium text-foreground">
-                    {t('forgotPassword.usePhoneNumber')}
-                  </Text>
-                  <Text className="mt-1 text-sm font-sans text-muted-foreground">
-                    {t('forgotPassword.usePhoneNumberDescription')}
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={20} color={arrowColor} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Back to Login */}
-          <TouchableOpacity
-            onPress={() => navigateNative.replace(ROUTE.LOGIN)}
-            className="mt-6"
+    <>
+      <Stack.Screen
+        options={{
+          fullScreenGestureEnabled: gestureEnabled,
+          gestureEnabled,
+        }}
+      />
+      <ScreenContainer edges={['top']} className="flex-1">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={32}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text className="text-center text-sm font-sans-medium text-primary">
-              {t('forgotPassword.backToLogin')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </ScreenContainer>
+            <View className="flex-1 px-6 pt-8">
+              {title ? (
+                <Text className="mb-2 text-3xl font-sans-bold text-foreground">
+                  {title}
+                </Text>
+              ) : null}
+              {description ? (
+                <Text className="mb-8 text-base font-sans text-muted-foreground">
+                  {description}
+                </Text>
+              ) : null}
+
+              {/* Step 1: Identity input */}
+              {activeStep === 1 && (
+                <ForgotPasswordIdentityForm
+                  onSubmit={handleSubmit}
+                  isLoading={isInitiating}
+                />
+              )}
+
+              {/* Step 2: OTP verification */}
+              {activeStep === 2 && expireTime ? (
+                <OTPStepForgot
+                  expiresAt={expireTime}
+                  otpValue={otpValue}
+                  onOtpChange={handleOtpChange}
+                  isResending={isResending}
+                  isVerifyingOTP={isVerifyingOTP}
+                  onVerify={handleVerifyOTP}
+                  onResend={handleResendOTP}
+                  onBack={handleBack}
+                  onExpired={handleOtpExpired}
+                  maskedIdentity={maskedId}
+                  shakeTranslateX={shakeTranslateX}
+                />
+              ) : activeStep === 2 ? (
+                <TouchableOpacity
+                  onPress={handleBack}
+                  className="py-2"
+                >
+                  <Text className="text-center text-sm font-sans-medium text-primary">
+                    {t('forgotPassword.backButton')}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {/* Step 3: Reset password */}
+              {activeStep === 3 && tokenExpireTime ? (
+                <ResetStepForgot
+                  token={token}
+                  expiresAt={tokenExpireTime}
+                  isConfirming={isConfirming}
+                  onConfirm={handleConfirm}
+                  onStartOver={handleStartOver}
+                  onBackToLogin={handleGoToLogin}
+                  onExpired={handleTokenExpired}
+                />
+              ) : activeStep === 3 ? (
+                <View className="gap-3">
+                  <Text className="text-center text-sm font-sans text-destructive">
+                    {t('forgotPassword.sessionExpired')}
+                  </Text>
+                  <Button
+                    variant="primary"
+                    className="h-11 rounded-lg"
+                    onPress={handleStartOver}
+                  >
+                    <Text className="text-sm font-sans-semibold text-primary-foreground">
+                      {t('forgotPassword.sessionExpiredAction')}
+                    </Text>
+                  </Button>
+                </View>
+              ) : null}
+
+              {/* Step 4: Success */}
+              {activeStep === 4 && (
+                <SuccessStepForgot onGoToLogin={handleGoToLogin} />
+              )}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ScreenContainer>
+    </>
   )
 }

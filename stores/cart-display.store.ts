@@ -23,6 +23,9 @@ type CartDisplayStore = {
   setRawSubTotal: (value: number) => void
   setCartDisplay: (items: IDisplayCartItem[], totals: CartTotals) => void
   clearDisplay: () => void
+  /** Batched: set rawSubTotal AND clear display cache in ONE set().
+   *  Use when cart items mutate — avoids 2 consecutive re-render cycles. */
+  resetAfterCartChange: (rawSubTotal: number) => void
 }
 
 export const useCartDisplayStore = create<CartDisplayStore>((set) => ({
@@ -47,4 +50,17 @@ export const useCartDisplayStore = create<CartDisplayStore>((set) => ({
         ? state
         : { displayItems: null, cartTotals: null },
     ),
+
+  resetAfterCartChange: (rawSubTotal) =>
+    set((state) => {
+      const sameSubTotal = state.rawSubTotal === rawSubTotal
+      const alreadyCleared =
+        state.displayItems == null && state.cartTotals == null
+      if (sameSubTotal && alreadyCleared) return state
+      return {
+        rawSubTotal,
+        displayItems: null,
+        cartTotals: null,
+      }
+    }),
 }))

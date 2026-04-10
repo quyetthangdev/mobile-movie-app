@@ -90,17 +90,17 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
       // ===================
       initializeOrdering: () => {
         const timestamp = dayjs().valueOf()
+        const userInfo = useUserStore.getState().getUserInfo()
+        const phone = userInfo?.phonenumber || ''
         const newOrderingData: IOrderingData = {
           id: generateOrderId(),
           slug: generateOrderId(),
           orderItems: [],
-          owner: useUserStore.getState().getUserInfo()?.slug || '',
+          owner: userInfo?.slug || '',
           ownerFullName:
-            `${useUserStore.getState().getUserInfo()?.firstName || ''} ${useUserStore.getState().getUserInfo()?.lastName || ''}`.trim() ||
-            '',
-          ownerPhoneNumber:
-            useUserStore.getState().getUserInfo()?.phonenumber || '',
-          ownerRole: useUserStore.getState().getUserInfo()?.role?.name || '',
+            `${userInfo?.firstName || ''} ${userInfo?.lastName || ''}`.trim(),
+          ownerPhoneNumber: phone,
+          ownerRole: userInfo?.role?.name || '',
           type: OrderTypeEnum.AT_TABLE,
           timeLeftTakeOut: undefined,
           table: '',
@@ -111,8 +111,7 @@ export const useOrderFlowStore = create<IOrderFlowStore>()(
           deliveryAddress: '',
           deliveryDistance: 0,
           deliveryDuration: 0,
-          deliveryPhone:
-            useUserStore.getState().getUserInfo()?.phonenumber || '',
+          deliveryPhone: phone,
           deliveryLat: undefined,
           deliveryLng: undefined,
           deliveryPlaceId: '',

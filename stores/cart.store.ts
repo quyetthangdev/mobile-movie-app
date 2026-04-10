@@ -140,6 +140,25 @@ export const useCartItemQuantity = (itemId: string): number =>
 export const useCartDescription = () =>
   useOrderFlowStore((s) => s.orderingData?.description ?? '')
 
+const EMPTY_SLUGS: string[] = []
+
+/** Cart product slugs — stable ref via useShallow, only changes when products
+ *  added/removed (NOT on qty/note mutations). Used for voucher validation +
+ *  eligibility checks where quantity/note changes are irrelevant. */
+export const useCartProductSlugs = () =>
+  useOrderFlowStore(
+    useShallow((s) => {
+      const items = s.orderingData?.orderItems
+      if (!items || items.length === 0) return EMPTY_SLUGS
+      const slugs: string[] = []
+      for (const i of items) {
+        const slug = i.productSlug || i.slug || ''
+        if (slug) slugs.push(slug)
+      }
+      return slugs
+    }),
+  )
+
 // ─── Static Action Accessors (not hooks — no re-render on call) ─────────────
 //
 // Usage: cartActions.addItem(item) — anywhere, no hook rules.

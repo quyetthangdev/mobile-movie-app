@@ -63,11 +63,10 @@ const VoucherConflictBottomSheet = memo(function VoucherConflictBottomSheet({
         disappearsOnIndex={-1}
         appearsOnIndex={0}
         opacity={0.5}
-        pressBehavior="none"
-        onPress={onKeepVoucher}
+        pressBehavior="close"
       />
     ),
-    [onKeepVoucher],
+    [],
   )
 
   const textColor = isDark ? colors.gray[50] : colors.gray[900]

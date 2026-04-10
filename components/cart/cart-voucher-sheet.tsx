@@ -14,6 +14,7 @@ import { useUserStore } from '@/stores'
 import {
   cartActions,
   useCartItems,
+  useCartProductSlugs,
   useCartTotal,
   useCartVoucher,
 } from '@/stores/cart.store'
@@ -92,6 +93,8 @@ export const VoucherSheet = memo(function VoucherSheet({
   // 2.3 — Fetch eligible voucher list when sheet opens
   const items = useCartItems()
   const total = useCartTotal()
+  // Stable ref — only changes when products added/removed (not qty/note mutations)
+  const cartProductSlugs = useCartProductSlugs()
 
   const { t: tVoucher } = useTranslation(['voucher'])
 
@@ -99,14 +102,14 @@ export const VoucherSheet = memo(function VoucherSheet({
   const processedFetched = useMemo(() => {
     if (!fetchedVoucher) return null
     const result = processVoucherList([fetchedVoucher], {
-      cartProductSlugs: items.map((i) => i.productSlug || i.slug || '').filter(Boolean),
+      cartProductSlugs,
       subTotalAfterPromotion: total,
       userSlug,
       isCustomerOwner,
       t: tVoucher,
     })
     return result[0] ?? null
-  }, [fetchedVoucher, items, total, userSlug, isCustomerOwner, tVoucher])
+  }, [fetchedVoucher, cartProductSlugs, total, userSlug, isCustomerOwner, tVoucher])
   const listRequestItems = useMemo(
     () => items.map((item) => ({
       quantity: item.quantity,
@@ -198,7 +201,6 @@ export const VoucherSheet = memo(function VoucherSheet({
   }, [allVouchers, currentVoucher])
 
   // 3.1 + 3.2 — Classify valid/invalid + error messages
-  const cartProductSlugs = useMemo(() => items.map((i: IOrderItem) => i.productSlug || i.slug || '').filter(Boolean), [items])
   const processed = useMemo(
     () => processVoucherList(rawEligibleVouchers, {
       cartProductSlugs,

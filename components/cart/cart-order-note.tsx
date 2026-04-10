@@ -6,7 +6,7 @@ import { colors } from '@/constants'
 import { cartActions } from '@/stores/cart.store'
 import { useOrderFlowStore } from '@/stores'
 import { NotebookText } from 'lucide-react-native'
-import React, { memo, useCallback, useRef, useState } from 'react'
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 
@@ -29,6 +29,17 @@ export const CartOrderNote = memo(function CartOrderNote({
       cartActions.setDescription(text)
       debounceRef.current = null
     }, DEBOUNCE_MS)
+  }, [])
+
+  // Flush pending write + cleanup timer on unmount — prevents memory leak
+  // and stale-closure write after component is gone.
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+    }
   }, [])
 
   return (

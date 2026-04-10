@@ -7,7 +7,7 @@ import { capitalizeFirst } from '@/utils'
 import { formatCurrencyNative } from 'cart-price-calc'
 import { Image } from 'expo-image'
 import { NotebookText } from 'lucide-react-native'
-import React, { memo, useCallback, useMemo, useRef, useState } from 'react'
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
@@ -117,6 +117,21 @@ export const CartItemRow = memo(
         noteDebounceRef.current = null
       }, 400)
     }, [item.cartKey])
+
+    // Cleanup pending timers on unmount — both qty debounce and note debounce
+    // could fire after the row is unmounted (FlashList recycling or delete).
+    useEffect(() => {
+      return () => {
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current)
+          debounceRef.current = null
+        }
+        if (noteDebounceRef.current) {
+          clearTimeout(noteDebounceRef.current)
+          noteDebounceRef.current = null
+        }
+      }
+    }, [])
 
     const handleSizePress = useCallback(() => {
       onSizePress?.(item.cartKey)

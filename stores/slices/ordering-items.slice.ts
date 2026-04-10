@@ -79,8 +79,9 @@ export function createOrderingItemsMethods(set: SetFn, get: GetFn) {
         updatingData: null,
         lastModified: dayjs().valueOf(),
       })
-      useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
-      useCartDisplayStore.getState().clearDisplay()
+      useCartDisplayStore
+        .getState()
+        .resetAfterCartChange(calcRawSubTotal(updatedItems))
     },
 
     addOrderingProductVariant: (id: string) => {
@@ -123,8 +124,9 @@ export function createOrderingItemsMethods(set: SetFn, get: GetFn) {
         },
         lastModified: dayjs().valueOf(),
       })
-      useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
-      useCartDisplayStore.getState().clearDisplay()
+      useCartDisplayStore
+        .getState()
+        .resetAfterCartChange(calcRawSubTotal(updatedItems))
     },
 
     updateOrderingItemQuantity: (itemId: string, quantity: number) => {
@@ -144,8 +146,9 @@ export function createOrderingItemsMethods(set: SetFn, get: GetFn) {
         },
         lastModified: dayjs().valueOf(),
       })
-      useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
-      useCartDisplayStore.getState().clearDisplay()
+      useCartDisplayStore
+        .getState()
+        .resetAfterCartChange(calcRawSubTotal(updatedItems))
     },
 
     removeOrderingItem: (itemId: string) => {
@@ -165,8 +168,9 @@ export function createOrderingItemsMethods(set: SetFn, get: GetFn) {
         },
         lastModified: dayjs().valueOf(),
       })
-      useCartDisplayStore.getState().setRawSubTotal(calcRawSubTotal(updatedItems))
-      useCartDisplayStore.getState().clearDisplay()
+      useCartDisplayStore
+        .getState()
+        .resetAfterCartChange(calcRawSubTotal(updatedItems))
     },
 
     addPickupTime: (time: number) => {
@@ -216,8 +220,7 @@ export function createOrderingItemsMethods(set: SetFn, get: GetFn) {
         orderingData: null,
         lastModified: dayjs().valueOf(),
       })
-      useCartDisplayStore.getState().clearDisplay()
-      useCartDisplayStore.getState().setRawSubTotal(0)
+      useCartDisplayStore.getState().resetAfterCartChange(0)
     },
   }
 }

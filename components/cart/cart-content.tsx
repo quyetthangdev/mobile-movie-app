@@ -5,6 +5,7 @@ import { usePrimaryColor } from '@/hooks/use-primary-color'
 import {
   cartActions,
   useCartItems,
+  useCartProductSlugs,
   useCartVoucher,
 } from '@/stores/cart.store'
 import { showToast } from '@/utils'
@@ -53,12 +54,11 @@ export default function CartContent({ scrollY }: { scrollY?: SharedValue<number>
     () => new Set<string>(voucherProducts?.map((vp) => vp.product?.slug).filter((s): s is string => !!s) ?? []),
     [voucherProducts],
   )
-  const cartProductSlugs = useMemo(
-    () => rawItems.map((i) => i.productSlug || i.slug || '').filter(Boolean),
-    [rawItems],
-  )
+  // Stable ref via useShallow — only changes when products added/removed,
+  // not on qty/note mutations (vs. inline rawItems.map which allocates per store update).
+  const cartProductSlugs = useCartProductSlugs()
   // Stable primitive key — only changes when products are added/removed, not on qty/note changes
-  const cartSlugKey = cartProductSlugs.join(',')
+  const cartSlugKey = useMemo(() => cartProductSlugs.join(','), [cartProductSlugs])
   const hasMountedRef = useRef(false)
   useEffect(() => {
     // Skip first render — avoid state update before mount completes

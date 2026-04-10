@@ -240,9 +240,9 @@ export default function ForgotPasswordScreen() {
 
           // If OTP already sent (119009) but no local expireTime, set a default timeout
           if (isOTPAlreadySent && !isOTPStillValid) {
-            // Set 5-minute default expiry for OTP that was already sent
+            // Set 10-minute default expiry for OTP that was already sent
             setExpireTime(
-              new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+              new Date(Date.now() + 10 * 60 * 1000).toISOString(),
             )
             setStep(2)
             // Show user-friendly message
@@ -295,7 +295,7 @@ export default function ForgotPasswordScreen() {
           showToast(tToast('toast.verifyOTPSuccess'))
           setToken(receivedToken)
           setTokenExpireTime(
-            new Date(Date.now() + 270_000).toISOString(),
+            new Date(Date.now() + 10 * 60 * 1000).toISOString(),
           )
           setOtpValue('')
           setStep(3)

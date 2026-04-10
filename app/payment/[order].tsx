@@ -11,7 +11,6 @@ import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import PaymentMethodRadioGroup from '@/components/radio/payment-method-radio-group'
-import { LightweightDialog } from '@/components/ui/lightweight-dialog'
 import { Skeleton } from '@/components/ui'
 import { colors, NotificationMessageCode, PaymentMethod, TAB_ROUTES } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
@@ -20,14 +19,17 @@ import { useCoinBalance } from '@/hooks/use-coin-balance'
 import { useLoyaltyPoints } from '@/hooks/use-loyalty-point'
 import { navigateNative } from '@/lib/navigation'
 import { useNotificationStore, useUserStore } from '@/stores'
-import { OrderStatus, OrderTypeEnum } from '@/types'
-import { calculateOrderDisplayAndTotals, formatCurrency, formatDateTime, getPaymentStatusLabel, showErrorToast, showErrorToastMessage, showToast } from '@/utils'
+import { OrderStatus } from '@/types'
+import { calculateOrderDisplayAndTotals, formatCurrency, showErrorToast, showErrorToastMessage, showToast } from '@/utils'
 
 import LoyaltyPointsInput from './loyalty-points-input'
 import VoucherConflictBottomSheet from './voucher-conflict-bottom-sheet'
 import { VoucherSheetInPayment } from './voucher-sheet-in-payment'
 import { InvoiceSection } from './payment-invoice-section'
+import { PaymentOrderInfoCard } from './payment-order-info-card'
 import { PaymentProductItem } from './payment-product-item'
+import { PaymentSummaryCard } from './payment-summary-card'
+import { PointConfirmDialog } from './payment-point-confirm-dialog'
 
 function PaymentSkeletonShell() {
   return (
@@ -57,6 +59,12 @@ const skeletonStyles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.white.light, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.gray[200] },
   card: { marginBottom: 16, borderRadius: 12, backgroundColor: colors.white.light, borderWidth: 1, borderColor: colors.gray[100], padding: 16, gap: 12 },
 })
+
+// Module-scope: stable Set, shared across renders + all closures. No useMemo needed.
+const PAID_NOTIFICATION_CODES: ReadonlySet<NotificationMessageCode> = new Set([
+  NotificationMessageCode.ORDER_PAID,
+  NotificationMessageCode.CARD_ORDER_PAID,
+])
 
 const pSectionStyles = StyleSheet.create({
   // card: { marginBottom: 16, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
@@ -439,14 +447,6 @@ function PaymentPageContent() {
   // Show success screen when:
   // 1. Foreground FCM arrived → unread ORDER_PAID / CARD_ORDER_PAID notification in store, OR
   // 2. order.status already PAID (e.g. background FCM + refetch, or staff POS confirm)
-  const PAID_NOTIFICATION_CODES = useMemo(
-    () =>
-      new Set([
-        NotificationMessageCode.ORDER_PAID,
-        NotificationMessageCode.CARD_ORDER_PAID,
-      ]),
-    [],
-  )
   const hasOrderPaidNotification = useNotificationStore((s) =>
     s.notifications.some(
       (n) =>
@@ -468,7 +468,7 @@ function PaymentPageContent() {
       )
     if (paid) markNotificationRead(paid.slug)
     navigateNative.replace(`/order/${orderSlug}` as Parameters<typeof navigateNative.replace>[0])
-  }, [PAID_NOTIFICATION_CODES, markNotificationRead, orderSlug])
+  }, [markNotificationRead, orderSlug])
 
   // Auto-refetch when FCM "order paid" notification arrives for this order
   const processedRef = useRef<Set<string>>(new Set())
@@ -483,7 +483,7 @@ function PaymentPageContent() {
       processedRef.current.add(latestNotification.slug)
       refetchOrder()
     }
-  }, [PAID_NOTIFICATION_CODES, latestNotification, orderSlug, refetchOrder])
+  }, [latestNotification, orderSlug, refetchOrder])
 
   const orderItems = useMemo(() => order?.orderItems || [], [order?.orderItems])
   const voucher = useMemo(() => order?.voucher ?? null, [order?.voucher])
@@ -509,12 +509,15 @@ function PaymentPageContent() {
     void refetchOrder()
   }, [refetchOrder])
 
-  // Memoize so FloatingHeader (memo'd) doesn't re-render on every parent render
+  // Memoize so FloatingHeader (memo'd) doesn't re-render on every parent render.
+  // Narrow deps: only the fields actually read — react-query returns new order ref
+  // on every refetch (e.g. polling), which would otherwise bust this memo constantly.
+  const orderStatus = order?.status
+  const countdownStartTime = order?.payment?.createdAt ?? order?.createdAt ?? ''
   const countdownRight = useMemo(() => {
-    if (order?.status !== OrderStatus.PENDING) return undefined
-    const startTime = order.payment?.createdAt ?? order.createdAt
-    return <PaymentCountdownBadge startTime={startTime} onExpire={handleExpire} />
-  }, [order, handleExpire])
+    if (orderStatus !== OrderStatus.PENDING) return undefined
+    return <PaymentCountdownBadge startTime={countdownStartTime} onExpire={handleExpire} />
+  }, [orderStatus, countdownStartTime, handleExpire])
 
   // Refetch when screen regains focus — catches background FCM that didn't go through store
   useFocusEffect(
@@ -670,6 +673,7 @@ function PaymentPageContent() {
 
   // ── Point payment confirm dialog ──
   const [showPointConfirm, setShowPointConfirm] = useState(false)
+  const closePointConfirm = useCallback(() => setShowPointConfirm(false), [])
 
   const executePayment = useCallback(() => {
     if (!selectedPaymentMethod || !orderSlug || !order) return
@@ -795,80 +799,8 @@ function PaymentPageContent() {
             </View>
           )}
 
-          {/* Order Info — unified card, receipt style */}
-          <View style={[ps.card, { backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderColor: isDark ? colors.gray[700] : colors.gray[100] }]}>
-            <View style={ps.receiptHeader}>
-              <View style={ps.receiptHeaderRow}>
-                <Text style={[ps.receiptTitle, { color: isDark ? colors.gray[50] : colors.gray[900], flex: 1 }]}>
-                  {t('order.order', 'Đơn hàng')} #{order.slug}
-                </Text>
-                <View style={[ps.orderStatusBadge, {
-                  backgroundColor: order.status === OrderStatus.PAID || order.status === OrderStatus.COMPLETED
-                    ? `${colors.success.light}18`
-                    : order.status === OrderStatus.PENDING
-                      ? `${colors.warning.light}18`
-                      : `${colors.gray[500]}18`,
-                }]}>
-                  <Text style={[ps.orderStatusText, {
-                    color: order.status === OrderStatus.PAID || order.status === OrderStatus.COMPLETED
-                      ? colors.success.light
-                      : order.status === OrderStatus.PENDING
-                        ? colors.warning.light
-                        : isDark ? colors.gray[400] : colors.gray[500],
-                  }]}>
-                    {order.status === OrderStatus.PAID ? t('order.paid', 'Đã thanh toán')
-                      : order.status === OrderStatus.COMPLETED ? t('order.completed', 'Hoàn thành')
-                      : order.status === OrderStatus.PENDING ? t('order.pending', 'Chờ thanh toán')
-                      : order.status}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[ps.receiptTime, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-                {formatDateTime(order.createdAt)}
-              </Text>
-            </View>
-            <View style={[ps.receiptDivider, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] }]} />
-            <View style={ps.receiptBody}>
-              <View style={ps.receiptRow}>
-                <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.customer', 'Khách hàng')}</Text>
-                <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-                  {order.owner?.firstName || order.owner?.lastName ? `${order.owner.firstName || ''} ${order.owner.lastName || ''}`.trim() : '-'}
-                </Text>
-              </View>
-              {order.owner?.phonenumber && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.phone', 'Điện thoại')}</Text>
-                  <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{order.owner.phonenumber}</Text>
-                </View>
-              )}
-              <View style={ps.receiptRow}>
-                <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.orderType', 'Loại đơn')}</Text>
-                <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-                  {order.type === OrderTypeEnum.AT_TABLE
-                    ? `${t('order.dineIn', 'Tại bàn')} - Bàn số ${order.table?.name || '-'}`
-                    : order.type === OrderTypeEnum.DELIVERY
-                      ? t('menu.delivery', 'Giao hàng')
-                      : t('order.takeAway', 'Mang đi')}
-                </Text>
-              </View>
-              {order.type === OrderTypeEnum.DELIVERY && order.deliveryTo?.formattedAddress && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.deliveryAddress', 'Địa chỉ')}</Text>
-                  <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900], flex: 1, textAlign: 'right' }]}>
-                    {order.deliveryTo.formattedAddress}
-                  </Text>
-                </View>
-              )}
-              {order.description ? (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.note', 'Ghi chú')}</Text>
-                  <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900], flex: 1, textAlign: 'right' }]}>
-                    {order.description}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
+          {/* Order Info — extracted to dedicated memoized component */}
+          <PaymentOrderInfoCard order={order} isDark={isDark} />
 
           {/* Order Items List — no section header, clean */}
           <View style={[ps.card, { backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderColor: isDark ? colors.gray[700] : colors.gray[100], padding: 16 }]}>
@@ -940,106 +872,14 @@ function PaymentPageContent() {
             />
           )}
 
-          {/* Payment Summary — receipt-style card */}
-          <View style={[ps.card, { backgroundColor: isDark ? colors.gray[800] : colors.white.light, borderColor: isDark ? colors.gray[700] : colors.gray[100] }]}>
-            <View style={ps.receiptHeader}>
-              <Text style={[ps.receiptTitle, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-                {t('order.paymentInformation', 'Thông tin thanh toán')}
-              </Text>
-            </View>
-            <View style={[ps.receiptDivider, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] }]} />
-            <View style={ps.receiptBody}>
-              {/* Payment method + status */}
-              <View style={ps.receiptRow}>
-                <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('paymentMethod.title', 'Phương thức')}</Text>
-                <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-                  {order.payment
-                    ? order.payment.paymentMethod === PaymentMethod.BANK_TRANSFER ? t('paymentMethod.bankTransfer', 'Chuyển khoản')
-                      : order.payment.paymentMethod === PaymentMethod.CASH ? t('paymentMethod.cash', 'Tiền mặt')
-                      : order.payment.paymentMethod === PaymentMethod.POINT ? t('paymentMethod.point', 'Điểm tích lũy')
-                      : t('paymentMethod.creditCard', 'Thẻ tín dụng')
-                    : t('paymentMethod.notPaid', 'Chưa thanh toán')}
-                </Text>
-              </View>
-              {order.payment && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.status', 'Trạng thái')}</Text>
-                  <View style={[ps.statusBadge, { backgroundColor: order.payment.statusMessage === OrderStatus.COMPLETED ? colors.success.light : colors.warning.light }]}>
-                    <Text style={[ps.statusBadgeText, { color: colors.white.light }]} numberOfLines={1}>
-                      {getPaymentStatusLabel(order.payment.statusCode)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-              {order.payment?.paymentMethod === PaymentMethod.CREDIT_CARD && order.payment.transactionId && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('paymentMethod.transactionId', 'Mã giao dịch')}</Text>
-                  <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{order.payment.transactionId}</Text>
-                </View>
-              )}
-
-              <View style={[ps.receiptDivider, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100], marginHorizontal: 0 }]} />
-
-              {/* Price breakdown */}
-              <View style={ps.receiptRow}>
-                <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.subTotal', 'Tổng tiền hàng')}</Text>
-                <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{formatCurrency(cartTotals?.subTotalBeforeDiscount || 0)}</Text>
-              </View>
-              {(cartTotals?.promotionDiscount ?? 0) > 0 && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.discount', 'Khuyến mãi')}</Text>
-                  <Text style={[ps.receiptValue, { color: colors.success.light }]}>-{formatCurrency(cartTotals?.promotionDiscount || 0)}</Text>
-                </View>
-              )}
-              {order.voucher && (cartTotals?.voucherDiscount ?? 0) > 0 && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: colors.success.light }]}>{t('order.voucher', 'Mã giảm giá')}</Text>
-                  <Text style={[ps.receiptValue, { color: colors.success.light }]}>-{formatCurrency(cartTotals?.voucherDiscount || 0)}</Text>
-                </View>
-              )}
-              {order.accumulatedPointsToUse > 0 && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: primaryColor }]}>{t('order.loyaltyPoint', 'Điểm tích lũy')}</Text>
-                  <Text style={[ps.receiptValue, { color: primaryColor }]}>-{formatCurrency(order.accumulatedPointsToUse)}</Text>
-                </View>
-              )}
-              {order.type === OrderTypeEnum.DELIVERY && order.deliveryFee > 0 && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>{t('order.deliveryFee', 'Phí giao hàng')}</Text>
-                  <Text style={[ps.receiptValue, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{formatCurrency(order.deliveryFee)}</Text>
-                </View>
-              )}
-              {order.loss > 0 && (
-                <View style={ps.receiptRow}>
-                  <Text style={[ps.receiptLabel, { color: colors.success.light }]}>{t('order.invoiceAutoDiscountUnderThreshold', 'Giảm giá tự động')}</Text>
-                  <Text style={[ps.receiptValue, { color: colors.success.light }]}>-{formatCurrency(order.loss)}</Text>
-                </View>
-              )}
-
-              <View style={[ps.receiptDivider, { backgroundColor: isDark ? colors.gray[700] : colors.gray[200], marginHorizontal: 0 }]} />
-
-              {/* Total */}
-              <View style={ps.receiptRow}>
-                <Text style={[ps.semibold, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>{t('order.totalPayment', 'Tổng thanh toán')}</Text>
-                <Text style={[ps.totalPrice, { color: primaryColor }]}>{formatCurrency(order.subtotal || 0)}</Text>
-              </View>
-              <Text style={[ps.xsText, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-                ({order.orderItems?.length || 0} {t('order.product', 'sản phẩm')})
-              </Text>
-              {order.payment?.paymentMethod === PaymentMethod.POINT && order.status === OrderStatus.PAID && (
-                <View style={[ps.coinPaidNote, { backgroundColor: isDark ? `${primaryColor}18` : `${primaryColor}08`, borderColor: isDark ? `${primaryColor}40` : `${primaryColor}20` }]}>
-                  <Text style={[ps.xsText, { color: primaryColor, fontWeight: '500' }]}>
-                    {t('paymentMethod.paidWithCoin', 'Đã thanh toán {{amount}} xu', { amount: formatCurrency(order.subtotal || 0, '') })}
-                  </Text>
-                  {coinBalance > 0 && (
-                    <Text style={[ps.xsText, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-                      {t('paymentMethod.currentBalance', 'Số dư hiện tại')}: {formatCurrency(coinBalance, '')} xu
-                    </Text>
-                  )}
-                </View>
-              )}
-            </View>
-          </View>
+          {/* Payment Summary — extracted to dedicated memoized component */}
+          <PaymentSummaryCard
+            order={order}
+            cartTotals={cartTotals}
+            coinBalance={coinBalance}
+            primaryColor={primaryColor}
+            isDark={isDark}
+          />
 
           {/* Invoice — deferred until after navigation transition */}
           {transitionReady && <InvoiceSection order={order} primaryColor={primaryColor} isDark={isDark} />}
@@ -1090,63 +930,15 @@ function PaymentPageContent() {
             onRemoveVoucher={handleRemoveVoucherForConflict}
           />
         )}
-        {showPointConfirm && <LightweightDialog
+        <PointConfirmDialog
           visible={showPointConfirm}
-          onClose={() => setShowPointConfirm(false)}
-        >
-          {(dismiss) => (
-            <View style={[pointConfirmStyles.card, { backgroundColor: isDark ? colors.gray[800] : colors.white.light }]}>
-              <Text style={[pointConfirmStyles.title, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-                {t('paymentMethod.confirmPointPaymentTitle', 'Xác nhận thanh toán bằng xu')}
-              </Text>
-              <View style={pointConfirmStyles.body}>
-                <View style={pointConfirmStyles.row}>
-                  <Text style={[pointConfirmStyles.label, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-                    {t('paymentMethod.currentBalance', 'Số dư hiện tại')}
-                  </Text>
-                  <Text style={[pointConfirmStyles.value, { color: isDark ? colors.gray[50] : colors.gray[900] }]}>
-                    {formatCurrency(coinBalance, '')} xu
-                  </Text>
-                </View>
-                <View style={pointConfirmStyles.row}>
-                  <Text style={[pointConfirmStyles.label, { color: isDark ? colors.gray[400] : colors.gray[500] }]}>
-                    {t('paymentMethod.deductAmount', 'Số xu thanh toán')}
-                  </Text>
-                  <Text style={[pointConfirmStyles.value, { color: isDark ? colors.destructive.dark : colors.destructive.light }]}>
-                    -{formatCurrency(order.subtotal || 0, '')} xu
-                  </Text>
-                </View>
-                <View style={[pointConfirmStyles.divider, { backgroundColor: isDark ? colors.gray[700] : colors.gray[200] }]} />
-                <View style={pointConfirmStyles.row}>
-                  <Text style={[pointConfirmStyles.label, { color: isDark ? colors.gray[400] : colors.gray[500], fontWeight: '600' }]}>
-                    {t('paymentMethod.balanceAfter', 'Số dư sau thanh toán')}
-                  </Text>
-                  <Text style={[pointConfirmStyles.value, { color: primaryColor, fontWeight: '700' }]}>
-                    {formatCurrency(coinBalance - (order.subtotal || 0), '')} xu
-                  </Text>
-                </View>
-              </View>
-              <View style={pointConfirmStyles.actions}>
-                <Pressable
-                  onPress={dismiss}
-                  style={[pointConfirmStyles.btn, { backgroundColor: isDark ? colors.gray[700] : colors.gray[100] }]}
-                >
-                  <Text style={[pointConfirmStyles.btnText, { color: isDark ? colors.gray[200] : colors.gray[700] }]}>
-                    {t('common:common.cancel', 'Hủy')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleConfirmPointPayment}
-                  style={[pointConfirmStyles.btn, { backgroundColor: primaryColor, flex: 1 }]}
-                >
-                  <Text style={[pointConfirmStyles.btnText, { color: colors.white.light }]}>
-                    {t('paymentMethod.confirmPayment', 'Thanh toán')}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
-        </LightweightDialog>}
+          onClose={closePointConfirm}
+          onConfirm={handleConfirmPointPayment}
+          orderSubtotal={order.subtotal || 0}
+          coinBalance={coinBalance}
+          primaryColor={primaryColor}
+          isDark={isDark}
+        />
       </ScreenContainer>
     </View>
   )
@@ -1165,21 +957,11 @@ function getPaymentMethodLabel(method: PaymentMethod | null): string {
 
 const ps = StyleSheet.create({
   contentPad: { paddingHorizontal: 16, paddingVertical: 16 },
-  receiptHeader: { padding: 16, gap: 4 },
-  receiptTitle: { fontSize: 16, fontWeight: '700' },
-  receiptTime: { fontSize: 12 },
-  receiptDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
-  receiptBody: { padding: 16, gap: 10 },
-  receiptRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
-  receiptLabel: { fontSize: 13 },
-  receiptValue: { fontSize: 13, fontWeight: '500' },
   card: { marginBottom: 16, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
   semibold: { fontSize: 16, fontWeight: '600' },
   smText: { fontSize: 14 },
   xsText: { fontSize: 12 },
   lgBold: { fontSize: 18, fontWeight: '700' },
-  statusBadge: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8 },
-  statusBadgeText: { fontSize: 12, fontWeight: '500' },
   processingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 16 },
   qrSection: { paddingHorizontal: 16, paddingBottom: 16, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth },
   qrCenter: { alignItems: 'center' },
@@ -1187,13 +969,9 @@ const ps = StyleSheet.create({
   qrInfoCol: { gap: 8, alignItems: 'center', marginTop: 8 },
   qrTotalRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   qrNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16 },
-  totalPrice: { fontSize: 24, fontWeight: '800' },
   bottomBar: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 16 },
   checkoutBtn: { height: 48, borderRadius: 9999, alignItems: 'center', justifyContent: 'center' },
   checkoutBtnText: { fontSize: 15, fontWeight: '700', color: colors.white.light },
-  receiptHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  orderStatusBadge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
-  orderStatusText: { fontSize: 11, fontWeight: '600' },
   expiredBanner: { borderWidth: 1, borderRadius: 10, padding: 12, gap: 4, marginBottom: 12 },
   expiredBannerTitle: { fontSize: 14, fontWeight: '700' },
   expiredBannerSub: { fontSize: 12, lineHeight: 18 },
@@ -1201,22 +979,8 @@ const ps = StyleSheet.create({
   voucherLabel: { fontSize: 13, fontWeight: '600' },
   voucherRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   voucherName: { fontSize: 13, fontWeight: '600', maxWidth: 120 },
-  coinPaidNote: { marginTop: 8, padding: 10, borderRadius: 8, borderWidth: 1, gap: 2 },
   discountBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   discountBadgeText: { fontSize: 11, fontWeight: '700' },
-})
-
-const pointConfirmStyles = StyleSheet.create({
-  card: { width: '100%', borderRadius: 16, padding: 24, gap: 20 },
-  title: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
-  body: { gap: 12 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  label: { fontSize: 14 },
-  value: { fontSize: 14, fontWeight: '600' },
-  divider: { height: StyleSheet.hairlineWidth },
-  actions: { flexDirection: 'row', gap: 12 },
-  btn: { height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, flex: 1 },
-  btnText: { fontSize: 15, fontWeight: '600' },
 })
 
 export default function PaymentPage() {

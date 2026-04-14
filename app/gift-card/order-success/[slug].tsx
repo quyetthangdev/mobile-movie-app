@@ -37,6 +37,7 @@ import {
   GiftCardType,
   colors,
 } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useCardOrderBySlug, useResendGiftCardSms } from '@/hooks/use-card-order'
 import { useRunAfterTransition } from '@/hooks'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -356,7 +357,7 @@ export default function GiftCardOrderSuccessScreen() {
   const { t } = useTranslation('giftCard')
   const { slug } = useLocalSearchParams<{ slug: string }>()
   const isDark = useColorScheme() === 'dark'
-  const insets = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
 
   const [allowFetch, setAllowFetch] = useState(false)
   useRunAfterTransition(() => setAllowFetch(true), [])
@@ -410,11 +411,11 @@ export default function GiftCardOrderSuccessScreen() {
         />
 
       {isPending || !allowFetch ? (
-        <View style={{ marginTop: insets.top + 56 }}>
+        <View style={{ marginTop: STATIC_TOP_INSET + 56 }}>
           <SuccessSkeleton />
         </View>
       ) : !order ? (
-        <View style={[s.empty, { marginTop: insets.top + 56 }]}>
+        <View style={[s.empty, { marginTop: STATIC_TOP_INSET + 56 }]}>
           <Text style={[s.emptyText, { color: subColor }]}>
             {t('orderSuccess.notFound')}
           </Text>
@@ -424,7 +425,7 @@ export default function GiftCardOrderSuccessScreen() {
           <ScrollView
             contentContainerStyle={[
               s.scrollContent,
-              { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 32 },
+              { paddingTop: STATIC_TOP_INSET + 64, paddingBottom: bottom + 32 },
             ]}
             showsVerticalScrollIndicator={false}
           >

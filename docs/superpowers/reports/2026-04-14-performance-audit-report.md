@@ -189,8 +189,8 @@ useEffect(() => {
 
 **FlatList usage — should be FlashList:**
 
-- `app/menu/slider-related-products.tsx:111` — `<FlatList data={menuItems} horizontal>` — `menuItems` comes from `useSpecificMenu` / `usePublicSpecificMenu` React Query, which can return all items in a catalog (potentially 20–50+ items in a horizontal carousel). This is a horizontal list and FlatList does not recycle cells for horizontal layouts well. Per severity rule: FlatList on list > 20 items → High. Has `getItemLayout` (good), but FlashList would be more memory-efficient for a product carousel that auto-refetches on filter changes.
-  **Severity:** High (API-sourced catalog list can exceed 20 items; spec severity rule: FlatList on >20 items = High)
+- `app/menu/slider-related-products.tsx:111` — `<FlatList data={menuItems} horizontal>` — file has zero consumers in the codebase; the active SliderRelatedProducts is at `components/menu/slider-related-products.tsx`; this `app/` version is dead code that should be removed.
+  **Severity:** Low (dead code — zero active consumers)
 
 - `app/update-order/components/table-select-sheet-in-update-order.tsx:102` — `<BottomSheetFlatList data={tables}>` inside a bottom sheet — `tables` comes from the branch's table list (unbounded, depends on venue size). No `getItemLayout` or `estimatedItemSize`. For a venue with many tables this renders all items at once.
   **Severity:** Medium
@@ -306,14 +306,14 @@ The following files import `Image` directly from `'react-native'` and use it for
 
 **Step 4 — Expensive components missing memo()**
 
-- `components/menu/slider-related-products.tsx:164` — `export default function SliderRelatedProducts(...)` — subscribes to `useBranchStore`, `useUserStore`, calls `useQuery` (via `useSpecificMenu` / `usePublicSpecificMenu`), has 4 `useMemo` calls and 3 `useCallback` calls. Not wrapped in `memo()`. Used as a sub-component in the product detail screen, which re-renders on tab focus, scroll updates, and cart changes. Every parent re-render of the product detail screen re-runs all these hooks even when `currentProduct` and `catalog` props have not changed.
-  **Severity:** High (contains live store + query subscriptions; 4 useMemo + 3 useCallback = significant render cost; parent detail screen re-renders on scroll/focus events; hot-path component)
+- `components/menu/slider-related-products.tsx:164` — `export default function SliderRelatedProducts(...)` — subscribes to `useBranchStore`, `useUserStore`, calls `useQuery` (via `useSpecificMenu` / `usePublicSpecificMenu`), has 3 `useMemo` calls and 3 `useCallback` calls. Not wrapped in `memo()`. Used as a sub-component in the product detail screen, which re-renders on tab focus, scroll updates, and cart changes. Every parent re-render of the product detail screen re-runs all these hooks even when `currentProduct` and `catalog` props have not changed.
+  **Severity:** High (contains live store + query subscriptions; 3 useMemo + 3 useCallback = significant render cost; parent detail screen re-renders on scroll/focus events; hot-path component)
 
-- `components/dropdown/table-dropdown.tsx:24` — `export default function TableDropdown(...)` — subscribes to `useOrderFlowStore` (×2), `useBranchStore`, `useUserStore`, calls `useTables` (useQuery), has 4 `useMemo` calls. Not wrapped in `memo()`. Used inside the cart screen and order creation flow. The cart screen re-renders frequently (on item add/remove, quantity change, scroll). Every cart re-render re-runs all four store selectors and the query hook in this component even when the table/branch props have not changed.
-  **Severity:** High (4 store subscriptions + 1 useQuery + 4 useMemo; rendered inside the cart screen which re-renders on every cart update; high re-render frequency)
+- `components/dropdown/table-dropdown.tsx:24` — `export default function TableDropdown(...)` — exported but has zero active consumers; cart screen does not render this component; flag for dead code cleanup rather than memoization work.
+  **Severity:** Low (dead code — zero active consumers)
 
-- `components/cart/select-order-type-dropdown.tsx:23` — `export default function SelectOrderTypeDropdown()` — subscribes to `useBranchStore` (×2), calls `useBranch` (useQuery), uses `useEffect` to sync params. Not wrapped in `memo()`. Rendered in the cart screen header; cart screen re-renders on each item change.
-  **Severity:** Medium (2 store subscriptions + 1 useQuery; rendered in cart header; re-renders on cart updates)
+- `components/cart/select-order-type-dropdown.tsx:23` — `export default function SelectOrderTypeDropdown()` — exported but has zero active consumers; flag for dead code cleanup.
+  **Severity:** Low (dead code — zero active consumers)
 
 - `components/product/product-hero-image.tsx:91` — `export function ProductHeroImage(...)` — has `useMemo` and `useCallback`; no store subscriptions. Receives primitive and array props from the product detail screen. Not wrapped in `memo()`. The array props (`imageUrls`) can change reference on parent re-render even if contents are identical.
   **Severity:** Medium (2 hooks for image processing; rendered at top of detail screen which re-renders on scroll; no store subscriptions but object prop instability)

@@ -23,7 +23,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList)
 
@@ -59,12 +59,11 @@ export function ProfileHeader<T>({
   textMutedColor = '#6b7280',
 }: ProfileHeaderProps<T>) {
   const { width: screenWidth } = useWindowDimensions()
-  const insets = useSafeAreaInsets()
   const scrollY = useSharedValue(0)
 
   const avatarTop = 80
   const nameTop = avatarTop + AVATAR_SIZE + 12
-  const headerNameY = insets.top + 28
+  const headerNameY = STATIC_TOP_INSET + 28
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => {
@@ -123,7 +122,7 @@ export function ProfileHeader<T>({
     return {
       transform: [{ translateY }],
     }
-  }, [insets.top])
+  }, [])
 
   return (
     <View style={styles.container}>
@@ -135,7 +134,7 @@ export function ProfileHeader<T>({
         scrollEventThrottle={16}
         contentContainerStyle={[
           styles.listContent,
-          { paddingTop: HEADER_HEIGHT + insets.top },
+          { paddingTop: HEADER_HEIGHT + STATIC_TOP_INSET },
           contentContainerStyle,
         ]}
         ListFooterComponent={ListFooterComponent}
@@ -147,8 +146,8 @@ export function ProfileHeader<T>({
         style={[
           styles.headerOverlay,
           {
-            height: HEADER_HEIGHT + insets.top,
-            paddingTop: insets.top,
+            height: HEADER_HEIGHT + STATIC_TOP_INSET,
+            paddingTop: STATIC_TOP_INSET,
           },
         ]}
         pointerEvents="box-none"

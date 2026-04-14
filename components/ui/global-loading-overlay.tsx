@@ -10,7 +10,6 @@ import {
   View,
   useColorScheme,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Images } from '@/assets/images'
 import { colors } from '@/constants'
@@ -23,7 +22,6 @@ interface GlobalLoadingOverlayProps {
 
 export function GlobalLoadingOverlay({ visible }: GlobalLoadingOverlayProps) {
   const isDark = useColorScheme() === 'dark'
-  useSafeAreaInsets() // giữ hook để tránh breaking, nhưng overlay giờ full-screen
 
   if (!visible) return null
 

@@ -34,6 +34,7 @@ import { LoyaltyPointTransactionCard } from '@/components/loyalty-point/loyalty-
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors, LoyaltyPointHistoryType } from '@/constants'
+import { LOYALTY_POINT_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { useLoyaltyPointHistory, useLoyaltyPoints } from '@/hooks/use-loyalty-point'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useRunAfterTransition } from '@/hooks/use-run-after-transition'
@@ -353,6 +354,11 @@ export default function LoyaltyPointScreen() {
     [],
   )
 
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => { layout.size = LOYALTY_POINT_ITEM_HEIGHT },
+    [],
+  )
+
   const ListHeader = (
     <>
       {/* Summary strip */}
@@ -443,6 +449,7 @@ export default function LoyaltyPointScreen() {
           data={historyList}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          overrideItemLayout={overrideItemLayout}
           contentContainerStyle={{
             paddingTop: insets.top + 64,
             paddingHorizontal: 16,

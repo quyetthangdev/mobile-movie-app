@@ -20,6 +20,7 @@ import {
   colors,
   NotificationMessageCode,
 } from '@/constants'
+import { ORDER_HISTORY_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useOrders, useRunAfterTransition } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
@@ -190,6 +191,11 @@ function OrderHistoryPage() {
     setPage(1)
   }, [])
 
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => { layout.size = ORDER_HISTORY_ITEM_HEIGHT },
+    [],
+  )
+
 
   const renderOrderItem = useCallback(
     ({ item: orderItem }: { item: IOrder }) => (
@@ -279,6 +285,7 @@ function OrderHistoryPage() {
           data={orders}
           renderItem={renderOrderItem}
           keyExtractor={keyExtractor}
+          overrideItemLayout={overrideItemLayout}
           ListFooterComponent={ListFooterComponent}
           ListEmptyComponent={ListEmptyComponent}
           contentContainerStyle={pageStyles.listPadding}

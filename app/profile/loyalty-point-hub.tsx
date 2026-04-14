@@ -42,6 +42,7 @@ import {
 import { LoyaltyPointTransactionCard } from '@/components/loyalty-point/loyalty-point-transaction-card'
 import { Skeleton } from '@/components/ui'
 import { colors, LoyaltyPointHistoryType } from '@/constants'
+import { LOYALTY_HUB_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useLoyaltyPointHistoryInfinite, useLoyaltyPoints } from '@/hooks/use-loyalty-point'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -254,6 +255,11 @@ export default function LoyaltyPointHubScreen() {
 
   const keyExtractor = useCallback((item: ILoyaltyPointHistory) => item.slug ?? item.id, [])
 
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => { layout.size = LOYALTY_HUB_ITEM_HEIGHT },
+    [],
+  )
+
   const ListFooter = isFetchingNextPage ? (
     <ActivityIndicator color={primaryColor} style={{ paddingVertical: 16 }} />
   ) : null
@@ -356,6 +362,7 @@ export default function LoyaltyPointHubScreen() {
             data={historyList}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
+            overrideItemLayout={overrideItemLayout}
             ListEmptyComponent={ListEmpty}
             ListFooterComponent={ListFooter}
             contentContainerStyle={{

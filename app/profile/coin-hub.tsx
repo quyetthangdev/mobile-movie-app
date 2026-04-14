@@ -41,6 +41,7 @@ import {
 import { CoinTransactionCard } from '@/components/coin/coin-transaction-card'
 import { Skeleton } from '@/components/ui'
 import { colors, PointTransactionType } from '@/constants'
+import { COIN_TRANSACTION_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { usePointTransactionAnalysis, usePointTransactionsInfinite } from '@/hooks/use-point-transaction'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -234,6 +235,11 @@ export default function CoinHubScreen() {
 
   const keyExtractor = useCallback((item: IPointTransaction) => item.slug, [])
 
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => { layout.size = COIN_TRANSACTION_ITEM_HEIGHT },
+    [],
+  )
+
   const ListFooter = isFetchingNextPage ? (
     <ActivityIndicator color={primaryColor} style={{ paddingVertical: 16 }} />
   ) : null
@@ -361,6 +367,7 @@ export default function CoinHubScreen() {
             data={txList}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
+            overrideItemLayout={overrideItemLayout}
             ListHeaderComponent={ListHeader}
             ListEmptyComponent={ListEmpty}
             ListFooterComponent={ListFooter}

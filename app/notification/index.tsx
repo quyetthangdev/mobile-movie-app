@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors } from '@/constants'
+import { NOTIFICATION_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { NotificationMessageCode } from '@/constants/notification.constant'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useMarkNotificationAsRead, useNotifications } from '@/hooks/use-notification'
@@ -298,6 +299,11 @@ export default function NotificationScreen() {
 
   const handleTabChange = useCallback((tab: 'all' | 'unread') => setActiveTab(tab), [])
 
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => { layout.size = NOTIFICATION_ITEM_HEIGHT },
+    [],
+  )
+
   const ListEmptyComponent = useMemo(
     () =>
       isFirstLoad ? null : (
@@ -338,6 +344,7 @@ export default function NotificationScreen() {
           data={displayedNotifications}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          overrideItemLayout={overrideItemLayout}
           ListEmptyComponent={ListEmptyComponent}
           ListFooterComponent={ListFooterComponent}
           contentContainerStyle={ns.listPadding}

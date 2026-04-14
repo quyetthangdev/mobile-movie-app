@@ -1,5 +1,5 @@
 import { Image } from 'expo-image'
-import React from 'react'
+import React, { memo } from 'react'
 import type { StyleProp, ViewStyle } from 'react-native'
 import { StyleSheet, Text, View, useColorScheme, useWindowDimensions } from 'react-native'
 import Animated from 'react-native-reanimated'
@@ -88,7 +88,7 @@ const HeroSlideImage = React.memo(function HeroSlideImage({
   )
 })
 
-export function ProductHeroImage({
+function ProductHeroImageInner({
   imageUrl,
   imageUrls,
   style,
@@ -147,6 +147,8 @@ export function ProductHeroImage({
     </Animated.View>
   )
 }
+
+export const ProductHeroImage = memo(ProductHeroImageInner)
 
 const styles = StyleSheet.create({
   container: {

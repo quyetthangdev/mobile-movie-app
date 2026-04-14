@@ -42,6 +42,7 @@ import {
   CardOrderStatus,
   colors,
 } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useInitiateCardOrderPayment } from '@/hooks/use-card-order'
 import { useGiftCardOrderPayment } from '@/hooks/use-gift-card-order-payment'
 import { useCountdown } from '@/hooks/use-countdown'
@@ -204,7 +205,7 @@ export default function GiftCardPaymentScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>()
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
-  const insets = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
 
   const clearGiftCard = useGiftCardStore((s) => s.clearGiftCard)
   const { order, isPending, refetch } = useGiftCardOrderPayment(slug)
@@ -304,17 +305,17 @@ export default function GiftCardPaymentScreen() {
         />
 
       {isPending ? (
-        <View style={{ marginTop: insets.top + 56 }}>
+        <View style={{ marginTop: STATIC_TOP_INSET + 56 }}>
           <PaymentSkeleton />
         </View>
       ) : !order ? (
-        <View style={[s.empty, { marginTop: insets.top + 56 }]}>
+        <View style={[s.empty, { marginTop: STATIC_TOP_INSET + 56 }]}>
           <CircleX size={48} color={colors.gray[400]} />
           <Text style={[s.emptyText, { color: subColor }]}>Không tìm thấy đơn hàng</Text>
         </View>
       ) : isCompleted ? (
         // Briefly shown while navigate fires
-        <View style={[s.empty, { marginTop: insets.top + 56 }]}>
+        <View style={[s.empty, { marginTop: STATIC_TOP_INSET + 56 }]}>
           <CheckCircle2 size={48} color={colors.success?.light ?? primaryColor} />
           <Text style={[s.emptyText, { color: textColor }]}>Thanh toán thành công!</Text>
         </View>
@@ -323,7 +324,7 @@ export default function GiftCardPaymentScreen() {
           <ScrollView
             contentContainerStyle={[
               s.scrollContent,
-              { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 120 },
+              { paddingTop: STATIC_TOP_INSET + 64, paddingBottom: bottom + 120 },
             ]}
             showsVerticalScrollIndicator={false}
           >
@@ -407,7 +408,7 @@ export default function GiftCardPaymentScreen() {
               style={[
                 s.footer,
                 {
-                  paddingBottom: insets.bottom + 16,
+                  paddingBottom: bottom + 16,
                   backgroundColor: bg,
                   borderTopColor: borderColor,
                 },

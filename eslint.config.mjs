@@ -70,6 +70,20 @@ export default tseslint.config(
       /* Console */
       'no-console':
         process.env.NODE_ENV === 'production' ? 'error' : 'warn',
+
+      /* Performance: prevent regressions to slower primitives */
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: 'react-native',
+            importNames: ['Image'],
+            message: 'Use expo-image instead: import { Image } from "expo-image". See CLAUDE.md performance rules.',
+          },
+          // Note: FlatList is intentionally not restricted — it is acceptable for small
+          // carousels, data-tables, and horizontal lists where FlashList overhead is not needed.
+          // For vertical scrolling lists > 20 items, prefer FlashList (see CLAUDE.md).
+        ],
+      }],
     },
     settings: {
       react: {

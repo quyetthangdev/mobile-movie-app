@@ -1,7 +1,8 @@
 import { Coins } from 'lucide-react-native'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, ScrollView, Text, useColorScheme, View } from 'react-native'
+import { Image } from 'expo-image'
+import { ScrollView, Text, useColorScheme, View } from 'react-native'
 import QRCode from 'react-native-qrcode-svg'
 
 import { Images } from '@/assets/images'
@@ -66,7 +67,7 @@ export default React.memo(function Invoice({ order }: InvoiceProps) {
           <Image
             source={Images.Brand.Logo}
             className="w-52 h-20"
-            resizeMode="contain"
+            contentFit="contain"
           />
         </View>
         <Text className="text-sm text-center text-gray-600 dark:text-gray-400 mt-2">

@@ -21,8 +21,8 @@ import { useRouter } from 'expo-router'
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, Gift, ShoppingCart } from 'lucide-react-native'
 import React, { startTransition, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Image } from 'expo-image'
 import {
-  Image as RNImage,
   InteractionManager,
   Pressable,
   RefreshControl,
@@ -265,10 +265,10 @@ export default function GiftCardScreen() {
       <View style={[s.header, { backgroundColor: headerBg, paddingTop: STATIC_TOP_INSET + 12, borderBottomColor: borderColor }]}>
         {/* Title row */}
         <View style={s.titleRow}>
-          <RNImage
+          <Image
             source={isDark ? Images.Brand.LogoWhite : Images.Brand.Logo}
+            contentFit="contain"
             style={s.logo}
-            resizeMode="contain"
           />
 
           {/* #3 #4 — Cart icon: badge = gift card qty, navigate checkout */}

@@ -30,7 +30,6 @@ import {
   AppState,
   InteractionManager,
   RefreshControl,
-  Image as RNImage,
   StyleSheet,
   Text,
   useColorScheme,
@@ -560,10 +559,10 @@ export default function MenuPage() {
       {/* Header + filter — static, solid bg */}
       <View style={[styles.header, { backgroundColor: isDark ? colors.gray[900] : '#ffffff', paddingTop: STATIC_TOP_INSET + 12 }]}>
         <View style={styles.headerRow}>
-          <RNImage
+          <Image
             source={Images.Brand.Logo}
+            contentFit="contain"
             style={styles.logo}
-            resizeMode="contain"
           />
           <View style={styles.headerRight}>
             <NotificationBell color={isDark ? colors.mutedForeground.dark : colors.mutedForeground.light} />

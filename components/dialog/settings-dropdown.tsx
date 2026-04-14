@@ -1,7 +1,8 @@
 import { Moon, Settings, Sun } from 'lucide-react-native'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { Image } from 'expo-image'
+import { Text, TouchableOpacity, useColorScheme, View } from 'react-native'
 
 import { Images } from '@/assets/images'
 import {
@@ -113,7 +114,7 @@ export default function SettingsDropdown() {
                   <Image
                     source={Images.Flags.US}
                     className="w-4 h-4 mr-2"
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                   <Text className="text-xs">English</Text>
                 </View>
@@ -123,7 +124,7 @@ export default function SettingsDropdown() {
                   <Image
                     source={Images.Flags.VI}
                     className="w-4 h-4 mr-2"
-                    resizeMode="contain"
+                    contentFit="contain"
                   />
                   <Text className="text-xs">Tiếng Việt</Text>
                 </View>

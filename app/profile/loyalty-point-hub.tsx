@@ -162,6 +162,15 @@ export default function LoyaltyPointHubScreen() {
   const subColor    = isDark ? colors.gray[400]       : colors.gray[500]
   const borderColor = isDark ? colors.gray[700]       : colors.gray[200]
 
+  const listContentStyle = useMemo(
+    () => ({
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: bottom + 24,
+    }),
+    [bottom],
+  )
+
   const effectiveTypes = useMemo(() => {
     if (quickType !== null) return [quickType]
     if (filter.types.length > 0) return filter.types
@@ -365,11 +374,7 @@ export default function LoyaltyPointHubScreen() {
             overrideItemLayout={overrideItemLayout}
             ListEmptyComponent={ListEmpty}
             ListFooterComponent={ListFooter}
-            contentContainerStyle={{
-              paddingHorizontal: 16,
-              paddingTop: 12,
-              paddingBottom: bottom + 24,
-            }}
+            contentContainerStyle={listContentStyle}
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={ItemSeparator}
             onEndReached={handleEndReached}

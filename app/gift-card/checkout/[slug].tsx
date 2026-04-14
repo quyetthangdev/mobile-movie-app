@@ -25,7 +25,6 @@ import React, {
 } from 'react'
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -125,10 +124,11 @@ const QRSection = memo(function QRSection({
             <Text style={[qs.expiredText, { color: subColor }]}>QR đã hết hạn</Text>
           </View>
         ) : (
-          <Image
-            source={{ uri: qrCode }}
+          <ExpoImage
+            source={qrCode}
+            contentFit="contain"
+            cachePolicy="none"
             style={qs.qrImage}
-            resizeMode="contain"
           />
         )}
       </View>

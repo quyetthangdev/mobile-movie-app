@@ -2,6 +2,7 @@
  * Nguồn ảnh mặc định khi món không có ảnh.
  * Dùng URI (từ resolveAssetSource) để expo-image hiển thị ổn định trên mọi nền tảng.
  */
+// eslint-disable-next-line no-restricted-imports -- Image.resolveAssetSource is a static utility, not a UI component
 import { Image } from 'react-native'
 
 import { Images } from '@/assets/images'

@@ -3,9 +3,9 @@
  * Hiện trong lúc transition + một chút sau để bù khoảng delay skeleton.
  */
 import React from 'react'
+import { Image } from 'expo-image'
 import {
   ActivityIndicator,
-  Image,
   StyleSheet,
   View,
   useColorScheme,
@@ -41,7 +41,7 @@ export function GlobalLoadingOverlay({ visible }: GlobalLoadingOverlayProps) {
         <Image
           source={Images.Brand.Logo}
           style={styles.logo}
-          resizeMode="contain"
+          contentFit="contain"
         />
         <ActivityIndicator
           size="large"

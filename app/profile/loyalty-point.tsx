@@ -267,6 +267,15 @@ export default function LoyaltyPointScreen() {
   const textColor = isDark ? colors.gray[50] : colors.gray[900]
   const subColor = isDark ? colors.gray[400] : colors.gray[500]
 
+  const listContentStyle = useMemo(
+    () => ({
+      paddingTop: insets.top + 64,
+      paddingHorizontal: 16,
+      paddingBottom: insets.bottom + 24,
+    }),
+    [insets.top, insets.bottom],
+  )
+
   // Tổng hợp types từ quickType và filter sheet
   const effectiveTypes = useMemo(() => {
     if (quickType !== null) return [quickType]
@@ -450,11 +459,7 @@ export default function LoyaltyPointScreen() {
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           overrideItemLayout={overrideItemLayout}
-          contentContainerStyle={{
-            paddingTop: insets.top + 64,
-            paddingHorizontal: 16,
-            paddingBottom: insets.bottom + 24,
-          }}
+          contentContainerStyle={listContentStyle}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={ListEmpty}
           showsVerticalScrollIndicator={false}

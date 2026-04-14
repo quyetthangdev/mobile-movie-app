@@ -328,6 +328,14 @@ export default function GiftCardsScreen() {
 
   const active = isFilterActive(filter)
 
+  const listContentStyle = useMemo(
+    () => ({
+      paddingHorizontal: 16,
+      paddingBottom: insets.bottom + 24,
+    }),
+    [insets.bottom],
+  )
+
   const queryParams = useMemo(() => ({
     customerSlug: userSlug ?? '',
     page: 1,
@@ -469,10 +477,7 @@ export default function GiftCardsScreen() {
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           overrideItemLayout={overrideItemLayout}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingBottom: insets.bottom + 24,
-          }}
+          contentContainerStyle={listContentStyle}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={ListEmpty}
           showsVerticalScrollIndicator={false}

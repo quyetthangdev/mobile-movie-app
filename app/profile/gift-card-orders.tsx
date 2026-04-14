@@ -409,6 +409,14 @@ export default function GiftCardOrdersScreen() {
   const insets = useSafeAreaInsets()
   const userSlug = useUserStore((s) => s.userInfo?.slug)
 
+  const listContentStyle = useMemo(
+    () => ({
+      paddingHorizontal: 16,
+      paddingBottom: insets.bottom + 24,
+    }),
+    [insets.bottom],
+  )
+
   const TYPE_FILTERS = useMemo(() => [
     { label: t('orders.types.all'), value: 'ALL' },
     { label: t('type.self'),        value: GiftCardType.SELF },
@@ -582,10 +590,7 @@ export default function GiftCardOrdersScreen() {
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           overrideItemLayout={overrideItemLayout}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingBottom: insets.bottom + 24,
-          }}
+          contentContainerStyle={listContentStyle}
           ListEmptyComponent={ListEmpty}
           ListFooterComponent={ListFooter}
           showsVerticalScrollIndicator={false}

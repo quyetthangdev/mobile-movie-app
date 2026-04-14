@@ -238,6 +238,89 @@ useEffect(() => {
 - Multiple `contentContainerStyle={{ ... }}` inline objects on `<FlashList>` in profile screens (`loyalty-point.tsx:446`, `gift-cards.tsx:465`, `loyalty-point-hub.tsx:361`, `gift-card-orders.tsx:576`, `coin-hub.tsx:367`) — inline objects create new references on each render. FlashList uses this prop for scroll inset calculation; a new reference triggers an internal measurement. These screens also re-render on filter changes (frequent user interaction). Extracting to `useMemo` or a `StyleSheet.create` constant would prevent unnecessary measurement calls.
   **Severity:** Low (each individual instance is minor; cumulatively worth fixing across all profile list screens)
 
+**Pass 4 — Components scan (2026-04-14)**
+
+**Step 1 — List item components missing memo()**
+
+All FlashList/FlatList `renderItem` targets across `app/` and `components/` were traced to their component definitions. The following components are used as `renderItem` and their memo status was verified:
+
+- `app/(tabs)/menu/menu-item-row.tsx:43` — `MenuItemRow` — wrapped in `memo()`. OK.
+- `components/cart/cart-item-row.tsx:54` — `CartItemRow` — wrapped in `memo()`. OK.
+- `app/profile/order-card.tsx:24` — `OrderCard` — wrapped in `memo()`. OK.
+- `app/(tabs)/profile/profile-item.tsx:34` — `ProfileItem` — wrapped in `React.memo()`. OK.
+- `components/home/swipper-banner.tsx:107` — `SlideItem` — wrapped in `React.memo()`. OK.
+- `components/home/highlight-menu.tsx:97` — `HighlightCard` — wrapped in `React.memo()`. OK.
+- `app/notification/index.tsx:103` — `NotificationItem` — wrapped in `memo()`. OK.
+- `components/cart/cart-size-sheet.tsx:143` — `SizeOption` — wrapped in `memo()`. OK.
+
+- `components/ui/data-table/data-table-row.tsx:25` — `export function DataTableRow<T>(...)` — rendered as `renderItem` target inside `components/ui/data-table/data-table-body.tsx:24` FlatList. The component has no store subscriptions, but it receives object props (`columns`, `onToggleSelection`, `onPress`) that can change reference when the parent `DataTableBody` re-renders. Because `DataTableBody` memoizes its `renderItem` via `useCallback`, the row itself only re-renders when the deps change — acceptable, but the row has no memo guard of its own.
+  **Severity:** Low (parent `renderItem` is memoized via `useCallback`; DataTable is used only in admin-facing screens, not in the hot cart/menu paths)
+
+**Step 2 — react-native Image instead of expo-image**
+
+The following files import `Image` directly from `'react-native'` and use it for remote or static assets. `expo-image` provides disk+memory caching, progressive loading, and blurhash support that the RN `Image` component lacks.
+
+- `components/dialog/user-avatar-dropdown.tsx:3` — `import { Image, ... } from 'react-native'`; renders `<Image source={{ uri: userInfo.image }}>` (remote avatar URL). No cache policy, no blurhash placeholder, no progressive load. Component appears in the web admin/header area and is not a repeated list item, but repeated navigation still benefits from the expo-image memory cache.
+  **Severity:** Medium (remote avatar image with no caching; visible on every navigation to the profile/admin area)
+
+- `components/dialog/settings-dropdown.tsx:4` — `import { Image, ... } from 'react-native'`; renders flag images (`Images.Flags.US`, `Images.Flags.VI`) via RN `Image`. These are local bundled assets, so cache is not the concern — but this is inconsistent with the project pattern and the flag assets incur multiple decode passes on theme/locale change re-renders.
+  **Severity:** Low (local bundled assets; decode cost is minimal; inconsistency with project conventions)
+
+- `components/profile/invoice-template.tsx:4` — `import { Image, ... } from 'react-native'`; renders `Images.Brand.Logo` (static bundled asset). The `Invoice` component is rendered in an order-complete flow and exported as `React.memo`. No caching concern for a static asset, but flagged for project convention consistency.
+  **Severity:** Low (static bundled logo; memo'd parent; low re-render frequency)
+
+- `components/select/client-payment-method-select.tsx:3` — `import { Image, Text, View } from 'react-native'`; renders a payment method QR code or bank icon via `<Image source={{ uri: qrCode }}>`. The QR code is a remote URL that changes per order. No `cachePolicy`, no transition animation. Rendered inside the payment method selection sheet which opens and closes multiple times during a session.
+  **Severity:** Medium (remote QR image fetched without cache; payment sheet can be opened multiple times per session; image re-fetches on every open without expo-image disk cache)
+
+- `app/menu/product-image-carousel.tsx:3` — `import { ..., Image, ... } from 'react-native'`; renders product thumbnail images via `<Image source={{ uri: publicFileURL + '/' + image }}>` inside a horizontal scroll carousel. Products can have multiple images. No `cachePolicy`, no blurhash. Product detail screen is a hot-path screen opened frequently from the menu.
+  **Severity:** Medium (remote product images inside a hot-path detail screen carousel; no caching means each open re-fetches all thumbnails)
+
+- `app/payment/[order].tsx:9` — `import { ..., Image, ... } from 'react-native'`; renders `<Image source={{ uri: qrCode }}>` (line 95) for the QR payment code and `<Image source={...}>` for a payment logo (line 199). Already imports `Image as ExpoImage` from `'expo-image'` for other uses in the same file — the RN `Image` usage for the QR is an oversight where the ExpoImage alias should have been used instead.
+  **Severity:** Medium (same file already uses expo-image for other images; inconsistent within a single file; QR payment code is rendered every time the payment method changes)
+
+**Step 3 — FlatList in components (should be FlashList)**
+
+- `components/home/highlight-menu.tsx:316` — `<AnimatedFlatList data={items}>` — `items` is the highlight menu list from API (`HighlightMenuItem[]`). The component is wrapped in `React.memo` and is part of the home screen hot path. The list is horizontal and the data count depends on the API response. FlatList horizontal does not virtualize well.
+  **Severity:** Medium (home screen component; data count variable from API; horizontal FlatList does not recycle in horizontal layout; `estimatedItemSize` equivalent missing)
+
+- `components/home/swipper-banner.tsx:243` — `<FlatList data={infiniteData}>` — used for the home screen banner carousel. `infiniteData` is derived from `bannerData` (API-sourced `IBanner[]`). The banner count is typically small (3–10 items) and FlatList is used intentionally for a paginated infinite-loop scroll carousel (manual scroll-to-index, `pagingEnabled`, `getItemLayout` provided). The item count is small enough that this is acceptable for a carousel.
+  **Severity:** Low (intentional carousel pattern with `getItemLayout`; small item count; `pagingEnabled` + `scrollToIndex` would be complex to migrate)
+
+- `components/home/store-carousel.tsx:122` — `<FlatList data={carouselImages}>` — used for a store image carousel on the home screen. `carouselImages` is a `ImageSourcePropType[]` array (static or small count). `getItemLayout` is absent; `pagingEnabled` + `horizontal` with `scrollToIndex` for auto-scroll. Similar to swipper-banner: intentional carousel, small fixed array.
+  **Severity:** Low (static or small array; intentional carousel; `scrollToIndex` auto-scroll pattern)
+
+- `components/profile/profile-header.tsx:130` — `<AnimatedFlatList data={data} renderItem={renderItem}>` — `ProfileHeader` is a generic component that wraps a FlatList with an animated header. `data` is passed from the parent and its type is `T[]`. Used in `app/profile/index.tsx` with `settingsItems` (small static list 5–8 items). `renderItem` is passed as a prop (delegated). Data is always small in current usage.
+  **Severity:** Low (currently only used with a small static settings list; not API-sourced at current call sites)
+
+- `components/ui/carousel.tsx:158` — `<FlatList data={childrenArray}>` — `childrenArray` is `React.Children.toArray(children)`, representing UI slide children. This is an intentional horizontal paginated carousel (same pattern as swipper-banner), always a small fixed count of slides passed by the consumer.
+  **Severity:** Low (intentional carousel primitive with small fixed children count; `pagingEnabled` use is correct here)
+
+- `components/cart/cart-size-sheet.tsx:120` — `<BottomSheetFlatList data={sizeOptions}>` — `sizeOptions` comes from product size/variant data (`ISize[]`) loaded from React Query. The size count per product is typically 2–8 items. `BottomSheetFlatList` is required to integrate with `@gorhom/bottom-sheet` scroll physics; `BottomSheetFlashList` is available as an alternative but migration is lower priority for a small fixed list.
+  **Severity:** Low (small fixed size list per product; `BottomSheetFlatList` is idiomatic for bottom sheet integration)
+
+- `components/select/product-variant-sheet.tsx:178` — `<BottomSheetFlatList data={variants}>` — same analysis as cart-size-sheet above. Variant count per product is 1–10 items typically.
+  **Severity:** Low (same as above)
+
+- `components/select/order-type-sheet.tsx:264` — `<BottomSheetFlatList data={orderTypes}>` — `orderTypes` is a static constant list of 3–4 order type options. Always small.
+  **Severity:** Low (static constant list; 3–4 items; no actionable change needed)
+
+**Step 4 — Expensive components missing memo()**
+
+- `components/menu/slider-related-products.tsx:164` — `export default function SliderRelatedProducts(...)` — subscribes to `useBranchStore`, `useUserStore`, calls `useQuery` (via `useSpecificMenu` / `usePublicSpecificMenu`), has 4 `useMemo` calls and 3 `useCallback` calls. Not wrapped in `memo()`. Used as a sub-component in the product detail screen, which re-renders on tab focus, scroll updates, and cart changes. Every parent re-render of the product detail screen re-runs all these hooks even when `currentProduct` and `catalog` props have not changed.
+  **Severity:** High (contains live store + query subscriptions; 4 useMemo + 3 useCallback = significant render cost; parent detail screen re-renders on scroll/focus events; hot-path component)
+
+- `components/dropdown/table-dropdown.tsx:24` — `export default function TableDropdown(...)` — subscribes to `useOrderFlowStore` (×2), `useBranchStore`, `useUserStore`, calls `useTables` (useQuery), has 4 `useMemo` calls. Not wrapped in `memo()`. Used inside the cart screen and order creation flow. The cart screen re-renders frequently (on item add/remove, quantity change, scroll). Every cart re-render re-runs all four store selectors and the query hook in this component even when the table/branch props have not changed.
+  **Severity:** High (4 store subscriptions + 1 useQuery + 4 useMemo; rendered inside the cart screen which re-renders on every cart update; high re-render frequency)
+
+- `components/cart/select-order-type-dropdown.tsx:23` — `export default function SelectOrderTypeDropdown()` — subscribes to `useBranchStore` (×2), calls `useBranch` (useQuery), uses `useEffect` to sync params. Not wrapped in `memo()`. Rendered in the cart screen header; cart screen re-renders on each item change.
+  **Severity:** Medium (2 store subscriptions + 1 useQuery; rendered in cart header; re-renders on cart updates)
+
+- `components/product/product-hero-image.tsx:91` — `export function ProductHeroImage(...)` — has `useMemo` and `useCallback`; no store subscriptions. Receives primitive and array props from the product detail screen. Not wrapped in `memo()`. The array props (`imageUrls`) can change reference on parent re-render even if contents are identical.
+  **Severity:** Medium (2 hooks for image processing; rendered at top of detail screen which re-renders on scroll; no store subscriptions but object prop instability)
+
+- `components/ui/data-table/data-table-body.tsx:13` — `export function DataTableBody<T>(...)` — reads from `useDataTableContext` (context subscription), has `useMemo` and `useCallback`. Not wrapped in `memo()`. Generic constraint prevents naive `memo()` wrapping, but as a FlatList host with context subscriptions it will re-render whenever any DataTable context value changes.
+  **Severity:** Low (admin-facing DataTable, not in hot-path cart/menu screens; generic type constraint makes memo() non-trivial to apply)
+
 #### Pattern Guide
 
 ```tsx
@@ -250,6 +333,32 @@ useEffect(() => {
   renderItem={renderItem}
   estimatedItemSize={88}
 />
+```
+
+```tsx
+// ❌ Wrong — expensive component with store subscriptions, no memo
+export default function TableDropdown({ tableOrder, onTableSelect }) {
+  const branch = useBranchStore(s => s.branch)
+  const { data: tables } = useTables(branch?.slug)
+  // ... 4 useMemo calls
+}
+
+// ✅ Correct — memo prevents re-render when props are stable
+export default memo(function TableDropdown({ tableOrder, onTableSelect }) {
+  const branch = useBranchStore(s => s.branch)
+  const { data: tables } = useTables(branch?.slug)
+  // ... 4 useMemo calls
+})
+```
+
+```tsx
+// ❌ Wrong — react-native Image with no caching for remote URL
+import { Image } from 'react-native'
+<Image source={{ uri: qrCode }} />
+
+// ✅ Correct — expo-image with disk+memory cache
+import { Image } from 'expo-image'
+<Image source={{ uri: qrCode }} cachePolicy="memory-disk" />
 ```
 
 ---

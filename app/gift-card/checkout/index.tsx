@@ -43,6 +43,7 @@ import { GiftCardTypeSelector } from '@/components/gift-card/gift-card-type-sele
 import { RecipientFormItem } from '@/components/gift-card/recipient-form-item'
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { colors, GiftCardType } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useCreateCardOrder } from '@/hooks/use-card-order'
 import { useGiftCardTypeOptions } from '@/hooks/use-gift-card-type-options'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -112,7 +113,7 @@ export default function GiftCardCheckoutScreen() {
   const { t: tCommon } = useTranslation('common')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
-  const insets = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
 
   const [ready, setReady] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -267,7 +268,7 @@ export default function GiftCardCheckoutScreen() {
 
   const renderConfirmFooter = useCallback(
     (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={insets.bottom}>
+      <BottomSheetFooter {...props} bottomInset={bottom}>
         <View style={[cs.footer, { backgroundColor: isDark ? colors.gray[900] : colors.white.light, borderTopColor: isDark ? colors.gray[700] : colors.gray[200] }]}>
           <Pressable
             onPress={closeConfirmSheet}
@@ -289,7 +290,7 @@ export default function GiftCardCheckoutScreen() {
         </View>
       </BottomSheetFooter>
     ),
-    [isDark, primaryColor, isPending, closeConfirmSheet, handleSubmit, onConfirm, insets.bottom, t, tCommon],
+    [isDark, primaryColor, isPending, closeConfirmSheet, handleSubmit, onConfirm, bottom, t, tCommon],
   )
 
   // ── Colors ────────────────────────────────────────────────────────────────
@@ -320,7 +321,7 @@ export default function GiftCardCheckoutScreen() {
         <ScrollView
           contentContainerStyle={[
             s.scrollContent,
-            { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 120 },
+            { paddingTop: STATIC_TOP_INSET + 64, paddingBottom: bottom + 120 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -473,7 +474,7 @@ export default function GiftCardCheckoutScreen() {
       <View
         style={[
           s.footer,
-          { paddingBottom: insets.bottom + 16, backgroundColor: bg, borderTopColor: borderColor },
+          { paddingBottom: bottom + 16, backgroundColor: bg, borderTopColor: borderColor },
         ]}
       >
         <Pressable

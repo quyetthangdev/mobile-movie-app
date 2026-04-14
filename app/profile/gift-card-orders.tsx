@@ -43,6 +43,7 @@ import { GiftCardOrderDetailSheet } from '@/components/gift-card/gift-card-order
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors, GiftCardType } from '@/constants'
+import { GIFT_CARD_ORDER_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { useCardOrdersInfinite } from '@/hooks/use-card-order'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useRunAfterTransition } from '@/hooks/use-run-after-transition'
@@ -497,6 +498,11 @@ export default function GiftCardOrdersScreen() {
 
   const keyExtractor = useCallback((item: ICardOrderResponse) => item.slug, [])
 
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => { layout.size = GIFT_CARD_ORDER_ITEM_HEIGHT },
+    [],
+  )
+
   const borderColor = isDark ? colors.gray[700] : colors.gray[200]
 
   const ListFooter = isFetchingNextPage
@@ -573,6 +579,7 @@ export default function GiftCardOrdersScreen() {
           data={items}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          overrideItemLayout={overrideItemLayout}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingBottom: insets.bottom + 24,

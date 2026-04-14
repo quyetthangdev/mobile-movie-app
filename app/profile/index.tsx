@@ -16,6 +16,7 @@ import { LoginForm } from '@/components/auth'
 import { ScreenContainer } from '@/components/layout'
 import { AnimatedProfileHeader } from '@/components/profile/animated-profile-header'
 import { colors } from '@/constants'
+import { PROFILE_SETTINGS_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { useLoyaltyPoints, useRunAfterTransition } from '@/hooks'
 import { useAuthStore, useUserStore } from '@/stores'
 import {
@@ -115,6 +116,11 @@ export default function ProfilePlaceholderScreen() {
     router.replace('/(tabs)/home' as never)
   }, [router, removeUserInfo, setLogout])
 
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => { layout.size = PROFILE_SETTINGS_ITEM_HEIGHT },
+    [],
+  )
+
   const renderItem: ListRenderItem<ProfileSettingItem> = useCallback(
     ({ item, index }) => {
       const extraLabel =
@@ -148,6 +154,7 @@ export default function ProfilePlaceholderScreen() {
           data={settingsItems}
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
+          overrideItemLayout={overrideItemLayout}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
           onScroll={Animated.event(

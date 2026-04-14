@@ -32,6 +32,7 @@ import {
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors, GiftCardUsageStatus } from '@/constants'
+import { GIFT_CARD_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { useUserGiftCards } from '@/hooks/use-gift-cards'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useRunAfterTransition } from '@/hooks/use-run-after-transition'
@@ -385,6 +386,11 @@ export default function GiftCardsScreen() {
 
   const keyExtractor = useCallback((item: IGiftCardDetail) => item.slug, [])
 
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => { layout.size = GIFT_CARD_ITEM_HEIGHT },
+    [],
+  )
+
   const ListHeader = (
     <>
       {!isLoading && !active && items.length > 0 && (
@@ -462,6 +468,7 @@ export default function GiftCardsScreen() {
           data={items}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          overrideItemLayout={overrideItemLayout}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingBottom: insets.bottom + 24,

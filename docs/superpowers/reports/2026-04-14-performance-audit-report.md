@@ -44,7 +44,17 @@
 
 #### Findings
 
-_(populate from Pass 1 & 2)_
+**Pass 1 — Stores scan (2026-04-14)**
+
+No active `useXxxStore()` calls without a selector function were found in any of the 39 store files. The codebase consistently uses granular selectors.
+
+Two deprecated selectors were found in `stores/selectors/order-flow.selectors.ts` that subscribe to broader objects than necessary. Neither is actively consumed outside the selector definition and re-export files, so there is no current re-render impact — but the risk exists if they are picked up by future consumers:
+
+- `stores/selectors/order-flow.selectors.ts:16` — `useOrderingData` returns the full `orderingData` object via `useOrderFlowStore((s) => s.orderingData)`. Any field within `orderingData` (items, voucher, type, table, delivery fields, etc.) changing would trigger a re-render in any consumer. Marked `@deprecated` in code — not currently consumed in `app/`, `components/`, or `hooks/`.
+  **Severity:** Medium (dormant risk — deprecated but still exported; a future developer could import it)
+
+- `stores/selectors/order-flow.selectors.ts:40` — `useOrderFlowCreateOrder` returns full `orderingData` object via `useShallow`, re-rendering whenever any `orderingData` field changes. The replacement `useOrderFlowCreateOrderDialog` (line 49) correctly selects only specific primitives. Marked `@deprecated` in code — not currently consumed outside selector files.
+  **Severity:** Medium (dormant risk — same as above)
 
 #### Pattern Guide
 
@@ -94,7 +104,12 @@ function OrderCard({ expiresAt }: Props) {
 
 #### Findings
 
-_(populate from Pass 1 & 2)_
+**Pass 1 — Stores scan (2026-04-14)**
+
+One module-level mutable variable found in stores. No unguarded subscriptions (`subscribe`, `addListener`, `onSnapshot`) found in any store file.
+
+- `stores/cart-legacy.store.ts:20` — `let _cartExpirationTimer: ReturnType<typeof setTimeout> | null = null` at module level. This is a singleton timer that auto-clears the cart at midnight. The code does cancel the previous timer before scheduling a new one (lines 45–46) and nullifies itself after firing (line 49), so it is not an unbounded accumulation leak. However, it is a module-level mutable side-effect: the timer persists for the entire app lifetime once set, and there is no explicit teardown path if the store is cleared before the timer fires (e.g., after a forced logout). The store is still actively imported by `lib/store-sync-setup.ts` despite being named "legacy". If `clearCart()` is called externally without the timer being cancelled, the timer can fire and call `clearCart()` again on an already-cleared cart — a silent no-op but unexpected behaviour.
+  **Severity:** Low (timer is properly managed for the normal case; risk is in edge-case teardown during auth transitions)
 
 #### Pattern Guide
 

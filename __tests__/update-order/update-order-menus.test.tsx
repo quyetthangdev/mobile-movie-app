@@ -68,6 +68,22 @@ jest.mock('@/hooks/use-menu', () => ({
               variants: [{ size: { name: 'M' }, price: 40000 }],
             },
           },
+          {
+            slug: 'banh-mi',
+            isLocked: false,
+            currentStock: 8,
+            promotion: null,
+            product: {
+              slug: 'banh-mi',
+              name: 'Bánh mì',
+              image: null,
+              description: '',
+              isLimit: false,
+              isGift: false,
+              catalog: { slug: 'food' },
+              variants: [{ size: { name: 'M' }, price: 25000 }],
+            },
+          },
         ],
       },
     },
@@ -96,7 +112,7 @@ it('all FlashList instances have estimatedItemSize', () => {
     <UpdateOrderMenus branchSlug="q1" primaryColor="#FF6B00" />,
   )
   const lists = UNSAFE_getAllByType(FlashList)
-  expect(lists.length).toBeGreaterThan(0)
+  expect(lists.length).toBe(2)
   lists.forEach((list) => {
     expect(list.props.estimatedItemSize).toBe(UPDATE_ORDER_MENU_ITEM_HEIGHT)
   })

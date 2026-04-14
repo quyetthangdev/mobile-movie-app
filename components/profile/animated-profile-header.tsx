@@ -1,15 +1,12 @@
 import { BlurView } from 'expo-blur'
 import { Edit, QrCode } from 'lucide-react-native'
-import React from 'react'
-import {
-  Animated,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native'
+import { Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+} from 'react-native-reanimated'
+import type { SharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
@@ -20,7 +17,7 @@ interface AnimatedProfileHeaderProps {
   lastName: string
   phoneNumber: string
   initials: string
-  scrollY: Animated.Value
+  scrollY: SharedValue<number>
   onEditPress: () => void
   onQRPress: () => void
 }
@@ -30,7 +27,7 @@ const HEADER_HEIGHT = 56
 const INITIAL_HEADER_HEIGHT = 160 // Avatar + name + phone section
 const COLLAPSE_TRIGGER = 100 // Scroll distance to trigger collapse
 
-export const AnimatedProfileHeader: React.FC<AnimatedProfileHeaderProps> = ({
+export const AnimatedProfileHeader = ({
   firstName,
   lastName,
   phoneNumber,
@@ -38,56 +35,95 @@ export const AnimatedProfileHeader: React.FC<AnimatedProfileHeaderProps> = ({
   scrollY,
   onEditPress,
   onQRPress,
-}) => {
+}: AnimatedProfileHeaderProps) => {
   const isDark = useColorScheme() === 'dark'
   const insets = useSafeAreaInsets()
   const topInset = Platform.OS === 'android' ? STATIC_TOP_INSET : insets.top
 
-  // Avatar animation: shrink from 72 to 0
-  const avatarScale = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_TRIGGER],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
+  const headerBackgroundStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      opacity: interpolate(
+        scrollY.value,
+        [0, COLLAPSE_TRIGGER / 2],
+        [0, 0.7],
+        Extrapolation.CLAMP,
+      ),
+    }
   })
 
-  const avatarOpacity = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_TRIGGER - 20],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
+  const profileSectionStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollY.value,
+            [0, COLLAPSE_TRIGGER],
+            [0, -100],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+    }
   })
 
-  // Avatar + info section moves up
-  const infoTranslateY = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_TRIGGER],
-    outputRange: [0, -100],
-    extrapolate: 'clamp',
+  const avatarContainerStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      transform: [
+        {
+          scale: interpolate(
+            scrollY.value,
+            [0, COLLAPSE_TRIGGER],
+            [1, 0],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollY.value,
+        [0, COLLAPSE_TRIGGER - 20],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
+    }
   })
 
-  // Name animates: initial position is below avatar, final is center of header
-  const nameTranslateY = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_TRIGGER],
-    outputRange: [0, -(INITIAL_HEADER_HEIGHT - HEADER_HEIGHT) / 2],
-    extrapolate: 'clamp',
+  const textContainerStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollY.value,
+            [0, COLLAPSE_TRIGGER],
+            [0, -(INITIAL_HEADER_HEIGHT - HEADER_HEIGHT) / 2],
+            Extrapolation.CLAMP,
+          ),
+        },
+        {
+          scale: interpolate(
+            scrollY.value,
+            [0, COLLAPSE_TRIGGER],
+            [1, 0.9],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+    }
   })
 
-  const nameScale = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_TRIGGER],
-    outputRange: [1, 0.9],
-    extrapolate: 'clamp',
-  })
-
-  // Header background opacity (blur becomes more visible as you scroll)
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_TRIGGER / 2],
-    outputRange: [0, 0.7],
-    extrapolate: 'clamp',
-  })
-
-  // Phone number fades out as avatar shrinks
-  const phoneOpacity = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_TRIGGER - 30],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
+  const phoneStyle = useAnimatedStyle(() => {
+    'worklet'
+    return {
+      opacity: interpolate(
+        scrollY.value,
+        [0, COLLAPSE_TRIGGER - 30],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
+    }
   })
 
   const buttonColor = isDark ? colors.primary.dark : colors.primary.light
@@ -100,8 +136,8 @@ export const AnimatedProfileHeader: React.FC<AnimatedProfileHeaderProps> = ({
       <Animated.View
         style={[
           styles.headerBackground,
+          headerBackgroundStyle,
           {
-            opacity: headerOpacity,
             height: HEADER_HEIGHT + topInset,
             paddingTop: topInset,
           },
@@ -132,24 +168,9 @@ export const AnimatedProfileHeader: React.FC<AnimatedProfileHeaderProps> = ({
       </Animated.View>
 
       {/* Avatar + Info Section (scrolls up) */}
-      <Animated.View
-        style={[
-          styles.profileSection,
-          {
-            transform: [{ translateY: infoTranslateY }],
-          },
-        ]}
-      >
+      <Animated.View style={[styles.profileSection, profileSectionStyle]}>
         {/* Avatar */}
-        <Animated.View
-          style={[
-            styles.avatarContainer,
-            {
-              transform: [{ scale: avatarScale }],
-              opacity: avatarOpacity,
-            },
-          ]}
-        >
+        <Animated.View style={[styles.avatarContainer, avatarContainerStyle]}>
           <View
             style={[
               styles.avatar,
@@ -172,17 +193,7 @@ export const AnimatedProfileHeader: React.FC<AnimatedProfileHeaderProps> = ({
         </Animated.View>
 
         {/* Name + Phone Section */}
-        <Animated.View
-          style={[
-            styles.textContainer,
-            {
-              transform: [
-                { translateY: nameTranslateY },
-                { scale: nameScale },
-              ],
-            },
-          ]}
-        >
+        <Animated.View style={[styles.textContainer, textContainerStyle]}>
           <Text
             style={[
               styles.name,
@@ -198,9 +209,9 @@ export const AnimatedProfileHeader: React.FC<AnimatedProfileHeaderProps> = ({
           <Animated.Text
             style={[
               styles.phone,
+              phoneStyle,
               {
                 color: isDark ? colors.gray[300] : colors.gray[500],
-                opacity: phoneOpacity,
               },
             ]}
             numberOfLines={1}

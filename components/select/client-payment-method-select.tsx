@@ -1,6 +1,7 @@
 import { CircleAlert } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { Image, Text, View } from 'react-native'
+import { Image } from 'expo-image'
+import { Text, View } from 'react-native'
 
 import PaymentMethodRadioGroup from '@/components/radio/payment-method-radio-group'
 import { Label } from '@/components/ui'
@@ -70,10 +71,11 @@ export default function ClientPaymentMethodSelect({
         {qrCode && paymentMethod[0] === PaymentMethod.BANK_TRANSFER && (
           <View className="flex-1 pb-4">
             <View className="flex-col justify-center items-center">
-              <Image 
-                source={{ uri: qrCode }} 
+              <Image
+                source={qrCode}
+                contentFit="contain"
+                cachePolicy="none"
                 className="w-2/5 aspect-square"
-                resizeMode="contain"
               />
               <View className="flex-col gap-2 justify-center items-center mt-2">
                 <View className="flex-row items-center gap-1">

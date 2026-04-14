@@ -4,18 +4,7 @@ import { useSharedValue } from 'react-native-reanimated'
 jest.mock('react-native-reanimated', () =>
   require('react-native-reanimated/mock'),
 )
-jest.mock('expo-image', () => ({ Image: 'Image' }))
 jest.mock('expo-blur', () => ({ BlurView: 'BlurView' }))
-jest.mock('@/stores', () => ({
-  useUserStore: () => ({
-    userInfo: {
-      firstName: 'Test',
-      lastName: 'User',
-      phone: '0900000000',
-      image: null,
-    },
-  }),
-}))
 jest.mock('@/constants', () => ({
   colors: {
     primary: { light: '#000', dark: '#fff' },

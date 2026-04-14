@@ -13,7 +13,7 @@
 
 ### Top 3 Critical Risks
 
-1. **Uncleaned setTimeout in debounced input hook** — `hooks/use-debounced-input.ts:20` fires after component unmount on every rapid search navigation. The stale callback corrupts `isLoading` state on re-mount, causing broken search interactions. Search screens are entered and exited multiple times per session, making this a near-guaranteed crash trigger after extended use.
+1. **Uncleaned setTimeout in debounced input hook** — `hooks/use-debounced-input.ts:20` fires after component unmount on every rapid search navigation. The stale callback corrupts `isLoading` state on re-mount, causing broken search interactions. Search screens are entered and exited multiple times per session, making this a near-guaranteed broken search interaction after rapid navigation — the stale timeout fires and sets `isLoading` to false while the newly-mounted component is still in its initial loading state, causing the search UI to appear ready before results arrive.
 
 2. **FlashList measurement cascade in update-order flow** — `app/update-order/components/update-order-menus.tsx:138` nests a FlashList (no `estimatedItemSize`) inside a `.map()` loop. Every catalog group spawns its own FlashList in measurement-fallback mode simultaneously on the hot-path order editing screen, causing a frame-drop cascade that directly degrades the core ordering flow.
 
@@ -25,9 +25,10 @@
 2. Add `estimatedItemSize` to `update-order-menus.tsx` FlashList and extract to a non-`.map()` pattern — directly impacts the core order flow FPS
 3. Wrap `SliderRelatedProducts` in `memo()` — eliminates redundant store/query hook executions on every product detail scroll event
 4. Add `estimatedItemSize` to all 8 remaining FlashList instances in profile/notification screens — easy wins, one constant per screen
-5. Replace `react-native Image` with `expo-image` in the 5 Medium-severity remote-image locations — prevents repeated network fetches on navigation
-6. Memoize the 4 inline `new Date()` calls in `gift-card-orders.tsx` filter sheet and wrap `ProductHeroImage` in `memo()`
-7. Clean up all Low severity violations (inline style objects, dead code exports, minor best-practice gaps) in a dedicated cleanup sprint
+5. Fix `BottomSheetFlatList` in table-select sheet (add `estimatedItemSize`) and call `unloadAsync()` before nulling `cachedSound` in `use-notification-listener.ts` catch block — covers 2 remaining Medium findings
+6. Replace `react-native Image` with `expo-image` in the 4 Medium-severity remote-image locations — prevents repeated network fetches on navigation
+7. Memoize the 4 inline `new Date()` calls in `gift-card-orders.tsx` filter sheet and wrap `ProductHeroImage` in `memo()`
+8. Clean up all Low severity violations (inline style objects, dead code exports, minor best-practice gaps) in a dedicated cleanup sprint
 
 ---
 

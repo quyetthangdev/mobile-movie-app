@@ -32,6 +32,7 @@ import {
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors, GiftCardUsageStatus } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { GIFT_CARD_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { useUserGiftCards } from '@/hooks/use-gift-cards'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -313,7 +314,7 @@ export default function GiftCardsScreen() {
   const { t } = useTranslation('giftCard')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
-  const insets = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
   const userSlug = useUserStore((s) => s.userInfo?.slug)
 
   const [ready, setReady] = useState(false)
@@ -331,9 +332,9 @@ export default function GiftCardsScreen() {
   const listContentStyle = useMemo(
     () => ({
       paddingHorizontal: 16,
-      paddingBottom: insets.bottom + 24,
+      paddingBottom: bottom + 24,
     }),
-    [insets.bottom],
+    [bottom],
   )
 
   const queryParams = useMemo(() => ({
@@ -459,7 +460,7 @@ export default function GiftCardsScreen() {
       />
 
       {/* ── Fixed status filter bar ─────────────────────────────────── */}
-      <View style={[s.statusFilterBar, { paddingTop: insets.top + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>
+      <View style={[s.statusFilterBar, { paddingTop: STATIC_TOP_INSET + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>
         <StatusQuickFilter
           value={filter.status}
           onChange={handleStatusFilter}

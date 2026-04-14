@@ -6,7 +6,7 @@ import { useLocalSearchParams } from 'expo-router'
 import { CircleAlert, CircleX, Ticket } from 'lucide-react-native'
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import { ScrollView as GestureScrollView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -92,7 +92,7 @@ const QRSection = React.memo(function QRSection({
   return (
     <View style={[ps.qrSection, { borderTopColor: isDark ? colors.gray[700] : colors.gray[100] }]}>
       <View style={ps.qrCenter}>
-        <Image source={{ uri: qrCode || paymentQrCode || '' }} style={ps.qrImage} resizeMode="contain" />
+        <ExpoImage source={qrCode || paymentQrCode || ''} style={ps.qrImage} contentFit="contain" cachePolicy="none" />
         <View style={ps.qrInfoCol}>
           <View style={ps.qrTotalRow}>
             <Text style={[ps.smText, { color: isDark ? colors.gray[300] : colors.gray[700] }]}>{t('paymentMethod.total', 'Tổng tiền')}:</Text>
@@ -196,11 +196,10 @@ const PaymentSuccessScreen = React.memo(function PaymentSuccessScreen({
   return (
     <ScreenContainer edges={['top']} style={{ flex: 1, backgroundColor: screenBg }}>
       <View style={[suc.container, { paddingBottom: insets.bottom + 24 }]}>
-        <Image
-          // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+        <ExpoImage
           source={require('@/assets/images/food/order-success.png')}
           style={suc.image}
-          resizeMode="contain"
+          contentFit="contain"
         />
         <Text style={[suc.title, { color: primaryColor }]}>
           {t('payment.successTitle', 'Thanh toán thành công!')}

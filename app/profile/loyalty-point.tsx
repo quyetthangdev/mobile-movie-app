@@ -30,6 +30,7 @@ import {
   LoyaltyPointFilterSheet,
   type LoyaltyPointFilter,
 } from '@/components/loyalty-point/loyalty-point-filter-sheet'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { LoyaltyPointTransactionCard } from '@/components/loyalty-point/loyalty-point-transaction-card'
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
@@ -247,7 +248,7 @@ export default function LoyaltyPointScreen() {
   const { t } = useTranslation('profile')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
-  const insets = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
   const userSlug = useUserStore((s) => s.userInfo?.slug)
 
   const [ready, setReady] = useState(false)
@@ -269,11 +270,11 @@ export default function LoyaltyPointScreen() {
 
   const listContentStyle = useMemo(
     () => ({
-      paddingTop: insets.top + 64,
+      paddingTop: STATIC_TOP_INSET + 64,
       paddingHorizontal: 16,
-      paddingBottom: insets.bottom + 24,
+      paddingBottom: bottom + 24,
     }),
-    [insets.top, insets.bottom],
+    [bottom],
   )
 
   // Tổng hợp types từ quickType và filter sheet
@@ -449,7 +450,7 @@ export default function LoyaltyPointScreen() {
       />
 
       {isLoading ? (
-        <View style={{ paddingTop: insets.top + 64, paddingHorizontal: 16 }}>
+        <View style={{ paddingTop: STATIC_TOP_INSET + 64, paddingHorizontal: 16 }}>
           <SkeletonList />
         </View>
       ) : (

@@ -59,6 +59,14 @@ Two deprecated selectors were found in `stores/selectors/order-flow.selectors.ts
 - `stores/selectors/order-flow.selectors.ts:23` — `useUpdatingData` returns full `updatingData` object with no selector narrowing; active non-deprecated export — any `updatingData` nested field change re-renders all consumers.
   **Severity:** Medium (escalates from Low once consumed; currently no active consumer in app/, components/, or hooks/)
 
+**Pass 2 — Hooks scan (2026-04-14)**
+
+All `useEffect(..., [])` patterns in hooks were reviewed. No stale closure issues found. All empty-dep effects either:
+- Only register listeners / `InteractionManager` tasks with no external variable capture (e.g., `use-screen-transition.ts:40`, `use-deferred-ready.ts:19`, `use-mobile.ts:14`)
+- Are cleanup-only effects (e.g., `use-viewable-menu-prefetch.ts:76`)
+
+No findings in Category 1 from Pass 2.
+
 #### Pattern Guide
 
 ```tsx
@@ -78,7 +86,17 @@ const loading = useCartStore(s => s.loading)
 
 #### Findings
 
-_(populate from Pass 2 & 5)_
+**Pass 2 — Hooks scan (2026-04-14)**
+
+No unmemoized date calculations found in hook render paths. All `new Date()` / `Date.now()` calls in hooks are either:
+- Inside `useMemo` or `useCallback` (e.g., `use-predictive-prefetch.ts` uses `dayjs().format()` inside `useMemo`)
+- Inside interval/event handler callbacks that only fire on demand, not on every render
+- Module-level constants evaluated once at import time (`use-loyalty-point-history.ts:30-32`)
+
+One borderline case noted for awareness:
+
+- `hooks/use-countdown.ts:56` — `calcTimeLeft(expiresAt)` in the hook's return value recalculates `new Date(expiresAt).getTime() - Date.now()` on every render. This is intentional by design (the comment explicitly states "Derive seconds at render time") and the hook drives only a single text display — at 60fps this adds negligible cost. Not a performance concern in practice but documented for completeness.
+  **Severity:** Low (intentional design, single lightweight calculation)
 
 #### Pattern Guide
 
@@ -113,6 +131,16 @@ One module-level mutable variable found in stores. No unguarded subscriptions (`
 
 - `stores/cart-legacy.store.ts:20` — `let _cartExpirationTimer: ReturnType<typeof setTimeout> | null = null` at module level. This is a singleton timer that auto-clears the cart at midnight. The code does cancel the previous timer before scheduling a new one (lines 45–46) and nullifies itself after firing (line 49), so it is not an unbounded accumulation leak. However, it is a module-level mutable side-effect: the timer persists for the entire app lifetime once set, and there is no explicit teardown path if the store is cleared before the timer fires (e.g., after a forced logout). The store is still actively imported by `lib/store-sync-setup.ts` despite being named "legacy". If `clearCart()` is called externally without the timer being cancelled, the timer can fire and call `clearCart()` again on an already-cleared cart — a silent no-op but unexpected behaviour.
   **Severity:** Low (timer is properly managed for the normal case; risk is in edge-case teardown during auth transitions)
+
+**Pass 2 — Hooks scan (2026-04-14)**
+
+Two issues found in hooks. All `setInterval` users (`use-countdown.ts`, `use-animated-countdown.ts`, `use-qr-payment.ts`) and all `addListener`/`addEventListener` users (`use-back-handler-for-exit.ts`, `use-mobile.ts`, `use-navigation-bar-fixed.ts`, `use-qr-payment.ts`) have proper cleanup in their `useEffect` return functions. Two `setTimeout` calls lack cleanup:
+
+- `hooks/use-debounced-input.ts:20` — `setTimeout(() => setIsLoading(false), delay)` is called inside a plain event handler (`handleInputChange`), not inside a `useEffect`. There is no cleanup path at all: if the component unmounts while the timer is pending (e.g., user leaves the search screen mid-typing), the callback fires and calls `setIsLoading(false)` on an unmounted component. React 18 silently suppresses the warning in production but the timer continues running, and if the component re-mounts quickly the stale callback can corrupt loading state.
+  **Severity:** Medium — debounced search is used on active screens; rapid navigation away-and-back can cause stale state updates
+
+- `hooks/use-navigation-bar-fixed.ts:68` — anonymous `setTimeout(() => { setColor() }, 300)` inside the `AppState.addEventListener('change', ...)` callback has no handle stored and cannot be cleared. The outer `timeoutId` (line 61) is properly cleaned up on unmount, but this inner timeout created on every AppState `active` transition is fire-and-forget with no cleanup reference. On Android, if the component unmounts between the app going background→foreground and the 300ms delay expiring, the async `setColor()` call (which invokes the native module) runs against a detached component context.
+  **Severity:** Low — Android-only, fire-and-forget native call; no state update triggered so no React memory corruption, but unnecessary native bridge call after unmount
 
 #### Pattern Guide
 

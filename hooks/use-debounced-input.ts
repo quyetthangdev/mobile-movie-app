@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDebounce } from 'use-debounce'
 
 export interface IDebouncedInputProps {
@@ -15,17 +15,17 @@ export function useDebouncedInput({
   const [isLoading, setIsLoading] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleInputChange = (value: string) => {
+  const handleInputChange = useCallback((value: string) => {
     setInputValue(value)
     setIsLoading(true)
-  }
+  }, [])
 
   useEffect(() => {
     if (!isLoading) return
-    timerRef.current = global.setTimeout(() => setIsLoading(false), delay)
+    timerRef.current = setTimeout(() => setIsLoading(false), delay)
     return () => {
       if (timerRef.current) {
-        global.clearTimeout(timerRef.current)
+        clearTimeout(timerRef.current)
         timerRef.current = null
       }
     }

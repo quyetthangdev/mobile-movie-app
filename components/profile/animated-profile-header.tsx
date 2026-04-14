@@ -1,13 +1,12 @@
 import { BlurView } from 'expo-blur'
 import { Edit, QrCode } from 'lucide-react-native'
-import { Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated'
 import type { SharedValue } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
@@ -37,8 +36,7 @@ export const AnimatedProfileHeader = ({
   onQRPress,
 }: AnimatedProfileHeaderProps) => {
   const isDark = useColorScheme() === 'dark'
-  const insets = useSafeAreaInsets()
-  const topInset = Platform.OS === 'android' ? STATIC_TOP_INSET : insets.top
+  const topInset = STATIC_TOP_INSET
 
   const headerBackgroundStyle = useAnimatedStyle(() => {
     'worklet'

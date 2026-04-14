@@ -27,7 +27,22 @@
     "analyze:bundle-size": "ls -lh dist/_expo/static/js/web/*.js 2>/dev/null | awk '{print $5, $9}' || echo 'No web build found. Run: npm run build'",
     "analyze:web": "ANALYZE_BUNDLE=true npx expo export --platform web && source-map-explorer 'dist/_expo/static/js/web/*.js'",
     "check-bundle": "node scripts/check-bundle-size.js",
-    "update-bundle-baseline": "node scripts/check-bundle-size.js --update"
+    "update-bundle-baseline": "node scripts/check-bundle-size.js --update",
+    "test": "jest"
+  },
+  "jest": {
+    "preset": "jest-expo/ios",
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1",
+      "^expo/src/winter.*$": "<rootDir>/__mocks__/expo-winter.js"
+    },
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|use-debounce)"
+    ]
   },
   "dependencies": {
     "@expo-google-fonts/be-vietnam-pro": "^0.4.1",
@@ -106,8 +121,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@testing-library/react-hooks": "^8.0.1",
     "@trivago/prettier-plugin-sort-imports": "^6.0.0",
     "@types/base-64": "^1.0.2",
+    "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.21",
     "@types/react": "~19.1.10",
     "babel-plugin-module-resolver": "^5.0.2",
@@ -121,11 +138,14 @@
     "eslint-plugin-react-native": "^5.0.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^16.5.0",
+    "jest": "^30.3.0",
+    "jest-expo": "^55.0.16",
     "madge": "^8.0.0",
     "patch-package": "^8.0.1",
     "postinstall-postinstall": "^2.1.0",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "react-test-renderer": "^19.2.5",
     "source-map-explorer": "^2.5.3",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.50.0"

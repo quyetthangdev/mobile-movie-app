@@ -1,16 +1,19 @@
 import { FlashList, type ListRenderItem } from '@shopify/flash-list'
 import { useRouter } from 'expo-router'
 import { Gift, History, Settings, User, Wallet } from 'lucide-react-native'
-import React, { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Animated,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   useColorScheme,
 } from 'react-native'
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated'
 
 import { LoginForm } from '@/components/auth'
 import { ScreenContainer } from '@/components/layout'
@@ -29,6 +32,10 @@ interface ProfileSettingItem {
   label: string
   icon: ProfileItemProps['icon']
 }
+
+const AnimatedFlashList = Animated.createAnimatedComponent(
+  FlashList<ProfileSettingItem>,
+)
 
 const SETTINGS_ITEM_ICONS = {
   'general-info': User,
@@ -61,8 +68,14 @@ export default function ProfilePlaceholderScreen() {
     { key: 'account-settings', label: t('accountSettings'), icon: SETTINGS_ITEM_ICONS['account-settings'] },
   ], [t])
 
-  const scrollY = useMemo(() => new Animated.Value(0), [])
-  const [allowFetch, setAllowFetch] = React.useState(false)
+  const scrollY = useSharedValue(0)
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      'worklet'
+      scrollY.value = e.contentOffset.y
+    },
+  })
+  const [allowFetch, setAllowFetch] = useState(false)
   useRunAfterTransition(() => setAllowFetch(true), [])
 
   const initials = useMemo(() => {
@@ -138,6 +151,53 @@ export default function ProfilePlaceholderScreen() {
     [handlePress, totalPoints, t],
   )
 
+  const ListHeader = useMemo(
+    () => (
+      <View style={{ height: HEADER_HEIGHT + 24 }}>
+        <Text
+          style={[
+            styles.subtitle,
+            {
+              color: isDark ? colors.gray[300] : colors.gray[500],
+              marginTop: 16,
+            },
+          ]}
+        >
+          {t('subtitle')}
+        </Text>
+      </View>
+    ),
+    [isDark, t],
+  )
+
+  const ListFooter = useMemo(
+    () => (
+      <View style={{ paddingVertical: 24 }}>
+        <TouchableOpacity
+          style={[
+            styles.logoutButton,
+            {
+              backgroundColor: isDark ? '#7f1d1d' : '#fee2e2',
+            },
+          ]}
+          onPress={handleLogout}
+        >
+          <Text
+            style={[
+              styles.logoutText,
+              {
+                color: isDark ? '#fca5a5' : '#b91c1c',
+              },
+            ]}
+          >
+            {t('logout.title')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    [isDark, t, handleLogout],
+  )
+
   if (needsUserInfo || !userInfo) {
     return (
       <ScreenContainer edges={['top']} className="flex-1">
@@ -150,56 +210,16 @@ export default function ProfilePlaceholderScreen() {
     <ScreenContainer edges={['top']} className="flex-1">
       <View style={styles.root}>
         {/* Scrollable List (beneath header) */}
-        <FlashList
+        <AnimatedFlashList
           data={settingsItems}
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
           overrideItemLayout={overrideItemLayout}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false },
-          )}
-          ListHeaderComponent={
-            <View style={{ height: HEADER_HEIGHT + 24 }}>
-              <Text
-                style={[
-                  styles.subtitle,
-                  {
-                    color: isDark ? colors.gray[300] : colors.gray[500],
-                    marginTop: 16,
-                  },
-                ]}
-              >
-                {t('subtitle')}
-              </Text>
-            </View>
-          }
-          ListFooterComponent={
-            <View style={{ paddingVertical: 24 }}>
-              <TouchableOpacity
-                style={[
-                  styles.logoutButton,
-                  {
-                    backgroundColor: isDark ? '#7f1d1d' : '#fee2e2',
-                  },
-                ]}
-                onPress={handleLogout}
-              >
-                <Text
-                  style={[
-                    styles.logoutText,
-                    {
-                      color: isDark ? '#fca5a5' : '#b91c1c',
-                    },
-                  ]}
-                >
-                  {t('logout.title')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          }
+          onScroll={scrollHandler}
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={ListFooter}
         />
 
         {/* Floating Animated Header (absolutely positioned) */}

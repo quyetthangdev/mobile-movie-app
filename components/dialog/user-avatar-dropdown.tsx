@@ -1,6 +1,7 @@
 import { LogOut, User } from 'lucide-react-native'
 import React from 'react'
-import { Image, Text, TouchableOpacity, View } from 'react-native'
+import { Image } from 'expo-image'
+import { Text, TouchableOpacity, View } from 'react-native'
 
 import {
   DropdownMenu,
@@ -89,9 +90,10 @@ export default function UserAvatarDropdown({
         >
           {userInfo.image ? (
             <Image
-              source={{ uri: userInfo.image }}
+              source={userInfo.image}
+              contentFit="cover"
+              cachePolicy="memory-disk"
               className="w-full h-full"
-              resizeMode="cover"
             />
           ) : (
             <Text className="text-gray-700 dark:text-gray-200 font-semibold text-base">
@@ -106,9 +108,10 @@ export default function UserAvatarDropdown({
             <View className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 dark:bg-gray-600 items-center justify-center">
               {userInfo.image ? (
                 <Image
-                  source={{ uri: userInfo.image }}
+                  source={userInfo.image}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
                   className="w-full h-full"
-                  resizeMode="cover"
                 />
               ) : (
                 <Text className="text-gray-700 dark:text-gray-200 font-semibold text-base">

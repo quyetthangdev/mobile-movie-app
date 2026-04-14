@@ -34,7 +34,11 @@ async function playNotificationSound(): Promise<void> {
     await cachedSound.setVolumeAsync(SOUND_VOLUME)
     await cachedSound.playAsync()
   } catch {
-    // Reset cache on error — will re-create next time
+    // Unload native audio resource before clearing reference to prevent
+    // orphaned buffers in the native Audio engine
+    if (cachedSound) {
+      await cachedSound.unloadAsync().catch(() => {})
+    }
     cachedSound = null
   }
 }

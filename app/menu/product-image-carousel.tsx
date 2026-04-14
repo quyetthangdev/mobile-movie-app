@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { ImageSourcePropType } from 'react-native'
-import { Dimensions, Image, InteractionManager, Pressable, View } from 'react-native'
+import { Image } from 'expo-image'
+import { Dimensions, InteractionManager, Pressable, View } from 'react-native'
 
 import { HIT_SLOP_ICON } from '@/lib/navigation'
 
@@ -95,12 +95,13 @@ export default function ProductImageCarousel({
                   >
                     <Image
                       source={
-                        (image
-                          ? { uri: `${publicFileURL}/${image}` }
-                          : Images.Food.ProductImage) as ImageSourcePropType
+                        image
+                          ? `${publicFileURL}/${image}`
+                          : Images.Food.ProductImage
                       }
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
                       className="h-24 w-full rounded-md"
-                      resizeMode="cover"
                     />
                   </Card>
                 </Pressable>

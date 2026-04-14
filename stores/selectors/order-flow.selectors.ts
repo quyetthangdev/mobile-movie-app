@@ -19,7 +19,11 @@ export const useOrderingData = () => useOrderFlowStore((s) => s.orderingData)
 export const useOrderItemsLength = () =>
   useOrderFlowStore((s) => s.orderingData?.orderItems?.length ?? 0)
 
-/** Chỉ subscribe updatingData — re-render khi updatingData thay đổi */
+/**
+ * @deprecated P3-T1: Subscribe to specific fields of updatingData instead of the whole object.
+ * Use direct store selectors: `useOrderFlowStore(s => s.updatingData?.specificField)`.
+ * This selector returns the full updatingData object, causing re-renders on any field change.
+ */
 export const useUpdatingData = () => useOrderFlowStore((s) => s.updatingData)
 
 /** Actions dùng chung — stable refs, dùng useShallow */

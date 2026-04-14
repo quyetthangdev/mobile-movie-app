@@ -182,16 +182,10 @@ function assertFlashListsHaveOverrideLayout(component: React.ReactElement) {
     const { UNSAFE_getAllByType } = renderResult
     const lists = UNSAFE_getAllByType(FlashList)
     lists.forEach((list, i) => {
-      expect(
-        typeof list.props.overrideItemLayout,
-        `FlashList[${i}] is missing overrideItemLayout`,
-      ).toBe('function')
+      expect(typeof list.props.overrideItemLayout).toBe('function') // FlashList[i] must have overrideItemLayout
       const layout: { size?: number } = {}
       list.props.overrideItemLayout(layout)
-      expect(
-        layout.size,
-        `FlashList[${i}] overrideItemLayout must set layout.size > 0`,
-      ).toBeGreaterThan(0)
+      expect(layout.size).toBeGreaterThan(0) // overrideItemLayout must set layout.size > 0
     })
   } catch {
     // No FlashList found in empty state — skip

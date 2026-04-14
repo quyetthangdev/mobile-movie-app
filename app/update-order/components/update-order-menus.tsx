@@ -87,6 +87,13 @@ export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrd
 
   const keyExtractor = useCallback((item: IMenuItem) => item.slug, [])
 
+  const overrideMenuItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => {
+      layout.size = UPDATE_ORDER_MENU_ITEM_HEIGHT
+    },
+    [],
+  )
+
   if (!hasUpdatingData) return null
 
   if (!branchSlug) {
@@ -141,7 +148,7 @@ export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrd
               renderItem={renderItem}
               keyExtractor={keyExtractor}
               scrollEnabled={false}
-              estimatedItemSize={UPDATE_ORDER_MENU_ITEM_HEIGHT}
+              overrideItemLayout={overrideMenuItemLayout}
             />
           </View>
         )

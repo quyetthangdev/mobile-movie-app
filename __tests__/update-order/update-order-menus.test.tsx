@@ -7,11 +7,13 @@ import { UPDATE_ORDER_MENU_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 // Store mocks
 // ---------------------------------------------------------------------------
 jest.mock('@/stores', () => ({
-  useOrderFlowStore: jest.fn((sel) =>
-    sel({ updatingData: { id: 'order-1' } }),
+  useOrderFlowStore: jest.fn(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+    (sel) => sel({ updatingData: { id: 'order-1' } }),
   ),
-  useAuthStore: jest.fn((sel) =>
-    sel({ isAuthenticated: () => false }),
+  useAuthStore: jest.fn(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+    (sel) => sel({ isAuthenticated: () => false }),
   ),
 }))
 
@@ -97,6 +99,7 @@ jest.mock('@/hooks/use-menu', () => ({
 jest.mock(
   '@/app/update-order/components/client-menu-item-for-update-order',
   () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
     const { View } = require('react-native')
     return function MockClientMenuItemForUpdateOrder() {
       return <View testID="menu-item" />
@@ -107,13 +110,19 @@ jest.mock(
 // ---------------------------------------------------------------------------
 // Test
 // ---------------------------------------------------------------------------
-it('all FlashList instances have estimatedItemSize', () => {
+it('all FlashList instances have overrideItemLayout', () => {
   const { UNSAFE_getAllByType } = render(
     <UpdateOrderMenus branchSlug="q1" primaryColor="#FF6B00" />,
   )
   const lists = UNSAFE_getAllByType(FlashList)
   expect(lists.length).toBe(2)
   lists.forEach((list) => {
-    expect(list.props.estimatedItemSize).toBe(UPDATE_ORDER_MENU_ITEM_HEIGHT)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(typeof list.props.overrideItemLayout).toBe('function')
+    // Verify the function sets layout.size to the correct constant
+    const layout: { size?: number } = {}
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    list.props.overrideItemLayout(layout)
+    expect(layout.size).toBe(UPDATE_ORDER_MENU_ITEM_HEIGHT)
   })
 })

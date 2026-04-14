@@ -53,8 +53,11 @@ Two deprecated selectors were found in `stores/selectors/order-flow.selectors.ts
 - `stores/selectors/order-flow.selectors.ts:16` — `useOrderingData` returns the full `orderingData` object via `useOrderFlowStore((s) => s.orderingData)`. Any field within `orderingData` (items, voucher, type, table, delivery fields, etc.) changing would trigger a re-render in any consumer. Marked `@deprecated` in code — not currently consumed in `app/`, `components/`, or `hooks/`.
   **Severity:** Medium (dormant risk — deprecated but still exported; a future developer could import it)
 
-- `stores/selectors/order-flow.selectors.ts:40` — `useOrderFlowCreateOrder` returns full `orderingData` object via `useShallow`, re-rendering whenever any `orderingData` field changes. The replacement `useOrderFlowCreateOrderDialog` (line 49) correctly selects only specific primitives. Marked `@deprecated` in code — not currently consumed outside selector files.
+- `stores/selectors/order-flow.selectors.ts:40` — `useOrderFlowCreateOrder` returns `{ orderingData, transitionToPayment }` via `useShallow` — the `orderingData` slot holds the entire object, so any nested field change (items, voucher, type, etc.) changes the `orderingData` reference and triggers a re-render in any consumer, despite `useShallow`. The replacement `useOrderFlowCreateOrderDialog` (line 49) correctly selects only specific primitives. Marked `@deprecated` in code — not currently consumed outside selector files.
   **Severity:** Medium (dormant risk — same as above)
+
+- `stores/selectors/order-flow.selectors.ts:23` — `useUpdatingData` returns full `updatingData` object with no selector narrowing; active non-deprecated export — any `updatingData` nested field change re-renders all consumers.
+  **Severity:** Medium (escalates from Low once consumed; currently no active consumer in app/, components/, or hooks/)
 
 #### Pattern Guide
 

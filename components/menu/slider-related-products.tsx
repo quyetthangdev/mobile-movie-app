@@ -1,7 +1,7 @@
 import { Image } from 'expo-image'
 import type { TFunction } from 'i18next'
 import { Plus } from 'lucide-react-native'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Dimensions,
@@ -161,7 +161,7 @@ const RelatedProductItem = React.memo(
     prev.primaryColor === next.primaryColor,
 )
 
-export default function SliderRelatedProducts({
+function SliderRelatedProducts({
   currentProduct,
   catalog,
 }: SliderRelatedProductsProps) {
@@ -384,3 +384,5 @@ export default function SliderRelatedProducts({
     </View>
   )
 }
+
+export default memo(SliderRelatedProducts)

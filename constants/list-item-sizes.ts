@@ -5,7 +5,7 @@
  */
 
 // Menu / Order screens
-export const UPDATE_ORDER_MENU_ITEM_HEIGHT = 88
+export const UPDATE_ORDER_MENU_ITEM_HEIGHT = 116
 
 // Profile screens
 export const ORDER_HISTORY_ITEM_HEIGHT = 96

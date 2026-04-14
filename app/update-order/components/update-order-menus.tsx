@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, useColorScheme, View } from 'react-native'
 
 import { colors } from '@/constants'
+import { UPDATE_ORDER_MENU_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { useCatalog } from '@/hooks'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks/use-menu'
 import { useAuthStore, useOrderFlowStore } from '@/stores'
@@ -86,6 +87,13 @@ export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrd
 
   const keyExtractor = useCallback((item: IMenuItem) => item.slug, [])
 
+  const overrideMenuItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => {
+      layout.size = UPDATE_ORDER_MENU_ITEM_HEIGHT
+    },
+    [],
+  )
+
   if (!hasUpdatingData) return null
 
   if (!branchSlug) {
@@ -140,6 +148,7 @@ export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrd
               renderItem={renderItem}
               keyExtractor={keyExtractor}
               scrollEnabled={false}
+              overrideItemLayout={overrideMenuItemLayout}
             />
           </View>
         )

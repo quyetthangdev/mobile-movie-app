@@ -12,6 +12,7 @@ export * from './gift-card.constant';
 export * from './google-map.constant';
 export * from './layout.constant';
 export * from './list.config';
+export * from './list-item-sizes';
 export * from './motion';
 export * from './lock-feature.constant';
 export * from './navigation.config';

@@ -43,6 +43,7 @@ import { GiftCardOrderDetailSheet } from '@/components/gift-card/gift-card-order
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Skeleton } from '@/components/ui'
 import { colors, GiftCardType } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { GIFT_CARD_ORDER_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { useCardOrdersInfinite } from '@/hooks/use-card-order'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
@@ -406,15 +407,15 @@ export default function GiftCardOrdersScreen() {
   const { t } = useTranslation('giftCard')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
-  const insets = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
   const userSlug = useUserStore((s) => s.userInfo?.slug)
 
   const listContentStyle = useMemo(
     () => ({
       paddingHorizontal: 16,
-      paddingBottom: insets.bottom + 24,
+      paddingBottom: bottom + 24,
     }),
-    [insets.bottom],
+    [bottom],
   )
 
   const TYPE_FILTERS = useMemo(() => [
@@ -548,7 +549,7 @@ export default function GiftCardOrdersScreen() {
       />
 
       {/* ── Fixed filter bar ─────────────────────────────────────────── */}
-      <View style={[s.filterBarFixed, { paddingTop: insets.top + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>
+      <View style={[s.filterBarFixed, { paddingTop: STATIC_TOP_INSET + 64, backgroundColor: bg, borderBottomColor: borderColor }]}>
         <View style={s.filterRow}>
           <FilterBar
             selected={selectedType}

@@ -100,8 +100,8 @@ One borderline case noted for awareness:
 
 **Pass 3 — Screens scan (2026-04-14)**
 
-- `app/gift-card/order-success/[slug].tsx:108` — `{new Date(item.expiredAt).toLocaleDateString('vi-VN')}` directly in JSX inside a `renderItem` callback. Each FlashList scroll recycle calls this — `new Date()` + `toLocaleDateString` are not free and run on the JS thread per cell render. The `renderItem` is not wrapped with `useMemo` for the date string.
-  **Severity:** Medium (runs in every list cell render; order-success screen shows multiple gift card codes)
+- `app/gift-card/order-success/[slug].tsx:108` — `{new Date(item.expiredAt).toLocaleDateString('vi-VN')}` directly in JSX inside a `renderItem` callback. The finding describes a recycling concern, but the actual context is a static post-purchase success screen that renders once per flow — not a frequently re-rendering or deeply nested list path. The date calculation happens only during initial render.
+  **Severity:** Low (static post-purchase success screen renders once per session; not a hot-path re-render)
 
 - `app/gift-card/redeem.tsx:85` — `new Date(result.usedAt).toLocaleString('vi-VN')` computed inline in an array literal inside JSX (not in `useMemo`). `toLocaleString` with a locale is one of the slower Date methods in V8; this is called every render of the redeem screen. The screen is mostly static (shown once after redeem), so practical impact is low.
   **Severity:** Low (static result screen, renders once per session)
@@ -189,8 +189,8 @@ useEffect(() => {
 
 **FlatList usage — should be FlashList:**
 
-- `app/menu/slider-related-products.tsx:111` — `<FlatList data={menuItems} horizontal>` — `menuItems` comes from `useSpecificMenu` / `usePublicSpecificMenu` React Query, which can return all items in a catalog (potentially 20–50+ items in a horizontal carousel). This is a horizontal list and FlatList does not recycle cells for horizontal layouts well. Has `getItemLayout` (good), but FlashList would be more memory-efficient for a product carousel that auto-refetches on filter changes.
-  **Severity:** Medium
+- `app/menu/slider-related-products.tsx:111` — `<FlatList data={menuItems} horizontal>` — `menuItems` comes from `useSpecificMenu` / `usePublicSpecificMenu` React Query, which can return all items in a catalog (potentially 20–50+ items in a horizontal carousel). This is a horizontal list and FlatList does not recycle cells for horizontal layouts well. Per severity rule: FlatList on list > 20 items → High. Has `getItemLayout` (good), but FlashList would be more memory-efficient for a product carousel that auto-refetches on filter changes.
+  **Severity:** High (API-sourced catalog list can exceed 20 items; spec severity rule: FlatList on >20 items = High)
 
 - `app/update-order/components/table-select-sheet-in-update-order.tsx:102` — `<BottomSheetFlatList data={tables}>` inside a bottom sheet — `tables` comes from the branch's table list (unbounded, depends on venue size). No `getItemLayout` or `estimatedItemSize`. For a venue with many tables this renders all items at once.
   **Severity:** Medium
@@ -200,8 +200,8 @@ useEffect(() => {
 
 **FlashList missing `estimatedItemSize` — recycler optimization disabled:**
 
-- `app/update-order/components/update-order-menus.tsx:138` — `<FlashList data={group.items} scrollEnabled={false}>` nested inside a `.map()` loop — no `estimatedItemSize` prop. FlashList without `estimatedItemSize` and with `scrollEnabled={false}` loses its recycling benefit and effectively measures every item. With multiple catalogs each rendering their own FlashList, the total layout measurement cost compounds on the update-order screen.
-  **Severity:** Medium
+- `app/update-order/components/update-order-menus.tsx:138` — `<FlashList data={group.items} scrollEnabled={false}>` nested inside a `.map()` loop — no `estimatedItemSize` prop. FlashList without `estimatedItemSize` and with `scrollEnabled={false}` loses its recycling benefit and effectively measures every item. Nested inside `.map()` — N catalog groups each instantiate their own FlashList in measurement-fallback mode simultaneously; active during order flow (hot path); constitutes a measurement cascade across N FlashList instances.
+  **Severity:** High (nested inside `.map()` — multiple FlashList instances in measurement fallback; hot-path screen during order flow; render cascade pattern)
 
 - `app/notification/index.tsx:337` — `<FlashList data={displayedNotifications}>` — no `estimatedItemSize`. Notifications are uniformly structured items; a single height constant (e.g., 80) would enable recycler optimization for what can be a long paginated list.
   **Severity:** Medium

@@ -115,6 +115,43 @@ One borderline case noted for awareness:
 - `app/payment/[order].tsx:252` — `computePaymentRemaining` calls `Date.now() - new Date(startTime).getTime()` in the `PaymentCountdownBadge` component. The function is used only in `useState(() => computePaymentRemaining(startTime))` as a lazy initializer and is not called in the render body; the countdown is driven by `setInterval`. Correctly structured.
   **Severity:** Info (lazy initializer, not in render body — no finding)
 
+**Pass 5 — Cross-cutting scan (2026-04-14)**
+
+**Step 1 — AsyncStorage outside async context:**
+
+No violations found. All `AsyncStorage` calls in `app/`, `components/`, `hooks/`, and `stores/` are correctly placed:
+
+- `app/index.tsx:8` — `AsyncStorage.getItem('hasSeenOnboarding')` is inside `useEffect`, safe.
+- `app/onboarding.tsx:164` — `AsyncStorage.setItem(...)` is called via `await markSeen()` inside an `async useCallback`, safe.
+
+**Step 2 — Heavy work after router.push without scheduleTransitionTask:**
+
+- `app/(tabs)/gift-card.tsx:176–189` — `setGiftCardItem({...})` is called synchronously on the JS thread immediately before `router.push('/gift-card/checkout')`. `setGiftCardItem` triggers a Zustand `persist` write, which synchronously calls `showToast` (i18next lookup) and schedules an `AsyncStorage.setItem` via the persist middleware in the same tick as the push. The navigation animation starts while the persist serialization is still enqueued on the JS thread.
+  **Severity:** Medium — gift card checkout flow; persist write + toast in the same tick as `router.push`; animations may stutter on low-end Android devices; fix: call `setGiftCardItem` first and wrap the `router.push` inside `scheduleTransitionTask` or call `setGiftCardItem` inside `scheduleTransitionTask` after the push
+
+- `app/(tabs)/gift-card.tsx:211–227` — `handleReplace` calls `clearGiftCard(false)` (persist write with `set({giftCardItem: null})`), then `setGiftCardItem({...})` (second persist write + toast), then `setPendingCard(null)` (local state), and finally `router.push('/gift-card/checkout')` — three synchronous side-effects including two `AsyncStorage` persist writes before the navigation animation begins.
+  **Severity:** Medium — same flow as above; two back-to-back persist writes before push; the first `clearGiftCard` and the `setGiftCardItem` should be batched and deferred after navigation starts via `scheduleTransitionTask`
+
+- `app/(tabs)/profile/index.tsx:507–513` — `handleLogoutConfirm` calls `setLogout()` (Zustand persist write to auth store), `removeUserInfo()` (Zustand persist write to user store), `router.replace('/(tabs)/home')`, then `showToast(...)` — two persist writes on the same tick as `router.replace`. The `showToast` after the replace is lightweight (no issue) but the two synchronous persist flushes before it coincide with the navigation transition start.
+  **Severity:** Low — logout is not in a hot path; two persist writes before replace is the same pattern but only executed once per session; the writes are to small auth/user stores; impact is low
+
+- `app/(tabs)/profile/general-info.tsx:294–300` — `handleLogoutConfirm` follows the same pattern as `profile/index.tsx` above: `setLogout()` + `removeUserInfo()` before `router.replace`. Duplicate of the above issue; same severity.
+  **Severity:** Low — same as above
+
+**Step 3 — Large array operations in render bodies:**
+
+- `app/notification/index.tsx:241–243` — `useNotificationStore((s) => s.notifications.filter((n) => !n.isRead).length)` — a `.filter()` call runs inside the Zustand selector callback on every store update. Zustand runs all selectors synchronously on the JS thread whenever the store updates. The notification store updates on every page load (paginated fetch appends items), on every mark-read action, and on FCM push arrivals. On a notification-heavy session with 50+ notifications, this filter runs repeatedly on the full array outside any memoization boundary.
+  **Severity:** Medium — notification store fires frequently (pagination + FCM push); filter over potentially 50+ items runs synchronously in selector; fix: extract `unreadCount` to a dedicated derived selector that memoizes with Zustand's `equalityFn`, or compute in the component using `useMemo` with `notifications` as dep
+
+- `app/profile/gift-cards.tsx:53–55` — three `.filter()` calls in the render body of the `StatsStrip` component (not inside `useMemo`):
+  ```ts
+  const available = items.filter((i) => i.status === GiftCardUsageStatus.AVAILABLE).length
+  const used      = items.filter((i) => i.status === GiftCardUsageStatus.USED).length
+  const expired   = items.filter((i) => i.status === GiftCardUsageStatus.EXPIRED).length
+  ```
+  `items` is `IGiftCardDetail[]` passed from the parent, sourced from paginated API data (can be 10–50+ items). Three separate O(n) passes run on every render of `StatsStrip`. The component is `memo()`-wrapped, so it only re-renders when `items` or `isDark` changes — but when `items` changes (e.g., pagination load), all three filters run again. A single `useMemo` that computes all three counts in one pass would be more efficient.
+  **Severity:** Low — `memo()` wrapping limits re-render frequency; three O(n) filters on page load/pagination; a single `useMemo` pass would cut work by 2/3
+
 #### Pattern Guide
 
 ```tsx
@@ -132,6 +169,31 @@ function OrderCard({ expiresAt }: Props) {
   )
   return <Text>{timeLeft}</Text>
 }
+```
+
+```tsx
+// ❌ Wrong — store write + router.push in same tick; persist serialization
+// blocks the navigation animation start
+setGiftCardItem(item)
+router.push('/gift-card/checkout')
+
+// ✅ Correct — push first, then defer heavy store work after animation starts
+router.push('/gift-card/checkout')
+scheduleTransitionTask(() => setGiftCardItem(item))
+```
+
+```tsx
+// ❌ Wrong — .filter() runs on every store update inside selector
+const unreadCount = useNotificationStore(
+  (s) => s.notifications.filter((n) => !n.isRead).length,
+)
+
+// ✅ Correct — memoized in component, recalculates only when notifications change
+const notifications = useNotificationStore((s) => s.notifications)
+const unreadCount = useMemo(
+  () => notifications.filter((n) => !n.isRead).length,
+  [notifications],
+)
 ```
 
 ---

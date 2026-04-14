@@ -1,6 +1,6 @@
 # Performance Audit Report
 **Date:** 2026-04-14
-**Auditor:** [your name]
+**Auditor:** QuyetThangDev
 **Method:** Static analysis (grep patterns, no runtime profiling)
 **Scope:** Full app — stores, hooks, screens, components
 
@@ -8,23 +8,26 @@
 
 ## Part 1 — Executive Summary
 
-> _(Fill in after all passes complete)_
-
-**Total issues found:** TBD
-**Breakdown:** Critical: X | High: X | Medium: X | Low: X
+**Total issues found:** 51
+**Breakdown:** Critical: 1 | High: 2 | Medium: 19 | Low: 29
 
 ### Top 3 Critical Risks
 
-1. **[Risk name]** — [business impact]
-2. **[Risk name]** — [business impact]
-3. **[Risk name]** — [business impact]
+1. **Uncleaned setTimeout in debounced input hook** — `hooks/use-debounced-input.ts:20` fires after component unmount on every rapid search navigation. The stale callback corrupts `isLoading` state on re-mount, causing broken search interactions. Search screens are entered and exited multiple times per session, making this a near-guaranteed crash trigger after extended use.
+
+2. **FlashList measurement cascade in update-order flow** — `app/update-order/components/update-order-menus.tsx:138` nests a FlashList (no `estimatedItemSize`) inside a `.map()` loop. Every catalog group spawns its own FlashList in measurement-fallback mode simultaneously on the hot-path order editing screen, causing a frame-drop cascade that directly degrades the core ordering flow.
+
+3. **Expensive component without memo() re-runs store + query hooks on every parent scroll** — `components/menu/slider-related-products.tsx:164` holds live `useBranchStore`, `useUserStore`, and `useQuery` subscriptions with 6 hooks (3 `useMemo` + 3 `useCallback`) but is not wrapped in `memo()`. The product detail screen re-renders on tab focus, scroll, and cart changes — every re-render re-runs all these hooks even when `currentProduct` and `catalog` props are unchanged.
 
 ### Recommended Action Order
 
-1. Fix all Critical issues first (memory leaks in active flows)
-2. Fix High severity re-renders and list virtualization
-3. Address Medium severity memoization gaps
-4. Low severity in next cleanup sprint
+1. Fix the Critical `use-debounced-input.ts` leak — store the `setTimeout` handle and clear it in a `useEffect` cleanup; this is a crash risk in search flows
+2. Add `estimatedItemSize` to `update-order-menus.tsx` FlashList and extract to a non-`.map()` pattern — directly impacts the core order flow FPS
+3. Wrap `SliderRelatedProducts` in `memo()` — eliminates redundant store/query hook executions on every product detail scroll event
+4. Add `estimatedItemSize` to all 8 remaining FlashList instances in profile/notification screens — easy wins, one constant per screen
+5. Replace `react-native Image` with `expo-image` in the 5 Medium-severity remote-image locations — prevents repeated network fetches on navigation
+6. Memoize the 4 inline `new Date()` calls in `gift-card-orders.tsx` filter sheet and wrap `ProductHeroImage` in `memo()`
+7. Clean up all Low severity violations (inline style objects, dead code exports, minor best-practice gaps) in a dedicated cleanup sprint
 
 ---
 
@@ -32,7 +35,57 @@
 
 | File | Line | Category | Severity | Impact |
 |------|------|----------|----------|--------|
-| _(populate from passes below)_ | | | | |
+| `hooks/use-debounced-input.ts` | 20 | Memory Leaks | Critical | setTimeout in event handler with no cleanup; fires on unmounted component, corrupts isLoading state on re-mount in search flows |
+| `components/menu/slider-related-products.tsx` | 164 | Rendering Performance | High | Missing memo(); holds live store + query subscriptions (6 hooks); re-runs all hooks on every product detail scroll/focus re-render |
+| `app/update-order/components/update-order-menus.tsx` | 138 | Rendering Performance | High | FlashList nested inside .map() with no estimatedItemSize; measurement cascade across N instances on hot-path order editing screen |
+| `stores/selectors/order-flow.selectors.ts` | 16 | Re-renders | Medium | useOrderingData returns full orderingData object; any nested field change triggers re-render in all consumers (deprecated but still exported) |
+| `stores/selectors/order-flow.selectors.ts` | 23 | Re-renders | Medium | useUpdatingData returns full updatingData object; no selector narrowing; active non-deprecated export risks broad re-renders when consumed |
+| `stores/selectors/order-flow.selectors.ts` | 40 | Re-renders | Medium | useOrderFlowCreateOrder returns full orderingData via useShallow; nested field changes bypass shallow equality and trigger re-renders (deprecated but still exported) |
+| `app/profile/gift-card-orders.tsx` | 365–374 | JS Thread Blocked | Medium | 4 inline new Date() allocations as DatePicker prop defaults; filter sheet re-renders on every picker interaction, creating 4 fresh Date instances per render |
+| `hooks/use-notification-listener.ts` | 22 | Memory Leaks | Medium | Audio.Sound instance dereferenced without unloadAsync() on catch; audio session leak accumulates across repeated notification sound failures |
+| `app/update-order/components/table-select-sheet-in-update-order.tsx` | 102 | Rendering Performance | Medium | BottomSheetFlatList with unbounded table data and no estimatedItemSize or getItemLayout; renders all items at once for large venues |
+| `app/notification/index.tsx` | 337 | Rendering Performance | Medium | FlashList missing estimatedItemSize; recycler optimization disabled for paginated notification list |
+| `app/profile/history.tsx` | 278 | Rendering Performance | Medium | FlashList missing estimatedItemSize; recycler optimization disabled on most-visited list screen after menu |
+| `app/profile/loyalty-point.tsx` | 441 | Rendering Performance | Medium | FlashList missing estimatedItemSize; recycler disabled on paginated loyalty history list |
+| `app/profile/gift-cards.tsx` | 460 | Rendering Performance | Medium | FlashList missing estimatedItemSize; recycler disabled on paginated gift card list |
+| `app/profile/loyalty-point-hub.tsx` | 354 | Rendering Performance | Medium | FlashList missing estimatedItemSize; recycler disabled on paginated loyalty hub list |
+| `app/profile/gift-card-orders.tsx` | 571 | Rendering Performance | Medium | FlashList missing estimatedItemSize; recycler disabled on paginated gift card orders list |
+| `app/profile/coin-hub.tsx` | 359 | Rendering Performance | Medium | FlashList missing estimatedItemSize; recycler disabled on paginated coin transaction history |
+| `components/dialog/user-avatar-dropdown.tsx` | 3 | Rendering Performance | Medium | react-native Image for remote avatar URL; no cache policy, no blurhash; re-fetches on every navigation to profile/admin area |
+| `components/select/client-payment-method-select.tsx` | 3 | Rendering Performance | Medium | react-native Image for remote QR code URL; no cachePolicy; payment sheet opens multiple times per session, re-fetching on each open |
+| `app/menu/product-image-carousel.tsx` | 3 | Rendering Performance | Medium | react-native Image for remote product thumbnails in hot-path detail screen carousel; no caching means re-fetch on every product open |
+| `app/payment/[order].tsx` | 9 | Rendering Performance | Medium | react-native Image for QR code in a file that already imports expo-image; inconsistent within same file; QR re-fetched on every payment method change |
+| `components/product/product-hero-image.tsx` | 91 | Rendering Performance | Medium | Missing memo(); receives array props (imageUrls) that change reference on parent re-render; useMemo and useCallback present but outer component unguarded |
+| `components/home/highlight-menu.tsx` | 316 | Rendering Performance | Medium | AnimatedFlatList for API-driven highlight menu on home screen; horizontal FlatList does not virtualize; no estimatedItemSize equivalent |
+| `hooks/use-countdown.ts` | 56 | JS Thread Blocked | Low | calcTimeLeft recomputes new Date().getTime() on every render; intentional by design; single lightweight calc; documented for completeness |
+| `app/gift-card/order-success/[slug].tsx` | 108 | JS Thread Blocked | Low | new Date().toLocaleDateString inline in renderItem; static post-purchase success screen renders once per session; not a hot path |
+| `app/gift-card/redeem.tsx` | 85 | JS Thread Blocked | Low | new Date().toLocaleString inline; static result screen rendered once per session; minimal practical impact |
+| `app/(tabs)/gift-card.tsx` | 176–189 | JS Thread Blocked | Low | setGiftCardItem called before router.push; Zustand persist writes are async so no hard frame block; best practice violation |
+| `app/(tabs)/gift-card.tsx` | 211–227 | JS Thread Blocked | Low | Three synchronous side-effects (two persist writes) before router.push; same pattern; best practice violation |
+| `app/(tabs)/profile/index.tsx` | 507–513 | JS Thread Blocked | Low | setLogout + removeUserInfo persist writes before router.replace; logout is not a hot path; executes once per session |
+| `app/(tabs)/profile/general-info.tsx` | 294–300 | JS Thread Blocked | Low | Same logout persist-before-replace pattern as profile/index.tsx; same severity |
+| `app/notification/index.tsx` | 241–243 | JS Thread Blocked | Low | .filter() inside Zustand selector; notification store capped at 50 items; unmeasurable cost; best practice violation |
+| `app/profile/gift-cards.tsx` | 53–55 | JS Thread Blocked | Low | Three .filter() calls outside useMemo in StatsStrip; component is memo()-wrapped so limited re-render frequency; single useMemo pass would be more efficient |
+| `stores/cart-legacy.store.ts` | 20 | Memory Leaks | Low | Module-level mutable timer; properly managed for normal case; edge-case risk during auth teardown if clearCart called before timer fires |
+| `hooks/use-navigation-bar-fixed.ts` | 68 | Memory Leaks | Low | Inner setTimeout inside AppState listener has no cleanup reference; Android-only; no state update so no React memory corruption |
+| `app/menu/slider-related-products.tsx` | 111 | Rendering Performance | Low | FlatList in dead-code file; zero active consumers; the active component is in components/menu/; file should be removed |
+| `app/profile/index.tsx` | 147 | Rendering Performance | Low | FlashList missing estimatedItemSize; settings list is small (5–8 items); low recycling impact but FlashList will warn in dev |
+| `components/ui/data-table/data-table-row.tsx` | 25 | Rendering Performance | Low | renderItem target missing memo(); parent renderItem is memoized via useCallback; DataTable used in admin screens only, not hot paths |
+| `components/dialog/settings-dropdown.tsx` | 4 | Rendering Performance | Low | react-native Image for local flag assets; no cache concern but inconsistent with project conventions |
+| `components/profile/invoice-template.tsx` | 4 | Rendering Performance | Low | react-native Image for static bundled logo; memo'd parent; low re-render frequency; flagged for convention consistency |
+| `components/dropdown/table-dropdown.tsx` | 24 | Rendering Performance | Low | Exported component with zero active consumers; dead code — cleanup rather than memoization needed |
+| `components/cart/select-order-type-dropdown.tsx` | 23 | Rendering Performance | Low | Exported component with zero active consumers; dead code — cleanup rather than memoization needed |
+| `app/payment/[order].tsx` | 756 | Re-renders | Low | Inline onPress arrow function on error-state Pressable; error-state only, not a hot re-render path; negligible impact |
+| `app/payment/[order].tsx` | 837 | Re-renders | Low | Inline onPress arrow function for voucher sheet; payment screen state changes infrequent; functional impact minimal |
+| Multiple profile list screens | various | Re-renders | Low | contentContainerStyle inline objects on FlashList in loyalty-point.tsx:446, gift-cards.tsx:465, loyalty-point-hub.tsx:361, gift-card-orders.tsx:576, coin-hub.tsx:367; new reference per render triggers internal measurement |
+| `components/home/swipper-banner.tsx` | 243 | Rendering Performance | Low | FlatList for banner carousel; small item count (3–10); getItemLayout provided; intentional paginated carousel pattern — acceptable |
+| `components/home/store-carousel.tsx` | 122 | Rendering Performance | Low | FlatList for static store image carousel; small fixed array; intentional auto-scroll carousel pattern — acceptable |
+| `components/profile/profile-header.tsx` | 130 | Rendering Performance | Low | AnimatedFlatList in generic header wrapper; currently used only with small static settings list — acceptable |
+| `components/ui/carousel.tsx` | 158 | Rendering Performance | Low | FlatList for slide children; always small fixed count; intentional paginated carousel primitive — acceptable |
+| `components/cart/cart-size-sheet.tsx` | 120 | Rendering Performance | Low | BottomSheetFlatList for size options; 2–8 items per product; BottomSheetFlatList idiomatic for gorhom/bottom-sheet integration — acceptable |
+| `components/select/product-variant-sheet.tsx` | 178 | Rendering Performance | Low | BottomSheetFlatList for variants; 1–10 items typically; same analysis as cart-size-sheet — acceptable |
+| `components/select/order-type-sheet.tsx` | 264 | Rendering Performance | Low | BottomSheetFlatList for 3–4 static order type options; always small — acceptable |
+| `components/ui/data-table/data-table-body.tsx` | 13 | Rendering Performance | Low | Missing memo(); admin-facing DataTable; generic type constraint makes memo() non-trivial; not in hot cart/menu paths |
 
 ---
 

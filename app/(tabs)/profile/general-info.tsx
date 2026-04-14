@@ -273,7 +273,7 @@ const VerifiableInfoRow = React.memo(function VerifiableInfoRow({
 export default function GeneralInfo() {
   const router = useRouter()
   const { width: screenWidth } = useWindowDimensions()
-  const insets = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
   const theme = PROFILE_THEME[isDark ? 'dark' : 'light']
@@ -332,7 +332,7 @@ export default function GeneralInfo() {
             width: AVATAR_SIZE,
             height: AVATAR_SIZE,
             left: (screenWidth - AVATAR_SIZE) / 2,
-            top: insets.top + 60,
+            top: STATIC_TOP_INSET + 60,
           },
         ]}
       >
@@ -369,7 +369,7 @@ export default function GeneralInfo() {
       <View
         style={[
           styles.namePhoneWrap,
-          { top: insets.top + 60 + AVATAR_SIZE + 12 },
+          { top: STATIC_TOP_INSET + 60 + AVATAR_SIZE + 12 },
         ]}
         pointerEvents="none"
       >
@@ -399,7 +399,7 @@ export default function GeneralInfo() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: HEADER_HEIGHT + insets.top + 12, paddingBottom: insets.bottom + 40 },
+          { paddingTop: HEADER_HEIGHT + STATIC_TOP_INSET + 12, paddingBottom: bottom + 40 },
         ]}
       >
         <View style={[styles.card, { backgroundColor: theme.card }]}>

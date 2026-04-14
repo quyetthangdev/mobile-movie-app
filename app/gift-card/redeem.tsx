@@ -24,6 +24,7 @@ import { z } from 'zod'
 import { FloatingHeader } from '@/components/navigation/floating-header'
 import { Input } from '@/components/ui'
 import { colors } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { useRedeemGiftCard } from '@/hooks/use-redeem-gift-card'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import { useZodForm } from '@/hooks/use-zod-form'
@@ -156,7 +157,7 @@ export default function RedeemGiftCardScreen() {
   const { t } = useTranslation('giftCard')
   const isDark = useColorScheme() === 'dark'
   const primaryColor = usePrimaryColor()
-  const insets = useSafeAreaInsets()
+  const { bottom } = useSafeAreaInsets()
   const router = useRouter()
   const params = useLocalSearchParams<{ serial?: string; code?: string }>()
   const userSlug = useUserStore((s) => s.userInfo?.slug ?? '')
@@ -206,7 +207,7 @@ export default function RedeemGiftCardScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
-          contentContainerStyle={[s.scroll, { paddingTop: insets.top + 72, paddingBottom: insets.bottom + 32 }]}
+          contentContainerStyle={[s.scroll, { paddingTop: STATIC_TOP_INSET + 72, paddingBottom: bottom + 32 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >

@@ -197,6 +197,7 @@ const PaymentSuccessScreen = React.memo(function PaymentSuccessScreen({
     <ScreenContainer edges={['top']} style={{ flex: 1, backgroundColor: screenBg }}>
       <View style={[suc.container, { paddingBottom: insets.bottom + 24 }]}>
         <ExpoImage
+          // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
           source={require('@/assets/images/food/order-success.png')}
           style={suc.image}
           contentFit="contain"

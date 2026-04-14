@@ -98,6 +98,23 @@ One borderline case noted for awareness:
 - `hooks/use-countdown.ts:56` — `calcTimeLeft(expiresAt)` in the hook's return value recalculates `new Date(expiresAt).getTime() - Date.now()` on every render. This is intentional by design (the comment explicitly states "Derive seconds at render time") and the hook drives only a single text display — at 60fps this adds negligible cost. Not a performance concern in practice but documented for completeness.
   **Severity:** Low (intentional design, single lightweight calculation)
 
+**Pass 3 — Screens scan (2026-04-14)**
+
+- `app/gift-card/order-success/[slug].tsx:108` — `{new Date(item.expiredAt).toLocaleDateString('vi-VN')}` directly in JSX inside a `renderItem` callback. Each FlashList scroll recycle calls this — `new Date()` + `toLocaleDateString` are not free and run on the JS thread per cell render. The `renderItem` is not wrapped with `useMemo` for the date string.
+  **Severity:** Medium (runs in every list cell render; order-success screen shows multiple gift card codes)
+
+- `app/gift-card/redeem.tsx:85` — `new Date(result.usedAt).toLocaleString('vi-VN')` computed inline in an array literal inside JSX (not in `useMemo`). `toLocaleString` with a locale is one of the slower Date methods in V8; this is called every render of the redeem screen. The screen is mostly static (shown once after redeem), so practical impact is low.
+  **Severity:** Low (static result screen, renders once per session)
+
+- `app/profile/gift-card-orders.tsx:365,366,373,374` — `new Date()` called 4 times inline as prop defaults for `<DatePicker>` components: `date={localFrom ?? new Date()}`, `maximumDate={localTo ?? new Date()}`, `date={localTo ?? new Date()}`, `maximumDate={new Date()}`. Each render of the filter sheet creates up to 4 fresh `Date` instances. The filter sheet re-renders on every date picker interaction.
+  **Severity:** Medium (filter sheet re-renders on every picker interaction; 4 inline Date allocations per render)
+
+- `app/notification/index.tsx:74` — `formatTimeAgo` helper calls `Date.now() - new Date(createdAt).getTime()` on each call. The helper is called inside `useMemo` (line 130: `const timeAgo = useMemo(() => formatTimeAgo(...), [item.createdAt, t])`) so it is correctly memoized per item. No issue.
+  **Severity:** Info (correctly memoized — no finding)
+
+- `app/payment/[order].tsx:252` — `computePaymentRemaining` calls `Date.now() - new Date(startTime).getTime()` in the `PaymentCountdownBadge` component. The function is used only in `useState(() => computePaymentRemaining(startTime))` as a lazy initializer and is not called in the render body; the countdown is driven by `setInterval`. Correctly structured.
+  **Severity:** Info (lazy initializer, not in render body — no finding)
+
 #### Pattern Guide
 
 ```tsx
@@ -168,7 +185,58 @@ useEffect(() => {
 
 #### Findings
 
-_(populate from Pass 3 & 4)_
+**Pass 3 — Screens scan (2026-04-14)**
+
+**FlatList usage — should be FlashList:**
+
+- `app/menu/slider-related-products.tsx:111` — `<FlatList data={menuItems} horizontal>` — `menuItems` comes from `useSpecificMenu` / `usePublicSpecificMenu` React Query, which can return all items in a catalog (potentially 20–50+ items in a horizontal carousel). This is a horizontal list and FlatList does not recycle cells for horizontal layouts well. Has `getItemLayout` (good), but FlashList would be more memory-efficient for a product carousel that auto-refetches on filter changes.
+  **Severity:** Medium
+
+- `app/update-order/components/table-select-sheet-in-update-order.tsx:102` — `<BottomSheetFlatList data={tables}>` inside a bottom sheet — `tables` comes from the branch's table list (unbounded, depends on venue size). No `getItemLayout` or `estimatedItemSize`. For a venue with many tables this renders all items at once.
+  **Severity:** Medium
+
+- `app/onboarding.tsx:214` — `<Animated.FlatList>` for onboarding slides — data is a static constant (3–4 items), not API-driven. No actionable issue; acceptable use.
+  **Severity:** Info (not an issue)
+
+**FlashList missing `estimatedItemSize` — recycler optimization disabled:**
+
+- `app/update-order/components/update-order-menus.tsx:138` — `<FlashList data={group.items} scrollEnabled={false}>` nested inside a `.map()` loop — no `estimatedItemSize` prop. FlashList without `estimatedItemSize` and with `scrollEnabled={false}` loses its recycling benefit and effectively measures every item. With multiple catalogs each rendering their own FlashList, the total layout measurement cost compounds on the update-order screen.
+  **Severity:** Medium
+
+- `app/notification/index.tsx:337` — `<FlashList data={displayedNotifications}>` — no `estimatedItemSize`. Notifications are uniformly structured items; a single height constant (e.g., 80) would enable recycler optimization for what can be a long paginated list.
+  **Severity:** Medium
+
+- `app/profile/history.tsx:278` — `<FlashList data={orders}>` — no `estimatedItemSize`. Order history items have a fixed card layout; missing size hint disables recycling for the most frequently visited list screen after the menu.
+  **Severity:** Medium
+
+- `app/profile/index.tsx:147` — `<FlashList data={settingsItems}>` — no `estimatedItemSize`. Settings items are a small static list (5–8 items) so recycling impact is low, but the prop is still missing and FlashList will log a warning in dev.
+  **Severity:** Low
+
+- `app/profile/loyalty-point.tsx:441` — `<FlashList data={historyList}>` — no `estimatedItemSize`. Paginated loyalty history list; uniform row layout makes it straightforward to supply a constant.
+  **Severity:** Medium
+
+- `app/profile/gift-cards.tsx:460` — `<FlashList data={items}>` — no `estimatedItemSize`. Paginated gift card list; same pattern as loyalty-point.tsx.
+  **Severity:** Medium
+
+- `app/profile/loyalty-point-hub.tsx:354` — `<FlashList data={historyList}>` — no `estimatedItemSize`. Same pattern.
+  **Severity:** Medium
+
+- `app/profile/gift-card-orders.tsx:571` — `<FlashList data={items}>` — no `estimatedItemSize`. Same pattern.
+  **Severity:** Medium
+
+- `app/profile/coin-hub.tsx:359` — `<FlashList data={txList}>` — no `estimatedItemSize`. Paginated coin transaction history; same pattern.
+  **Severity:** Medium
+
+**Pass 3 — Screens scan (2026-04-14) — Category 1: Re-renders (inline props)**
+
+- `app/payment/[order].tsx:756` — `onPress={() => void refetchOrder()}` on a `<Pressable>` that is only rendered in the error state (load-failed branch). This is a static error screen shown rarely; the inline function re-creates each render but the screen is not in a hot re-render path, so impact is negligible.
+  **Severity:** Low (error-state only, not a hot path)
+
+- `app/payment/[order].tsx:837` — `onPress={() => setShowVoucherSheet(true)}` on a touchable that is rendered on every payment screen render. The `<PaymentVoucherSection>` component it triggers is not memoized; combined with `setShowVoucherSheet` being called from an inline closure this creates a new function reference on every parent re-render of the payment screen.
+  **Severity:** Low (payment screen state changes are infrequent; functional impact minimal)
+
+- Multiple `contentContainerStyle={{ ... }}` inline objects on `<FlashList>` in profile screens (`loyalty-point.tsx:446`, `gift-cards.tsx:465`, `loyalty-point-hub.tsx:361`, `gift-card-orders.tsx:576`, `coin-hub.tsx:367`) — inline objects create new references on each render. FlashList uses this prop for scroll inset calculation; a new reference triggers an internal measurement. These screens also re-render on filter changes (frequent user interaction). Extracting to `useMemo` or a `StyleSheet.create` constant would prevent unnecessary measurement calls.
+  **Severity:** Low (each individual instance is minor; cumulatively worth fixing across all profile list screens)
 
 #### Pattern Guide
 

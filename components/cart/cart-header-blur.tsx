@@ -3,12 +3,12 @@
  * BlurView + nút back, title, nút xoá hết. BG trùng với nền giỏ.
  */
 import { colors } from '@/constants'
+import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { ChevronLeft, Trash2 } from 'lucide-react-native'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { BlurView } from 'expo-blur'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export type CartHeaderBlurProps = {
   onBack: () => void
@@ -26,7 +26,6 @@ export function CartHeaderBlur({
   isDark = false,
 }: CartHeaderBlurProps) {
   const { t } = useTranslation('menu')
-  const insets = useSafeAreaInsets()
   const iconColor = isDark ? colors.mutedForeground.dark : colors.mutedForeground.light
 
   return (
@@ -38,7 +37,7 @@ export function CartHeaderBlur({
           top: 0,
           left: 0,
           right: 0,
-          height: insets.top + CART_HEADER_CONTENT_HEIGHT,
+          height: STATIC_TOP_INSET + CART_HEADER_CONTENT_HEIGHT,
           zIndex: 10,
           elevation: 10,
           overflow: 'hidden',
@@ -54,7 +53,7 @@ export function CartHeaderBlur({
         style={[
           styles.content,
           {
-            paddingTop: insets.top,
+            paddingTop: STATIC_TOP_INSET,
             paddingBottom: 12,
           },
         ]}
@@ -95,8 +94,7 @@ export function CartHeaderBlur({
 }
 
 export function useCartHeaderHeight() {
-  const insets = useSafeAreaInsets()
-  return insets.top + CART_HEADER_CONTENT_HEIGHT
+  return STATIC_TOP_INSET + CART_HEADER_CONTENT_HEIGHT
 }
 
 const styles = StyleSheet.create({

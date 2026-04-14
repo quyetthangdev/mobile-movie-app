@@ -14,7 +14,6 @@ export interface PasswordRulesInputProps {
   strength?: string | null
   labels?: {
     minLength: string
-    maxLength: string
     hasLetter: string
     hasNumber: string
     strength: string
@@ -81,14 +80,6 @@ export function PasswordRulesInput({
             )}
           >
             • {labels.minLength}
-          </Text>
-          <Text
-            className={cn(
-              'text-xs',
-              rules.maxLength ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
-            )}
-          >
-            • {labels.maxLength}
           </Text>
           <Text
             className={cn(

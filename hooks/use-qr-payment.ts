@@ -4,22 +4,22 @@ import { AppState, type AppStateStatus } from 'react-native'
 import { generatePaymentQR } from '@/api/payment'
 import type { IQRGenerateResponse } from '@/types/qr-payment.type'
 
-export const QR_TTL_S = 30
-const REFRESH_INTERVAL_S = 25
+export const QR_TTL_S = 60
+const REFRESH_INTERVAL_S = 55
 
 interface QRFetchState {
-  qrCode: string | null
+  token: string | null
   isLoading: boolean
   isRefreshing: boolean
   error: string | null
 }
 
-export function useQRPayment() {
+export function useQRPayment(): QRFetchState & { countdown: number; refetch: () => void } {
   // Split into two useState: fetch state (rare updates) + countdown (every second)
   // This confines countdown re-renders to a lightweight path — QRCard/Instructions
   // receive stable fetch props and memo actually suppresses their re-renders.
   const [fetchState, setFetchState] = useState<QRFetchState>({
-    qrCode: null,
+    token: null,
     isLoading: true,
     isRefreshing: false,
     error: null,
@@ -84,7 +84,7 @@ export function useQRPayment() {
         const data: IQRGenerateResponse = res.result
         r.expiresAtMs = new Date(data.expiresAt).getTime()
         setFetchState({
-          qrCode: data.qrCode,
+          token: data.token,
           error: null,
           isLoading: false,
           isRefreshing: false,
@@ -147,7 +147,7 @@ export function useQRPayment() {
 
   const refetch = useCallback(() => {
     stopTimers()
-    setFetchState((s) => ({ ...s, isLoading: true, error: null }))
+    setFetchState((s) => ({ ...s, token: null, isLoading: true, error: null }))
     fetchQR(false)
     startAutoRefresh()
   }, [fetchQR, startAutoRefresh, stopTimers])

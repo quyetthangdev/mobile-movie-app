@@ -5,4 +5,4 @@ export const NAME_REGEX = /^(?!.* {2,})[A-Za-zÀ-ỹà-ỹ]+(?: [A-Za-zÀ-ỹà-
 export const EMOJI_REGEX =
   /([\u2700-\u27BF]|[\uE000-\uF8FF]|[\uD83C-\uDBFF\uDC00-\uDFFF])/u
 
-export const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,20}$/ // At least 8 characters, at most 20 characters, at least one letter and one number
+export const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/ // At least 8 characters, at least one letter and one number

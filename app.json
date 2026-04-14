@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "TREND Coffee",
-    "slug": "mobile-movie-app",
-    "version": "2.0.0",
+    "slug": "trend-coffee-app",
+    "version": "2.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/trend/logo-icon-padded.png",
     "scheme": "trend",
@@ -82,10 +82,7 @@
     },
     "jsEngine": "hermes",
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "80506df6-59f5-4b58-bb49-925597556b26"
-      }
+      "router": {}
     }
   }
 }

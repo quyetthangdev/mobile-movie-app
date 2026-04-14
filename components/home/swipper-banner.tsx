@@ -1,7 +1,19 @@
 import { Image } from 'expo-image'
-import { Linking, Pressable, StyleSheet, View } from 'react-native'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Dimensions, FlatList } from 'react-native'
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import {
+  Dimensions,
+  FlatList,
+  Linking,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useDerivedValue,
@@ -18,27 +30,28 @@ import type { ImageSourcePropType } from 'react-native'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const AUTO_SCROLL_INTERVAL = 3500
-// ROUTE is a compile-time constant — no need to recompute per render
 const ROUTE_VALUES = Object.values(ROUTE)
 const DOT_SIZE = 7
 const DOT_ACTIVE_WIDTH = 20
 const DOT_GAP = 5
-// Module-scope spring config — no per-worklet allocation
 const DOT_WIDTH_SPRING = { damping: 15, stiffness: 220 } as const
 const DOT_OPACITY_TIMING = { duration: 180 } as const
 
+const SCREEN_W = Dimensions.get('window').width
+
 // ─── Dot indicator ───────────────────────────────────────────────────────────
 
-const BannerDot = React.memo(function BannerDot({ isActive }: { isActive: boolean }) {
-  // Drive width + opacity directly on UI thread — no useEffect / JS-thread hop.
-  // useDerivedValue re-runs on UI thread whenever isActive changes (via prop update).
+const BannerDot = React.memo(function BannerDot({
+  isActive,
+}: {
+  isActive: boolean
+}) {
   const width = useDerivedValue(() =>
     withSpring(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE, DOT_WIDTH_SPRING),
   )
   const opacity = useDerivedValue(() =>
     withTiming(isActive ? 1 : 0.45, DOT_OPACITY_TIMING),
   )
-
   const style = useAnimatedStyle(() => ({
     width: width.value,
     height: DOT_SIZE,
@@ -46,23 +59,28 @@ const BannerDot = React.memo(function BannerDot({ isActive }: { isActive: boolea
     backgroundColor: '#fff',
     opacity: opacity.value,
   }))
-
   return <Animated.View style={style} />
 })
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getBannerImage(banner: IBanner): ImageSourcePropType {
+function getBannerSource(banner: IBanner): ImageSourcePropType {
   if (banner.image) {
     if (banner.image.startsWith('http')) return { uri: banner.image }
-    const url = publicFileURL ? `${publicFileURL}/${banner.image}` : banner.image
+    const url = publicFileURL
+      ? `${publicFileURL}/${banner.image}`
+      : banner.image
     return { uri: url }
   }
   return Images.Landing.Desktop
 }
 
 function extractPathname(url: string): string {
-  try { return new URL(url).pathname } catch { return url }
+  try {
+    return new URL(url).pathname
+  } catch {
+    return url
+  }
 }
 
 function isInternalRoute(url: string, routeValues: string[]): boolean {
@@ -70,46 +88,73 @@ function isInternalRoute(url: string, routeValues: string[]): boolean {
   if (!url.startsWith('http://') && !url.startsWith('https://')) return true
   try {
     const pathname = new URL(url).pathname
-    return routeValues.some((r) => pathname === r || pathname.startsWith(r + '/'))
-  } catch { return true }
+    return routeValues.some(
+      (r) => pathname === r || pathname.startsWith(r + '/'),
+    )
+  } catch {
+    return true
+  }
 }
+
+// ─── Slide item ───────────────────────────────────────────────────────────────
+
+interface SlideItemProps {
+  banner: IBanner
+  slideHeight: number
+  onPress: (banner: IBanner) => void
+}
+
+const SlideItem = React.memo(function SlideItem({
+  banner,
+  slideHeight,
+  onPress,
+}: SlideItemProps) {
+  const source = getBannerSource(banner)
+
+  return (
+    <Pressable
+      onPress={() => onPress(banner)}
+      style={{ width: SCREEN_W, height: slideHeight, overflow: 'hidden' }}
+    >
+      <Image
+        source={source}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        contentPosition="center"
+        cachePolicy="memory-disk"
+        transition={250}
+      />
+    </Pressable>
+  )
+})
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface SwiperBannerProps {
   bannerData: IBanner[]
-  height?: number
+  height: number
 }
 
 const SwiperBanner = React.memo(function SwiperBanner({
   bannerData,
-  height: heightProp,
+  height: slideHeight,
 }: SwiperBannerProps): React.ReactElement | null {
   const flatListRef = useRef<FlatList>(null)
-  const screenWidth = Dimensions.get('window').width
-  const screenHeight = Dimensions.get('window').height
-  const bannerHeight = heightProp ?? screenHeight * 0.4
-
   const count = bannerData.length
 
   /**
-   * Infinite scroll — clone last item at front, first item at back:
+   * Infinite scroll — clone last at front, first at back:
    *   [last, item0, item1, ..., itemN, first]
-   * Real items occupy indices 1..count in this array.
-   * Start at index 1 (first real item).
    */
   const infiniteData = useMemo(() => {
     if (count <= 1) return bannerData
     return [bannerData[count - 1], ...bannerData, bannerData[0]]
   }, [bannerData, count])
 
-  // Real active index (0..count-1) — used for dots
   const [activeIndex, setActiveIndex] = useState(0)
   const activeIndexRef = useRef(0)
-  // Current position in infiniteData (1..count) — used for auto-scroll
   const infiniteIndexRef = useRef(1)
 
-  // Scroll to index 1 on mount (skip the cloned-last at position 0)
   useEffect(() => {
     if (count <= 1) return
     requestAnimationFrame(() => {
@@ -117,7 +162,6 @@ const SwiperBanner = React.memo(function SwiperBanner({
     })
   }, [count])
 
-  // Auto-scroll forward, teleport handled by handleScrollEnd
   useEffect(() => {
     if (count <= 1) return
     const interval = setInterval(() => {
@@ -130,9 +174,8 @@ const SwiperBanner = React.memo(function SwiperBanner({
   const handleScrollEnd = useCallback(
     (e: { nativeEvent: { contentOffset: { x: number } } }) => {
       if (count <= 1) return
-      const rawIndex = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
+      const rawIndex = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W)
 
-      // Teleport: cloned-last (index 0) → real last (index count)
       if (rawIndex === 0) {
         flatListRef.current?.scrollToIndex({ index: count, animated: false })
         infiniteIndexRef.current = count
@@ -140,7 +183,6 @@ const SwiperBanner = React.memo(function SwiperBanner({
         setActiveIndex(count - 1)
         return
       }
-      // Teleport: cloned-first (index count+1) → real first (index 1)
       if (rawIndex === count + 1) {
         flatListRef.current?.scrollToIndex({ index: 1, animated: false })
         infiniteIndexRef.current = 1
@@ -154,54 +196,30 @@ const SwiperBanner = React.memo(function SwiperBanner({
       activeIndexRef.current = realIndex
       setActiveIndex(realIndex)
     },
-    [screenWidth, count],
+    [count],
   )
 
-  const handleBannerPress = useCallback(
-    (banner: IBanner) => {
-      const url = banner.url?.trim()
-      if (!url) return
-      const internal = isInternalRoute(url, ROUTE_VALUES)
-      const dest = internal ? extractPathname(url) : url
-      if (internal) {
-        navigateNative.push(dest as Parameters<typeof navigateNative.push>[0])
-      } else {
-        Linking.openURL(dest).catch(() => {})
-      }
-    },
-    [],
-  )
+  const handleBannerPress = useCallback((banner: IBanner) => {
+    const url = banner.url?.trim()
+    if (!url) return
+    const internal = isInternalRoute(url, ROUTE_VALUES)
+    const dest = internal ? extractPathname(url) : url
+    if (internal) {
+      navigateNative.push(dest as Parameters<typeof navigateNative.push>[0])
+    } else {
+      Linking.openURL(dest).catch(() => {})
+    }
+  }, [])
 
   const renderItem = useCallback(
-    ({ item: banner }: { item: IBanner }) => {
-      const source = getBannerImage(banner)
-      return (
-        <Pressable
-          onPress={() => handleBannerPress(banner)}
-          style={{ width: screenWidth, height: bannerHeight, overflow: 'hidden' }}
-        >
-          {/* Blurred background — fills the entire frame for any aspect ratio */}
-          <Image
-            source={source}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            blurRadius={22}
-            cachePolicy="memory-disk"
-          />
-          {/* Dim overlay để chữ/dot dễ đọc và bg không quá sáng */}
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.28)' }]} />
-          {/* Main image — contain để không bị crop dù ngang/vuông/đứng */}
-          <Image
-            source={source}
-            style={{ width: screenWidth, height: bannerHeight }}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-            transition={300}
-          />
-        </Pressable>
-      )
-    },
-    [screenWidth, bannerHeight, handleBannerPress],
+    ({ item: banner }: { item: IBanner }) => (
+      <SlideItem
+        banner={banner}
+        slideHeight={slideHeight}
+        onPress={handleBannerPress}
+      />
+    ),
+    [slideHeight, handleBannerPress],
   )
 
   const keyExtractor = useCallback(
@@ -211,17 +229,17 @@ const SwiperBanner = React.memo(function SwiperBanner({
 
   const getItemLayout = useCallback(
     (_: unknown, index: number) => ({
-      length: screenWidth,
-      offset: screenWidth * index,
+      length: SCREEN_W,
+      offset: SCREEN_W * index,
       index,
     }),
-    [screenWidth],
+    [],
   )
 
   if (!count) return null
 
   return (
-    <View style={{ width: '100%' }}>
+    <View style={{ width: '100%', height: slideHeight }}>
       <FlatList
         ref={flatListRef}
         data={infiniteData}
@@ -239,20 +257,8 @@ const SwiperBanner = React.memo(function SwiperBanner({
         windowSize={3}
       />
 
-      {/* Dot indicators — only when >1 banner */}
       {count > 1 && (
-        <View
-          style={{
-            position: 'absolute',
-            bottom: 14,
-            left: 0,
-            right: 0,
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: DOT_GAP,
-          }}
-        >
+        <View style={s.dots}>
           {bannerData.map((_, i) => (
             <BannerDot key={i} isActive={i === activeIndex} />
           ))}
@@ -263,3 +269,16 @@ const SwiperBanner = React.memo(function SwiperBanner({
 })
 
 export default SwiperBanner
+
+const s = StyleSheet.create({
+  dots: {
+    position: 'absolute',
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: DOT_GAP,
+  },
+})

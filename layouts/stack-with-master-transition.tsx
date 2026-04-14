@@ -77,6 +77,7 @@ export function NativeStackWithMasterTransition() {
       screenOptions={screenOptions}
       screenListeners={mergedListeners}
     >
+      <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="notification" options={{ headerShown: false }} />
       <Stack.Screen name="payment" options={{ headerShown: false }} />

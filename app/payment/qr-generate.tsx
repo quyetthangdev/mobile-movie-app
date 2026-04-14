@@ -2,8 +2,8 @@ import { FloatingHeader } from '@/components/navigation/floating-header'
 import { colors } from '@/constants'
 import { STATIC_TOP_INSET } from '@/constants/status-bar'
 import { QR_TTL_S, useQRPayment } from '@/hooks/use-qr-payment'
-import { Image } from 'expo-image'
 import { memo, useCallback, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ActivityIndicator,
   LayoutChangeEvent,
@@ -14,6 +14,7 @@ import {
   View,
   useColorScheme,
 } from 'react-native'
+import QRCode from 'react-native-qrcode-svg'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -75,18 +76,19 @@ const ProgressBar = memo(function ProgressBar({
 // ─── Active QR — owns Reanimated hooks, không có conditional return ───────────
 
 const ActiveQR = memo(function ActiveQR({
-  qrCode,
+  token,
   isRefreshing,
   countdown,
   isDark,
   primary,
 }: {
-  qrCode: string
+  token: string
   isRefreshing: boolean
   countdown: number
   isDark: boolean
   primary: string
 }) {
+  const { t } = useTranslation('payment')
   const { mutedColor, cardBg } = useMemo(
     () => ({
       mutedColor: isDark ? colors.gray[400] : colors.gray[500],
@@ -120,22 +122,18 @@ const ActiveQR = memo(function ActiveQR({
   return (
     <View style={[s.qrCard, { backgroundColor: cardBg }]}>
       <Animated.View style={qrWrapStyle}>
-        <Image
-          source={{ uri: qrCode }}
-          style={s.qrImage}
-          contentFit="contain"
-        />
+        <QRCode value={token} size={QR_SIZE} />
       </Animated.View>
 
       <ProgressBar
-        qrCode={qrCode}
+        qrCode={token}
         primary={primary}
         isDark={isDark}
         ttlMs={QR_TTL_S * 1000}
       />
 
       <Text style={[s.countdownText, { color: mutedColor }]}>
-        Hết hạn sau{' '}
+        {t('qrGenerate.expiresIn')}{' '}
         <Text style={[s.countdownHighlight, { color: countdownColor }]}>
           {countdown}s
         </Text>
@@ -147,7 +145,7 @@ const ActiveQR = memo(function ActiveQR({
 // ─── QR Card — dispatcher, không có hooks riêng ───────────────────────────────
 
 const QRCard = memo(function QRCard({
-  qrCode,
+  token,
   isLoading,
   isRefreshing,
   countdown,
@@ -156,7 +154,7 @@ const QRCard = memo(function QRCard({
   isDark,
   primary,
 }: {
-  qrCode: string | null
+  token: string | null
   isLoading: boolean
   isRefreshing: boolean
   countdown: number
@@ -165,6 +163,7 @@ const QRCard = memo(function QRCard({
   isDark: boolean
   primary: string
 }) {
+  const { t } = useTranslation('payment')
   const { mutedColor, cardBg, skeletonWrapStyle } = useMemo(
     () => {
       const skBg = isDark ? colors.gray[700] : colors.gray[100]
@@ -184,13 +183,13 @@ const QRCard = memo(function QRCard({
           <ActivityIndicator color={primary} size="large" />
         </View>
         <Text style={[s.countdownText, { color: mutedColor }]}>
-          Đang tạo mã QR...
+          {t('qrGenerate.generating')}
         </Text>
       </View>
     )
   }
 
-  if (error && !qrCode) {
+  if (error && !token) {
     return (
       <View style={[s.qrCard, { backgroundColor: cardBg }]}>
         <View style={skeletonWrapStyle}>
@@ -198,7 +197,7 @@ const QRCard = memo(function QRCard({
         </View>
         <Text style={[s.errorText, { color: mutedColor }]}>{error}</Text>
         <Pressable style={[s.retryBtn, { borderColor: primary }]} onPress={onRetry}>
-          <Text style={[s.retryText, { color: primary }]}>Thử lại</Text>
+          <Text style={[s.retryText, { color: primary }]}>{t('qrGenerate.retry')}</Text>
         </Pressable>
       </View>
     )
@@ -206,7 +205,7 @@ const QRCard = memo(function QRCard({
 
   return (
     <ActiveQR
-      qrCode={qrCode!}
+      token={token!}
       isRefreshing={isRefreshing}
       countdown={countdown}
       isDark={isDark}
@@ -217,13 +216,16 @@ const QRCard = memo(function QRCard({
 
 // ─── Instructions ─────────────────────────────────────────────────────────────
 
-const STEPS = [
-  'Đưa màn hình QR cho nhân viên tại quầy',
-  'Nhân viên quét mã QR trên máy POS',
-  'Nhận thông báo xác nhận thanh toán thành công',
-] as const
-
 const Instructions = memo(function Instructions({ isDark }: { isDark: boolean }) {
+  const { t } = useTranslation('payment')
+  const steps = useMemo(
+    () => [
+      t('qrGenerate.step1'),
+      t('qrGenerate.step2'),
+      t('qrGenerate.step3'),
+    ],
+    [t],
+  )
   const { textColor, mutedColor, cardBg } = useMemo(
     () => ({
       textColor: isDark ? colors.gray[50] : colors.gray[900],
@@ -235,7 +237,7 @@ const Instructions = memo(function Instructions({ isDark }: { isDark: boolean })
 
   return (
     <View style={[s.instructionCard, { backgroundColor: cardBg }]}>
-      {STEPS.map((step, i) => (
+      {steps.map((step, i) => (
         <View key={step} style={s.stepRow}>
           <View style={[s.stepNum, { backgroundColor: mutedColor }]}>
             <Text style={s.stepNumText}>{i + 1}</Text>
@@ -250,6 +252,7 @@ const Instructions = memo(function Instructions({ isDark }: { isDark: boolean })
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function QRGenerateScreen() {
+  const { t } = useTranslation('payment')
   const isDark = useColorScheme() === 'dark'
 
   const primary = useMemo(
@@ -261,18 +264,18 @@ export default function QRGenerateScreen() {
     [isDark],
   )
 
-  const { qrCode, countdown, isLoading, isRefreshing, error, refetch } =
+  const { token, countdown, isLoading, isRefreshing, error, refetch } =
     useQRPayment()
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <FloatingHeader title="Thanh toán bằng Xu" />
+      <FloatingHeader title={t('qrGenerate.title')} />
       <ScrollView
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
       >
         <QRCard
-          qrCode={qrCode}
+          token={token}
           isLoading={isLoading}
           isRefreshing={isRefreshing}
           countdown={countdown}
@@ -312,10 +315,10 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  qrImage: {
-    width: QR_SIZE,
-    height: QR_SIZE,
-  },
+  // qrImage: {
+  //   width: QR_SIZE,
+  //   height: QR_SIZE,
+  // },
   progressTrack: {
     width: '100%',
     height: 4,

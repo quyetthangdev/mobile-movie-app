@@ -5,7 +5,6 @@ import { AuthRules } from '@/constants'
 
 export interface PasswordRules {
   minLength: boolean
-  maxLength: boolean
   hasLetter: boolean
   hasNumber: boolean
 }
@@ -15,7 +14,6 @@ export interface PasswordRulesResult {
   strength: string | null
   labels: {
     minLength: string
-    maxLength: string
     hasLetter: string
     hasNumber: string
     strength: string
@@ -32,7 +30,6 @@ export function usePasswordRules(value: string | undefined): PasswordRulesResult
     if (!hasInput || !value) {
       return {
         minLength: false,
-        maxLength: false,
         hasLetter: false,
         hasNumber: false,
       }
@@ -40,7 +37,6 @@ export function usePasswordRules(value: string | undefined): PasswordRulesResult
 
     return {
       minLength: value.length >= AuthRules.MIN_LENGTH,
-      maxLength: value.length <= AuthRules.MAX_LENGTH,
       hasLetter: /[A-Za-z]/.test(value),
       hasNumber: /\d/.test(value),
     }
@@ -59,7 +55,6 @@ export function usePasswordRules(value: string | undefined): PasswordRulesResult
   const labels = useMemo(
     () => ({
       minLength: t('rule.minLength', { count: AuthRules.MIN_LENGTH }),
-      maxLength: t('rule.maxLength', { count: AuthRules.MAX_LENGTH }),
       hasLetter: t('rule.hasLetter'),
       hasNumber: t('rule.hasNumber'),
       strength: t('rule.strength'),

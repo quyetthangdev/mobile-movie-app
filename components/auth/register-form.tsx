@@ -229,13 +229,24 @@ export default function RegisterForm() {
 
       {/* Login link */}
       <TouchableOpacity
-        className="mb-8 items-center"
+        className="mb-4 items-center"
         onPress={() => navigateNative.replace('/auth/login')}
         disabled={isLoading}
       >
         <Text className="text-sm font-sans text-muted-foreground">
           {t('register.haveAccount')}{' '}
           <Text className="font-sans-semibold text-primary">{t('register.login')}</Text>
+        </Text>
+      </TouchableOpacity>
+
+      {/* Back to home */}
+      <TouchableOpacity
+        className="mb-8 items-center"
+        onPress={() => navigateNative.replace('/(tabs)/home')}
+        disabled={isLoading}
+      >
+        <Text className="text-sm font-sans text-muted-foreground">
+          {t('register.goBackToHome')}
         </Text>
       </TouchableOpacity>
 

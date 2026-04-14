@@ -1,11 +1,23 @@
 // Load .env FIRST so EXPO_PUBLIC_* is available when Metro bundles
 // (needed when running from Android Studio - Metro must have env before bundling)
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const dotenv = require('dotenv');
 const dotenvExpand = require('dotenv-expand');
 const projectRoot = path.resolve(__dirname);
 dotenvExpand.expand(dotenv.config({ path: path.join(projectRoot, '.env') }));
 dotenvExpand.expand(dotenv.config({ path: path.join(projectRoot, '.env.local') }));
+
+// Hash .env files so Metro cache invalidates when env changes
+const envHash = (() => {
+  const files = ['.env', '.env.local'].map(f => path.join(projectRoot, f));
+  const h = crypto.createHash('md5');
+  for (const f of files) {
+    if (fs.existsSync(f)) h.update(fs.readFileSync(f));
+  }
+  return h.digest('hex');
+})();
 
 // Load polyfills before any other modules
 require('./polyfills');
@@ -53,5 +65,8 @@ config.transformer = {
 
 // Increase max workers for faster bundling
 config.maxWorkers = 2;
+
+// Include .env hash in cache key so bundle rebuilds when env changes
+config.cacheVersion = envHash;
  
 module.exports = withNativeWind(config, { input: './app/global.css' })

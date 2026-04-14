@@ -17,7 +17,6 @@ import { useProfile } from '@/hooks/use-profile'
 import { navigateNative } from '@/lib/navigation'
 import { useMasterTransitionOptional } from '@/lib/navigation/master-transition-provider'
 import { useAuthStore, useUserStore } from '@/stores'
-import { showErrorToastMessage } from '@/utils'
 import { useShallow } from 'zustand/react/shallow'
 
 export interface ITokenPayload {
@@ -65,6 +64,7 @@ export function usePostAuthActions() {
   /**
    * Gọi sau khi nhận được tokens từ API login/register.
    * onSuccess callback tuỳ chọn — mặc định navigate về home.
+   * Throws error nếu profile check fails — form error handler sẽ catch.
    */
   const handleAuthSuccess = useCallback(
     async (tokens: ITokenPayload, onSuccess?: () => void) => {
@@ -88,8 +88,7 @@ export function usePostAuthActions() {
       if (profileResult.role?.name !== Role.CUSTOMER) {
         setLogout()
         removeUserInfo()
-        showErrorToastMessage('Tài khoản không có quyền truy cập ứng dụng này')
-        return
+        throw new Error('Tài khoản không có quyền truy cập ứng dụng này')
       }
 
       // 4. Lưu user info + slug

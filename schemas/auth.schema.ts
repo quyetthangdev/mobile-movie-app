@@ -48,9 +48,6 @@ export function useRegisterSchema() {
         .min(AuthRules.MIN_LENGTH, {
           message: t('register.minLength', { count: AuthRules.MIN_LENGTH }),
         })
-        .max(AuthRules.MAX_LENGTH, {
-          message: t('register.maxLength', { count: AuthRules.MAX_LENGTH }),
-        })
         .regex(PASSWORD_REGEX, t('register.passwordInvalid')),
       confirmPassword: z.string().min(1, t('register.confirmPasswordRequired')),
     })
@@ -86,11 +83,6 @@ export function useResetPasswordSchema() {
         .min(AuthRules.MIN_LENGTH, {
           message: t('forgotPassword.passwordMin', {
             length: AuthRules.MIN_LENGTH,
-          }),
-        })
-        .max(AuthRules.MAX_LENGTH, {
-          message: t('forgotPassword.passwordMax', {
-            length: AuthRules.MAX_LENGTH,
           }),
         })
         .regex(PASSWORD_REGEX, t('forgotPassword.passwordInvalid')),

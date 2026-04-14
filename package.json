@@ -5,8 +5,9 @@
   "scripts": {
     "start": "expo start",
     "build": "npx expo export --platform web",
-    "build:android": "eas build --profile production --platform android",
-    "build:ios": "eas build --profile production --platform ios",
+    "build:android": "npm run prebuild:clean && eas build --profile production --platform android",
+    "build:ios": "npm run prebuild:clean && eas build --profile production --platform ios",
+    "prebuild:clean": "rm -rf .expo node_modules/.cache android/build android/app/build .gradle 2>/dev/null; echo '✅ Build cache cleaned'",
     "build:web": "eas build --profile production --platform web",
     "export:web": "npx expo export --platform web",
     "postinstall": "patch-package",

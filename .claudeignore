@@ -1,44 +1,10 @@
-# Dependency folders
-node_modules/
-.expo/
-package-lock.json
-yarn.lock
-bun.lockb
-
-# iOS & Android build files (Rất nặng, tốn token)
-ios/Pods/
-ios/build/
-android/app/build/
-android/.gradle/
-*.xcresult
-*.pbxproj
-
-# Assets & Binary
-*.png
-*.jpg
-*.jpeg
-*.svg
-*.mp4
-*.ttf
-*.otf
-
-# IDE & OS files
-.DS_Store
-.vscode/
-.idea/
-
-# Sensitive info (Bảo mật)
+# Secrets & environment variables
 .env
 .env.*
-.env.local
-.env.*.local
-*.env
+*.local
+
+# Certificates & keys
 *.pem
 *.key
 *.p12
-*.pfx
-*.jks
-credentials.json
-eas-credentials/
-google-services.json
-GoogleService-Info.plist
+*.keystore

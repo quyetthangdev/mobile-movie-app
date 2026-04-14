@@ -3,13 +3,13 @@ import { useRouter } from 'expo-router'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  Dimensions,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
   useColorScheme,
-  useWindowDimensions,
 } from 'react-native'
 import Animated, {
   Extrapolation,
@@ -35,6 +35,8 @@ import { useBanners } from '@/hooks/use-banner'
 import { usePrimaryColor } from '@/hooks/use-primary-color'
 import type { IBanner } from '@/types'
 
+const SCREEN_W = Dimensions.get('window').width
+
 /** Banner taller hơn 25% để có room dịch chuyển khi parallax. */
 const BANNER_EXTRA_RATIO = 0.25
 
@@ -54,7 +56,6 @@ export default function HomeScreen() {
   const { t } = useTranslation('home')
   const router = useRouter()
   const isDark = useColorScheme() === 'dark'
-  const { height: screenHeight } = useWindowDimensions()
   const primaryColor = usePrimaryColor()
   const bottomPadding = useTabBarBottomPadding()
 
@@ -105,7 +106,8 @@ export default function HomeScreen() {
     scrollY.value = e.contentOffset.y
   })
 
-  const BANNER_H = screenHeight * 0.4
+  // Fixed banner height — 2:1 aspect ratio
+  const BANNER_H = Math.round(SCREEN_W / 2)
   const BANNER_INNER_H = BANNER_H * (1 + BANNER_EXTRA_RATIO)
 
   /** Parallax: banner dịch xuống chậm hơn scroll → tạo độ sâu */
@@ -149,7 +151,10 @@ export default function HomeScreen() {
             <Skeleton className="w-full h-full rounded-none" />
           ) : (
             <Animated.View style={[{ height: BANNER_INNER_H }, bannerParallaxStyle]}>
-              <SwiperBanner bannerData={banners} height={BANNER_INNER_H} />
+              <SwiperBanner
+                bannerData={banners}
+                height={BANNER_INNER_H}
+              />
             </Animated.View>
           )}
         </View>

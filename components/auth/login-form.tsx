@@ -14,6 +14,7 @@ import { useLogin, usePostAuthActions, useZodForm } from '@/hooks'
 import { navigateNative } from '@/lib/navigation'
 import { loginSchema, TLoginSchema } from '@/schemas'
 import type { ILoginResponse } from '@/types'
+import { showErrorToastMessage } from '@/utils'
 
 interface LoginFormProps {
   onLoginSuccess?: () => void
@@ -24,7 +25,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   // const passwordRef = useRef<TextInput>(null)
   const [showPassword, setShowPassword] = useState(false)
 
-  const { control, handleSubmit, setValue, clearErrors, formState: { isSubmitting } } =
+  const { control, handleSubmit, formState: { isSubmitting } } =
     useZodForm(loginSchema, {
       defaultValues: { phonenumber: '', password: '' },
     })
@@ -37,7 +38,12 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       { phonenumber: data.phonenumber, password: data.password },
       {
         onSuccess: async (response: ILoginResponse) => {
-          await handleAuthSuccess(response.result, onLoginSuccess)
+          try {
+            await handleAuthSuccess(response.result, onLoginSuccess)
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            showErrorToastMessage(message)
+          }
         },
         onError: () => {
           // Global error handler (QueryCache) sẽ show toast
@@ -46,11 +52,11 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
     )
   }
 
-  const handleQuickLogin = () => {
-    setValue('phonenumber', '0324567894')
-    setValue('password', '123456789a')
-    clearErrors()
-  }
+  // const handleQuickLogin = () => {
+  //   setValue('phonenumber', '0324567894')
+  //   setValue('password', '123456789a')
+  //   clearErrors()
+  // }
 
   const isLoading = isPending || isSubmitting
 
@@ -119,7 +125,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       </View>
 
       {/* Quick login — dev helper, hardcoded acc */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         className="mb-3 items-center justify-center rounded-lg border border-dashed border-border py-2"
         onPress={handleQuickLogin}
         disabled={isLoading}
@@ -127,7 +133,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         <Text className="text-sm font-sans text-muted-foreground">
           Đăng nhập nhanh (0324567894)
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Submit */}
       <TouchableOpacity

@@ -256,6 +256,8 @@ const DateFilterSheet = memo(function DateFilterSheet({
   const dateBg    = isDark ? colors.gray[800] : colors.gray[50]
   const dateBorder = isDark ? colors.gray[700] : colors.gray[200]
 
+  const defaultNow = useMemo(() => new Date(), [])
+
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.4} pressBehavior="close" />
@@ -363,16 +365,16 @@ const DateFilterSheet = memo(function DateFilterSheet({
           </View>
 
           <DatePicker
-            modal open={fromOpen} date={localFrom ?? new Date()} mode="date"
-            maximumDate={localTo ?? new Date()}
+            modal open={fromOpen} date={localFrom ?? defaultNow} mode="date"
+            maximumDate={localTo ?? defaultNow}
             onConfirm={(d) => { setLocalFrom(d); setFromOpen(false) }}
             onCancel={() => setFromOpen(false)}
             confirmText={tCommon('common.confirm')} cancelText={tCommon('common.cancel')}
             theme={isDark ? 'dark' : 'light'}
           />
           <DatePicker
-            modal open={toOpen} date={localTo ?? new Date()} mode="date"
-            minimumDate={localFrom ?? undefined} maximumDate={new Date()}
+            modal open={toOpen} date={localTo ?? defaultNow} mode="date"
+            minimumDate={localFrom ?? undefined} maximumDate={defaultNow}
             onConfirm={(d) => { setLocalTo(d); setToOpen(false) }}
             onCancel={() => setToOpen(false)}
             confirmText={tCommon('common.confirm')} cancelText={tCommon('common.cancel')}

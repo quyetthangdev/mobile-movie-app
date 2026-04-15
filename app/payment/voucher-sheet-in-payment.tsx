@@ -305,6 +305,8 @@ export const VoucherSheetInPayment = memo(function VoucherSheetInPayment({
     setConditionVoucher(v)
   }, [])
 
+  const handleCloseConditionModal = useCallback(() => setConditionVoucher(null), [])
+
   const orderItemsParam = useMemo(
     () =>
       orderItems.map((item) => ({
@@ -489,7 +491,7 @@ export const VoucherSheetInPayment = memo(function VoucherSheetInPayment({
 
       <VoucherConditionModal
         voucher={conditionVoucher}
-        onClose={() => setConditionVoucher(null)}
+        onClose={handleCloseConditionModal}
         isDark={isDark}
         primaryColor={primaryColor}
         bgStyle={bgStyle}

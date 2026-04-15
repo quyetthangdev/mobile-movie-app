@@ -314,6 +314,8 @@ export const VoucherSheet = memo(function VoucherSheet({
     setConditionVoucher(v)
   }, [])
 
+  const handleCloseConditionModal = useCallback(() => setConditionVoucher(null), [])
+
   // ─── Footer component pinned at bottom via BottomSheetFooter ────────────────
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
@@ -518,7 +520,7 @@ export const VoucherSheet = memo(function VoucherSheet({
 
       <VoucherConditionModal
         voucher={conditionVoucher}
-        onClose={() => setConditionVoucher(null)}
+        onClose={handleCloseConditionModal}
         isDark={isDark}
         primaryColor={primaryColor}
         bgStyle={bgStyle}

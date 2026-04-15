@@ -554,6 +554,10 @@ export default function MenuPage() {
     [handleOpenDetail, handleAddToCart, primaryColor, catalogHeaderColor],
   )
 
+  const handleScrollBeginDrag = useCallback(() => {
+    hasUserStartedScrollRef.current = true
+  }, [])
+
   return (
     <TabScreenLayout>
       {/* Header + filter — static, solid bg */}
@@ -616,9 +620,7 @@ export default function MenuPage() {
               colors={[primaryColor]}
             />
           }
-          onScrollBeginDrag={() => {
-            hasUserStartedScrollRef.current = true
-          }}
+          onScrollBeginDrag={handleScrollBeginDrag}
           onViewableItemsChanged={
             ENABLE_SCROLL_PREFETCH ? onViewableItemsChanged : undefined
           }

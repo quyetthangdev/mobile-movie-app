@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { Dimensions, PanResponder, Text, useColorScheme, View } from 'react-native'
 
 import { colors } from '@/constants/colors.constant'
@@ -40,37 +40,47 @@ export default function DualRangeSlider({
     return Math.max(min, Math.min(max, steppedValue))
   }
 
-  const minPanResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => {
-      // Track initial position
-    },
-    onPanResponderMove: (_, gestureState) => {
-      const currentX = getPercentage(minVal) * (sliderWidth / 100)
-      const newX = currentX + gestureState.dx
-      const newMin = getValueFromPosition(newX)
-      if (newMin < maxVal && newMin >= min) {
-        onValueChange?.([newMin, maxVal])
-      }
-    },
-  })
+  const latestRef = useRef({ minVal, maxVal, onValueChange, getPercentage, getValueFromPosition })
+  latestRef.current = { minVal, maxVal, onValueChange, getPercentage, getValueFromPosition }
 
-  const maxPanResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => {
-      // Track initial position
-    },
-    onPanResponderMove: (_, gestureState) => {
-      const currentX = getPercentage(maxVal) * (sliderWidth / 100)
-      const newX = currentX + gestureState.dx
-      const newMax = getValueFromPosition(newX)
-      if (newMax > minVal && newMax <= max) {
-        onValueChange?.([minVal, newMax])
-      }
-    },
-  })
+  const { minPanResponder, maxPanResponder } = useMemo(
+    () => ({
+      minPanResponder: PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          // Track initial position
+        },
+        onPanResponderMove: (_, gestureState) => {
+          const { minVal: currentMin, maxVal: currentMax, onValueChange: onChange, getPercentage: getPct, getValueFromPosition: getVal } = latestRef.current
+          const currentX = getPct(currentMin) * (sliderWidth / 100)
+          const newX = currentX + gestureState.dx
+          const newMin = getVal(newX)
+          if (newMin < currentMax && newMin >= min) {
+            onChange?.([newMin, currentMax])
+          }
+        },
+      }),
+      maxPanResponder: PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          // Track initial position
+        },
+        onPanResponderMove: (_, gestureState) => {
+          const { minVal: currentMin, maxVal: currentMax, onValueChange: onChange, getPercentage: getPct, getValueFromPosition: getVal } = latestRef.current
+          const currentX = getPct(currentMax) * (sliderWidth / 100)
+          const newX = currentX + gestureState.dx
+          const newMax = getVal(newX)
+          if (newMax > currentMin && newMax <= max) {
+            onChange?.([currentMin, newMax])
+          }
+        },
+      }),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
   const minPosition = getPercentage(minVal)
   const maxPosition = getPercentage(maxVal)
@@ -103,6 +113,7 @@ export default function DualRangeSlider({
         {/* Min Thumb */}
         <View
           {...minPanResponder.panHandlers}
+          testID="slider-thumb"
           style={{
             position: 'absolute',
             left: `${minPosition}%`,
@@ -125,6 +136,7 @@ export default function DualRangeSlider({
         {/* Max Thumb */}
         <View
           {...maxPanResponder.panHandlers}
+          testID="slider-thumb"
           style={{
             position: 'absolute',
             left: `${maxPosition}%`,

@@ -23,6 +23,7 @@ import Animated, {
 
 import { Images } from '@/assets/images'
 import { ROUTE, publicFileURL } from '@/constants'
+import { SPRING_CONFIGS, TIMING_CONFIGS } from '@/constants/motion'
 import { navigateNative } from '@/lib/navigation'
 import type { IBanner } from '@/types'
 import type { ImageSourcePropType } from 'react-native'
@@ -34,8 +35,6 @@ const ROUTE_VALUES = Object.values(ROUTE)
 const DOT_SIZE = 7
 const DOT_ACTIVE_WIDTH = 20
 const DOT_GAP = 5
-const DOT_WIDTH_SPRING = { damping: 15, stiffness: 220 } as const
-const DOT_OPACITY_TIMING = { duration: 180 } as const
 
 const SCREEN_W = Dimensions.get('window').width
 
@@ -47,10 +46,10 @@ const BannerDot = React.memo(function BannerDot({
   isActive: boolean
 }) {
   const width = useDerivedValue(() =>
-    withSpring(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE, DOT_WIDTH_SPRING),
+    withSpring(isActive ? DOT_ACTIVE_WIDTH : DOT_SIZE, SPRING_CONFIGS.dotExpand),
   )
   const opacity = useDerivedValue(() =>
-    withTiming(isActive ? 1 : 0.45, DOT_OPACITY_TIMING),
+    withTiming(isActive ? 1 : 0.45, TIMING_CONFIGS.dotFade),
   )
   const style = useAnimatedStyle(() => ({
     width: width.value,

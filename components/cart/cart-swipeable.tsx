@@ -2,6 +2,7 @@
  * Lightweight Swipeable — no deferred gesture → no remount → no image flash.
  */
 import { colors } from '@/constants'
+import { SPRING_CONFIGS } from '@/constants/motion'
 import { Trash2 } from 'lucide-react-native'
 import React, { memo, useCallback, useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
@@ -15,7 +16,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 
-const SWIPE_SPRING = { damping: 25, stiffness: 180 }
 const SWIPE_WIDTH = 80
 const returnTrue = () => true
 
@@ -54,7 +54,7 @@ function CartSwipeableBase({
         .onEnd((e) => {
           if (isRemoving.value) return
           const open = translateX.value < -SWIPE_WIDTH * 0.72 || e.velocityX < -700
-          translateX.value = withSpring(open ? -SWIPE_WIDTH : 0, SWIPE_SPRING)
+          translateX.value = withSpring(open ? -SWIPE_WIDTH : 0, SPRING_CONFIGS.swipe)
         }),
     [translateX, startX, isRemoving],
   )

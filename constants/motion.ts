@@ -38,6 +38,53 @@ export const SPRING_CONFIGS = {
     mass: 0.4,
     overshootClamping: true,
   } as const,
+
+  /**
+   * Banner dot width expand — softer spring for width morph between inactive
+   * (7px) and active (20px) pill. Lower damping allows gentle overshoot.
+   */
+  dotExpand: {
+    damping: 15,
+    stiffness: 220,
+  } as const,
+
+  /**
+   * Cart badge bounce-in — low damping for intentional scale overshoot when
+   * an item is added to the cart.
+   */
+  bounceIn: {
+    damping: 8,
+    stiffness: 300,
+  } as const,
+
+  /**
+   * Cart badge bounce-settle — higher damping to snap back to rest scale=1
+   * quickly after the overshoot phase.
+   */
+  bounceSettle: {
+    damping: 15,
+    stiffness: 200,
+  } as const,
+
+  /**
+   * Swipeable row snap — gesture-driven pan snap to open/closed position.
+   * Moderate damping keeps the snap feel snappy without jarring overshoot.
+   */
+  swipe: {
+    damping: 25,
+    stiffness: 180,
+  } as const,
+} as const
+
+/**
+ * TIMING_CONFIGS — withTiming duration presets.
+ * Use these instead of inline `{ duration: N }` objects.
+ */
+export const TIMING_CONFIGS = {
+  /**
+   * Banner dot fade — opacity cross-fade between active/inactive dot states.
+   */
+  dotFade: { duration: 180 } as const,
 } as const
 
 /** Scale active cho PaginationDot — 1.25 thay vì 2–3 để tránh méo hình */

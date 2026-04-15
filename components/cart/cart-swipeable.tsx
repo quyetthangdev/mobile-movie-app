@@ -1,8 +1,7 @@
 /**
  * Lightweight Swipeable — no deferred gesture → no remount → no image flash.
  */
-import { colors } from '@/constants'
-import { SPRING_CONFIGS } from '@/constants/motion'
+import { SPRING_CONFIGS, colors } from '@/constants'
 import { Trash2 } from 'lucide-react-native'
 import React, { memo, useCallback, useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'

@@ -22,8 +22,7 @@ import Animated, {
 } from 'react-native-reanimated'
 
 import { Images } from '@/assets/images'
-import { ROUTE, publicFileURL } from '@/constants'
-import { SPRING_CONFIGS, TIMING_CONFIGS } from '@/constants/motion'
+import { ROUTE, SPRING_CONFIGS, TIMING_CONFIGS, publicFileURL } from '@/constants'
 import { navigateNative } from '@/lib/navigation'
 import type { IBanner } from '@/types'
 import type { ImageSourcePropType } from 'react-native'

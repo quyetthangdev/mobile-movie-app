@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 
-import { SPRING_CONFIGS } from '@/constants/motion'
+import { SPRING_CONFIGS } from '@/constants'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
 
 /** Badge số lượng giỏ hàng — chỉ subscribe cartItemCount, tránh re-render toàn header khi add item */

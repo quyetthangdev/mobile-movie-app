@@ -5,7 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, useColorScheme, View } from 'react-native'
 
 import { colors } from '@/constants'
-import { UPDATE_ORDER_MENU_ITEM_HEIGHT } from '@/constants/list-item-sizes'
+import {
+  UPDATE_ORDER_CATALOG_HEADER_HEIGHT,
+  UPDATE_ORDER_MENU_ITEM_HEIGHT,
+} from '@/constants/list-item-sizes'
 import { useCatalog } from '@/hooks'
 import { usePublicSpecificMenu, useSpecificMenu } from '@/hooks/use-menu'
 import { useAuthStore, useOrderFlowStore } from '@/stores'
@@ -17,6 +20,10 @@ interface UpdateOrderMenusProps {
   branchSlug: string
   primaryColor: string
 }
+
+type CatalogHeader = { type: 'header'; catalogSlug: string; catalogName: string }
+type MenuRow = { type: 'item'; item: IMenuItem }
+type FlatListItem = CatalogHeader | MenuRow
 
 export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrderMenusProps) {
   const { t } = useTranslation('menu')
@@ -66,6 +73,18 @@ export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrd
     return grouped
   }, [catalogs?.result, menuItems])
 
+  const flatListData = useMemo((): FlatListItem[] => {
+    const result: FlatListItem[] = []
+    for (const group of groupedItems) {
+      if (group.items.length === 0) continue
+      result.push({ type: 'header', catalogSlug: group.catalog.slug, catalogName: group.catalog.name })
+      for (const item of group.items) {
+        result.push({ type: 'item', item })
+      }
+    }
+    return result
+  }, [groupedItems])
+
   // showImage phase gate — defer heavy decodes
   const [showImage, setShowImage] = useState(false)
   React.useEffect(() => {
@@ -73,26 +92,44 @@ export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrd
     return () => cancelAnimationFrame(id)
   }, [])
 
+  const grayColor = isDark ? colors.gray[400] : colors.gray[500]
+
   const renderItem = useCallback(
-    ({ item, index }: { item: IMenuItem; index: number }) => (
-      <ClientMenuItemForUpdateOrder
-        item={item}
-        listIndex={index}
-        showImage={showImage}
-        primaryColor={primaryColor}
-      />
-    ),
-    [showImage, primaryColor],
+    ({ item, index }: { item: FlatListItem; index: number }) => {
+      if (item.type === 'header') {
+        return (
+          <Text style={[s.catalogName, { color: grayColor }]}>
+            {item.catalogName}
+          </Text>
+        )
+      }
+      return (
+        <ClientMenuItemForUpdateOrder
+          item={item.item}
+          listIndex={index}
+          showImage={showImage}
+          primaryColor={primaryColor}
+        />
+      )
+    },
+    [showImage, primaryColor, grayColor],
   )
 
-  const keyExtractor = useCallback((item: IMenuItem) => item.slug, [])
+  const keyExtractor = useCallback(
+    (item: FlatListItem) =>
+      item.type === 'header' ? item.catalogSlug : item.item.slug,
+    [],
+  )
 
-  const overrideMenuItemLayout = useCallback(
-    (layout: { span?: number; size?: number }) => {
-      layout.size = UPDATE_ORDER_MENU_ITEM_HEIGHT
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }, item: FlatListItem) => {
+      layout.size =
+        item.type === 'header' ? UPDATE_ORDER_CATALOG_HEADER_HEIGHT : UPDATE_ORDER_MENU_ITEM_HEIGHT
     },
     [],
   )
+
+  const getItemType = useCallback((item: FlatListItem) => item.type, [])
 
   if (!hasUpdatingData) return null
 
@@ -132,34 +169,23 @@ export default function UpdateOrderMenus({ branchSlug, primaryColor }: UpdateOrd
     )
   }
 
-  const grayColor = isDark ? colors.gray[400] : colors.gray[500]
-
   return (
     <View style={s.container}>
-      {groupedItems.map((group, index) => {
-        if (group.items.length === 0) return null
-        return (
-          <View key={`catalog-${group.catalog.slug || index}`} style={s.catalogSection}>
-            <Text style={[s.catalogName, { color: grayColor }]}>
-              {group.catalog.name}
-            </Text>
-            <FlashList
-              data={group.items}
-              renderItem={renderItem}
-              keyExtractor={keyExtractor}
-              scrollEnabled={false}
-              overrideItemLayout={overrideMenuItemLayout}
-            />
-          </View>
-        )
-      })}
+      <FlashList<FlatListItem>
+        data={flatListData}
+        keyExtractor={keyExtractor}
+        getItemType={getItemType}
+        overrideItemLayout={overrideItemLayout}
+        renderItem={renderItem}
+        scrollEnabled={false}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   )
 }
 
 const s = StyleSheet.create({
   container: { paddingBottom: 32, paddingTop: 8 },
-  catalogSection: { marginBottom: 24 },
   catalogName: {
     fontSize: 13,
     fontWeight: '600',

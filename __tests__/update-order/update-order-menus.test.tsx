@@ -1,7 +1,10 @@
 import { render } from '@testing-library/react-native'
 import { FlashList } from '@shopify/flash-list'
 import UpdateOrderMenus from '@/app/update-order/components/update-order-menus'
-import { UPDATE_ORDER_MENU_ITEM_HEIGHT } from '@/constants/list-item-sizes'
+import {
+  UPDATE_ORDER_CATALOG_HEADER_HEIGHT,
+  UPDATE_ORDER_MENU_ITEM_HEIGHT,
+} from '@/constants/list-item-sizes'
 
 // ---------------------------------------------------------------------------
 // Store mocks
@@ -108,21 +111,40 @@ jest.mock(
 )
 
 // ---------------------------------------------------------------------------
-// Test
+// Tests
 // ---------------------------------------------------------------------------
-it('all FlashList instances have overrideItemLayout', () => {
+it('renders a single FlashList (flat list)', () => {
   const { UNSAFE_getAllByType } = render(
     <UpdateOrderMenus branchSlug="q1" primaryColor="#FF6B00" />,
   )
   const lists = UNSAFE_getAllByType(FlashList)
-  expect(lists.length).toBe(2)
-  lists.forEach((list) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    expect(typeof list.props.overrideItemLayout).toBe('function')
-    // Verify the function sets layout.size to the correct constant
-    const layout: { size?: number } = {}
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    list.props.overrideItemLayout(layout)
-    expect(layout.size).toBe(UPDATE_ORDER_MENU_ITEM_HEIGHT)
-  })
+  expect(lists.length).toBe(1)
+})
+
+it('overrideItemLayout sets correct size per item type', () => {
+  const { UNSAFE_getAllByType } = render(
+    <UpdateOrderMenus branchSlug="q1" primaryColor="#FF6B00" />,
+  )
+  const lists = UNSAFE_getAllByType(FlashList)
+  expect(lists.length).toBe(1)
+  const list = lists[0]
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  expect(typeof list.props.overrideItemLayout).toBe('function')
+
+  const itemLayout: { size?: number } = {}
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  list.props.overrideItemLayout(itemLayout, { type: 'item' })
+  expect(itemLayout.size).toBe(UPDATE_ORDER_MENU_ITEM_HEIGHT)
+
+  const headerLayout: { size?: number } = {}
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  list.props.overrideItemLayout(headerLayout, { type: 'header' })
+  expect(headerLayout.size).toBe(UPDATE_ORDER_CATALOG_HEADER_HEIGHT)
+})
+
+it('renders all menu items (2 drinks + 1 food = 3 total)', () => {
+  const { getAllByTestId } = render(
+    <UpdateOrderMenus branchSlug="q1" primaryColor="#FF6B00" />,
+  )
+  expect(getAllByTestId('menu-item').length).toBe(3)
 })

@@ -7,12 +7,8 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated'
 
+import { SPRING_CONFIGS } from '@/constants/motion'
 import { useOrderFlowCartItemCount } from '@/stores/selectors'
-
-// Module-scope spring configs — stable reference, no re-allocation per effect fire.
-// Bounce in: snappier (low damping → more overshoot), Settle: higher damping to rest quickly.
-const BOUNCE_IN_SPRING = { damping: 8, stiffness: 300 } as const
-const BOUNCE_SETTLE_SPRING = { damping: 15, stiffness: 200 } as const
 
 /** Badge số lượng giỏ hàng — chỉ subscribe cartItemCount, tránh re-render toàn header khi add item */
 export const CartBadge = React.memo(function CartBadge() {
@@ -25,8 +21,8 @@ export const CartBadge = React.memo(function CartBadge() {
   useEffect(() => {
     if (cartItemCount > prevCountRef.current && cartItemCount > 0) {
       scale.value = withSequence(
-        withSpring(1.25, BOUNCE_IN_SPRING),
-        withSpring(1, BOUNCE_SETTLE_SPRING),
+        withSpring(1.25, SPRING_CONFIGS.bounceIn),
+        withSpring(1, SPRING_CONFIGS.bounceSettle),
       )
     }
     prevCountRef.current = cartItemCount

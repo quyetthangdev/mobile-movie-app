@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Tabs, usePathname } from 'expo-router'
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Platform, View, useColorScheme } from 'react-native'
 import Animated, {
@@ -138,6 +138,88 @@ export default function TabsLayout() {
     isStackRoute
 
   const colors = useMemo(() => getThemeColor(isDark), [isDark])
+
+  const tabColors = useMemo(
+    () => ({
+      primary: colors.primary,
+      mutedForeground: colors.mutedForeground,
+      background: colors.background,
+      card: colors.card,
+    }),
+    [colors.primary, colors.mutedForeground, colors.background, colors.card],
+  )
+
+  const gradientColors = useMemo(
+    () => [
+      'transparent',
+      'transparent',
+      hexToRgba(colors.background, 0.03),
+      hexToRgba(colors.background, 0.08),
+      hexToRgba(colors.background, 0.18),
+      hexToRgba(colors.background, 0.35),
+      hexToRgba(colors.background, 0.55),
+      colors.background,
+    ],
+    [colors.background],
+  )
+
+  const onPressInTabSwitch = useCallback(
+    (href: string) => {
+      const menuFilter = useMenuFilterStore.getState().menuFilter
+      const branchSlug = useBranchStore.getState().branch?.slug
+
+      if (href?.includes('/menu')) {
+        const userSlugForMenu = useUserStore.getState().userInfo?.slug
+        const hasUser = isAuthenticated && !!userSlugForMenu
+        const hasBranch = !!menuFilter.branch || !!branchSlug
+        if (hasBranch) {
+          const menuRequest = {
+            date: menuFilter.date ?? dayjs().format('YYYY-MM-DD'),
+            branch: menuFilter.branch ?? branchSlug,
+            catalog: menuFilter.catalog,
+            productName: menuFilter.productName,
+            minPrice: menuFilter.minPrice,
+            maxPrice: menuFilter.maxPrice,
+            slug: menuFilter.menu,
+          }
+          const cacheKey = hasUser
+            ? ['specific-menu', menuRequest]
+            : ['public-specific-menu', menuRequest]
+          if (!queryClient.getQueryData(cacheKey)) {
+            queryClient
+              .prefetchQuery({
+                queryKey: cacheKey,
+                queryFn: () =>
+                  hasUser
+                    ? getSpecificMenu(menuRequest)
+                    : getPublicSpecificMenu(menuRequest),
+              })
+              .catch(() => {})
+          }
+        }
+      }
+      if (href?.includes('/profile') && userSlug) {
+        const loyaltyKey = [
+          QUERYKEY.loyaltyPoints,
+          'total',
+          { slug: userSlug },
+        ]
+        if (!queryClient.getQueryData(loyaltyKey)) {
+          queryClient
+            .prefetchQuery({
+              queryKey: loyaltyKey,
+              queryFn: async () => {
+                const res = await getLoyaltyPoints(userSlug)
+                return res.result
+              },
+            })
+            .catch(() => {})
+        }
+      }
+    },
+    [isAuthenticated, userSlug, queryClient],
+  )
+
   // Exhaustive match — không dùng fallback `isHomeActive = !others`.
   //
   // QUAN TRỌNG: expo-router's usePathname() strip group segments — pathname
@@ -228,16 +310,7 @@ export default function TabsLayout() {
           }}
         >
           <LinearGradient
-            colors={[
-              'transparent',
-              'transparent',
-              hexToRgba(colors.background, 0.03),
-              hexToRgba(colors.background, 0.08),
-              hexToRgba(colors.background, 0.18),
-              hexToRgba(colors.background, 0.35),
-              hexToRgba(colors.background, 0.55),
-              colors.background,
-            ]}
+            colors={gradientColors as unknown as [string, string, ...string[]]}
             locations={[0, 0.15, 0.25, 0.35, 0.45, 0.55, 0.7, 1]}
             style={{ flex: 1 }}
           />
@@ -259,67 +332,10 @@ export default function TabsLayout() {
         >
           <AnimatedTabBar
             t={t}
-            colors={{
-              primary: colors.primary,
-              mutedForeground: colors.mutedForeground,
-              background: colors.background,
-              card: colors.card,
-            }}
+            colors={tabColors}
             tabState={resolvedTabState}
             tabRoutes={tabRoutes}
-            onPressInTabSwitch={(href) => {
-              const menuFilter = useMenuFilterStore.getState().menuFilter
-              const branchSlug = useBranchStore.getState().branch?.slug
-              const userSlug = useUserStore.getState().userInfo?.slug
-
-              if (href?.includes('/menu')) {
-                const hasUser = isAuthenticated && !!userSlug
-                const hasBranch = !!menuFilter.branch || !!branchSlug
-                if (hasBranch) {
-                  const menuRequest = {
-                    date: menuFilter.date ?? dayjs().format('YYYY-MM-DD'),
-                    branch: menuFilter.branch ?? branchSlug,
-                    catalog: menuFilter.catalog,
-                    productName: menuFilter.productName,
-                    minPrice: menuFilter.minPrice,
-                    maxPrice: menuFilter.maxPrice,
-                    slug: menuFilter.menu,
-                  }
-                  const cacheKey = hasUser
-                    ? ['specific-menu', menuRequest]
-                    : ['public-specific-menu', menuRequest]
-                  if (!queryClient.getQueryData(cacheKey)) {
-                    queryClient
-                      .prefetchQuery({
-                        queryKey: cacheKey,
-                        queryFn: () =>
-                          hasUser
-                            ? getSpecificMenu(menuRequest)
-                            : getPublicSpecificMenu(menuRequest),
-                      })
-                      .catch(() => {})
-                  }
-                }
-              }
-              if (href?.includes('/profile') && userSlug) {
-                const loyaltyKey = [
-                  QUERYKEY.loyaltyPoints,
-                  'total',
-                  { slug: userSlug },
-                ]
-                if (!queryClient.getQueryData(loyaltyKey)) {
-                  queryClient
-                    .prefetchQuery({
-                      queryKey: loyaltyKey,
-                      queryFn: async () => {
-                        const res = await getLoyaltyPoints(userSlug)
-                        return res.result
-                      },
-                    })
-                    .catch(() => {})
-                }
-              }
-            }}
+            onPressInTabSwitch={onPressInTabSwitch}
             onBeforeTabSwitch={undefined}
           />
           <FloatingCartButton

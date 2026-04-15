@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useOrderFlowStore } from '@/stores'
@@ -59,12 +59,15 @@ export function usePickupTime(defaultValue?: number, onPickupTimeSelect?: (minut
     }))
   }, [t])
 
-  const handleChange = (value: string) => {
-    const minutes = parseInt(value, 10)
-    setUserSelectedTime(value)
-    addPickupTime(minutes)
-    onPickupTimeSelect?.(minutes)
-  }
+  const handleChange = useCallback(
+    (value: string) => {
+      const minutes = parseInt(value, 10)
+      setUserSelectedTime(value)
+      addPickupTime(minutes)
+      onPickupTimeSelect?.(minutes)
+    },
+    [addPickupTime, onPickupTimeSelect],
+  )
 
   return {
     shouldRender,

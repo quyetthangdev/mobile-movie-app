@@ -266,25 +266,28 @@ export default function CoinHubScreen() {
   const cardBg = isDark ? colors.gray[800] : colors.gray[50]
   const cardBorder = isDark ? colors.gray[700] : colors.gray[200]
 
-  const ListHeader = (
-    <View style={s.listHeader}>
-      <Text style={[s.sectionTitle, { color: subColor }]}>
-        {t('profile.coin.historyTitle')}
-      </Text>
-      {analysis && (
-        <View style={[s.statsCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <View style={s.statItem}>
-            <Text style={[s.statLabel, { color: subColor }]}>{t('profile.coin.totalEarned')}</Text>
-            <Text style={[s.statValue, { color: '#16a34a' }]}>+{formatPoints(analysis.totalEarned)} xu</Text>
+  const ListHeader = useMemo(
+    () => (
+      <View style={s.listHeader}>
+        <Text style={[s.sectionTitle, { color: subColor }]}>
+          {t('profile.coin.historyTitle')}
+        </Text>
+        {analysis && (
+          <View style={[s.statsCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <View style={s.statItem}>
+              <Text style={[s.statLabel, { color: subColor }]}>{t('profile.coin.totalEarned')}</Text>
+              <Text style={[s.statValue, { color: '#16a34a' }]}>+{formatPoints(analysis.totalEarned)} xu</Text>
+            </View>
+            <View style={[s.statDivider, { backgroundColor: cardBorder }]} />
+            <View style={s.statItem}>
+              <Text style={[s.statLabel, { color: subColor }]}>{t('profile.coin.totalSpent')}</Text>
+              <Text style={[s.statValue, { color: colors.destructive.dark }]}>-{formatPoints(analysis.totalSpent)} xu</Text>
+            </View>
           </View>
-          <View style={[s.statDivider, { backgroundColor: cardBorder }]} />
-          <View style={s.statItem}>
-            <Text style={[s.statLabel, { color: subColor }]}>{t('profile.coin.totalSpent')}</Text>
-            <Text style={[s.statValue, { color: colors.destructive.dark }]}>-{formatPoints(analysis.totalSpent)} xu</Text>
-          </View>
-        </View>
-      )}
-    </View>
+        )}
+      </View>
+    ),
+    [subColor, t, analysis, cardBg, cardBorder],
   )
 
   // ── Active date chips ─────────────────────────────────────────────────────────

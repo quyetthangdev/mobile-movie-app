@@ -1,9 +1,10 @@
-import BottomSheet, { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFlatList } from '@gorhom/bottom-sheet'
+import BottomSheet, { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFlashList } from '@gorhom/bottom-sheet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Text, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { ActivityIndicator, Text, useColorScheme, View } from 'react-native'
 
 import { TableStatus } from '@/constants'
+import { TABLE_SELECT_ITEM_HEIGHT } from '@/constants/list-item-sizes'
 import { useTables } from '@/hooks'
 import { useOrderFlowStore } from '@/stores'
 import { ITable } from '@/types'
@@ -29,8 +30,6 @@ interface TableSelectSheetProps {
   openOnMount?: boolean
 }
 
-const TABLE_PAGE_SIZE = 12
-
 function TableSelectSheet({
   branchSlug,
   onClose,
@@ -41,9 +40,6 @@ function TableSelectSheet({
   const bottomSheetRef = useRef<BottomSheet>(null)
   const [shouldOpen, setShouldOpen] = useState(!!openOnMount)
   const [_isOpen, setIsOpen] = useState(false)
-  const [visibleCount, setVisibleCount] = useState(TABLE_PAGE_SIZE)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-
   // Copy đúng pattern ref + openCallback từ VoucherListDrawer
   useEffect(() => {
     isComponentMounted = true
@@ -166,11 +162,6 @@ function TableSelectSheet({
   // Defer fetch như Voucher: chỉ fetch khi sắp mở (shouldOpen) — tránh API + re-render block BottomSheet mount
   const { data, isLoading } = useTables(shouldOpen ? branchSlug : undefined)
   const tables = useMemo(() => data?.result || [], [data])
-  const visibleTables = useMemo(
-    () => tables.slice(0, visibleCount),
-    [tables, visibleCount],
-  )
-  const hasMoreTables = visibleCount < tables.length
 
   const getCartItems = useOrderFlowStore((s) => s.getCartItems)
   const addTable = useOrderFlowStore((s) => s.addTable)
@@ -187,40 +178,6 @@ function TableSelectSheet({
 
     return map
   }, [t])
-
-  const resetPagination = useCallback(() => {
-    setVisibleCount(TABLE_PAGE_SIZE)
-    setIsLoadingMore(false)
-  }, [])
-
-  // Reset phân trang khi chi nhánh hoặc số lượng bàn thay đổi
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      resetPagination()
-    }, 0)
-
-    return () => clearTimeout(timeoutId)
-  }, [branchSlug, tables.length, resetPagination])
-
-  // Reset phân trang mỗi lần sheet được mở
-  useEffect(() => {
-    if (!shouldOpen) return
-
-    const timeoutId = setTimeout(() => {
-      resetPagination()
-    }, 0)
-
-    return () => clearTimeout(timeoutId)
-  }, [shouldOpen, resetPagination])
-
-  const handleLoadMore = useCallback(() => {
-    if (isLoading || isLoadingMore || !hasMoreTables) return
-    setIsLoadingMore(true)
-    requestAnimationFrame(() => {
-      setVisibleCount((prev) => Math.min(prev + TABLE_PAGE_SIZE, tables.length))
-      setIsLoadingMore(false)
-    })
-  }, [hasMoreTables, isLoading, isLoadingMore, tables.length])
 
   // Backdrop component để đóng khi chạm vào backdrop
   const renderBackdrop = useCallback(
@@ -258,30 +215,8 @@ function TableSelectSheet({
   )
 
   const renderFooter = useCallback(() => {
-    if (isLoadingMore) {
-      return (
-        <View className="items-center py-3">
-          <ActivityIndicator size="small" color={isDark ? '#9ca3af' : '#6b7280'} />
-        </View>
-      )
-    }
-
-    if (!hasMoreTables) return <View className="h-2" />
-
-    return (
-      <View className="items-center px-4 pb-4 pt-2">
-        <TouchableOpacity
-          onPress={handleLoadMore}
-          className="rounded-full border border-gray-200 bg-white px-4 py-2 dark:border-gray-700 dark:bg-gray-900"
-          activeOpacity={0.85}
-        >
-          <Text className="text-xs font-medium text-gray-700 dark:text-gray-300">
-            {t('table.loadMore', 'Xem thêm bàn')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    )
-  }, [handleLoadMore, hasMoreTables, isDark, isLoadingMore, t])
+    return <View className="h-2" />
+  }, [])
 
   const keyExtractor = useCallback((item: ITable) => item.slug, [])
 
@@ -320,15 +255,13 @@ function TableSelectSheet({
           </Text>
         </View>
       ) : tables.length > 0 ? (
-        <BottomSheetFlatList
-          data={visibleTables}
+        <BottomSheetFlashList
+          data={tables}
           keyExtractor={keyExtractor}
-          initialNumToRender={8}
-          windowSize={5}
-          maxToRenderPerBatch={8}
-          removeClippedSubviews
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.35}
+          estimatedItemSize={TABLE_SELECT_ITEM_HEIGHT}
+          overrideItemLayout={(layout: { span?: number; size?: number }) => {
+            layout.size = TABLE_SELECT_ITEM_HEIGHT
+          }}
           ListFooterComponent={renderFooter}
           ListEmptyComponent={
             <View className="px-4 py-8 items-center">

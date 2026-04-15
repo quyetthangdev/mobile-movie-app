@@ -84,6 +84,15 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
     }
   }, [count])
 
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: screenWidth,
+      offset: screenWidth * index,
+      index,
+    }),
+    [screenWidth],
+  )
+
   const renderItem = useCallback(
     ({ item }: { item: ImageSourcePropType }) => (
       <View style={{ width: screenWidth }}>
@@ -131,11 +140,7 @@ const StoreCarousel = React.memo(function StoreCarousel({ images }: StoreCarouse
         windowSize={3}
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScrollEnd}
-        getItemLayout={(_, index) => ({
-          length: screenWidth,
-          offset: screenWidth * index,
-          index,
-        })}
+        getItemLayout={getItemLayout}
         onScrollToIndexFailed={(info) => {
           const wait = new Promise((resolve) => setTimeout(resolve, 500))
           wait.then(() => {

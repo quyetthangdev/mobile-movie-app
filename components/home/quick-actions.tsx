@@ -3,7 +3,7 @@
  * Đặt ngay → Menu, Mang về → Menu + takeaway, Quét QR → scan sheet.
  */
 import { QrCode, ShoppingBag, Truck } from 'lucide-react-native'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { Pressable, Text, View, useColorScheme } from 'react-native'
 import { useRouter } from 'expo-router'
 
@@ -37,26 +37,29 @@ export const QuickActions = React.memo(function QuickActions() {
     openScan()
   }, [openScan])
 
-  const actions: QuickAction[] = [
-    {
-      key: 'order',
-      icon: <ShoppingBag size={20} color={primaryColor} />,
-      label: 'Đặt ngay',
-      onPress: handleOrderNow,
-    },
-    {
-      key: 'takeaway',
-      icon: <Truck size={20} color={primaryColor} />,
-      label: 'Mang về',
-      onPress: handleTakeaway,
-    },
-    {
-      key: 'scan',
-      icon: <QrCode size={20} color={primaryColor} />,
-      label: 'Quét QR',
-      onPress: handleScan,
-    },
-  ]
+  const actions = useMemo<QuickAction[]>(
+    () => [
+      {
+        key: 'order',
+        icon: <ShoppingBag size={20} color={primaryColor} />,
+        label: 'Đặt ngay',
+        onPress: handleOrderNow,
+      },
+      {
+        key: 'takeaway',
+        icon: <Truck size={20} color={primaryColor} />,
+        label: 'Mang về',
+        onPress: handleTakeaway,
+      },
+      {
+        key: 'scan',
+        icon: <QrCode size={20} color={primaryColor} />,
+        label: 'Quét QR',
+        onPress: handleScan,
+      },
+    ],
+    [primaryColor, handleOrderNow, handleTakeaway, handleScan],
+  )
 
   return (
     <View className="flex-row gap-3 px-4 py-4">

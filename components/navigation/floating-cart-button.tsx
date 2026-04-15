@@ -1,5 +1,5 @@
 import { ShoppingCart } from 'lucide-react-native'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Text, View } from 'react-native'
 
 import { TAB_ROUTES } from '@/constants/navigation.config'
@@ -23,22 +23,27 @@ const FloatingCartButton = React.memo(function FloatingCartButton({
   const orderFlowCount = useOrderFlowCartItemCount()
   const cartItemCount = countOverride ?? orderFlowCount
 
+  const buttonStyle = useMemo(
+    () => ({
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: primaryColor,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      shadowColor: primaryColor,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
+    }),
+    [primaryColor],
+  )
+
   return (
     <NativeGesturePressable
       navigation={{ type: 'push', href: href ?? TAB_ROUTES.CART }}
-      style={{
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: primaryColor,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: primaryColor,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
-      }}
+      style={buttonStyle}
     >
       <ShoppingCart size={24} color="#ffffff" />
       {cartItemCount > 0 && (
